@@ -4,6 +4,10 @@
     --custom-dark: #8967AA;
 }
 
+.accent-background {
+    background-color: light-dark(var(--custom-light), var(--custom-dark)) !important;
+}
+
 html, body {
     --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
     font-family: var(--body-font);

@@ -7,7 +7,7 @@
 @inject HttpClient Client
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
-OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEditorThemeAsync(e.IsDark)" />
+OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
 
 <FluentDialog @bind-Hidden="modalHidden" Modal="true" TrapFocus="true" PreventScroll="true"
 @ondialogdismiss="CloseModal">
@@ -666,7 +666,7 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
         await Editor.Layout();
     }
 
-    private async Task SetEditorThemeAsync(bool dark)
+    private async Task SetLuminanceAsync(bool dark)
     {
         await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, dark ? "vs-dark" : "vs");
     }
