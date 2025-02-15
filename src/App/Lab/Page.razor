@@ -89,7 +89,8 @@
     RenderFragment inputPanel =@<div style="display: flex; flex-direction: column; height: 100%">
         @* Input tabs *@
         <FluentTabs @bind-ActiveTabId="activeInputTabId" @bind-ActiveTabId:after="OnActiveInputTabIdChangedAsync"
-        ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync">
+        ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync"
+        Style="padding: 0 0.2em">
             @* Normal files *@
             @foreach (var (index, input) in inputs.Index())
             {
@@ -112,8 +113,7 @@
             @* Add new file button *@
             <div slot="end">
                 <FluentMenuButton IconStart="@(new Icons.Filled.Size20.DocumentAdd())" Text="Add"
-                ButtonAppearance="Appearance.Neutral" ButtonStyle="margin-right: 0.2em"
-                OnMenuChanged="OnAddInputTabAsync">
+                ButtonAppearance="Appearance.Neutral" OnMenuChanged="OnAddInputTabAsync">
                     <FluentMenuItem Id="cs">.cs</FluentMenuItem>
                     <FluentMenuItem Id="razor">.razor</FluentMenuItem>
                     <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
@@ -144,7 +144,8 @@
         @* NOTE: @key is needed - otherwise, when AllOutputs change,
         the FluentTabs might render incorrect selected tab
         even though ActiveTabId is set correctly (probably a bug). *@
-        <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey">
+        <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
+        Style="padding: 0 0.2em">
             @foreach (var output in AllOutputs)
             {
                 @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
