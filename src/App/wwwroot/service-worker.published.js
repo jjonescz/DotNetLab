@@ -1,10 +1,14 @@
 // Caution! Be sure you understand the caveats before publishing an application with
 // offline support. See https://aka.ms/blazor-offline-considerations
 
-self.importScripts('./service-worker-assets.js');
-self.addEventListener('install', event => event.waitUntil(onInstall(event)));
-self.addEventListener('activate', event => event.waitUntil(onActivate(event)));
-self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+/// <reference lib="webworker" />
+
+const worker = /** @type {ServiceWorkerGlobalScope} */ (self);
+
+worker.importScripts('./service-worker-assets.js');
+worker.addEventListener('install', event => event.waitUntil(onInstall(event)));
+worker.addEventListener('activate', event => event.waitUntil(onActivate(event)));
+worker.addEventListener('fetch', event => event.respondWith(onFetch(event)));
 
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
@@ -16,7 +20,7 @@ const base = "/";
 const baseUrl = new URL(base, self.origin);
 const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);
 
-async function onInstall(event) {
+async function onInstall() {
     console.info('Service worker: Install');
 
     // Fetch and cache all matching items from the assets manifest
@@ -46,7 +50,7 @@ async function onInstall(event) {
     }
 }
 
-async function onActivate(event) {
+async function onActivate() {
     console.info('Service worker: Activate');
 
     // Delete unused caches
@@ -56,6 +60,9 @@ async function onActivate(event) {
         .map(key => caches.delete(key)));
 }
 
+/**
+ * @param {FetchEvent} event
+ */
 async function onFetch(event) {
     let cachedResponse = null;
     if (event.request.method === 'GET') {
@@ -73,7 +80,7 @@ async function onFetch(event) {
 
         const cache = await caches.open(cacheName);
         // We ignore search query (so our pre-cached `app.css` matches request `app.css?v=2`),
-        // we have pre-cached the latest versions of all static assets.
+        // we have pre-cached the latest versions of all static assets anyway.
         cachedResponse = await cache.match(request, { ignoreSearch: true });
     }
 
