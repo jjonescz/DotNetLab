@@ -11,7 +11,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
 <FluentDialog @bind-Hidden="modalHidden" Modal="true" TrapFocus="true" PreventScroll="true"
 @ondialogdismiss="CloseModal">
-    <FluentDialogHeader ShowDismiss="true">
+    <FluentDialogHeader ShowDismiss="true" ShowDismissTooltip="false">
         <FluentLabel Typo="Typography.PaneHeader">
             Settings
         </FluentLabel>
