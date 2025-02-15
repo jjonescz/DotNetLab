@@ -1,6 +1,8 @@
 // Caution! Be sure you understand the caveats before publishing an application with
 // offline support. See https://aka.ms/blazor-offline-considerations
 
+// Some reload logic inspired by https://stackoverflow.com/a/50535316.
+
 /// <reference lib="webworker" />
 
 const worker = /** @type {ServiceWorkerGlobalScope} */ (self);
@@ -9,6 +11,7 @@ worker.importScripts('./service-worker-assets.js');
 worker.addEventListener('install', event => event.waitUntil(onInstall(event)));
 worker.addEventListener('activate', event => event.waitUntil(onActivate(event)));
 worker.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+worker.addEventListener('message', event => onMessage(event));
 
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
@@ -64,6 +67,19 @@ async function onActivate() {
  * @param {FetchEvent} event
  */
 async function onFetch(event) {
+    // If there is only one remaining client that is navigating
+    // (e.g., being refreshed using the broswer reload button),
+    // and there is a new version of the service worker waiting,
+    // force active the new version and reload the page (so it uses the new version).
+    if (event.request.mode === 'navigate' &&
+        event.request.method === 'GET' &&
+        worker.registration.waiting &&
+        (await worker.clients.matchAll()).length < 2
+    ) {
+        worker.registration.waiting.postMessage('skipWaiting');
+        return new Repsonse('', { headers: { Refresh: '0' } });
+    }
+
     let cachedResponse = null;
     if (event.request.method === 'GET') {
         // For all navigation requests, try to serve index.html from cache,
@@ -89,4 +105,13 @@ async function onFetch(event) {
     }
 
     return cachedResponse || fetch(event.request);
+}
+
+/**
+ * @param {ExtendableMessageEvent} event
+ */
+function onMessage(event) {
+    if (event.data === 'skipWaiting') {
+        worker.skipWaiting();
+    }
 }

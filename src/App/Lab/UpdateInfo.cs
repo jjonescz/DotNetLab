@@ -6,15 +6,18 @@ namespace DotNetLab.Lab;
 [SupportedOSPlatform("browser")]
 internal static partial class UpdateInfo
 {
-    public static bool UpdateIsAvailable { get; private set; }
+    [MemberNotNullWhen(returnValue: true, nameof(LoadUpdate))]
+    public static bool UpdateIsAvailable => LoadUpdate is not null;
+
+    public static Action? LoadUpdate { get; private set; }
 
     public static event Action? UpdateBecameAvailable;
 
     [JSExport]
-    public static void UpdateAvailable()
+    public static void UpdateAvailable([JSMarshalAs<JSType.Function>] Action loadUpdate)
     {
         Console.WriteLine("Update is available");
-        UpdateIsAvailable = true;
+        LoadUpdate = loadUpdate;
         UpdateBecameAvailable?.Invoke();
     }
 }

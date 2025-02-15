@@ -166,11 +166,15 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
                 }
             </p>
 
-            @if (UpdateInfo.UpdateIsAvailable)
+            @if (UpdateInfo.LoadUpdate is { } loadUpdate)
             {
                 <FluentMessageBar Title="An update is available" Intent="MessageIntent.Info">
-                    Close all app tabs and reopen to activate the update.
-                    Force reloading (<kbd>Shift</kbd> + <kbd>F5</kbd>) can be used temporarily for the current tab.
+                    <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
+                        <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="loadUpdate"
+                        IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
+                        <FluentAnchor Href="@VersionUtil.CurrentRepositoryReleasesUrl" Target="_blank" Style="width: 100%"
+                        IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
+                    </FluentStack>
                 </FluentMessageBar>
             }
 
