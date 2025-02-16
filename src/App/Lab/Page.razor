@@ -215,6 +215,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
     private IJSObjectReference? module;
+    private bool loadedDarkTheme;
     private Input? configuration;
     private string activeInputTabId = IndexToInputTabId(0);
     private StandaloneCodeEditor inputEditor = null!;
@@ -230,6 +231,12 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private Orientation orientation;
     private Layout layout;
     private const string designTime = "designTime";
+
+    private sealed class Theme
+    {
+        [JsonPropertyName("mode")]
+        public required string Mode { get; init; }
+    }
 
     private sealed record Input(string FileName, TextModel Model)
     {
@@ -286,6 +293,11 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     {
         NavigationManager.LocationChanged += OnLocationChanged;
         UpdateInfo.UpdateStatusChanged += StateHasChanged;
+
+        // Load editor theme early to avoid flash of light theme.
+        var themeJson = ((IJSInProcessRuntime)JSRuntime).Invoke<string?>("localStorage.getItem", "theme");
+        loadedDarkTheme = !string.IsNullOrEmpty(themeJson) &&
+            JsonSerializer.Deserialize<Theme>(themeJson)?.Mode == "dark";
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -352,6 +364,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
             AutomaticLayout = true,
             WordWrap = wordWrap ? "on" : "off",
             Padding = new() { Top = 10 },
+            Theme = loadedDarkTheme ? "vs-dark" : "vs",
         };
     }
 
@@ -365,6 +378,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
             Value = "Empty output (click Compile or press Ctrl+S to refresh)",
             BracketPairColorization = new() { Enabled = false },
             Padding = new() { Top = 10 },
+            Theme = loadedDarkTheme ? "vs-dark" : "vs",
         };
     }
 
