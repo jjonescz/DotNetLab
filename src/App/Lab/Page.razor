@@ -411,16 +411,10 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     }
 
     private const string inputTabIdPrefix = "i";
-    private const string outputTabIdPrefix = "o";
 
     private static int InputTabIdToIndex(string tabId)
     {
         return TabIdToIndex(inputTabIdPrefix, tabId);
-    }
-
-    private static int OutputTabIdToIndex(string tabId)
-    {
-        return TabIdToIndex(outputTabIdPrefix, tabId);
     }
 
     private static int TabIdToIndex(string prefix, string tabId)
@@ -431,11 +425,6 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private static string IndexToInputTabId(int index)
     {
         return IndexToTabId(inputTabIdPrefix, index);
-    }
-
-    private static string IndexToOutputTabId(int index)
-    {
-        return IndexToTabId(outputTabIdPrefix, index);
     }
 
     private static string IndexToTabId(string prefix, int index)
@@ -634,6 +623,13 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
 
     private async Task UpdateOutputDisplayAsync()
     {
+        savedState = savedState with
+            {
+                SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
+                SelectedOutputType = selectedOutputType,
+                GenerationStrategy = generationStrategy,
+            };
+
         if (compiled is null || selectedOutputType is null)
         {
             await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));

@@ -47,6 +47,10 @@ partial class Page
             configuration = new(input.FileName, await CreateModelAsync(input));
         }
 
+        activeInputTabId = IndexToInputTabId(savedState.SelectedInputIndex);
+        selectedOutputType = savedState.SelectedOutputType;
+        generationStrategy = savedState.GenerationStrategy;
+
         OnWorkspaceChanged();
 
         if (firstModel != null)
@@ -108,10 +112,22 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
-    public static SavedState Initial { get; } = new() { Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()] };
+    public static SavedState Initial { get; } = new()
+    {
+        Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
+    };
 
     [ProtoMember(1)]
     public ImmutableArray<InputCode> Inputs { get; init; }
+
+    [ProtoMember(8)]
+    public int SelectedInputIndex { get; init; }
+
+    [ProtoMember(9)]
+    public string? SelectedOutputType { get; init; }
+
+    [ProtoMember(10)]
+    public string? GenerationStrategy { get; init; }
 
     [ProtoMember(5)]
     public string? Configuration { get; init; }
