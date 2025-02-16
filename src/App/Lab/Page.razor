@@ -11,7 +11,9 @@
 <FluentHeader Class="accent-background" Height="null">
     <FluentStack VerticalAlignment="VerticalAlignment.Center" Wrap="true">
         @* Logo *@
-        <a href="/" style="line-height: 0"><img src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" /></a>
+        <a href="/" style="text-decoration: none">@*
+            *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
+            *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
         @* Input presets (quick-start templates) *@
         <FluentMenuButton Text="Template" Items="presets" OnMenuChanged="OnInputPresetSelectedAsync"
