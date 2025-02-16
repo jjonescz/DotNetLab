@@ -210,6 +210,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
     private DotNetObjectReference<Page>? dotNetObjectReference;
+    private Action? unregisterEventListeners;
     private IJSObjectReference? module;
     private Input? configuration;
     private string activeInputTabId = IndexToInputTabId(0);
@@ -289,6 +290,8 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
         NavigationManager.LocationChanged -= OnLocationChanged;
         UpdateInfo.UpdateStatusChanged -= StateHasChanged;
 
+        unregisterEventListeners?.Invoke();
+
         if (module is not null)
         {
             try
@@ -313,7 +316,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
         {
             module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js");
             dotNetObjectReference = DotNetObjectReference.Create(this);
-            await module.InvokeVoidAsync("registerEventListeners", dotNetObjectReference);
+            unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
         }
 
         // Select an output type if none is selected.
