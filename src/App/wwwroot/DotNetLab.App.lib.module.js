@@ -38,13 +38,15 @@ export async function afterStarted(blazor) {
         }
 
         if (registration.installing) {
-            waitForInstalledState();
+            updateDownloading();
             return;
         }
     
-        registration.addEventListener('updatefound', waitForInstalledState);
+        registration.addEventListener('updatefound', updateDownloading);
 
-        function waitForInstalledState() {
+        function updateDownloading() {
+            dotNetExports.DotNetLab.Lab.UpdateInfo.UpdateDownloading();
+
             registration.installing.addEventListener('statechange', (event) => {
                 if (event.target.state === 'installed') {
                     updateAvailable();

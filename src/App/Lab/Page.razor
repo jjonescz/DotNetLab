@@ -30,7 +30,7 @@
         IconStart="@(new Icons.Regular.Size20.Settings())">
             Settings
 
-            @if (settings.ShowUpdateAvailableBadge)
+            @if (UpdateInfo.UpdateIsAvailable)
             {
                 <FluentSpacer Width="4" />
                 <FluentBadge Appearance="Appearance.Accent" title="Update is available">1</FluentBadge>
@@ -281,11 +281,13 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     protected override void OnInitialized()
     {
         NavigationManager.LocationChanged += OnLocationChanged;
+        UpdateInfo.UpdateStatusChanged += StateHasChanged;
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
 
         if (module is not null)
         {

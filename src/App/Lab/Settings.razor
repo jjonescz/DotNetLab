@@ -166,9 +166,13 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 }
             </p>
 
+            @* Check for updates *@
+            <FluentButton IconStart="@(new Icons.Regular.Size16.ArrowClockwise())"
+            OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
             @if (UpdateInfo.LoadUpdate is { } loadUpdate)
             {
-                <FluentMessageBar Title="An update is available" Intent="MessageIntent.Info">
+                <FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
+                    To apply the update, all .NET Lab tabs need to be reloaded.
                     <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
                         <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="loadUpdate"
                         IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
@@ -176,6 +180,16 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                         IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
                     </FluentStack>
                 </FluentMessageBar>
+            }
+            else if (UpdateInfo.UpdateIsDownloading)
+            {
+                <FluentMessageBar Title="An update is being downloaded in the background." Intent="MessageIntent.Info" AllowDismiss="false">
+                    <FluentProgressRing Width="1em" Style="display: inline-flex; margin-left: 0.5em" />
+                </FluentMessageBar>
+            }
+            else if (checkedForUpdates)
+            {
+                <FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
             }
 
             @* Theme select *@
@@ -253,7 +267,6 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     }
 
     private bool modalHidden = true;
-    private bool hideUpdateAvailableBadge;
     private DesignThemeModes theme;
     private IJSObjectReference? vimDisposable;
     private string? sdkVersion, roslynVersion, razorVersion;
@@ -263,6 +276,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private CompilerDependencyInfo? roslynInfo, razorInfo;
     private CommitInfo? commitInfo;
     private string? sdkError, roslynError, razorError;
+    private bool checkedForUpdates;
 
     [Parameter] public bool WordWrap { get; set; }
     [Parameter] public EventCallback<bool> WordWrapChanged { get; set; }
@@ -270,11 +284,6 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     [Parameter] public EventCallback<bool> UseVimChanged { get; set; }
     [Parameter, EditorRequired] public required StandaloneCodeEditor Editor { get; set; }
     [CascadingParameter] public required Page Page { get; set; }
-
-    public bool ShowUpdateAvailableBadge
-    {
-        get => !hideUpdateAvailableBadge && UpdateInfo.UpdateIsAvailable;
-    }
 
     private bool DebugLogs
     {
@@ -300,9 +309,14 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await JSHost.ImportAsync("Settings", "../Lab/Settings.razor.js");
+    }
+
     public async Task InitializeAsync()
     {
-        UpdateInfo.UpdateBecameAvailable += StateHasChanged;
+        UpdateInfo.UpdateStatusChanged += StateHasChanged;
 
         // Load settings from local storage.
         if (await LocalStorage.ContainKeyAsync(nameof(WordWrap)))
@@ -350,13 +364,11 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     void IDisposable.Dispose()
     {
-        UpdateInfo.UpdateBecameAvailable -= StateHasChanged;
+        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
     }
 
     public Task OpenModalAsync()
     {
-        hideUpdateAvailableBadge = true;
-
         if (!modalHidden)
         {
             return Task.CompletedTask;
@@ -675,5 +687,17 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     {
         await Page.SelectConfigurationAsync();
         CloseModal();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (checkedForUpdates)
+        {
+            checkedForUpdates = false;
+            await RefreshAsync();
+        }
+
+        await SettingsInterop.CheckForUpdatesAsync();
+        checkedForUpdates = true;
     }
 }
