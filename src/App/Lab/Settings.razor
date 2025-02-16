@@ -174,7 +174,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 <FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
                     To apply the update, all .NET Lab tabs need to be reloaded.
                     <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
-                        <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="loadUpdate"
+                        <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
                         IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
                         <FluentAnchor Href="@VersionUtil.CurrentRepositoryReleasesUrl" Target="_blank" Style="width: 100%"
                         IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
@@ -699,5 +699,11 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
         await SettingsInterop.CheckForUpdatesAsync();
         checkedForUpdates = true;
+    }
+
+    private async Task LoadUpdateAsync(Action loadUpdate)
+    {
+        await Page.SaveStateToUrlAsync();
+        loadUpdate();
     }
 }
