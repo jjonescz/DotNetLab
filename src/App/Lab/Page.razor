@@ -228,7 +228,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
-    private Orientation orientation;
+    private Orientation orientation = GetAutoOrientation();
     private Layout layout;
     private const string designTime = "designTime";
 
@@ -293,6 +293,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     {
         NavigationManager.LocationChanged += OnLocationChanged;
         UpdateInfo.UpdateStatusChanged += StateHasChanged;
+        ScreenInfo.Updated += OnScreenInfoUpdated;
 
         // Load editor theme early to avoid flash of light theme.
         var themeJson = ((IJSInProcessRuntime)JSRuntime).Invoke<string?>("localStorage.getItem", "theme");
@@ -304,6 +305,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         UpdateInfo.UpdateStatusChanged -= StateHasChanged;
+        ScreenInfo.Updated -= OnScreenInfoUpdated;
 
         unregisterEventListeners?.Invoke();
 
@@ -763,5 +765,16 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
         Worker.OnDidChangeWorkspace(models);
+    }
+
+    private void OnScreenInfoUpdated()
+    {
+        orientation = GetAutoOrientation();
+        StateHasChanged();
+    }
+
+    private static Orientation GetAutoOrientation()
+    {
+        return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal; ;
     }
 }
