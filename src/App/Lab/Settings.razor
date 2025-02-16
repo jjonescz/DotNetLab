@@ -7,11 +7,11 @@
 @inject HttpClient Client
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
-OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEditorThemeAsync(e.IsDark)" />
+OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
 
 <FluentDialog @bind-Hidden="modalHidden" Modal="true" TrapFocus="true" PreventScroll="true"
 @ondialogdismiss="CloseModal">
-    <FluentDialogHeader ShowDismiss="true">
+    <FluentDialogHeader ShowDismiss="true" ShowDismissTooltip="false">
         <FluentLabel Typo="Typography.PaneHeader">
             Settings
         </FluentLabel>
@@ -166,12 +166,30 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
                 }
             </p>
 
-            @if (UpdateInfo.UpdateIsAvailable)
+            @* Check for updates *@
+            <FluentButton IconStart="@(new Icons.Regular.Size16.ArrowClockwise())"
+            OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
+            @if (UpdateInfo.LoadUpdate is { } loadUpdate)
             {
-                <FluentMessageBar Title="An update is available" Intent="MessageIntent.Info">
-                    Close all app tabs and reopen to activate the update.
-                    Force reloading (<kbd>Shift</kbd> + <kbd>F5</kbd>) can be used temporarily for the current tab.
+                <FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
+                    To apply the update, all .NET Lab tabs need to be reloaded.
+                    <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
+                        <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
+                        IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
+                        <FluentAnchor Href="@VersionUtil.CurrentRepositoryReleasesUrl" Target="_blank" Style="width: 100%"
+                        IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
+                    </FluentStack>
                 </FluentMessageBar>
+            }
+            else if (UpdateInfo.UpdateIsDownloading)
+            {
+                <FluentMessageBar Title="An update is being downloaded in the background." Intent="MessageIntent.Info" AllowDismiss="false">
+                    <FluentProgressRing Width="1em" Style="display: inline-flex; margin-left: 0.5em" />
+                </FluentMessageBar>
+            }
+            else if (checkedForUpdates)
+            {
+                <FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
             }
 
             @* Theme select *@
@@ -249,7 +267,6 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
     }
 
     private bool modalHidden = true;
-    private bool hideUpdateAvailableBadge;
     private DesignThemeModes theme;
     private IJSObjectReference? vimDisposable;
     private string? sdkVersion, roslynVersion, razorVersion;
@@ -259,6 +276,7 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
     private CompilerDependencyInfo? roslynInfo, razorInfo;
     private CommitInfo? commitInfo;
     private string? sdkError, roslynError, razorError;
+    private bool checkedForUpdates;
 
     [Parameter] public bool WordWrap { get; set; }
     [Parameter] public EventCallback<bool> WordWrapChanged { get; set; }
@@ -266,11 +284,6 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
     [Parameter] public EventCallback<bool> UseVimChanged { get; set; }
     [Parameter, EditorRequired] public required StandaloneCodeEditor Editor { get; set; }
     [CascadingParameter] public required Page Page { get; set; }
-
-    public bool ShowUpdateAvailableBadge
-    {
-        get => !hideUpdateAvailableBadge && UpdateInfo.UpdateIsAvailable;
-    }
 
     private bool DebugLogs
     {
@@ -296,9 +309,14 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
         await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await JSHost.ImportAsync("Settings", "../Lab/Settings.razor.js");
+    }
+
     public async Task InitializeAsync()
     {
-        UpdateInfo.UpdateBecameAvailable += StateHasChanged;
+        UpdateInfo.UpdateStatusChanged += StateHasChanged;
 
         // Load settings from local storage.
         if (await LocalStorage.ContainKeyAsync(nameof(WordWrap)))
@@ -346,13 +364,11 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
 
     void IDisposable.Dispose()
     {
-        UpdateInfo.UpdateBecameAvailable -= StateHasChanged;
+        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
     }
 
     public Task OpenModalAsync()
     {
-        hideUpdateAvailableBadge = true;
-
         if (!modalHidden)
         {
             return Task.CompletedTask;
@@ -662,7 +678,7 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
         await Editor.Layout();
     }
 
-    private async Task SetEditorThemeAsync(bool dark)
+    private async Task SetLuminanceAsync(bool dark)
     {
         await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, dark ? "vs-dark" : "vs");
     }
@@ -671,5 +687,23 @@ OnLoaded="(e) => SetEditorThemeAsync(e.IsDark)" OnLuminanceChanged="(e) => SetEd
     {
         await Page.SelectConfigurationAsync();
         CloseModal();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (checkedForUpdates)
+        {
+            checkedForUpdates = false;
+            await RefreshAsync();
+        }
+
+        await SettingsInterop.CheckForUpdatesAsync();
+        checkedForUpdates = true;
+    }
+
+    private async Task LoadUpdateAsync(Action loadUpdate)
+    {
+        await Page.SaveStateToUrlAsync();
+        loadUpdate();
     }
 }
