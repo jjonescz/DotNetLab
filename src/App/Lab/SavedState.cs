@@ -17,9 +17,14 @@ partial class Page
     {
         var slug = GetCurrentSlug();
 
-        savedState = string.IsNullOrWhiteSpace(slug)
-            ? SavedState.Initial
-            : Compressor.Uncompress(slug);
+        savedState = slug switch
+        {
+            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
+            "csharp" => InitialCode.CSharp.ToSavedState(),
+            "razor" => SavedState.Initial,
+            "cshtml" => InitialCode.Cshtml.ToSavedState(),
+            _ => Compressor.Uncompress(slug),
+        };
 
         // Load inputs.
         inputs.Clear();

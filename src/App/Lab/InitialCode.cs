@@ -105,4 +105,12 @@ internal sealed record InitialCode(string SuggestedFileName, string TextTemplate
                     StringComparison.Ordinal),
         };
     }
+
+    public SavedState ToSavedState()
+    {
+        return new()
+        {
+            Inputs = [ToInputCode()],
+        };
+    }
 }

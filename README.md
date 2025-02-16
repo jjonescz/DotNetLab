@@ -4,7 +4,7 @@
 
 C# and Razor compiler playground in the browser via Blazor WebAssembly. https://lab.razor.fyi/
 
-| [C#](https://lab.razor.fyi/#fY87CgJBEETBsENPMBhpMhfYSFZQYQVBwbidbdbG2W6cHgURD-YNPJb4CWRBK6tXLym49wCWSZuErQ_Wv_WOxtK41dkytQV8N19qjBQyq5ifklDi8MeYt-0x4zZSx5kwNqKWOdjvxZda01gwno27WsVy6KD1LhHWLM0v7tdoeysAQkQz93kMF3DOOcuYObiTcu0WyDIcvfB7fKZUMY3kN4kzVSw0HMwoRvWDUfGSrnCFBw) | [Razor](https://lab.razor.fyi/) |
+| [C#](https://lab.razor.fyi/#csharp) | [Razor](https://lab.razor.fyi/#razor) |
 |:-:|:-:|
 | ![C# screenshot](docs/screenshots/csharp.png) | ![Razor screenshot](docs/screenshots/razor.png) |
 
