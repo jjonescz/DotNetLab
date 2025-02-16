@@ -134,7 +134,8 @@
             <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
             ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorInitAsync"
             OnDidChangeModel="LanguageServices.OnDidChangeModel"
-            OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent" />
+            OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
+            OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
         </div>
     </div>
     ;
