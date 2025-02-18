@@ -376,6 +376,8 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
         {
             AutomaticLayout = true,
             ReadOnly = true,
+            // This avoids a virtual keyboard showing up on mobile.
+            DomReadOnly = true,
             WordWrap = wordWrap ? "on" : "off",
             Value = "Empty output (click Compile or press Ctrl+S to refresh)",
             BracketPairColorization = new() { Enabled = false },
