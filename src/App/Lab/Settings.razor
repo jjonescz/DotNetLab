@@ -680,7 +680,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     private async Task SetLuminanceAsync(bool dark)
     {
-        await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, dark ? "vs-dark" : "vs");
+        await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, Page.GetMonacoTheme(dark: dark));
     }
 
     private async Task GoToConfigurationAsync()

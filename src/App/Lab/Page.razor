@@ -366,7 +366,7 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
             AutomaticLayout = true,
             WordWrap = wordWrap ? "on" : "off",
             Padding = new() { Top = 10 },
-            Theme = loadedDarkTheme ? "vs-dark" : "vs",
+            Theme = GetMonacoTheme(dark: loadedDarkTheme),
         };
     }
 
@@ -382,8 +382,13 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
             Value = "Empty output (click Compile or press Ctrl+S to refresh)",
             BracketPairColorization = new() { Enabled = false },
             Padding = new() { Top = 10 },
-            Theme = loadedDarkTheme ? "vs-dark" : "vs",
+            Theme = GetMonacoTheme(dark: loadedDarkTheme),
         };
+    }
+
+    public static string GetMonacoTheme(bool dark)
+    {
+        return dark ? "vs-dark" : "vs";
     }
 
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
