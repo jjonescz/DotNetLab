@@ -56,29 +56,6 @@
                 <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
             </FluentButton>
         }
-
-        @* Layout buttons *@
-        @if (layout != Layout.InputOnly)
-        {
-            <FluentButton OnClick="() => layout = Layout.InputOnly"
-            Title="Display input (left side) only">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnOneThirdRight())" Color="Color.Neutral" />
-            </FluentButton>
-        }
-        @if (layout != Layout.Split)
-        {
-            <FluentButton OnClick="() => layout = Layout.Split"
-            Title="Display both input and output side-by-side">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
-            </FluentButton>
-        }
-        @if (layout != Layout.OutputOnly)
-        {
-            <FluentButton OnClick="() => layout = Layout.OutputOnly"
-            Title="Display output (right side) only">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnOneThirdLeft())" Color="Color.Neutral" />
-            </FluentButton>
-        }
     </FluentStack>
 </FluentHeader>
 
@@ -87,120 +64,118 @@
 </CascadingValue>
 
 @* Input / output panels *@
-@{
-    RenderFragment inputPanel =@<div style="display: flex; flex-direction: column; height: 100%">
-        @* Input tabs *@
-        <FluentTabs @bind-ActiveTabId="activeInputTabId" @bind-ActiveTabId:after="OnActiveInputTabIdChangedAsync"
-        ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync"
-        Style="padding: 0 0.2em">
-            @* Normal files *@
-            @foreach (var (index, input) in inputs.Index())
-            {
-                <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
-                LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
-            }
-
-            @* Special configuration file *@
-            @if (configuration != null)
-            {
-                @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
-                <FluentTab Id="@IndexToInputTabId((int)SpecialInput.Configuration)" Label="Configuration">
-                    <Header>
-                        <FluentIcon Value="@(new Icons.Regular.Size16.DocumentSettings())" />
-                        <span style="margin-left: 0.2em">Configuration</span>
-                    </Header>
-                </FluentTab>
-            }
-
-            @* Add new file button *@
-            <div slot="end">
-                <FluentMenuButton IconStart="@(new Icons.Filled.Size20.DocumentAdd())" Text="Add"
-                ButtonAppearance="Appearance.Neutral" OnMenuChanged="OnAddInputTabAsync">
-                    <FluentMenuItem Id="cs">.cs</FluentMenuItem>
-                    <FluentMenuItem Id="razor">.razor</FluentMenuItem>
-                    <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
-                    <FluentDivider />
-                    <FluentMenuItem Id="config">
-                        <FluentIcon Slot="start" Value="@(new Icons.Regular.Size16.DocumentSettings())" />
-                        Configuration
-                    </FluentMenuItem>
-                </FluentMenuButton>
-            </div>
-        </FluentTabs>
-
-        @* VIM status bar *@
-        <div id="vim-status" class="vim-status-bar" hidden="@(!useVim)" />
-
-        @* Input editor *@
-        <div style="flex-grow: 1">
-            <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
-            ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorInitAsync"
-            OnDidChangeModel="LanguageServices.OnDidChangeModel"
-            OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
-            OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
-        </div>
-    </div>
-    ;
-
-    RenderFragment outputPanel =@<div style="display: flex; flex-direction: column; height: 100%">
-        @* Output tabs *@
-        @* NOTE: @key is needed - otherwise, when AllOutputs change,
-        the FluentTabs might render incorrect selected tab
-        even though ActiveTabId is set correctly (probably a bug). *@
-        <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
-        Style="padding: 0 0.2em">
-            @foreach (var output in AllOutputs)
-            {
-                @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
-                <FluentTab Id="@output.Type" Label="@output.Label">
-                    <Header>
-                        <span>@output.Label</span>
-
-                        @* Error List badge *@
-                        @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
-                            compiled?.Output is { } compiledOutput &&
-                            compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
-                        {
-                            var color = compiledOutput.NumErrors > 0 ? "error" : "warning";
-                            <FluentBadge Fill="x" BackgroundColor="@($"var(--{color})")" Color="white" Style="margin-left: 0.4em">
-                                @(compiledOutput.NumErrors > 0 ? compiledOutput.NumErrors : compiledOutput.NumWarnings)
-                            </FluentBadge>
-                        }
-                    </Header>
-                </FluentTab>
-            }
-
-            <div slot="end">
-                @* Output loading indicator *@
-                <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
-
-                @* Design time / runtime toggle *@
-                @if (CurrentCompiledFile?.GetOutput(selectedOutputType!)?.DesignTimeText is not null)
+<FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1; overflow: hidden">
+    @* Input panel *@
+    <FluentMultiSplitterPane Collapsible>
+        <div style="display: flex; flex-direction: column; height: 100%">
+            @* Input tabs *@
+            <FluentTabs @bind-ActiveTabId="activeInputTabId" @bind-ActiveTabId:after="OnActiveInputTabIdChangedAsync"
+            ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync"
+            Style="padding: 0 0.2em">
+                @* Normal files *@
+                @foreach (var (index, input) in inputs.Index())
                 {
-                    <FluentSelect TOption="string" AriaLabel="Generation Strategy"
-                    @bind-Value="generationStrategy" @bind-Value:after="UpdateOutputDisplayAsync"
-                    Style="min-width: 7em; margin-right: 0.2em">
-                        <FluentOption Value="runtime">Runtime</FluentOption>
-                        <FluentOption Value="@designTime">Design</FluentOption>
-                    </FluentSelect>
+                    <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
+                    LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
                 }
+
+                @* Special configuration file *@
+                @if (configuration != null)
+                {
+                    @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
+                    <FluentTab Id="@IndexToInputTabId((int)SpecialInput.Configuration)" Label="Configuration">
+                        <Header>
+                            <FluentIcon Value="@(new Icons.Regular.Size16.DocumentSettings())" />
+                            <span style="margin-left: 0.2em">Configuration</span>
+                        </Header>
+                    </FluentTab>
+                }
+
+                @* Add new file button *@
+                <div slot="end">
+                    <FluentMenuButton IconStart="@(new Icons.Filled.Size20.DocumentAdd())" Text="Add"
+                    ButtonAppearance="Appearance.Neutral" OnMenuChanged="OnAddInputTabAsync">
+                        <FluentMenuItem Id="cs">.cs</FluentMenuItem>
+                        <FluentMenuItem Id="razor">.razor</FluentMenuItem>
+                        <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
+                        <FluentDivider />
+                        <FluentMenuItem Id="config">
+                            <FluentIcon Slot="start" Value="@(new Icons.Regular.Size16.DocumentSettings())" />
+                            Configuration
+                        </FluentMenuItem>
+                    </FluentMenuButton>
+                </div>
+            </FluentTabs>
+
+            @* VIM status bar *@
+            <div id="vim-status" class="vim-status-bar" hidden="@(!useVim)" />
+
+            @* Input editor *@
+            <div style="flex-grow: 1">
+                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
+                ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorInitAsync"
+                OnDidChangeModel="LanguageServices.OnDidChangeModel"
+                OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
+                OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
-        </FluentTabs>
-
-        @* Output editor *@
-        <div style="flex-grow: 1">
-            <BlazorMonaco.Editor.StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
-            ConstructionOptions="OutputConstructionOptions" />
         </div>
-    </div>
-    ;
+    </FluentMultiSplitterPane>
 
-    var panel1 = layout == Layout.OutputOnly ? outputPanel : inputPanel;
-    var panel2 = layout == Layout.OutputOnly ? inputPanel : outputPanel;
-}
-<FluentSplitter Orientation="orientation" Panel1Size="50%" Panel2Size="50%"
-Style="flex-grow: 1; overflow: hidden"
-Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
+    @* Output panel *@
+    <FluentMultiSplitterPane Collapsible>
+        <div style="display: flex; flex-direction: column; height: 100%">
+            @* Output tabs *@
+            @* NOTE: @key is needed - otherwise, when AllOutputs change,
+            the FluentTabs might render incorrect selected tab
+            even though ActiveTabId is set correctly (probably a bug). *@
+            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
+            Style="padding: 0 0.2em">
+                @foreach (var output in AllOutputs)
+                {
+                    @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
+                    <FluentTab Id="@output.Type" Label="@output.Label">
+                        <Header>
+                            <span>@output.Label</span>
+
+                            @* Error List badge *@
+                            @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
+                                compiled?.Output is { } compiledOutput &&
+                                compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
+                            {
+                                var color = compiledOutput.NumErrors > 0 ? "error" : "warning";
+                                <FluentBadge Fill="x" BackgroundColor="@($"var(--{color})")" Color="white" Style="margin-left: 0.4em">
+                                    @(compiledOutput.NumErrors > 0 ? compiledOutput.NumErrors : compiledOutput.NumWarnings)
+                                </FluentBadge>
+                            }
+                        </Header>
+                    </FluentTab>
+                }
+
+                <div slot="end">
+                    @* Output loading indicator *@
+                    <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
+
+                    @* Design time / runtime toggle *@
+                    @if (CurrentCompiledFile?.GetOutput(selectedOutputType!)?.DesignTimeText is not null)
+                    {
+                        <FluentSelect TOption="string" AriaLabel="Generation Strategy"
+                        @bind-Value="generationStrategy" @bind-Value:after="UpdateOutputDisplayAsync"
+                        Style="min-width: 7em; margin-right: 0.2em">
+                            <FluentOption Value="runtime">Runtime</FluentOption>
+                            <FluentOption Value="@designTime">Design</FluentOption>
+                        </FluentSelect>
+                    }
+                </div>
+            </FluentTabs>
+
+            @* Output editor *@
+            <div style="flex-grow: 1">
+                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
+                ConstructionOptions="OutputConstructionOptions" />
+            </div>
+        </div>
+    </FluentMultiSplitterPane>
+</FluentMultiSplitter>
 
 @code {
     private static readonly Dictionary<string, string> presets = new()
@@ -229,7 +204,6 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private bool wordWrap;
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
-    private Layout layout;
     private const string designTime = "designTime";
 
     private sealed record Input(string FileName, TextModel Model)
