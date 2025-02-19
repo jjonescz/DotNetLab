@@ -232,12 +232,6 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
     private Layout layout;
     private const string designTime = "designTime";
 
-    private sealed class Theme
-    {
-        [JsonPropertyName("mode")]
-        public required string Mode { get; init; }
-    }
-
     private sealed record Input(string FileName, TextModel Model)
     {
         public string FileName { get; set; } = FileName;
@@ -296,9 +290,8 @@ Panel1="panel1" Panel2="panel2" Collapsed="layout != Layout.Split" />
         ScreenInfo.Updated += OnScreenInfoUpdated;
 
         // Load editor theme early to avoid flash of light theme.
-        var themeJson = ((IJSInProcessRuntime)JSRuntime).Invoke<string?>("localStorage.getItem", "theme");
-        loadedDarkTheme = !string.IsNullOrEmpty(themeJson) &&
-            JsonSerializer.Deserialize<Theme>(themeJson)?.Mode == "dark";
+        loadedDarkTheme = ((IJSInProcessRuntime)JSRuntime).Invoke<bool>(
+            "eval", "window.matchMedia('(prefers-color-scheme: dark)').matches || JSON.parse(localStorage.getItem('theme'))?.mode === 'dark'");
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
