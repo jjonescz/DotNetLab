@@ -187,6 +187,7 @@
 
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
+    private bool editorInitializationStarted;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
     private IJSObjectReference? module;
@@ -699,13 +700,21 @@
 
     private async Task EditorInitAsync()
     {
+        // This might get called twice when an editor is hidden and unhidden, or during hot reload,
+        // but we don't want to continue initialization in those cases.
+        if (editorInitializationStarted)
+        {
+            return;
+        }
+
+        editorInitializationStarted = true;
+
         await settings.InitializeAsync();
 
         await LoadStateFromUrlAsync();
 
         if (!editorInitialized.TrySetResult())
         {
-            // This can happen during hot reload, hence we don't assert.
             Logger.LogError("Failed to set editor initialized result.");
         }
     }
