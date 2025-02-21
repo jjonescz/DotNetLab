@@ -598,12 +598,14 @@
 
     private async Task UpdateOutputDisplayAsync()
     {
-        savedState = savedState with
-            {
-                SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
-                SelectedOutputType = selectedOutputType,
-                GenerationStrategy = generationStrategy,
-            };
+        await SaveStateToUrlAsync((state) => state with
+        {
+            // After changing the selected input, we call this method anyway to update outputs,
+            // so we can save both selected input and output here.
+            SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
+            SelectedOutputType = selectedOutputType,
+            GenerationStrategy = generationStrategy,
+        });
 
         if (compiled is null || selectedOutputType is null)
         {
