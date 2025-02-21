@@ -22,6 +22,7 @@ internal sealed record InitialCode(string SuggestedFileName, string TextTemplate
         @using static Microsoft.AspNetCore.Components.Web.RenderMode
         @using Microsoft.AspNetCore.Components.Web.Virtualization
         @using Microsoft.JSInterop
+
         """);
 
     public static readonly InitialCode CSharp = new("Program.cs", """

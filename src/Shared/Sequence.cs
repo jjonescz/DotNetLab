@@ -5,6 +5,12 @@ namespace DotNetLab;
 /// <summary>
 /// An equatable <see cref="ImmutableArray{T}"/>.
 /// </summary>
+/// <remarks>
+/// Beware of implementing <see cref="IEnumerable{T}"/>,
+/// that would make <see cref="System.Text.Json"/> use collection converter
+/// instead of object converter (see also https://github.com/dotnet/runtime/issues/63791),
+/// i.e., <see cref="JsonConstructorAttribute"/> would be ignored and we would need to implement a custom serializer.
+/// </remarks>
 [method: JsonConstructor]
 public readonly struct Sequence<T>(ImmutableArray<T> value) : IEquatable<Sequence<T>>
 {

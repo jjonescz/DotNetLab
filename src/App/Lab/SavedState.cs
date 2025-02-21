@@ -29,7 +29,9 @@ partial class Page
         // Load inputs.
         inputs.Clear();
         activeInputTabId = IndexToInputTabId(0);
+        var activeIndex = savedState.SelectedInputIndex;
         TextModel? firstModel = null;
+        TextModel? activeModel = null;
         foreach (var (index, input) in savedState.Inputs.Index())
         {
             var model = await CreateModelAsync(input);
@@ -39,6 +41,11 @@ partial class Page
             {
                 firstModel = model;
             }
+
+            if (index == activeIndex)
+            {
+                activeModel = model;
+            }
         }
 
         if (savedState.Configuration is { } savedConfiguration)
@@ -47,15 +54,15 @@ partial class Page
             configuration = new(input.FileName, await CreateModelAsync(input));
         }
 
-        activeInputTabId = IndexToInputTabId(savedState.SelectedInputIndex);
+        activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
         generationStrategy = savedState.GenerationStrategy;
 
         OnWorkspaceChanged();
 
-        if (firstModel != null)
+        if ((activeModel ?? firstModel) is { } selectModel)
         {
-            await inputEditor.SetModel(firstModel);
+            await inputEditor.SetModel(selectModel);
         }
 
         // Load settings.
