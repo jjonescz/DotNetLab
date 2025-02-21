@@ -8,8 +8,8 @@
 
 <PageTitle>.NET Lab</PageTitle>
 
-<FluentHeader Class="accent-background" Height="null">
-    <FluentStack VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+<FluentHeader Class="lab-header" Height="null">
+    <div>
         @* Logo *@
         <a href="/" style="text-decoration: none">@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
@@ -18,9 +18,9 @@
         @* Input presets (quick-start templates) *@
         <FluentMenuButton Text="Template" Items="presets" OnMenuChanged="OnInputPresetSelectedAsync"
         ButtonStyle="margin-left: 0.5em" />
+    </div>
 
-        <FluentSpacer />
-
+    <div>
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="CompileAsync" Loading="compilationInProgress"
         Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())">
@@ -28,7 +28,7 @@
         </FluentButton>
 
         @* Settings button *@
-        <FluentButton OnClick="settings.OpenModalAsync"
+        <FluentButton OnClick="() => settings.OpenModalAsync()"
         IconStart="@(new Icons.Regular.Size20.Settings())">
             Settings
 
@@ -38,9 +38,9 @@
                 <FluentBadge Appearance="Appearance.Accent" title="Update is available">1</FluentBadge>
             }
         </FluentButton>
-
-        <FluentSpacer />
-
+    </div>
+        
+    <div>
         @* Orientation button *@
         @if (orientation == Orientation.Horizontal)
         {
@@ -56,7 +56,7 @@
                 <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
             </FluentButton>
         }
-    </FluentStack>
+    </div>
 </FluentHeader>
 
 <CascadingValue IsFixed="true" Value="this">

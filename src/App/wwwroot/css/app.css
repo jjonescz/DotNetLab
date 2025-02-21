@@ -4,9 +4,34 @@
     --custom-dark: #8967AA;
 }
 
-.accent-background {
+.lab-header {
     background-color: light-dark(var(--custom-light), var(--custom-dark)) !important;
 }
+
+    .lab-header .header-gutters {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr);
+        column-gap: 10px;
+        row-gap: 10px;
+    }
+
+        .lab-header .header-gutters div {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            column-gap: 10px;
+            row-gap: 10px;
+            flex-wrap: wrap;
+        }
+
+            .lab-header .header-gutters div:first-child {
+                justify-content: start;
+            }
+
+            .lab-header .header-gutters div:last-child {
+                justify-content: end;
+            }
 
 html, body {
     --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
