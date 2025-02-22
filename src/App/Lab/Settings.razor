@@ -32,6 +32,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             @* Use VIM check box *@
             <FluentCheckbox @bind-Value="UseVim" @bind-Value:after="OnVimChanged" Label="Use VIM" />
 
+            @* Advanced options (should not be changed often by users) *@
             <FluentAccordion Style="width: 100%">
                 <FluentAccordionItem Heading="Advanced" HeadingLevel="5">
                     <FluentStack Orientation="Orientation.Vertical">
@@ -50,6 +51,14 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                         <FluentCheckbox @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync"
                         Label="Compile in a background worker thread (requires restart)"
                         title="Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled)" />
+
+                        @* Caching check box *@
+                        <FluentCheckbox @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync"
+                        Label="Cache inputs and outputs on a server for faster sharing" />
+
+                        @* Auto compile on start check box *@
+                        <FluentCheckbox @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync"
+                        Label="Automatically begin compilation on start" />
                     </FluentStack>
                 </FluentAccordionItem>
             </FluentAccordion>
@@ -293,6 +302,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     private bool EnableLanguageServices { get; set; }
     private bool EnableWorker { get; set; }
+    public bool EnableCaching { get; set; }
+    public bool AutoCompileOnStart { get; set; }
 
     private async Task OnSetDebugLogsAsync()
     {
@@ -308,6 +319,16 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     {
         await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
     }
+    
+    private async Task OnSetEnableCachingAsync()
+    {
+        await LocalStorage.SetItemAsync(nameof(EnableCaching), EnableCaching);
+    }
+    
+    private async Task OnSetAutoCompileOnStartAsync()
+    {
+        await LocalStorage.SetItemAsync(nameof(AutoCompileOnStart), AutoCompileOnStart);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -319,31 +340,23 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         UpdateInfo.UpdateStatusChanged += StateHasChanged;
 
         // Load settings from local storage.
-        if (await LocalStorage.ContainKeyAsync(nameof(WordWrap)))
+        WordWrap = await loadOptionAsync(nameof(WordWrap), defaultValue: false);
+        if (WordWrap)
         {
-            WordWrap = await LocalStorage.GetItemAsync<bool>(nameof(WordWrap));
             await OnWordWrapChanged();
         }
-        if (await LocalStorage.ContainKeyAsync(nameof(UseVim)))
+        UseVim = await loadOptionAsync(nameof(UseVim), defaultValue: false);
+        if (UseVim)
         {
-            UseVim = await LocalStorage.GetItemAsync<bool>(nameof(UseVim));
             await OnVimChanged();
         }
-        if (await LocalStorage.ContainKeyAsync(nameof(DebugLogs)))
-        {
-            DebugLogs = await LocalStorage.GetItemAsync<bool>(nameof(DebugLogs));
-        }
-        if (await LocalStorage.ContainKeyAsync(nameof(EnableLanguageServices)))
-        {
-            EnableLanguageServices = await LocalStorage.GetItemAsync<bool>(nameof(EnableLanguageServices));
-        }
-        EnableWorker = await LocalStorage.ContainKeyAsync(nameof(EnableWorker))
-            ? await LocalStorage.GetItemAsync<bool>(nameof(EnableWorker))
-            : true;
+        DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
+        EnableLanguageServices = await loadOptionAsync(nameof(EnableLanguageServices), defaultValue: false);
+        EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
+        EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
+        AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
 
-        var savedCommitInfo = await LocalStorage.ContainKeyAsync(nameof(commitInfo))
-            ? await LocalStorage.GetItemAsync<CommitInfo>(nameof(commitInfo))
-            : null;
+        var savedCommitInfo = await loadOptionAsync<CommitInfo>(nameof(commitInfo));
         if (savedCommitInfo?.Hash == VersionUtil.CurrentCommitHash)
         {
             commitInfo = savedCommitInfo;
@@ -360,6 +373,13 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
         Worker.DebugLogs = DebugLogs;
         Worker.Disabled = !EnableWorker;
+
+        async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
+        {
+            return await LocalStorage.ContainKeyAsync(name)
+                ? await LocalStorage.GetItemAsync<T>(name)
+                : defaultValue;
+        }
     }
 
     void IDisposable.Dispose()

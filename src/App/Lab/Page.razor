@@ -719,6 +719,11 @@
         {
             Logger.LogError("Failed to set editor initialized result.");
         }
+
+        if (settings.AutoCompileOnStart && !compilationInProgress)
+        {
+            await CompileAsync();
+        }
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
