@@ -2,7 +2,7 @@
 
 namespace DotNetLab;
 
-public class CompressorTests
+public sealed class CompressorTests
 {
     [Fact]
     public void RazorInitialCode()
@@ -44,8 +44,8 @@ public class CompressorTests
                             [Parameter] public int Param { get; set; }
                         }
                         """.ReplaceLineEndings("\n"),
-                }
-            ]
+                },
+            ],
         };
         Assert.Equal(expected.Inputs.Single(), actual.Inputs.Single());
     }

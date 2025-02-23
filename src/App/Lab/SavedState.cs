@@ -14,19 +14,19 @@ partial class Page
         return uri.Fragment.TrimStart('#');
     }
 
-    private async Task<(SavedState State, string Slug)?> LoadStateFromUrlAsync()
+    private async Task LoadStateFromUrlAsync()
     {
         var slug = GetCurrentSlug();
 
-        var (loadedState, uncompressed) = slug switch
+        var state = slug switch
         {
-            _ when string.IsNullOrWhiteSpace(slug) => (SavedState.Initial, false),
-            "csharp" => (InitialCode.CSharp.ToSavedState(), false),
-            "razor" => (SavedState.Initial, false),
-            "cshtml" => (InitialCode.Cshtml.ToSavedState(), false),
-            _ => (Compressor.Uncompress(slug), true),
+            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
+            "csharp" => InitialCode.CSharp.ToSavedState(),
+            "razor" => SavedState.Initial,
+            "cshtml" => InitialCode.Cshtml.ToSavedState(),
+            _ => Compressor.Uncompress(slug),
         };
-        savedState = loadedState;
+        savedState = state;
 
         // Load inputs.
         inputs.Clear();
@@ -70,7 +70,12 @@ partial class Page
         // Load settings.
         await settings.LoadFromStateAsync(savedState);
 
-        return uncompressed ? (loadedState, slug) : null;
+        // Try loading from cache.
+        if (!await TryLoadFromTemplateCacheAsync(state.ToCompilationInput()) &&
+            settings.EnableCaching)
+        {
+            _ = TryLoadFromCacheAsync(state, slug);
+        }
     }
 
     internal async Task<(SavedState State, string Slug)> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null, [CallerMemberName] string caller = "")

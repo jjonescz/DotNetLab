@@ -16,6 +16,7 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddScoped<WorkerController>();
 builder.Services.AddScoped<LanguageServices>();
 builder.Services.AddScoped<InputOutputCache>();
+builder.Services.AddScoped<TemplateCache>();
 
 builder.Logging.AddFilter("DotNetLab.*",
     static (logLevel) => logLevel >= Logging.LogLevel);

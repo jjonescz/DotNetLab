@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="AwesomeAssertions" Version="8.0.1" />
     <PackageVersion Include="Basic.Reference.Assemblies.AspNet90" Version="1.8.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <PackageVersion Include="BlazorMonaco" Version="3.3.0" />

@@ -39,7 +39,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
-        // IMPORTANT: Keep consistent with `InitialInput.Configuration`.
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]);
 

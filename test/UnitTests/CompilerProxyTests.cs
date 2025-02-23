@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetLab;
 
-public class CompilerProxyTests(ITestOutputHelper output)
+public sealed class CompilerProxyTests(ITestOutputHelper output)
 {
     [Fact]
     public async Task SpecifiedNuGetRoslynVersion()

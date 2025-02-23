@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab.Lab;
 
-internal sealed record InitialCode(string SuggestedFileName, string TextTemplate)
+internal sealed record InitialCode
 {
     public static readonly InitialCode Razor = new("TestComponent.razor", """
         <TestComponent Param="1" />
@@ -13,7 +13,7 @@ internal sealed record InitialCode(string SuggestedFileName, string TextTemplate
 
     // https://github.com/dotnet/aspnetcore/blob/036ec9ec2ffbfe927f9eb7622dfff122c634ccbb/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWeb-CSharp/Components/_Imports.razor
     public static readonly InitialCode RazorImports = new("_Imports.razor", """
-        ﻿@using System.Net.Http
+        @using System.Net.Http
         @using System.Net.Http.Json
         @using Microsoft.AspNetCore.Components.Authorization
         @using Microsoft.AspNetCore.Components.Forms
@@ -74,12 +74,22 @@ internal sealed record InitialCode(string SuggestedFileName, string TextTemplate
 
         """);
 
+    // IMPORTANT: Keep in sync with `Compiler.Compile`.
     public static readonly InitialCode Configuration = new("Configuration.cs", """
         Config.CSharpParseOptions(options => options
             .WithLanguageVersion(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]));
 
         """);
+
+    public InitialCode(string suggestedFileName, string textTemplate)
+    {
+        SuggestedFileName = suggestedFileName;
+        TextTemplate = textTemplate.ReplaceLineEndings();
+    }
+
+    public string SuggestedFileName { get; }
+    public string TextTemplate { get; }
 
     public string SuggestedFileNameWithoutExtension => Path.GetFileNameWithoutExtension(SuggestedFileName);
     public string SuggestedFileExtension => Path.GetExtension(SuggestedFileName);
@@ -113,5 +123,10 @@ internal sealed record InitialCode(string SuggestedFileName, string TextTemplate
         {
             Inputs = [ToInputCode()],
         };
+    }
+
+    public CompilationInput ToCompilationInput()
+    {
+        return new(new([ToInputCode()]));
     }
 }

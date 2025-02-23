@@ -5,6 +5,7 @@
 @inject WorkerController Worker
 @inject LanguageServices LanguageServices
 @inject InputOutputCache Cache
+@inject TemplateCache TemplateCache
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -43,11 +44,21 @@
 
     <div>
         @* Cached info *@
-        @if (compiled is (_, _, { } cachedTimestamp))
+        @if (compiled is (_, _, { } cacheInfo))
         {
-            <span title="The currently displayed output has been fetched from a server cache."
-            style="font-size: 0.8rem">
-                Cached @cachedTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+            var title = cacheInfo.Timestamp.HasValue
+                ? "The currently displayed output has been fetched from a server cache."
+                : "The currently displayed output comes from a built-in cache.";
+            <span title="@title" style="font-size: 0.8rem">
+                Cached
+                @if (cacheInfo.Timestamp is { } cacheTimestamp)
+                {
+                    @cacheTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+                }
+                else
+                {
+                    @:template
+                }
             </span>
         }
     </div>
@@ -212,7 +223,7 @@
     private string? generationStrategy;
     private bool compilationInProgress;
     private bool outputLoading;
-    private (CompilationInput Input, CompiledAssembly Output, DateTimeOffset? CacheTimestamp)? compiled;
+    private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo)? compiled;
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
@@ -224,6 +235,8 @@
         public string FileName { get; set; } = FileName;
         public string? NewContent { get; set; }
     }
+
+    private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
 
     private enum InputPreset
     {
@@ -393,7 +406,9 @@
                 await AddInputAsync(InitialCode.RazorImports, selectAsCurrent: false);
             }
 
-            await SaveStateToUrlAsync();
+            var (state, _) = await SaveStateToUrlAsync();
+
+            await TryLoadFromTemplateCacheAsync(state.ToCompilationInput());
         }
     }
 
@@ -589,7 +604,7 @@
         var result = await Worker.CompileAsync(input);
         compiled = (input, result, null);
 
-        await DisplaySquiggles();
+        await DisplaySquigglesAsync();
 
         compilationInProgress = false;
 
@@ -601,7 +616,7 @@
         }
     }
 
-    private async Task DisplaySquiggles()
+    private async Task DisplaySquigglesAsync()
     {
         foreach (var input in inputs)
         {
@@ -749,12 +764,7 @@
 
         await settings.InitializeAsync();
 
-        var loaded = await LoadStateFromUrlAsync();
-
-        if (settings.EnableCaching && loaded is var (state, slug))
-        {
-            _ = TryLoadFromCache(state, slug);
-        }
+        await LoadStateFromUrlAsync();
 
         if (!editorInitialized.TrySetResult())
         {
@@ -767,17 +777,34 @@
         }
     }
 
-    private async Task TryLoadFromCache(SavedState state, string slug)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(CompilationInput input)
+    {
+        if (TemplateCache.TryGetOutput(input, out var output))
+        {
+            compiled = (input, output, new(null));
+            await AfterCompiledLoadedAsync();
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task TryLoadFromCacheAsync(SavedState state, string slug)
     {
         var result = await Cache.LoadAsync(slug);
         if (result is var (output, timestamp))
         {
-            compiled = (state.ToCompilationInput(), output, timestamp);
-            StateHasChanged();
-            await DisplaySquiggles();
-            await UpdateOutputDisplayAsync();
+            compiled = (state.ToCompilationInput(), output, new(timestamp));
+            await AfterCompiledLoadedAsync();
             StateHasChanged();
         }
+    }
+
+    private async Task AfterCompiledLoadedAsync()
+    {
+        StateHasChanged();
+        await DisplaySquigglesAsync();
+        await UpdateOutputDisplayAsync();
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
