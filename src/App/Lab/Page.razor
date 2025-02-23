@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject WorkerController Worker
 @inject LanguageServices LanguageServices
+@inject InputOutputCache Cache
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -39,7 +40,18 @@
             }
         </FluentButton>
     </div>
-        
+
+    <div>
+        @* Cached info *@
+        @if (compiled is (_, _, { } cachedTimestamp))
+        {
+            <span title="The currently displayed output has been fetched from a server cache."
+            style="font-size: 0.8rem">
+                Cached @cachedTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+            </span>
+        }
+    </div>
+
     <div>
         @* Orientation button *@
         @if (orientation == Orientation.Horizontal)
@@ -128,7 +140,7 @@
             @* NOTE: @key is needed - otherwise, when AllOutputs change,
             the FluentTabs might render incorrect selected tab
             even though ActiveTabId is set correctly (probably a bug). *@
-            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
+            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="OutputTabSelectedAsync" @key="AllOutputsKey"
             Style="padding: 0 0.2em">
                 @foreach (var output in AllOutputs)
                 {
@@ -159,7 +171,7 @@
                     @if (CurrentCompiledFile?.GetOutput(selectedOutputType!)?.DesignTimeText is not null)
                     {
                         <FluentSelect TOption="string" AriaLabel="Generation Strategy"
-                        @bind-Value="generationStrategy" @bind-Value:after="UpdateOutputDisplayAsync"
+                        @bind-Value="generationStrategy" @bind-Value:after="() => UpdateOutputDisplayAsync()"
                         Style="min-width: 7em; margin-right: 0.2em">
                             <FluentOption Value="runtime">Runtime</FluentOption>
                             <FluentOption Value="@designTime">Design</FluentOption>
@@ -200,7 +212,7 @@
     private string? generationStrategy;
     private bool compilationInProgress;
     private bool outputLoading;
-    private (CompilationInput Input, CompiledAssembly Output)? compiled;
+    private (CompilationInput Input, CompiledAssembly Output, DateTimeOffset? CacheTimestamp)? compiled;
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
@@ -570,18 +582,23 @@
 
         await editorInitialized.Task;
 
-        var savedState = await SaveStateToUrlAsync();
+        var (state, slug) = await SaveStateToUrlAsync();
 
         // Compile.
-        var input = savedState.ToCompilationInput();
+        var input = state.ToCompilationInput();
         var result = await Worker.CompileAsync(input);
-        compiled = (input, result);
+        compiled = (input, result, null);
 
         await DisplaySquiggles();
 
         compilationInProgress = false;
 
-        await UpdateOutputDisplayAsync();
+        (state, slug, _) = await UpdateOutputDisplayAsync(updateTimestamp: true);
+
+        if (settings.EnableCaching)
+        {
+            _ = Cache.StoreAsync(slug, result);
+        }
     }
 
     private async Task DisplaySquiggles()
@@ -596,29 +613,45 @@
         }
     }
 
-    private async Task UpdateOutputDisplayAsync()
+    private async Task OutputTabSelectedAsync()
     {
-        await SaveStateToUrlAsync((state) => state with
+        var output = compiled?.Output;
+        var (state, slug, resolvedLazyText) = await UpdateOutputDisplayAsync(updateTimestamp: true);
+
+        if (settings.EnableCaching && resolvedLazyText && output is not null)
+        {
+            _ = Cache.StoreAsync(slug, output);
+        }
+    }
+
+    private async Task<(SavedState State, string Slug, bool ResolvedLazyText)> UpdateOutputDisplayAsync(bool updateTimestamp = false)
+    {
+        var (state, slug) = await SaveStateToUrlAsync((state) => state with
         {
             // After changing the selected input, we call this method anyway to update outputs,
             // so we can save both selected input and output here.
             SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
             SelectedOutputType = selectedOutputType,
             GenerationStrategy = generationStrategy,
+
+            // If state is going to be cached, update the timestamp so the cache key is unique
+            // (it is not possible to overwrite cache entries for security reasons).
+            Timestamp = updateTimestamp ? DateTime.UtcNow : state.Timestamp,
         });
 
         if (compiled is null || selectedOutputType is null)
         {
             await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
-            return;
+            return (state, slug, false);
         }
 
         var output = GetOutput(selectedOutputType);
-        var outputText = await LoadOutputText(output);
+        var (outputText, resolvedLazyText) = await LoadOutputText(output);
         await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
             JSRuntime,
             value: outputText,
             language: output?.Output.Language));
+        return (state, slug, resolvedLazyText);
     }
 
     private (CompiledFileOutput Output, string? File)? GetOutput(string type)
@@ -639,21 +672,21 @@
         return null;
     }
 
-    private async Task<string> LoadOutputText((CompiledFileOutput Output, string? File)? outputInfo)
+    private async Task<(string Text, bool ResolvedLazyText)> LoadOutputText((CompiledFileOutput Output, string? File)? outputInfo)
     {
         if (outputInfo is not (var output, var file))
         {
-            return "";
+            return ("", false);
         }
 
         if (output.DesignTimeText is not null && generationStrategy == designTime)
         {
-            return output.DesignTimeText;
+            return (output.DesignTimeText, false);
         }
 
         if (output.EagerText is { } text)
         {
-            return text;
+            return (text, false);
         }
 
         if (!outputLoading)
@@ -661,30 +694,33 @@
             return await loadAsync(compiled!.Value.Input, file: file, outputType: output.Type);
         }
 
-        return "";
+        return ("", false);
 
-        async Task<string> loadAsync(CompilationInput input, string? file, string outputType)
+        async Task<(string Text, bool ResolvedLazyText)> loadAsync(CompilationInput input, string? file, string outputType)
         {
             outputLoading = true;
             await RefreshAsync();
 
             string? result;
+            bool success;
             try
             {
-                // The text will be cached and loaded synchronously next time.
+                // The text will be cached and loaded synchronously next time (from `output.EagerText`).
                 result = await output.GetTextAsync(outputFactory: async () =>
                 {
                     return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
                 });
+                success = true;
             }
             catch (Exception ex)
             {
                 result = ex.ToString();
+                success = false;
             }
 
             outputLoading = false;
             StateHasChanged();
-            return result;
+            return (result, success);
         }
     }
 
@@ -713,7 +749,12 @@
 
         await settings.InitializeAsync();
 
-        await LoadStateFromUrlAsync();
+        var loaded = await LoadStateFromUrlAsync();
+
+        if (settings.EnableCaching && loaded is var (state, slug))
+        {
+            _ = TryLoadFromCache(state, slug);
+        }
 
         if (!editorInitialized.TrySetResult())
         {
@@ -723,6 +764,19 @@
         if (settings.AutoCompileOnStart && !compilationInProgress)
         {
             await CompileAsync();
+        }
+    }
+
+    private async Task TryLoadFromCache(SavedState state, string slug)
+    {
+        var result = await Cache.LoadAsync(slug);
+        if (result is var (output, timestamp))
+        {
+            compiled = (state.ToCompilationInput(), output, timestamp);
+            StateHasChanged();
+            await DisplaySquiggles();
+            await UpdateOutputDisplayAsync();
+            StateHasChanged();
         }
     }
 

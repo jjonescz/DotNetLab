@@ -10,7 +10,7 @@
 
     .lab-header .header-gutters {
         display: grid !important;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: 1fr 1fr 0.5fr 0.5fr;
         column-gap: 10px;
         row-gap: 10px;
     }

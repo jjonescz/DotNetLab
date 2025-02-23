@@ -1,5 +1,6 @@
 using BlazorMonaco.Editor;
 using ProtoBuf;
+using System.Runtime.CompilerServices;
 
 namespace DotNetLab.Lab;
 
@@ -13,18 +14,19 @@ partial class Page
         return uri.Fragment.TrimStart('#');
     }
 
-    private async Task LoadStateFromUrlAsync()
+    private async Task<(SavedState State, string Slug)?> LoadStateFromUrlAsync()
     {
         var slug = GetCurrentSlug();
 
-        savedState = slug switch
+        var (loadedState, uncompressed) = slug switch
         {
-            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
-            "csharp" => InitialCode.CSharp.ToSavedState(),
-            "razor" => SavedState.Initial,
-            "cshtml" => InitialCode.Cshtml.ToSavedState(),
-            _ => Compressor.Uncompress(slug),
+            _ when string.IsNullOrWhiteSpace(slug) => (SavedState.Initial, false),
+            "csharp" => (InitialCode.CSharp.ToSavedState(), false),
+            "razor" => (SavedState.Initial, false),
+            "cshtml" => (InitialCode.Cshtml.ToSavedState(), false),
+            _ => (Compressor.Uncompress(slug), true),
         };
+        savedState = loadedState;
 
         // Load inputs.
         inputs.Clear();
@@ -67,9 +69,11 @@ partial class Page
 
         // Load settings.
         await settings.LoadFromStateAsync(savedState);
+
+        return uncompressed ? (loadedState, slug) : null;
     }
 
-    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
+    internal async Task<(SavedState State, string Slug)> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null, [CallerMemberName] string caller = "")
     {
         // Always save the current editor texts.
         var inputsToSave = await getInputsAsync();
@@ -95,7 +99,7 @@ partial class Page
             NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
         }
 
-        return savedState;
+        return (savedState, newSlug);
 
         async Task<ImmutableArray<InputCode>> getInputsAsync()
         {
@@ -153,6 +157,9 @@ internal sealed record SavedState
 
     [ProtoMember(7)]
     public BuildConfiguration RazorConfiguration { get; init; }
+
+    [ProtoMember(11)]
+    public DateTime? Timestamp { get; init; }
 
     public CompilationInput ToCompilationInput()
     {

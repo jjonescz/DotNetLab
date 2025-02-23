@@ -13,6 +13,7 @@
 		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
 		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
 		<PackageReference Include="protobuf-net" />
+		<PackageReference Include="System.IO.Hashing" />
 	</ItemGroup>
 
 	<ItemGroup>
