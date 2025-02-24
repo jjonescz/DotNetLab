@@ -49,7 +49,9 @@
             var title = cacheInfo.Timestamp.HasValue
                 ? "The currently displayed output has been fetched from a server cache."
                 : "The currently displayed output comes from a built-in cache.";
-            <span title="@title" style="font-size: 0.8rem">
+            <FluentStack title="@title" Style="font-size: 0.8rem; font-style: normal"
+            HorizontalAlignment="HorizontalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size20.CloudCheckmark())" Color="Color.Fill" />
                 Cached
                 @if (cacheInfo.Timestamp is { } cacheTimestamp)
                 {
@@ -59,7 +61,7 @@
                 {
                     @:template
                 }
-            </span>
+            </FluentStack>
         }
     </div>
 
