@@ -138,7 +138,7 @@
             @* Input editor *@
             <div style="flex-grow: 1">
                 <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
-                ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorInitAsync"
+                ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                 OnDidChangeModel="LanguageServices.OnDidChangeModel"
                 OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
                 OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
@@ -354,29 +354,34 @@
         }
     }
 
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
     {
-        return new()
-        {
-            AutomaticLayout = true,
-            WordWrap = wordWrap ? "on" : "off",
-            Padding = new() { Top = 10 },
-            Theme = GetMonacoTheme(dark: loadedDarkTheme),
-        };
+        return EditorConstructionOptions(editor, output: false);
     }
 
     private StandaloneEditorConstructionOptions OutputConstructionOptions(StandaloneCodeEditor editor)
     {
+        return EditorConstructionOptions(editor, output: true);
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor, bool output)
+    {
         return new()
         {
             AutomaticLayout = true,
-            ReadOnly = true,
-            // This avoids a virtual keyboard showing up on mobile.
-            DomReadOnly = true,
+            ReadOnly = output,
+            // This avoids a virtual keyboard showing up on mobile on the output (readonly) editor.
+            DomReadOnly = output,
             WordWrap = wordWrap ? "on" : "off",
-            BracketPairColorization = new() { Enabled = false },
+            BracketPairColorization = output ? new() { Enabled = false } : null,
             Padding = new() { Top = 10 },
             Theme = GetMonacoTheme(dark: loadedDarkTheme),
+            Scrollbar = new()
+            {
+                // This allows Ctrl+Wheel on the editor to zoom the whole app
+                // (not ideal because it also scrolls if possible, but better than nothing).
+                AlwaysConsumeMouseWheel = false,
+            },
         };
     }
 
