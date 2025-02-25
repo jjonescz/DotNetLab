@@ -18,6 +18,8 @@ public sealed class TemplateCacheTests
     [Theory, MemberData(nameof(GetIndices))]
     public async Task UpToDate(int index)
     {
+        Assert.SkipUnless(Environment.NewLine is "\n", "Snapshots have LF line endings.");
+
         var (input, actualJsonFactory) = cache.Entries[index];
 
         // Compile to get the output corresponding to a template input.
