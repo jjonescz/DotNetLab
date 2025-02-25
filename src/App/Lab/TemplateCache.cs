@@ -11,7 +11,6 @@ internal sealed class TemplateCache
 {
     private readonly ConcurrentDictionary<CompilationInput, CompiledAssembly> map = new();
 
-    public readonly DateTimeOffset Timestamp = new(new DateOnly(2025, 2, 23), TimeOnly.MinValue, TimeSpan.Zero);
     public readonly ImmutableArray<(CompilationInput Input, Func<ReadOnlySpan<byte>> Json)> Entries =
     [
         (SavedState.Initial.ToCompilationInput(), GetRazor),

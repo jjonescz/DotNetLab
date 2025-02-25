@@ -414,7 +414,7 @@
 
             var (state, _) = await SaveStateToUrlAsync();
 
-            await TryLoadFromTemplateCacheAsync(state.ToCompilationInput());
+            await TryLoadFromTemplateCacheAsync(state);
         }
     }
 
@@ -783,8 +783,15 @@
         }
     }
 
-    private async Task<bool> TryLoadFromTemplateCacheAsync(CompilationInput input)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state)
     {
+        if (!state.HasDefaultCompilerConfiguration)
+        {
+            return false;
+        }
+
+        var input = state.ToCompilationInput();
+
         if (TemplateCache.TryGetOutput(input, out var output))
         {
             compiled = (input, output, new(null));

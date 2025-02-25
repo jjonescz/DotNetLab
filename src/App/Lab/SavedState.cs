@@ -71,7 +71,7 @@ partial class Page
         await settings.LoadFromStateAsync(savedState);
 
         // Try loading from cache.
-        if (!await TryLoadFromTemplateCacheAsync(state.ToCompilationInput()) &&
+        if (!await TryLoadFromTemplateCacheAsync(state) &&
             settings.EnableCaching)
         {
             _ = TryLoadFromCacheAsync(state, slug);
@@ -165,6 +165,16 @@ internal sealed record SavedState
 
     [ProtoMember(11)]
     public DateTime? Timestamp { get; init; }
+
+    public bool HasDefaultCompilerConfiguration
+    {
+        get
+        {
+            return string.IsNullOrEmpty(RoslynVersion) &&
+                string.IsNullOrEmpty(RazorVersion) &&
+                string.IsNullOrEmpty(Configuration);
+        }
+    }
 
     public CompilationInput ToCompilationInput()
     {
