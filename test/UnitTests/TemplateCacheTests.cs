@@ -40,10 +40,10 @@ public sealed class TemplateCacheTests
         var actualJson = Encoding.UTF8.GetString(actualJsonFactory());
         if (expectedJson != actualJson)
         {
-            Assert.Fail($"""
-                JSON string literal inside {nameof(TemplateCache)} needs to be updated:
-                {expectedJson}
-                """);
+            var fileName = Path.GetTempFileName();
+            File.WriteAllText(fileName, expectedJson);
+            actualJson.Should().Be(expectedJson,
+                $"JSON string literal inside {nameof(TemplateCache)} needs to be updated, see '{fileName}'.");
         }
 
         // Compare the objects as well.
