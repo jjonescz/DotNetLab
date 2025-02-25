@@ -150,7 +150,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             declarationCompilation.ToMetadataReference()]);
         List<Diagnostic> allRazorDiagnostics = new();
         var compiledRazorFiles = fileSystem.Inner.EnumerateItemsSafe("/")
-            .ToImmutableDictionary(
+            .ToImmutableSortedDictionary(
                 keySelector: (item) => item.RelativePhysicalPath,
                 elementSelector: (item) =>
                 {

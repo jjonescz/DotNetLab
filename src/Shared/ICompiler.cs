@@ -53,8 +53,16 @@ public sealed record DiagnosticData(
     int EndColumn
 );
 
+/// <remarks>
+/// <para>
+/// Should always serialize to the same JSON (e.g., no unsorted dictionaries)
+/// because that is used in template cache tests.
+/// Should be also compatible between versions of DotNetLab if possible
+/// (because the JSON-serialized values are cached).
+/// </para>
+/// </remarks>
 public sealed record CompiledAssembly(
-    ImmutableDictionary<string, CompiledFile> Files,
+    ImmutableSortedDictionary<string, CompiledFile> Files,
     ImmutableArray<CompiledFileOutput> GlobalOutputs,
     int NumWarnings,
     int NumErrors,
@@ -68,7 +76,7 @@ public sealed record CompiledAssembly(
     {
         return new(
             BaseDirectory: "/",
-            Files: ImmutableDictionary<string, CompiledFile>.Empty,
+            Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
             Diagnostics: [],
             GlobalOutputs:
             [
