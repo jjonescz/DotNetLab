@@ -18,36 +18,69 @@ internal sealed class TemplateCache
         (InitialCode.Cshtml.ToCompilationInput(), GetCshtml),
     ];
 
+    public bool HasInput(SavedState state)
+    {
+        return TryGetKey(state, out var input) &&
+            (map.ContainsKey(input) || TryFindEntry(input, out _));
+    }
+
     public bool TryGetOutput(
-        CompilationInput input,
+        SavedState state,
+        [NotNullWhen(returnValue: true)] out CompilationInput? input,
         [NotNullWhen(returnValue: true)] out CompiledAssembly? output)
     {
+        if (!TryGetKey(state, out input))
+        {
+            output = null;
+            return false;
+        }
+
         if (map.TryGetValue(input, out output))
         {
             return true;
         }
 
-        if (!TryGetJson(input, out var json))
+        if (!TryFindEntry(input, out var jsonFactory))
         {
             return false;
         }
 
+        var json = jsonFactory();
         output = map.GetOrAdd(input, JsonSerializer.Deserialize<CompiledAssembly>(json)!);
         return true;
     }
 
-    private bool TryGetJson(CompilationInput input, out ReadOnlySpan<byte> json)
+    private static bool TryGetKey(SavedState state,
+        [NotNullWhen(returnValue: true)] out CompilationInput? key)
     {
-        foreach (var (candidate, jsonFactory) in Entries)
+        if (!IsEligible(state))
         {
-            if (candidate.Equals(input))
+            key = null;
+            return false;
+        }
+
+        key = state.ToCompilationInput();
+        return true;
+    }
+
+    private static bool IsEligible(SavedState state)
+    {
+        return state.HasDefaultCompilerConfiguration;
+    }
+
+    private bool TryFindEntry(CompilationInput input,
+        [NotNullWhen(returnValue: true)] out Func<ReadOnlySpan<byte>>? jsonFactory)
+    {
+        foreach (var entry in Entries)
+        {
+            if (entry.Input.Equals(input))
             {
-                json = jsonFactory();
+                jsonFactory = entry.Json;
                 return true;
             }
         }
 
-        json = default;
+        jsonFactory = null;
         return false;
     }
 

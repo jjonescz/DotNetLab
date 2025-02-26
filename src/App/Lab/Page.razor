@@ -607,8 +607,8 @@
 
         // Compile.
         var input = state.ToCompilationInput();
-        var result = await Worker.CompileAsync(input);
-        compiled = (input, result, null);
+        var output = await Worker.CompileAsync(input);
+        compiled = (input, output, null);
 
         await DisplaySquigglesAsync();
 
@@ -616,10 +616,27 @@
 
         (state, _) = await UpdateOutputDisplayAsync(updateTimestamp: true);
 
-        if (storeInCache && settings.EnableCaching)
+        if (storeInCache)
         {
-            _ = Cache.StoreAsync(state, result);
+            TryStoreInCache(state, output);
         }
+    }
+
+    private void TryStoreInCache(SavedState state, CompiledAssembly output)
+    {
+        if (!settings.EnableCaching)
+        {
+            return;
+        }
+
+        // No need to cache an input equal to one of those in the built-in cache.
+        // Those will never be loaded from the server cache anyway.
+        if (TemplateCache.HasInput(state))
+        {
+            return;
+        }
+
+        _ = Cache.StoreAsync(state, output);
     }
 
     private async Task DisplaySquigglesAsync()
@@ -639,9 +656,10 @@
         var output = compiled?.Output;
         var (state, resolvedLazyText) = await UpdateOutputDisplayAsync(updateTimestamp: true);
 
-        if (settings.EnableCaching && resolvedLazyText && output is not null)
+        // If a lazy text has been populated, re-cache.
+        if (resolvedLazyText && output is not null)
         {
-            _ = Cache.StoreAsync(state, output);
+            TryStoreInCache(state, output);
         }
     }
 
@@ -789,14 +807,7 @@
 
     private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state)
     {
-        if (!state.HasDefaultCompilerConfiguration)
-        {
-            return false;
-        }
-
-        var input = state.ToCompilationInput();
-
-        if (TemplateCache.TryGetOutput(input, out var output))
+        if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
             compiled = (input, output, new(null));
             await AfterCompiledLoadedAsync();

@@ -1,6 +1,5 @@
 using BlazorMonaco.Editor;
 using ProtoBuf;
-using System.Runtime.CompilerServices;
 
 namespace DotNetLab.Lab;
 
@@ -134,6 +133,12 @@ partial class Page
     }
 }
 
+/// <remarks>
+/// <para>
+/// This is currently not comparable because <see cref="Inputs"/> is an <see cref="ImmutableArray{T}"/>.
+/// We would need to change it to <see cref="Sequence{T}"/> but also ensure that it still results in the same ProtoBuf encoding.
+/// </para>
+/// </remarks>
 [ProtoContract]
 internal sealed record SavedState
 {
