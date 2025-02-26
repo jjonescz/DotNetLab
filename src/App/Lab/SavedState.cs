@@ -1,7 +1,29 @@
 using BlazorMonaco.Editor;
 using ProtoBuf;
+using System.Collections.Frozen;
 
 namespace DotNetLab.Lab;
+
+static class WellKnownSlugs
+{
+    public static readonly FrozenDictionary<string, SavedState> ShorthandToState;
+    public static readonly FrozenDictionary<string, string> FullSlugToShorthand;
+
+    static WellKnownSlugs()
+    {
+        IEnumerable<KeyValuePair<string, SavedState>> entries =
+        [
+            new("razor", SavedState.Razor),
+            new("csharp", SavedState.CSharp),
+            new("cshtml", SavedState.Cshtml),
+        ];
+
+        ShorthandToState = entries.ToFrozenDictionary();
+        FullSlugToShorthand = entries
+            .Select(static p => KeyValuePair.Create(Compressor.Compress(p.Value), p.Key))
+            .ToFrozenDictionary();
+    }
+}
 
 partial class Page
 {
@@ -20,9 +42,7 @@ partial class Page
         var state = slug switch
         {
             _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
-            "csharp" => InitialCode.CSharp.ToSavedState(),
-            "razor" => SavedState.Initial,
-            "cshtml" => InitialCode.Cshtml.ToSavedState(),
+            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => wellKnownState,
             _ => Compressor.Uncompress(slug),
         };
 
@@ -107,6 +127,12 @@ partial class Page
         }
 
         var newSlug = Compressor.Compress(savedState);
+
+        if (WellKnownSlugs.FullSlugToShorthand.TryGetValue(newSlug, out var wellKnownSlug))
+        {
+            newSlug = wellKnownSlug;
+        }
+
         if (newSlug != GetCurrentSlug())
         {
             NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
@@ -142,9 +168,27 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
-    public static SavedState Initial { get; } = new()
+    public static SavedState Initial => Razor;
+
+    // Well-known slugs should have `SelectedOutputType` set so choosing them in the Template drop down
+    // matches the well-known state and hence the corresponding well-known slug is displayed in the URL.
+
+    public static SavedState Razor { get; } = new()
     {
         Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
+        SelectedOutputType = "cs",
+    };
+
+    public static SavedState CSharp { get; } = new()
+    {
+        Inputs = [InitialCode.CSharp.ToInputCode()],
+        SelectedOutputType = "run",
+    };
+
+    public static SavedState Cshtml { get; } = new()
+    {
+        Inputs = [InitialCode.Cshtml.ToInputCode()],
+        SelectedOutputType = "cs",
     };
 
     [ProtoMember(1)]
