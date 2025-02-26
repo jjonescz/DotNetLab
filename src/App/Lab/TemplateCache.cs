@@ -13,9 +13,9 @@ internal sealed class TemplateCache
 
     public readonly ImmutableArray<(CompilationInput Input, Func<ReadOnlySpan<byte>> Json)> Entries =
     [
-        (SavedState.Initial.ToCompilationInput(), GetRazor),
-        (InitialCode.CSharp.ToCompilationInput(), GetCSharp),
-        (InitialCode.Cshtml.ToCompilationInput(), GetCshtml),
+        (SavedState.Razor.ToCompilationInput(), GetRazor),
+        (SavedState.CSharp.ToCompilationInput(), GetCSharp),
+        (SavedState.Cshtml.ToCompilationInput(), GetCshtml),
     ];
 
     public bool HasInput(SavedState state)
