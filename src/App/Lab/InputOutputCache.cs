@@ -13,11 +13,11 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
 {
     private static readonly string endpoint = "https://vsinsertions.azurewebsites.net/api/cache";
 
-    public async Task StoreAsync(string slug, CompiledAssembly output)
+    public async Task StoreAsync(SavedState state, CompiledAssembly output)
     {
         try
         {
-            var key = SlugToCacheKey(slug);
+            var key = SlugToCacheKey(state.ToCacheSlug());
             var response = await client.PostAsync(
                 $"{endpoint}/add/{key}",
                 new StringContent(JsonSerializer.Serialize(output), Encoding.UTF8, "text/plain"));
@@ -29,11 +29,11 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
         }
     }
 
-    public async Task<(CompiledAssembly Output, DateTimeOffset Timestamp)?> LoadAsync(string slug)
+    public async Task<(CompiledAssembly Output, DateTimeOffset Timestamp)?> LoadAsync(SavedState state)
     {
         try
         {
-            var key = SlugToCacheKey(slug);
+            var key = SlugToCacheKey(state.ToCacheSlug());
             var response = await client.PostAsync($"{endpoint}/get/{key}", content: null);
             response.EnsureSuccessStatusCode();
 

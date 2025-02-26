@@ -412,7 +412,7 @@
                 await AddInputAsync(InitialCode.RazorImports, selectAsCurrent: false);
             }
 
-            var (state, _) = await SaveStateToUrlAsync();
+            var state = await SaveStateToUrlAsync();
 
             await TryLoadFromTemplateCacheAsync(state);
         }
@@ -603,7 +603,7 @@
 
         await editorInitialized.Task;
 
-        var (state, slug) = await SaveStateToUrlAsync();
+        var state = await SaveStateToUrlAsync();
 
         // Compile.
         var input = state.ToCompilationInput();
@@ -614,11 +614,11 @@
 
         compilationInProgress = false;
 
-        (state, slug, _) = await UpdateOutputDisplayAsync(updateTimestamp: true);
+        (state, _) = await UpdateOutputDisplayAsync(updateTimestamp: true);
 
         if (settings.EnableCaching)
         {
-            _ = Cache.StoreAsync(slug, result);
+            _ = Cache.StoreAsync(state, result);
         }
     }
 
@@ -637,17 +637,17 @@
     private async Task OutputTabSelectedAsync()
     {
         var output = compiled?.Output;
-        var (state, slug, resolvedLazyText) = await UpdateOutputDisplayAsync(updateTimestamp: true);
+        var (state, resolvedLazyText) = await UpdateOutputDisplayAsync(updateTimestamp: true);
 
         if (settings.EnableCaching && resolvedLazyText && output is not null)
         {
-            _ = Cache.StoreAsync(slug, output);
+            _ = Cache.StoreAsync(state, output);
         }
     }
 
-    private async Task<(SavedState State, string Slug, bool ResolvedLazyText)> UpdateOutputDisplayAsync(bool updateTimestamp = false)
+    private async Task<(SavedState State, bool ResolvedLazyText)> UpdateOutputDisplayAsync(bool updateTimestamp = false)
     {
-        var (state, slug) = await SaveStateToUrlAsync((state) => state with
+        var state = await SaveStateToUrlAsync((state) => state with
         {
             // After changing the selected input, we call this method anyway to update outputs,
             // so we can save both selected input and output here.
@@ -656,14 +656,15 @@
             GenerationStrategy = generationStrategy,
 
             // If state is going to be cached, update the timestamp so the cache key is unique
-            // (it is not possible to overwrite cache entries for security reasons).
+            // (it is not possible to overwrite cache entries
+            // to prevent anyone changing already shared snippet outputs).
             Timestamp = updateTimestamp ? DateTime.UtcNow : state.Timestamp,
         });
 
         if (compiled is null || selectedOutputType is null)
         {
             await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
-            return (state, slug, false);
+            return (state, false);
         }
 
         var output = GetOutput(selectedOutputType);
@@ -672,7 +673,7 @@
             JSRuntime,
             value: outputText,
             language: output?.Output.Language));
-        return (state, slug, resolvedLazyText);
+        return (state, resolvedLazyText);
     }
 
     private (CompiledFileOutput Output, string? File)? GetOutput(string type)
@@ -802,9 +803,9 @@
         return false;
     }
 
-    private async Task TryLoadFromCacheAsync(SavedState state, string slug)
+    private async Task TryLoadFromCacheAsync(SavedState state)
     {
-        var result = await Cache.LoadAsync(slug);
+        var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
             compiled = (state.ToCompilationInput(), output, new(timestamp));

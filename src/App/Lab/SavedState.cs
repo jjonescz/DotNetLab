@@ -26,6 +26,15 @@ partial class Page
             "cshtml" => InitialCode.Cshtml.ToSavedState(),
             _ => Compressor.Uncompress(slug),
         };
+
+        // Sanitize the state to avoid crashes if possible
+        // (anything can be in the user-provided URL hash,
+        // but our app expects some invariants, like non-default ImmutableArrays).
+        if (state.Inputs.IsDefault)
+        {
+            state = state with { Inputs = [] };
+        }
+
         savedState = state;
 
         // Load inputs.
@@ -74,11 +83,11 @@ partial class Page
         if (!await TryLoadFromTemplateCacheAsync(state) &&
             settings.EnableCaching)
         {
-            _ = TryLoadFromCacheAsync(state, slug);
+            _ = TryLoadFromCacheAsync(state);
         }
     }
 
-    internal async Task<(SavedState State, string Slug)> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null, [CallerMemberName] string caller = "")
+    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
     {
         // Always save the current editor texts.
         var inputsToSave = await getInputsAsync();
@@ -104,7 +113,7 @@ partial class Page
             NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
         }
 
-        return (savedState, newSlug);
+        return savedState;
 
         async Task<ImmutableArray<InputCode>> getInputsAsync()
         {
@@ -174,6 +183,32 @@ internal sealed record SavedState
                 string.IsNullOrEmpty(RazorVersion) &&
                 string.IsNullOrEmpty(Configuration);
         }
+    }
+
+    /// <summary>
+    /// Trims down to a state that is important for compilation output.
+    /// Used as cache key in <see cref="InputOutputCache"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Timestamp"/> is included as well, albeit not important for compilation per se,
+    /// it is used to allow different users having the same input and get a unique cache key
+    /// (because the cache does not allow overwriting cache entries
+    /// to prevent anyone changing already shared snippet outputs).
+    /// </remarks>
+    public SavedState ToCacheKey()
+    {
+        return this with
+        {
+            SelectedInputIndex = 0,
+            SelectedOutputType = null,
+            GenerationStrategy = null,
+            SdkVersion = null,
+        };
+    }
+
+    public string ToCacheSlug()
+    {
+        return Compressor.Compress(ToCacheKey());
     }
 
     public CompilationInput ToCompilationInput()
