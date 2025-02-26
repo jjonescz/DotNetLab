@@ -24,7 +24,7 @@
 
     <div>
         @* Compile button *@
-        <FluentButton Appearance="Appearance.Accent" OnClick="CompileAsync" Loading="compilationInProgress"
+        <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
         Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())">
             Compile
         </FluentButton>
@@ -595,7 +595,7 @@
         StateHasChanged();
     }
 
-    private async Task CompileAsync()
+    private async Task CompileAsync(bool storeInCache = true)
     {
         compilationInProgress = true;
 
@@ -616,7 +616,7 @@
 
         (state, _) = await UpdateOutputDisplayAsync(updateTimestamp: true);
 
-        if (settings.EnableCaching)
+        if (storeInCache && settings.EnableCaching)
         {
             _ = Cache.StoreAsync(state, result);
         }
@@ -780,7 +780,10 @@
 
         if (settings.AutoCompileOnStart && !compilationInProgress)
         {
-            await CompileAsync();
+            // Avoid storing the first auto compilation in cache
+            // (the same shared snippet would be stored multiple times unnecessarily and
+            // users can always store their snippet separately by compiling manually).
+            await CompileAsync(storeInCache: false);
         }
     }
 
