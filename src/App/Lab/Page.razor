@@ -293,7 +293,13 @@
 
         // Load editor theme early to avoid flash of light theme.
         loadedDarkTheme = ((IJSInProcessRuntime)JSRuntime).Invoke<bool>(
-            "eval", "window.matchMedia('(prefers-color-scheme: dark)').matches || JSON.parse(localStorage.getItem('theme'))?.mode === 'dark'");
+            "eval", """
+                (() => {
+                    const appSetting = JSON.parse(localStorage.getItem('theme'))?.mode;
+                    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    return appSetting === 'dark' || (appSetting !== 'light' && systemDark);
+                })()
+                """);
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
