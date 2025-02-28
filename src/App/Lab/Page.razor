@@ -330,28 +330,6 @@
             dotNetObjectReference = DotNetObjectReference.Create(this);
             unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
         }
-
-        // Select an output type if none is selected.
-        if (noOutputTypeSelected())
-        {
-            selectedOutputType = AllOutputs.MaxBy(static o => o.Priority)!.Type;
-            if (noOutputTypeSelected())
-            {
-                // Do not call `StateHasChanged` - that would lead to stack overflow.
-                Debug.Assert(false, "Unexpected cycle in selecting default output type.");
-            }
-            else
-            {
-                StateHasChanged();
-                await UpdateOutputDisplayAsync();
-            }
-        }
-
-        bool noOutputTypeSelected()
-        {
-            return AllOutputs.Any() &&
-                (selectedOutputType == null || GetOutput(selectedOutputType) == null);
-        }
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
@@ -561,10 +539,9 @@
 
         // Update the tabs.
         activeInputTabId = IndexToInputTabId(index);
-        StateHasChanged();
 
         // Display output corresponding to the selected input.
-        await UpdateOutputDisplayAsync();
+        await AutoSelectOutputAsync();
     }
 
     private async Task AddInputAsync(InitialCode initialCode, bool selectAsCurrent = true)
@@ -620,7 +597,7 @@
 
         compilationInProgress = false;
 
-        (state, _) = await UpdateOutputDisplayAsync(storeInCache
+        (state, _) = await AutoSelectOutputAsync(storeInCache
             ? UpdateTimestampMode.Always
             : UpdateTimestampMode.Never);
 
@@ -671,6 +648,21 @@
         }
     }
 
+    private async Task<(SavedState State, bool ResolvedLazyText)> AutoSelectOutputAsync(
+        UpdateTimestampMode updateTimestampMode = UpdateTimestampMode.Never)
+    {
+        if (selectedOutputType is null ||
+            GetOutput(selectedOutputType) is not { } output ||
+            HasEmptyText(output) == true)
+        {
+            selectedOutputType = !AllOutputs.Any()
+                ? null
+                : AllOutputs.MaxBy(static o => o.Priority)!.Type;
+        }
+
+        return await UpdateOutputDisplayAsync(updateTimestampMode);
+    }
+
     enum UpdateTimestampMode
     {
         Never,
@@ -690,7 +682,7 @@
         else
         {
             var output = GetOutput(selectedOutputType);
-            var (outputText, resolvedLazyText) = await LoadOutputText(output);
+            var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
             var state = await saveStateAsync(updateTimestamp: updateTimestampMode switch
             {
                 UpdateTimestampMode.Always => true,
@@ -740,21 +732,53 @@
         return null;
     }
 
-    private async Task<(string Text, bool ResolvedLazyText)> LoadOutputText((CompiledFileOutput Output, string? File)? outputInfo)
+    private bool? HasEmptyText((CompiledFileOutput Output, string? File)? outputInfo)
     {
-        if (outputInfo is not (var output, var file))
+        if (TryLoadEagerOutputText(outputInfo, out _, out _, out var text))
         {
-            return ("", false);
+            return string.IsNullOrEmpty(text);
         }
 
-        if (output.DesignTimeText is not null && generationStrategy == designTime)
+        return null;
+    }
+
+    private bool TryLoadEagerOutputText((CompiledFileOutput Output, string? File)? outputInfo,
+        [NotNullWhen(returnValue: false)] out CompiledFileOutput? output,
+        out string? file,
+        [NotNullWhen(returnValue: true)] out string? text)
+    {
+        if (outputInfo is not (var o, var f))
         {
-            return (output.DesignTimeText, false);
+            output = null;
+            file = null;
+            text = "";
+            return true;
         }
 
-        if (output.EagerText is { } text)
+        output = o;
+        file = f;
+
+        if (output.DesignTimeText is { } designTimeText && generationStrategy == designTime)
         {
-            return (text, false);
+            text = designTimeText;
+            return true;
+        }
+
+        if (output.EagerText is { } eagerText)
+        {
+            text = eagerText;
+            return true;
+        }
+
+        text = null;
+        return false;
+    }
+
+    private async Task<(string Text, bool ResolvedLazyText)> LoadOutputTextAsync((CompiledFileOutput Output, string? File)? outputInfo)
+    {
+        if (TryLoadEagerOutputText(outputInfo, out var output, out var file, out var eagerText))
+        {
+            return (eagerText, false);
         }
 
         if (!outputLoading)
@@ -860,7 +884,7 @@
     {
         StateHasChanged();
         await DisplaySquigglesAsync();
-        await UpdateOutputDisplayAsync();
+        await AutoSelectOutputAsync();
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
