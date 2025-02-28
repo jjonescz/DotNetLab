@@ -11,7 +11,7 @@
 <PageTitle>.NET Lab</PageTitle>
 
 <FluentHeader Class="lab-header" Height="null">
-    <div>
+    <div style="flex-grow: 1; justify-content: start">
         @* Logo *@
         <a href="/" style="text-decoration: none">@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
@@ -42,54 +42,57 @@
         </FluentButton>
     </div>
 
-    <div>
-        @* Outdated output info *@
-        @if (outputOutdated)
-        {
-            <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
-            Style="font-size: 0.8rem; font-style: normal" HorizontalAlignment="HorizontalAlignment.Center">
-                <FluentIcon Value="@(new Icons.Regular.Size20.Save())" Color="Color.Fill" />
-                Ctrl+S to re-compile
-            </FluentStack>
-        }
-        @* Cached info *@
-        else if (compiled is (_, _, { } cacheInfo))
-        {
-            var title = cacheInfo.Timestamp.HasValue
-                ? "The currently displayed output has been fetched from a server cache."
-                : "The currently displayed output comes from a built-in cache.";
-            <FluentStack title="@title" Style="font-size: 0.8rem; font-style: normal"
-            HorizontalAlignment="HorizontalAlignment.Center">
-                <FluentIcon Value="@(new Icons.Regular.Size20.CloudCheckmark())" Color="Color.Fill" />
-                Cached
-                @if (cacheInfo.Timestamp is { } cacheTimestamp)
-                {
-                    @cacheTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
-                }
-                else
-                {
-                    @:template
-                }
-            </FluentStack>
-        }
-    </div>
+    <div style="flex-grow: 1">
+        <div style="flex-grow: 1; min-width: 10rem">
+            @* Outdated output info *@
+            @if (outputOutdated)
+            {
+                <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
+                Style="font-size: 0.8rem; font-style: normal; width: auto"
+                HorizontalAlignment="HorizontalAlignment.Center">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Save())" Color="Color.Fill" />
+                    Ctrl+S to re-compile
+                </FluentStack>
+            }
+            @* Cached info *@
+            else if (compiled is (_, _, { } cacheInfo))
+            {
+                var title = cacheInfo.Timestamp.HasValue
+                    ? "The currently displayed output has been fetched from a server cache."
+                    : "The currently displayed output comes from a built-in cache.";
+                <FluentStack title="@title" Style="font-size: 0.8rem; font-style: normal; width: auto"
+                HorizontalAlignment="HorizontalAlignment.Center">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.CloudCheckmark())" Color="Color.Fill" />
+                    Cached
+                    @if (cacheInfo.Timestamp is { } cacheTimestamp)
+                    {
+                        @cacheTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+                    }
+                    else
+                    {
+                        @:template
+                    }
+                </FluentStack>
+            }
+        </div>
 
-    <div>
-        @* Orientation button *@
-        @if (orientation == Orientation.Horizontal)
-        {
-            <FluentButton OnClick="() => orientation = Orientation.Vertical"
-            Title="Display editors in a column">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutRowTwo())" Color="Color.Neutral" />
-            </FluentButton>
-        }
-        else
-        {
-            <FluentButton OnClick="() => orientation = Orientation.Horizontal"
-            Title="Display editors in a row">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
-            </FluentButton>
-        }
+        <div>
+            @* Orientation button *@
+            @if (orientation == Orientation.Horizontal)
+            {
+                <FluentButton OnClick="() => orientation = Orientation.Vertical"
+                Title="Display editors in a column">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.LayoutRowTwo())" Color="Color.Neutral" />
+                </FluentButton>
+            }
+            else
+            {
+                <FluentButton OnClick="() => orientation = Orientation.Horizontal"
+                Title="Display editors in a row">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
+                </FluentButton>
+            }
+        </div>
     </div>
 </FluentHeader>
 
