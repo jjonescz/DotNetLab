@@ -43,8 +43,17 @@
     </div>
 
     <div>
+        @* Outdated output info *@
+        @if (outputOutdated)
+        {
+            <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
+            Style="font-size: 0.8rem; font-style: normal" HorizontalAlignment="HorizontalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Save())" Color="Color.Fill" />
+                Ctrl+S to re-compile
+            </FluentStack>
+        }
         @* Cached info *@
-        @if (compiled is (_, _, { } cacheInfo))
+        else if (compiled is (_, _, { } cacheInfo))
         {
             var title = cacheInfo.Timestamp.HasValue
                 ? "The currently displayed output has been fetched from a server cache."
@@ -140,7 +149,7 @@
                 <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
                 ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                 OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
+                OnDidChangeModelContent="OnDidChangeModelContent"
                 OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
@@ -224,6 +233,7 @@
     private string? selectedOutputType;
     private string? generationStrategy;
     private bool compilationInProgress;
+    private bool outputOutdated;
     private bool outputLoading;
     private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo)? compiled;
     private Settings settings = null!;
@@ -598,6 +608,7 @@
         var input = state.ToCompilationInput();
         var output = await Worker.CompileAsync(input);
         compiled = (input, output, null);
+        outputOutdated = false;
 
         await DisplaySquigglesAsync();
 
@@ -888,6 +899,7 @@
 
     private async Task AfterCompiledLoadedAsync()
     {
+        outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
         await AutoSelectOutputAsync();
@@ -913,11 +925,18 @@
     /// </summary>
     private void OnWorkspaceChanged()
     {
+        outputOutdated = true;
         var models = inputs
             .Select(i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = i.NewContent })
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
         Worker.OnDidChangeWorkspace(models);
+    }
+
+    private void OnDidChangeModelContent(ModelContentChangedEvent args)
+    {
+        outputOutdated = true;
+        LanguageServices.OnDidChangeModelContent(args);
     }
 
     private void OnScreenInfoUpdated()
