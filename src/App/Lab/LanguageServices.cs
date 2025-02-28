@@ -48,9 +48,10 @@ internal sealed class LanguageServices(IJSRuntime jsRuntime, WorkerController wo
     public async Task RegisterAsync()
     {
         var cSharpLanguageSelector = new LanguageSelector("csharp");
-        await BlazorMonaco.Languages.Global.RegisterCompletionItemProvider(jsRuntime, cSharpLanguageSelector, new(
-            triggerCharacters: [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~"],
-            provideCompletionItems: (modelUri, position, context) =>
+        await CompletionItemProviderAsync.Register(jsRuntime, cSharpLanguageSelector, new()
+        {
+            TriggerCharacters = [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~"],
+            ProvideCompletionItemsFunc = (modelUri, position, context) =>
             {
                 return DebounceAsync(
                     ref completionCts,
@@ -58,7 +59,8 @@ internal sealed class LanguageServices(IJSRuntime jsRuntime, WorkerController wo
                     new() { Suggestions = [], Incomplete = true },
                     args => worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context));
             },
-            resolveCompletionItem: (completionItem) => Task.FromResult(completionItem)));
+            ResolveCompletionItemFunc = (completionItem) => Task.FromResult(completionItem),
+        });
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
