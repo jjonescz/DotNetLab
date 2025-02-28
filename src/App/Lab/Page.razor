@@ -162,7 +162,7 @@
             @* NOTE: @key is needed - otherwise, when AllOutputs change,
             the FluentTabs might render incorrect selected tab
             even though ActiveTabId is set correctly (probably a bug). *@
-            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="OutputTabSelectedAsync" @key="AllOutputsKey"
+            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
             Style="padding: 0 0.2em">
                 @foreach (var output in AllOutputs)
                 {
@@ -557,7 +557,9 @@
         activeInputTabId = IndexToInputTabId(index);
 
         // Display output corresponding to the selected input.
-        await AutoSelectOutputAsync();
+        await AutoSelectOutputAsync(
+            updateTimestampMode: OutputActionMode.IfLazyTextIsResolved,
+            storeInCacheMode: OutputActionMode.IfLazyTextIsResolved);
     }
 
     private async Task AddInputAsync(InitialCode initialCode, bool selectAsCurrent = true)
@@ -614,14 +616,12 @@
 
         compilationInProgress = false;
 
-        (state, _) = await AutoSelectOutputAsync(storeInCache
-            ? UpdateTimestampMode.Always
-            : UpdateTimestampMode.Never);
-
-        if (storeInCache)
-        {
-            TryStoreInCache(state, output);
-        }
+        var mode = storeInCache
+            ? OutputActionMode.Always
+            : OutputActionMode.Never;
+        await AutoSelectOutputAsync(
+            updateTimestampMode: mode,
+            storeInCacheMode: mode);
     }
 
     private void TryStoreInCache(SavedState state, CompiledAssembly output)
@@ -653,20 +653,16 @@
         }
     }
 
-    private async Task OutputTabSelectedAsync()
+    private async Task UpdateOutputDisplayAsync()
     {
-        var output = compiled?.Output;
-        var (state, resolvedLazyText) = await UpdateOutputDisplayAsync(UpdateTimestampMode.WhenLazyTextIsResolved);
-
-        // If a lazy text has been populated, re-cache.
-        if (resolvedLazyText && output is not null)
-        {
-            TryStoreInCache(state, output);
-        }
+        await UpdateOutputDisplayAsync(
+            updateTimestampMode: OutputActionMode.IfLazyTextIsResolved,
+            storeInCacheMode: OutputActionMode.IfLazyTextIsResolved);
     }
 
-    private async Task<(SavedState State, bool ResolvedLazyText)> AutoSelectOutputAsync(
-        UpdateTimestampMode updateTimestampMode = UpdateTimestampMode.Never)
+    private async Task AutoSelectOutputAsync(
+        OutputActionMode updateTimestampMode,
+        OutputActionMode storeInCacheMode)
     {
         if (selectedOutputType is null ||
             GetOutput(selectedOutputType) is not { } output ||
@@ -677,40 +673,51 @@
                 : AllOutputs.MaxBy(static o => o.Priority)!.Type;
         }
 
-        return await UpdateOutputDisplayAsync(updateTimestampMode);
+        await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
     }
 
-    enum UpdateTimestampMode
+    enum OutputActionMode
     {
         Never,
-        WhenLazyTextIsResolved,
+        IfLazyTextIsResolved,
         Always,
     }
 
-    private async Task<(SavedState State, bool ResolvedLazyText)> UpdateOutputDisplayAsync(
-        UpdateTimestampMode updateTimestampMode = UpdateTimestampMode.Never)
+    private async Task UpdateOutputDisplayAsync(
+        OutputActionMode updateTimestampMode,
+        OutputActionMode storeInCacheMode)
     {
         if (compiled is null || selectedOutputType is null)
         {
-            var state = await saveStateAsync(updateTimestamp: updateTimestampMode == UpdateTimestampMode.Always);
+            var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
             await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
-            return (state, false);
         }
         else
         {
+            var compiledOutput = compiled?.Output;
             var output = GetOutput(selectedOutputType);
             var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
-            var state = await saveStateAsync(updateTimestamp: updateTimestampMode switch
-            {
-                UpdateTimestampMode.Always => true,
-                UpdateTimestampMode.WhenLazyTextIsResolved => resolvedLazyText,
-                _ => false,
-            });
+            var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
             await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
                 JSRuntime,
                 value: outputText,
                 language: output?.Output.Language));
-            return (state, resolvedLazyText);
+
+            if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
+            {
+                // If a lazy text has been populated, re-cache.
+                TryStoreInCache(state, compiledOutput);
+            }
+        }
+
+        static bool shouldPerformOutputAction(OutputActionMode mode, bool resolvedLazyText)
+        {
+            return mode switch
+            {
+                OutputActionMode.Always => true,
+                OutputActionMode.IfLazyTextIsResolved => resolvedLazyText,
+                _ => false,
+            };
         }
 
         Task<SavedState> saveStateAsync(bool updateTimestamp)
@@ -879,7 +886,7 @@
         if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
             compiled = (input, output, new(null));
-            await AfterCompiledLoadedAsync();
+            await AfterCompiledLoadedFromCacheAsync();
             return true;
         }
 
@@ -892,17 +899,19 @@
         if (result is var (output, timestamp))
         {
             compiled = (state.ToCompilationInput(), output, new(timestamp));
-            await AfterCompiledLoadedAsync();
+            await AfterCompiledLoadedFromCacheAsync();
             StateHasChanged();
         }
     }
 
-    private async Task AfterCompiledLoadedAsync()
+    private async Task AfterCompiledLoadedFromCacheAsync()
     {
         outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
-        await AutoSelectOutputAsync();
+        await AutoSelectOutputAsync(
+            updateTimestampMode: OutputActionMode.Never,
+            storeInCacheMode: OutputActionMode.Never);
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
