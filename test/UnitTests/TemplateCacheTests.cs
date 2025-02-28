@@ -49,7 +49,7 @@ public sealed class TemplateCacheTests
         }
 
         // Compare the objects as well.
-        Assert.True(cache.TryGetOutput(input, out var expectedOutput));
+        Assert.True(cache.TryGetOutput(new SavedState { Inputs = input.Inputs }, out _, out var expectedOutput));
         actualOutput.Should().BeEquivalentTo(expectedOutput);
     }
 
