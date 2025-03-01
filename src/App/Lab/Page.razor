@@ -961,4 +961,10 @@
     {
         return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal; ;
     }
+
+    public void OnCompilerVersionChanged()
+    {
+        outputOutdated = true;
+        StateHasChanged();
+    }
 }

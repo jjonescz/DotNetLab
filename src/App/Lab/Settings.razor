@@ -522,6 +522,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         string? versionToLoad,
         BuildConfiguration configuration)
     {
+        Page.OnCompilerVersionChanged();
+
         try
         {
             await Worker.UseCompilerVersionAsync(
