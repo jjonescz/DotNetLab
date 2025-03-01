@@ -4,12 +4,14 @@
 @inject NavigationManager NavigationManager
 @inject WorkerController Worker
 @inject LanguageServices LanguageServices
+@inject InputOutputCache Cache
+@inject TemplateCache TemplateCache
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
 
 <FluentHeader Class="lab-header" Height="null">
-    <div>
+    <div style="flex-grow: 1; justify-content: start">
         @* Logo *@
         <a href="/" style="text-decoration: none">@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
@@ -22,7 +24,7 @@
 
     <div>
         @* Compile button *@
-        <FluentButton Appearance="Appearance.Accent" OnClick="CompileAsync" Loading="compilationInProgress"
+        <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
         Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())">
             Compile
         </FluentButton>
@@ -39,23 +41,58 @@
             }
         </FluentButton>
     </div>
-        
-    <div>
-        @* Orientation button *@
-        @if (orientation == Orientation.Horizontal)
-        {
-            <FluentButton OnClick="() => orientation = Orientation.Vertical"
-            Title="Display editors in a column">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutRowTwo())" Color="Color.Neutral" />
-            </FluentButton>
-        }
-        else
-        {
-            <FluentButton OnClick="() => orientation = Orientation.Horizontal"
-            Title="Display editors in a row">
-                <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
-            </FluentButton>
-        }
+
+    <div style="flex-grow: 1">
+        <div style="flex-grow: 1; min-width: 10rem">
+            @* Outdated output info *@
+            @if (outputOutdated)
+            {
+                <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
+                Style="font-size: 0.8rem; font-style: normal; width: auto"
+                HorizontalAlignment="HorizontalAlignment.Center">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Save())" Color="Color.Fill" />
+                    Ctrl+S to re-compile
+                </FluentStack>
+            }
+            @* Cached info *@
+            else if (compiled is (_, _, { } cacheInfo))
+            {
+                var title = cacheInfo.Timestamp.HasValue
+                    ? "The currently displayed output has been fetched from a server cache."
+                    : "The currently displayed output comes from a built-in cache.";
+                <FluentStack title="@title" Style="font-size: 0.8rem; font-style: normal; width: auto"
+                HorizontalAlignment="HorizontalAlignment.Center">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.CloudCheckmark())" Color="Color.Fill" />
+                    Cached
+                    @if (cacheInfo.Timestamp is { } cacheTimestamp)
+                    {
+                        @cacheTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+                    }
+                    else
+                    {
+                        @:template
+                    }
+                </FluentStack>
+            }
+        </div>
+
+        <div>
+            @* Orientation button *@
+            @if (orientation == Orientation.Horizontal)
+            {
+                <FluentButton OnClick="() => orientation = Orientation.Vertical"
+                Title="Display editors in a column">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.LayoutRowTwo())" Color="Color.Neutral" />
+                </FluentButton>
+            }
+            else
+            {
+                <FluentButton OnClick="() => orientation = Orientation.Horizontal"
+                Title="Display editors in a row">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
+                </FluentButton>
+            }
+        </div>
     </div>
 </FluentHeader>
 
@@ -113,9 +150,9 @@
             @* Input editor *@
             <div style="flex-grow: 1">
                 <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
-                ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorInitAsync"
+                ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                 OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                OnDidChangeModelContent="LanguageServices.OnDidChangeModelContent"
+                OnDidChangeModelContent="OnDidChangeModelContent"
                 OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
@@ -159,7 +196,7 @@
                     @if (CurrentCompiledFile?.GetOutput(selectedOutputType!)?.DesignTimeText is not null)
                     {
                         <FluentSelect TOption="string" AriaLabel="Generation Strategy"
-                        @bind-Value="generationStrategy" @bind-Value:after="UpdateOutputDisplayAsync"
+                        @bind-Value="generationStrategy" @bind-Value:after="() => UpdateOutputDisplayAsync()"
                         Style="min-width: 7em; margin-right: 0.2em">
                             <FluentOption Value="runtime">Runtime</FluentOption>
                             <FluentOption Value="@designTime">Design</FluentOption>
@@ -199,8 +236,9 @@
     private string? selectedOutputType;
     private string? generationStrategy;
     private bool compilationInProgress;
+    private bool outputOutdated;
     private bool outputLoading;
-    private (CompilationInput Input, CompiledAssembly Output)? compiled;
+    private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo)? compiled;
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
@@ -212,6 +250,8 @@
         public string FileName { get; set; } = FileName;
         public string? NewContent { get; set; }
     }
+
+    private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
 
     private enum InputPreset
     {
@@ -266,7 +306,13 @@
 
         // Load editor theme early to avoid flash of light theme.
         loadedDarkTheme = ((IJSInProcessRuntime)JSRuntime).Invoke<bool>(
-            "eval", "window.matchMedia('(prefers-color-scheme: dark)').matches || JSON.parse(localStorage.getItem('theme'))?.mode === 'dark'");
+            "eval", """
+                (() => {
+                    const appSetting = JSON.parse(localStorage.getItem('theme'))?.mode;
+                    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    return appSetting === 'dark' || (appSetting !== 'light' && systemDark);
+                })()
+                """);
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -303,54 +349,36 @@
             dotNetObjectReference = DotNetObjectReference.Create(this);
             unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
         }
-
-        // Select an output type if none is selected.
-        if (noOutputTypeSelected())
-        {
-            selectedOutputType = AllOutputs.MaxBy(static o => o.Priority)!.Type;
-            if (noOutputTypeSelected())
-            {
-                // Do not call `StateHasChanged` - that would lead to stack overflow.
-                Debug.Assert(false, "Unexpected cycle in selecting default output type.");
-            }
-            else
-            {
-                StateHasChanged();
-                await UpdateOutputDisplayAsync();
-            }
-        }
-
-        bool noOutputTypeSelected()
-        {
-            return AllOutputs.Any() &&
-                (selectedOutputType == null || GetOutput(selectedOutputType) == null);
-        }
     }
 
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
     {
-        return new()
-        {
-            AutomaticLayout = true,
-            WordWrap = wordWrap ? "on" : "off",
-            Padding = new() { Top = 10 },
-            Theme = GetMonacoTheme(dark: loadedDarkTheme),
-        };
+        return EditorConstructionOptions(editor, output: false);
     }
 
     private StandaloneEditorConstructionOptions OutputConstructionOptions(StandaloneCodeEditor editor)
     {
+        return EditorConstructionOptions(editor, output: true);
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor, bool output)
+    {
         return new()
         {
             AutomaticLayout = true,
-            ReadOnly = true,
-            // This avoids a virtual keyboard showing up on mobile.
-            DomReadOnly = true,
+            ReadOnly = output,
+            // This avoids a virtual keyboard showing up on mobile on the output (readonly) editor.
+            DomReadOnly = output,
             WordWrap = wordWrap ? "on" : "off",
-            Value = "Empty output (click Compile or press Ctrl+S to refresh)",
-            BracketPairColorization = new() { Enabled = false },
+            BracketPairColorization = output ? new() { Enabled = false } : null,
             Padding = new() { Top = 10 },
             Theme = GetMonacoTheme(dark: loadedDarkTheme),
+            Scrollbar = new()
+            {
+                // This allows Ctrl+Wheel on the editor to zoom the whole app
+                // (not ideal because it also scrolls if possible, but better than nothing).
+                AlwaysConsumeMouseWheel = false,
+            },
         };
     }
 
@@ -381,7 +409,15 @@
                 await AddInputAsync(InitialCode.RazorImports, selectAsCurrent: false);
             }
 
-            await SaveStateToUrlAsync();
+            var state = await SaveStateToUrlAsync(static state => state with
+            {
+                // We want a nice slug like `#razor`, so clean up the state
+                // (if users want the timestamp in the state to ensure it gets a unique cache entry,
+                // they can always click Compile).
+                Timestamp = null,
+            });
+
+            await TryLoadFromTemplateCacheAsync(state);
         }
     }
 
@@ -522,10 +558,11 @@
 
         // Update the tabs.
         activeInputTabId = IndexToInputTabId(index);
-        StateHasChanged();
 
         // Display output corresponding to the selected input.
-        await UpdateOutputDisplayAsync();
+        await AutoSelectOutputAsync(
+            updateTimestampMode: OutputActionMode.IfLazyTextIsResolved,
+            storeInCacheMode: OutputActionMode.IfLazyTextIsResolved);
     }
 
     private async Task AddInputAsync(InitialCode initialCode, bool selectAsCurrent = true)
@@ -562,7 +599,7 @@
         StateHasChanged();
     }
 
-    private async Task CompileAsync()
+    private async Task CompileAsync(bool storeInCache = true)
     {
         compilationInProgress = true;
 
@@ -570,21 +607,44 @@
 
         await editorInitialized.Task;
 
-        var savedState = await SaveStateToUrlAsync();
+        var state = await SaveStateToUrlAsync();
 
         // Compile.
-        var input = savedState.ToCompilationInput();
-        var result = await Worker.CompileAsync(input);
-        compiled = (input, result);
+        var input = state.ToCompilationInput();
+        var output = await Worker.CompileAsync(input);
+        compiled = (input, output, null);
+        outputOutdated = false;
 
-        await DisplaySquiggles();
+        await DisplaySquigglesAsync();
 
         compilationInProgress = false;
 
-        await UpdateOutputDisplayAsync();
+        var mode = storeInCache
+            ? OutputActionMode.Always
+            : OutputActionMode.Never;
+        await AutoSelectOutputAsync(
+            updateTimestampMode: mode,
+            storeInCacheMode: mode);
     }
 
-    private async Task DisplaySquiggles()
+    private void TryStoreInCache(SavedState state, CompiledAssembly output)
+    {
+        if (!settings.EnableCaching)
+        {
+            return;
+        }
+
+        // No need to cache an input equal to one of those in the built-in cache.
+        // Those will never be loaded from the server cache anyway.
+        if (TemplateCache.HasInput(state))
+        {
+            return;
+        }
+
+        _ = Cache.StoreAsync(state, output);
+    }
+
+    private async Task DisplaySquigglesAsync()
     {
         foreach (var input in inputs)
         {
@@ -598,27 +658,87 @@
 
     private async Task UpdateOutputDisplayAsync()
     {
-        await SaveStateToUrlAsync((state) => state with
-        {
-            // After changing the selected input, we call this method anyway to update outputs,
-            // so we can save both selected input and output here.
-            SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
-            SelectedOutputType = selectedOutputType,
-            GenerationStrategy = generationStrategy,
-        });
+        await UpdateOutputDisplayAsync(
+            updateTimestampMode: OutputActionMode.IfLazyTextIsResolved,
+            storeInCacheMode: OutputActionMode.IfLazyTextIsResolved);
+    }
 
-        if (compiled is null || selectedOutputType is null)
+    private async Task AutoSelectOutputAsync(
+        OutputActionMode updateTimestampMode,
+        OutputActionMode storeInCacheMode)
+    {
+        if (selectedOutputType is null ||
+            GetOutput(selectedOutputType) is not { } output ||
+            HasEmptyText(output) == true)
         {
-            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
-            return;
+            selectedOutputType = !AllOutputs.Any()
+                ? null
+                : AllOutputs.MaxBy(static o => o.Priority)!.Type;
         }
 
-        var output = GetOutput(selectedOutputType);
-        var outputText = await LoadOutputText(output);
-        await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
-            JSRuntime,
-            value: outputText,
-            language: output?.Output.Language));
+        await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
+    }
+
+    enum OutputActionMode
+    {
+        Never,
+        IfLazyTextIsResolved,
+        Always,
+    }
+
+    private async Task UpdateOutputDisplayAsync(
+        OutputActionMode updateTimestampMode,
+        OutputActionMode storeInCacheMode)
+    {
+        if (compiled is null || selectedOutputType is null)
+        {
+            var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
+            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
+        }
+        else
+        {
+            var compiledOutput = compiled?.Output;
+            var output = GetOutput(selectedOutputType);
+            var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
+            var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
+            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
+                JSRuntime,
+                value: outputText,
+                language: output?.Output.Language));
+
+            if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
+            {
+                // If a lazy text has been populated, re-cache.
+                TryStoreInCache(state, compiledOutput);
+            }
+        }
+
+        static bool shouldPerformOutputAction(OutputActionMode mode, bool resolvedLazyText)
+        {
+            return mode switch
+            {
+                OutputActionMode.Always => true,
+                OutputActionMode.IfLazyTextIsResolved => resolvedLazyText,
+                _ => false,
+            };
+        }
+
+        Task<SavedState> saveStateAsync(bool updateTimestamp)
+        {
+            return SaveStateToUrlAsync((state) => state with
+            {
+                // After changing the selected input, we call this method anyway to update outputs,
+                // so we can save both selected input and output here.
+                SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
+                SelectedOutputType = selectedOutputType,
+                GenerationStrategy = generationStrategy,
+
+                // If state is going to be cached, update the timestamp so the cache key is unique
+                // (it is not possible to overwrite cache entries
+                // to prevent anyone changing already shared snippet outputs).
+                Timestamp = updateTimestamp ? DateTime.UtcNow : state.Timestamp,
+            });
+        }
     }
 
     private (CompiledFileOutput Output, string? File)? GetOutput(string type)
@@ -639,21 +759,53 @@
         return null;
     }
 
-    private async Task<string> LoadOutputText((CompiledFileOutput Output, string? File)? outputInfo)
+    private bool? HasEmptyText((CompiledFileOutput Output, string? File)? outputInfo)
     {
-        if (outputInfo is not (var output, var file))
+        if (TryLoadEagerOutputText(outputInfo, out _, out _, out var text))
         {
-            return "";
+            return string.IsNullOrEmpty(text);
         }
 
-        if (output.DesignTimeText is not null && generationStrategy == designTime)
+        return null;
+    }
+
+    private bool TryLoadEagerOutputText((CompiledFileOutput Output, string? File)? outputInfo,
+        [NotNullWhen(returnValue: false)] out CompiledFileOutput? output,
+        out string? file,
+        [NotNullWhen(returnValue: true)] out string? text)
+    {
+        if (outputInfo is not (var o, var f))
         {
-            return output.DesignTimeText;
+            output = null;
+            file = null;
+            text = "";
+            return true;
         }
 
-        if (output.EagerText is { } text)
+        output = o;
+        file = f;
+
+        if (output.DesignTimeText is { } designTimeText && generationStrategy == designTime)
         {
-            return text;
+            text = designTimeText;
+            return true;
+        }
+
+        if (output.EagerText is { } eagerText)
+        {
+            text = eagerText;
+            return true;
+        }
+
+        text = null;
+        return false;
+    }
+
+    private async Task<(string Text, bool ResolvedLazyText)> LoadOutputTextAsync((CompiledFileOutput Output, string? File)? outputInfo)
+    {
+        if (TryLoadEagerOutputText(outputInfo, out var output, out var file, out var eagerText))
+        {
+            return (eagerText, false);
         }
 
         if (!outputLoading)
@@ -661,30 +813,33 @@
             return await loadAsync(compiled!.Value.Input, file: file, outputType: output.Type);
         }
 
-        return "";
+        return ("", false);
 
-        async Task<string> loadAsync(CompilationInput input, string? file, string outputType)
+        async Task<(string Text, bool ResolvedLazyText)> loadAsync(CompilationInput input, string? file, string outputType)
         {
             outputLoading = true;
             await RefreshAsync();
 
             string? result;
+            bool success;
             try
             {
-                // The text will be cached and loaded synchronously next time.
+                // The text will be cached and loaded synchronously next time (from `output.EagerText`).
                 result = await output.GetTextAsync(outputFactory: async () =>
                 {
                     return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
                 });
+                success = true;
             }
             catch (Exception ex)
             {
                 result = ex.ToString();
+                success = false;
             }
 
             outputLoading = false;
             StateHasChanged();
-            return result;
+            return (result, success);
         }
     }
 
@@ -719,6 +874,47 @@
         {
             Logger.LogError("Failed to set editor initialized result.");
         }
+
+        if (settings.AutoCompileOnStart && !compilationInProgress)
+        {
+            // Avoid storing the first auto compilation in cache
+            // (the same shared snippet would be stored multiple times unnecessarily and
+            // users can always store their snippet separately by compiling manually).
+            await CompileAsync(storeInCache: false);
+        }
+    }
+
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state)
+    {
+        if (TemplateCache.TryGetOutput(state, out var input, out var output))
+        {
+            compiled = (input, output, new(null));
+            await AfterCompiledLoadedFromCacheAsync();
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task TryLoadFromCacheAsync(SavedState state)
+    {
+        var result = await Cache.LoadAsync(state);
+        if (result is var (output, timestamp))
+        {
+            compiled = (state.ToCompilationInput(), output, new(timestamp));
+            await AfterCompiledLoadedFromCacheAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task AfterCompiledLoadedFromCacheAsync()
+    {
+        outputOutdated = false;
+        StateHasChanged();
+        await DisplaySquigglesAsync();
+        await AutoSelectOutputAsync(
+            updateTimestampMode: OutputActionMode.Never,
+            storeInCacheMode: OutputActionMode.Never);
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
@@ -741,11 +937,18 @@
     /// </summary>
     private void OnWorkspaceChanged()
     {
+        outputOutdated = true;
         var models = inputs
             .Select(i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = i.NewContent })
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
         Worker.OnDidChangeWorkspace(models);
+    }
+
+    private void OnDidChangeModelContent(ModelContentChangedEvent args)
+    {
+        outputOutdated = true;
+        LanguageServices.OnDidChangeModelContent(args);
     }
 
     private void OnScreenInfoUpdated()

@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="AwesomeAssertions" Version="8.0.1" />
     <PackageVersion Include="Basic.Reference.Assemblies.AspNet90" Version="1.8.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When upating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
@@ -28,6 +29,7 @@
     <PackageVersion Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
     <PackageVersion Include="NuGet.Protocol" Version="6.13.1" />
     <PackageVersion Include="protobuf-net" Version="3.2.46" />
+    <PackageVersion Include="System.IO.Hashing" Version="9.0.2" />
     <PackageVersion Include="xunit.v3" Version="1.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <!-- Transitive dependencies with a security vulnerability in lower versions. -->

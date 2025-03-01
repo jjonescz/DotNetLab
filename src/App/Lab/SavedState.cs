@@ -1,7 +1,29 @@
 using BlazorMonaco.Editor;
 using ProtoBuf;
+using System.Collections.Frozen;
 
 namespace DotNetLab.Lab;
+
+static class WellKnownSlugs
+{
+    public static readonly FrozenDictionary<string, SavedState> ShorthandToState;
+    public static readonly FrozenDictionary<string, string> FullSlugToShorthand;
+
+    static WellKnownSlugs()
+    {
+        IEnumerable<KeyValuePair<string, SavedState>> entries =
+        [
+            new("razor", SavedState.Razor),
+            new("csharp", SavedState.CSharp),
+            new("cshtml", SavedState.Cshtml),
+        ];
+
+        ShorthandToState = entries.ToFrozenDictionary();
+        FullSlugToShorthand = entries
+            .Select(static p => KeyValuePair.Create(Compressor.Compress(p.Value), p.Key))
+            .ToFrozenDictionary();
+    }
+}
 
 partial class Page
 {
@@ -17,14 +39,22 @@ partial class Page
     {
         var slug = GetCurrentSlug();
 
-        savedState = slug switch
+        var state = slug switch
         {
             _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
-            "csharp" => InitialCode.CSharp.ToSavedState(),
-            "razor" => SavedState.Initial,
-            "cshtml" => InitialCode.Cshtml.ToSavedState(),
+            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => wellKnownState,
             _ => Compressor.Uncompress(slug),
         };
+
+        // Sanitize the state to avoid crashes if possible
+        // (anything can be in the user-provided URL hash,
+        // but our app expects some invariants, like non-default ImmutableArrays).
+        if (state.Inputs.IsDefault)
+        {
+            state = state with { Inputs = [] };
+        }
+
+        savedState = state;
 
         // Load inputs.
         inputs.Clear();
@@ -67,6 +97,13 @@ partial class Page
 
         // Load settings.
         await settings.LoadFromStateAsync(savedState);
+
+        // Try loading from cache.
+        if (!await TryLoadFromTemplateCacheAsync(state) &&
+            settings.EnableCaching)
+        {
+            _ = TryLoadFromCacheAsync(state);
+        }
     }
 
     internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
@@ -90,6 +127,12 @@ partial class Page
         }
 
         var newSlug = Compressor.Compress(savedState);
+
+        if (WellKnownSlugs.FullSlugToShorthand.TryGetValue(newSlug, out var wellKnownSlug))
+        {
+            newSlug = wellKnownSlug;
+        }
+
         if (newSlug != GetCurrentSlug())
         {
             NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
@@ -116,12 +159,36 @@ partial class Page
     }
 }
 
+/// <remarks>
+/// <para>
+/// This is currently not comparable because <see cref="Inputs"/> is an <see cref="ImmutableArray{T}"/>.
+/// We would need to change it to <see cref="Sequence{T}"/> but also ensure that it still results in the same ProtoBuf encoding.
+/// </para>
+/// </remarks>
 [ProtoContract]
 internal sealed record SavedState
 {
-    public static SavedState Initial { get; } = new()
+    public static SavedState Initial => Razor;
+
+    // Well-known slugs should have `SelectedOutputType` set so choosing them in the Template drop down
+    // matches the well-known state and hence the corresponding well-known slug is displayed in the URL.
+
+    public static SavedState Razor { get; } = new()
     {
         Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
+        SelectedOutputType = "cs",
+    };
+
+    public static SavedState CSharp { get; } = new()
+    {
+        Inputs = [InitialCode.CSharp.ToInputCode()],
+        SelectedOutputType = "run",
+    };
+
+    public static SavedState Cshtml { get; } = new()
+    {
+        Inputs = [InitialCode.Cshtml.ToInputCode()],
+        SelectedOutputType = "cs",
     };
 
     [ProtoMember(1)]
@@ -153,6 +220,45 @@ internal sealed record SavedState
 
     [ProtoMember(7)]
     public BuildConfiguration RazorConfiguration { get; init; }
+
+    [ProtoMember(11)]
+    public DateTime? Timestamp { get; init; }
+
+    public bool HasDefaultCompilerConfiguration
+    {
+        get
+        {
+            return string.IsNullOrEmpty(RoslynVersion) &&
+                string.IsNullOrEmpty(RazorVersion) &&
+                string.IsNullOrEmpty(Configuration);
+        }
+    }
+
+    /// <summary>
+    /// Trims down to a state that is important for compilation output.
+    /// Used as cache key in <see cref="InputOutputCache"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Timestamp"/> is included as well, albeit not important for compilation per se,
+    /// it is used to allow different users having the same input and get a unique cache key
+    /// (because the cache does not allow overwriting cache entries
+    /// to prevent anyone changing already shared snippet outputs).
+    /// </remarks>
+    public SavedState ToCacheKey()
+    {
+        return this with
+        {
+            SelectedInputIndex = 0,
+            SelectedOutputType = null,
+            GenerationStrategy = null,
+            SdkVersion = null,
+        };
+    }
+
+    public string ToCacheSlug()
+    {
+        return Compressor.Compress(ToCacheKey());
+    }
 
     public CompilationInput ToCompilationInput()
     {

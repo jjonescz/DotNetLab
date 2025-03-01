@@ -8,30 +8,22 @@
     background-color: light-dark(var(--custom-light), var(--custom-dark)) !important;
 }
 
-    .lab-header .header-gutters {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr);
-        column-gap: 10px;
-        row-gap: 10px;
+    .lab-header > .header-gutters {
+        display: flex !important;
+        flex-flow: row wrap;
+        justify-content: space-between;
+        column-gap: 0.5rem;
+        row-gap: 0.5rem;
     }
 
-        .lab-header .header-gutters div {
+        .lab-header > .header-gutters > div {
             display: flex;
-            flex-direction: row;
+            flex-flow: row wrap;
             justify-content: center;
             align-items: center;
-            column-gap: 10px;
-            row-gap: 10px;
-            flex-wrap: wrap;
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
         }
-
-            .lab-header .header-gutters div:first-child {
-                justify-content: start;
-            }
-
-            .lab-header .header-gutters div:last-child {
-                justify-content: end;
-            }
 
 html, body {
     --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
