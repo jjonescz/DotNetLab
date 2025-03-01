@@ -659,7 +659,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             {
                 Hash = commitHash,
                 Date = response.Commit.Author.Date,
-                Message = response.Commit.Message,
+                Message = response.Commit.Message.GetFirstLine(),
                 Version = version,
             };
         StateHasChanged();
