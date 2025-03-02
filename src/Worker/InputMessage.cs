@@ -70,14 +70,12 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record UseCompilerVersion(CompilerKind CompilerKind, string? Version, BuildConfiguration Configuration) : WorkerInputMessage<NoOutput>
+    public sealed record UseCompilerVersion(CompilerKind CompilerKind, string? Version, BuildConfiguration Configuration) : WorkerInputMessage<bool>
     {
-        public override async Task<NoOutput> HandleAsync(IServiceProvider services)
+        public override async Task<bool> HandleAsync(IServiceProvider services)
         {
             var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
-            await compilerDependencyProvider.UseAsync(CompilerKind, Version, Configuration);
-
-            return NoOutput.Instance;
+            return await compilerDependencyProvider.UseAsync(CompilerKind, Version, Configuration);
         }
     }
 

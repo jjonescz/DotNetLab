@@ -17,18 +17,34 @@ internal sealed class CompilerDependencyProvider(
     BuiltInCompilerProvider builtInProvider,
     IEnumerable<ICompilerDependencyResolver> resolvers)
 {
-    private readonly Dictionary<CompilerKind, CompilerDependency> loaded = new();
+    private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, CompilerDependency Loaded)> loaded = new();
 
     public async Task<CompilerDependencyInfo> GetLoadedInfoAsync(CompilerKind compilerKind)
     {
         var dependency = loaded.TryGetValue(compilerKind, out var result)
-            ? result
+            ? result.Loaded
             : builtInProvider.GetBuiltInDependency(compilerKind);
         return await dependency.Info();
     }
 
-    public async Task UseAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
+    /// <returns>
+    /// <see langword="false"/> if the same version is already used.
+    /// </returns>
+    public async Task<bool> UseAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
     {
+        if (loaded.TryGetValue(compilerKind, out var dependency))
+        {
+            if (dependency.UserInput.Version == version &&
+                dependency.UserInput.Configuration == configuration)
+            {
+                return false;
+            }
+        }
+        else if (version == null && configuration == default)
+        {
+            return false;
+        }
+
         var info = CompilerInfo.For(compilerKind);
 
         var task = findOrThrowAsync();
@@ -37,6 +53,8 @@ internal sealed class CompilerDependencyProvider(
         dependencyRegistry.Set(info, async () => await (await task).Assemblies());
 
         await task;
+
+        return true;
 
         async Task<CompilerDependency> findOrThrowAsync()
         {
@@ -54,7 +72,13 @@ internal sealed class CompilerDependencyProvider(
                 throw new InvalidOperationException($"Specified version was not found.\n{errors?.JoinToString("\n")}");
             }
 
-            loaded[compilerKind] = found;
+            var userInput = new CompilerDependencyUserInput
+            {
+                Version = version,
+                Configuration = configuration,
+            };
+
+            loaded[compilerKind] = (userInput, found);
 
             return found;
 
@@ -265,6 +289,12 @@ internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>
     {
         writer.WriteStringValue(value.ToString());
     }
+}
+
+internal sealed class CompilerDependencyUserInput
+{
+    public required string? Version { get; init; }
+    public required BuildConfiguration Configuration { get; init; }
 }
 
 internal sealed class CompilerDependency

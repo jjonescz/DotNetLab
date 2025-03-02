@@ -522,14 +522,17 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         string? versionToLoad,
         BuildConfiguration configuration)
     {
-        Page.OnCompilerVersionChanged();
-
         try
         {
-            await Worker.UseCompilerVersionAsync(
+            var changed = await Worker.UseCompilerVersionAsync(
                 compilerKind,
                 version: versionToLoad,
                 configuration: configuration);
+
+            if (changed)
+            {
+                Page.OnCompilerVersionChanged();
+            }
 
             var info = modalHidden
                 ? null
