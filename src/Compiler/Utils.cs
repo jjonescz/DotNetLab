@@ -6,6 +6,20 @@ namespace DotNetLab;
 
 public static class CodeAnalysisUtil
 {
+    public static bool TryGetHostOutputSafe(
+        this GeneratorRunResult result,
+        string key,
+        [NotNullWhen(returnValue: true)] out object? value)
+    {
+        if (result.GetType().GetProperty("HostOutputs")?.GetValue(result) is ImmutableDictionary<string, object?> hostOutputs)
+        {
+            return hostOutputs.TryGetValue(key, out value);
+        }
+
+        value = null;
+        return false;
+    }
+
     public static DiagnosticData ToDiagnosticData(this Diagnostic d)
     {
         string? filePath = d.Location.SourceTree?.FilePath;
@@ -177,5 +191,26 @@ internal static class RazorUtil
     public static TextSpan ToTextSpan(this SourceSpan span)
     {
         return new TextSpan(span.AbsoluteIndex, span.Length);
+    }
+}
+
+internal readonly record struct RazorGeneratorResultSafe(object Inner)
+{
+    public bool TryGetCodeDocument(
+        string physicalPath,
+        [NotNullWhen(returnValue: true)] out RazorCodeDocument? result)
+    {
+        var method = Inner.GetType().GetMethod("GetCodeDocument");
+        if (method is not null &&
+            method.GetParameters() is [{ } param] &&
+            param.ParameterType == typeof(string) &&
+            method.Invoke(Inner, [physicalPath]) is RazorCodeDocument innerResult)
+        {
+            result = innerResult;
+            return true;
+        }
+
+        result = null;
+        return false;
     }
 }

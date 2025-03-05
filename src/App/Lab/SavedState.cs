@@ -206,6 +206,9 @@ internal sealed record SavedState
     [ProtoMember(5)]
     public string? Configuration { get; init; }
 
+    [ProtoMember(12)]
+    public RazorToolchain RazorToolchain { get; init; }
+
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
 
@@ -265,6 +268,7 @@ internal sealed record SavedState
         return new(Inputs)
         {
             Configuration = Configuration,
+            RazorToolchain = RazorToolchain,
         };
     }
 }

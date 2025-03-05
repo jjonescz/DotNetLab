@@ -59,6 +59,13 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                         @* Auto compile on start check box *@
                         <FluentCheckbox @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync"
                         Label="Automatically begin compilation on start" />
+
+                        @* Razor toolchain *@
+                        <FluentStack VerticalAlignment="VerticalAlignment.Center">
+                            <span>Razor toolchain</span>
+                            <FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
+                            Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
+                        </FluentStack>
                     </FluentStack>
                 </FluentAccordionItem>
             </FluentAccordion>
@@ -304,6 +311,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
     public bool AutoCompileOnStart { get; set; }
+    public RazorToolchain RazorToolchain { get; set; }
 
     private async Task OnSetDebugLogsAsync()
     {
@@ -319,15 +327,36 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     {
         await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
     }
-    
+
     private async Task OnSetEnableCachingAsync()
     {
         await LocalStorage.SetItemAsync(nameof(EnableCaching), EnableCaching);
     }
-    
+
     private async Task OnSetAutoCompileOnStartAsync()
     {
         await LocalStorage.SetItemAsync(nameof(AutoCompileOnStart), AutoCompileOnStart);
+    }
+
+    private async Task OnSetRazorToolchainAsync()
+    {
+        Page.OnSettingsInputChanged();
+
+        await Page.SaveStateToUrlAsync(state => state with
+        {
+            RazorToolchain = RazorToolchain,
+        });
+    }
+
+    private static string RazorToolchainText(RazorToolchain value)
+    {
+        return value switch
+        {
+            RazorToolchain.SourceGeneratorOrInternalApi => "Auto",
+            RazorToolchain.SourceGenerator => "Source Generator",
+            RazorToolchain.InternalApi => "Internal API",
+            _ => value.ToString(),
+        };
     }
 
     protected override async Task OnInitializedAsync()
@@ -355,6 +384,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
         EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
         AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
+        RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
 
         var savedCommitInfo = await loadOptionAsync<CommitInfo>(nameof(commitInfo));
         if (savedCommitInfo?.Hash == VersionUtil.CurrentCommitHash)
@@ -531,7 +561,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
             if (changed)
             {
-                Page.OnCompilerVersionChanged();
+                Page.OnSettingsInputChanged();
             }
 
             var info = modalHidden

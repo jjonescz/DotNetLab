@@ -21,6 +21,14 @@ public sealed record CompilationInput
 
     public Sequence<InputCode> Inputs { get; }
     public string? Configuration { get; init; }
+    public RazorToolchain RazorToolchain { get; init; }
+}
+
+public enum RazorToolchain
+{
+    InternalApi,
+    SourceGeneratorOrInternalApi,
+    SourceGenerator,
 }
 
 [ProtoContract]
