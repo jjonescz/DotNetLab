@@ -1,5 +1,6 @@
 using ProtoBuf;
 using System.Runtime.Loader;
+using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -92,7 +93,7 @@ public sealed record CompiledAssembly(
                 {
                     Type = DiagnosticsOutputType,
                     Label = DiagnosticsOutputLabel,
-                    EagerText = output,
+                    Text = output,
                 },
             ],
             NumErrors: 1,
@@ -127,76 +128,112 @@ public sealed record CompiledFile(ImmutableArray<CompiledFileOutput> Outputs)
 
 public sealed class CompiledFileOutput
 {
-    private object? text;
-
     public required string Type { get; init; }
     public required string Label { get; init; }
     public int Priority { get; init; }
     public string? Language { get; init; }
-    public string? DesignTimeText { get; init; }
 
+    [JsonIgnore]
+    public LazyText Text { get; init; }
+
+    [JsonIgnore]
+    public LazyText DesignTime { get; init; }
+
+    [Obsolete("Only for JSON serialization.", error: true)]
+    public string? DesignTimeText
+    {
+        get
+        {
+            return DesignTime.EagerValue;
+        }
+        init
+        {
+            DesignTime = new(value);
+        }
+    }
+
+    [Obsolete("Only for JSON serialization.", error: true)]
     public string? EagerText
     {
         get
         {
-            if (text is string eagerText)
+            return Text.EagerValue;
+        }
+        init
+        {
+            Text = new(value);
+        }
+    }
+
+    public LazyText GetText(bool designTime) => designTime ? DesignTime : Text;
+}
+
+public struct LazyText
+{
+    private object? value;
+
+    public LazyText(string? text)
+    {
+        value = text;
+    }
+
+    public LazyText(Func<ValueTask<string>> factory)
+    {
+        value = factory;
+    }
+
+    public string? EagerValue
+    {
+        get
+        {
+            if (value is string eagerText)
             {
                 return eagerText;
             }
 
-            if (text is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
+            if (value is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
             {
-                text = taskResult;
+                value = taskResult;
                 return taskResult;
             }
 
             return null;
         }
-        init
-        {
-            text = value;
-        }
     }
 
-    public Func<ValueTask<string>> LazyText
+    public ValueTask<string> GetValueAsync(Func<ValueTask<string>>? outputFactory)
     {
-        init
-        {
-            text = value;
-        }
-    }
-
-    public ValueTask<string> GetTextAsync(Func<ValueTask<string>>? outputFactory)
-    {
-        if (EagerText is { } eagerText)
+        if (EagerValue is { } eagerText)
         {
             return new(eagerText);
         }
 
-        if (text is null)
+        if (value is null)
         {
             if (outputFactory is null)
             {
-                throw new InvalidOperationException($"For lazy outputs, {nameof(outputFactory)} must be provided.");
+                throw new InvalidOperationException($"For uncached lazy texts, {nameof(outputFactory)} must be provided.");
             }
 
             var output = outputFactory();
-            text = output;
+            value = output;
             return output;
         }
 
-        if (text is ValueTask<string> valueTask)
+        if (value is ValueTask<string> valueTask)
         {
             return valueTask;
         }
 
-        if (text is Func<ValueTask<string>> factory)
+        if (value is Func<ValueTask<string>> factory)
         {
             var result = factory();
-            text = result;
+            value = result;
             return result;
         }
 
-        throw new InvalidOperationException($"Unrecognized {nameof(text)}: {text?.GetType().FullName ?? "null"}");
+        throw new InvalidOperationException($"Unrecognized {nameof(LazyText)}.{nameof(value)}: {value?.GetType().FullName ?? "null"}");
     }
+
+    public static implicit operator LazyText(string? text) => new(text);
 }

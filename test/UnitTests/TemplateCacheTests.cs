@@ -32,8 +32,8 @@ public sealed class TemplateCacheTests
             .Concat(actualOutput.GlobalOutputs);
         foreach (var output in allOutputs)
         {
-            await output.GetTextAsync(outputFactory: null);
-            Assert.NotNull(output.EagerText);
+            await output.Text.GetValueAsync(outputFactory: null);
+            Assert.NotNull(output.Text.EagerValue);
         }
 
         // Compare JSONs (do this early so when templates are updated,
