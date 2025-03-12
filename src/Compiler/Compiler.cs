@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
 
 namespace DotNetLab;
@@ -126,31 +127,54 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             }).Concat(additionalSources.Select((input) =>
             {
                 var filePath = getFilePath(input);
-                RazorCodeDocument? codeDocument = getRazorCodeDocument(filePath, designTime: false);
-                RazorCodeDocument? designTimeDocument = getRazorCodeDocument(filePath, designTime: true);
+                Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: false));
+                Result<RazorCodeDocument?> designTimeDocument = new(() => getRazorCodeDocument(filePath, designTime: true));
 
-                if (codeDocument is null && designTimeDocument is null)
+                if (codeDocument.TryGetValue(out var c) && c is null && designTimeDocument.TryGetValue(out var d) && d is null)
                 {
                     return KeyValuePair.Create(input.FileName, new CompiledFile([]));
                 }
 
-                string syntax = codeDocument?.GetSyntaxTree().Serialize() ?? "";
-                string ir = codeDocument?.GetDocumentIntermediateNode().Serialize() ?? "";
-                string cSharp = codeDocument?.GetCSharpDocument().GetGeneratedCode() ?? "";
-                string razorDiagnostics = codeDocument?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "";
-
-                string designSyntax = designTimeDocument?.GetSyntaxTree().Serialize() ?? "";
-                string designIr = designTimeDocument?.GetDocumentIntermediateNode().Serialize() ?? "";
-                string designCSharp = designTimeDocument?.GetCSharpDocument().GetGeneratedCode() ?? "";
-                string designRazorDiagnostics = designTimeDocument?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "";
+                Result<string> razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "");
+                Result<string> designRazorDiagnostics = designTimeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "");
 
                 var compiledFile = new CompiledFile([
-                    new() { Type = "syntax", Label = "Syntax", Text = syntax, DesignTime = designSyntax },
-                    new() { Type = "ir", Label = "IR", Language = "csharp", Text = ir, DesignTime = designIr },
-                    .. string.IsNullOrEmpty(razorDiagnostics) && string.IsNullOrEmpty(designRazorDiagnostics)
+                    new()
+                    {
+                        Type = "syntax",
+                        Label = "Syntax",
+                        Text = new(() => new(codeDocument.Unwrap()?.GetSyntaxTree().Serialize() ?? "")),
+                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetSyntaxTree().Serialize() ?? "")),
+                    },
+                    new()
+                    {
+                        Type = "ir",
+                        Label = "IR",
+                        Language = "csharp",
+                        Text = new(() => new(codeDocument.Unwrap()?.GetDocumentIntermediateNode().Serialize() ?? "")),
+                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetDocumentIntermediateNode().Serialize() ?? "")),
+                    },
+                    .. razorDiagnostics.TryGetValue(out var d1) && string.IsNullOrEmpty(d1) &&
+                        designRazorDiagnostics.TryGetValue(out var d2) && string.IsNullOrEmpty(d2)
                         ? ImmutableArray<CompiledFileOutput>.Empty
-                        : [new() { Type = "razorErrors", Label = "Razor Error List", Text = razorDiagnostics, DesignTime = designRazorDiagnostics }],
-                    new() { Type = "cs", Label = "C#", Language = "csharp", Text = cSharp, DesignTime = designCSharp, Priority = 1 },
+                        : [
+                            new()
+                            {
+                                Type = "razorErrors",
+                                Label = "Razor Error List",
+                                Text = new(() => new(razorDiagnostics.Unwrap())),
+                                DesignTime = new(() => new(designRazorDiagnostics.Unwrap())),
+                            }
+                        ],
+                    new()
+                    {
+                        Type = "cs",
+                        Label = "C#",
+                        Language = "csharp",
+                        Text = new(() => new(codeDocument.Unwrap()?.GetCSharpDocument().GetGeneratedCode() ?? "")),
+                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetCSharpDocument().GetGeneratedCode() ?? "")),
+                        Priority = 1,
+                    },
                 ]);
 
                 return KeyValuePair.Create(input.FileName, compiledFile);
@@ -678,5 +702,68 @@ internal sealed class ConfigureRazorParserOptions(CSharpParseOptions cSharpParse
         {
             cSharpParseOptionsProperty.SetValue(options, cSharpParseOptions);
         }
+    }
+}
+
+internal readonly struct Result<T>
+{
+    private readonly ExceptionDispatchInfo? _exception;
+    private readonly T? _value;
+
+    public Result(ExceptionDispatchInfo exception)
+    {
+        _exception = exception;
+        _value = default;
+    }
+
+    public Result(T value)
+    {
+        _exception = null;
+        _value = value;
+    }
+
+    public Result(Func<T> factory)
+    {
+        try
+        {
+            _exception = null;
+            _value = factory();
+        }
+        catch (Exception ex)
+        {
+            _exception = ExceptionDispatchInfo .Capture(ex);
+            _value = default;
+        }
+    }
+
+    public T Unwrap()
+    {
+        if (_exception is { } exception)
+        {
+            exception.Throw();
+            throw exception.SourceException; // unreachable
+        }
+
+        return _value!;
+    }
+
+    public bool TryGetValue([NotNullWhen(returnValue: true)] out T? value)
+    {
+        if (_exception is null)
+        {
+            value = _value!;
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
+    public Result<R> Map<R>(Func<T, R> mapper)
+    {
+        var value = _value;
+        return _exception is { } exception
+            ? new Result<R>(exception)
+            : new Result<R>(() => mapper(value!));
     }
 }
