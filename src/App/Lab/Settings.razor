@@ -66,6 +66,13 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                             <FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
                             Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
                         </FluentStack>
+                        
+                        @* Razor strategy *@
+                        <FluentStack VerticalAlignment="VerticalAlignment.Center">
+                            <span>Razor strategy</span>
+                            <FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
+                            Items="Enum.GetValues<RazorStrategy>()" />
+                        </FluentStack>
                     </FluentStack>
                 </FluentAccordionItem>
             </FluentAccordion>
@@ -312,6 +319,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     public bool EnableCaching { get; set; }
     public bool AutoCompileOnStart { get; set; }
     public RazorToolchain RazorToolchain { get; set; }
+    public RazorStrategy RazorStrategy { get; set; }
 
     private async Task OnSetDebugLogsAsync()
     {
@@ -345,6 +353,16 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await Page.SaveStateToUrlAsync(state => state with
         {
             RazorToolchain = RazorToolchain,
+        });
+    }
+    
+    private async Task OnSetRazorStrategyAsync()
+    {
+        Page.OnSettingsInputChanged();
+
+        await Page.SaveStateToUrlAsync(state => state with
+        {
+            RazorStrategy = RazorStrategy,
         });
     }
 
@@ -461,6 +479,10 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     internal Task LoadFromStateAsync(SavedState state)
     {
+        RazorToolchain = state.RazorToolchain;
+        RazorStrategy = state.RazorStrategy;
+        StateHasChanged();
+
         Task sdkTask = Task.CompletedTask;
         Task roslynTask = Task.CompletedTask;
         Task razorTask = Task.CompletedTask;

@@ -51,7 +51,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record GetOutput(CompilationInput Input, string? File, string OutputType, bool DesignTime) : WorkerInputMessage<string>
+    public sealed record GetOutput(CompilationInput Input, string? File, string OutputType) : WorkerInputMessage<string>
     {
         public override async Task<string> HandleAsync(IServiceProvider services)
         {
@@ -59,12 +59,12 @@ public abstract record WorkerInputMessage
             var result = await compiler.CompileAsync(Input);
             if (File is null)
             {
-                return await result.GetRequiredGlobalOutput(OutputType).GetText(DesignTime).GetValueAsync(outputFactory: null);
+                return await result.GetRequiredGlobalOutput(OutputType).Text.GetValueAsync(outputFactory: null);
             }
             else
             {
                 return result.Files.TryGetValue(File, out var file)
-                    ? await file.GetRequiredOutput(OutputType).GetText(DesignTime).GetValueAsync(outputFactory: null)
+                    ? await file.GetRequiredOutput(OutputType).Text.GetValueAsync(outputFactory: null)
                     : throw new InvalidOperationException($"File '{File}' not found.");
             }
         }

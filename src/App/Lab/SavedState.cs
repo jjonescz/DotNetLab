@@ -86,7 +86,6 @@ partial class Page
 
         activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
-        generationStrategy = savedState.GenerationStrategy;
 
         OnWorkspaceChanged();
 
@@ -201,13 +200,20 @@ internal sealed record SavedState
     public string? SelectedOutputType { get; init; }
 
     [ProtoMember(10)]
-    public string? GenerationStrategy { get; init; }
+    [Obsolete($"Use {nameof(RazorStrategy)} instead", error: true)]
+    public string? GenerationStrategy
+    {
+        get => RazorStrategy == RazorStrategy.DesignTime ? "designTime" : null;
+        init => RazorStrategy = value == "designTime" ? RazorStrategy.DesignTime : RazorStrategy.Runtime;
+    }
 
     [ProtoMember(5)]
     public string? Configuration { get; init; }
 
     [ProtoMember(12)]
     public RazorToolchain RazorToolchain { get; init; }
+
+    public RazorStrategy RazorStrategy { get; init; }
 
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
@@ -253,7 +259,6 @@ internal sealed record SavedState
         {
             SelectedInputIndex = 0,
             SelectedOutputType = null,
-            GenerationStrategy = null,
             SdkVersion = null,
         };
     }
@@ -269,6 +274,7 @@ internal sealed record SavedState
         {
             Configuration = Configuration,
             RazorToolchain = RazorToolchain,
+            RazorStrategy = RazorStrategy,
         };
     }
 }

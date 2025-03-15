@@ -23,6 +23,7 @@ public sealed record CompilationInput
     public Sequence<InputCode> Inputs { get; }
     public string? Configuration { get; init; }
     public RazorToolchain RazorToolchain { get; init; }
+    public RazorStrategy RazorStrategy { get; init; }
 }
 
 public enum RazorToolchain
@@ -30,6 +31,12 @@ public enum RazorToolchain
     InternalApi,
     SourceGeneratorOrInternalApi,
     SourceGenerator,
+}
+
+public enum RazorStrategy
+{
+    Runtime,
+    DesignTime,
 }
 
 [ProtoContract]
@@ -136,22 +143,6 @@ public sealed class CompiledFileOutput
     [JsonIgnore]
     public LazyText Text { get; init; }
 
-    [JsonIgnore]
-    public LazyText DesignTime { get; init; }
-
-    [Obsolete("Only for JSON serialization.", error: true)]
-    public string? DesignTimeText
-    {
-        get
-        {
-            return DesignTime.EagerValue;
-        }
-        init
-        {
-            DesignTime = new(value);
-        }
-    }
-
     [Obsolete("Only for JSON serialization.", error: true)]
     public string? EagerText
     {
@@ -164,8 +155,6 @@ public sealed class CompiledFileOutput
             Text = new(value);
         }
     }
-
-    public LazyText GetText(bool designTime) => designTime ? DesignTime : Text;
 }
 
 public struct LazyText

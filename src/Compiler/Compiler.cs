@@ -95,9 +95,18 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
 
-        var (finalCompilation, additionalDiagnostics) = compilationInput.RazorToolchain switch
+        var effectiveToolchain = compilationInput.RazorToolchain switch
         {
-            RazorToolchain.SourceGenerator or RazorToolchain.SourceGeneratorOrInternalApi => runRazorSourceGenerator(),
+            RazorToolchain.SourceGeneratorOrInternalApi =>
+                compilationInput.RazorStrategy == RazorStrategy.DesignTime
+                    ? RazorToolchain.InternalApi
+                    : RazorToolchain.SourceGenerator,
+            var other => other,
+        };
+
+        var (finalCompilation, additionalDiagnostics) = effectiveToolchain switch
+        {
+            RazorToolchain.SourceGenerator => runRazorSourceGenerator(),
             RazorToolchain.InternalApi => runRazorInternalApi(),
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
@@ -127,16 +136,14 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             }).Concat(additionalSources.Select((input) =>
             {
                 var filePath = getFilePath(input);
-                Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: false));
-                Result<RazorCodeDocument?> designTimeDocument = new(() => getRazorCodeDocument(filePath, designTime: true));
+                Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: compilationInput.RazorStrategy == RazorStrategy.DesignTime));
 
-                if (codeDocument.TryGetValue(out var c) && c is null && designTimeDocument.TryGetValue(out var d) && d is null)
+                if (codeDocument.TryGetValue(out var c) && c is null)
                 {
                     return KeyValuePair.Create(input.FileName, new CompiledFile([]));
                 }
 
                 string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
-                string designRazorDiagnostics = designTimeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
 
                 var compiledFile = new CompiledFile([
                     new()
@@ -144,7 +151,6 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         Type = "syntax",
                         Label = "Syntax",
                         Text = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
-                        DesignTime = designTimeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
                     },
                     new()
                     {
@@ -152,9 +158,8 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         Label = "IR",
                         Language = "csharp",
                         Text = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
-                        DesignTime = designTimeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
                     },
-                    .. string.IsNullOrEmpty(razorDiagnostics) && string.IsNullOrEmpty(designRazorDiagnostics)
+                    .. string.IsNullOrEmpty(razorDiagnostics)
                         ? ImmutableArray<CompiledFileOutput>.Empty
                         : [
                             new()
@@ -162,7 +167,6 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                                 Type = "razorErrors",
                                 Label = "Razor Error List",
                                 Text = razorDiagnostics,
-                                DesignTime = designRazorDiagnostics,
                             }
                         ],
                     new()
@@ -171,7 +175,6 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         Label = "C#",
                         Language = "csharp",
                         Text = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
-                        DesignTime = designTimeDocument.Map(d => d?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
                 ]);
