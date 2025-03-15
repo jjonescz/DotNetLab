@@ -55,7 +55,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         }
 
         const string projectName = "TestProject";
-        const string directory = "/TestProject/";
+        const string directory = "/";
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
