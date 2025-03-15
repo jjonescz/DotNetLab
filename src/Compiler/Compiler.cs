@@ -135,35 +135,34 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     return KeyValuePair.Create(input.FileName, new CompiledFile([]));
                 }
 
-                Result<string> razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "");
-                Result<string> designRazorDiagnostics = designTimeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "");
+                string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
+                string designRazorDiagnostics = designTimeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
 
                 var compiledFile = new CompiledFile([
                     new()
                     {
                         Type = "syntax",
                         Label = "Syntax",
-                        Text = new(() => new(codeDocument.Unwrap()?.GetSyntaxTree().Serialize() ?? "")),
-                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetSyntaxTree().Serialize() ?? "")),
+                        Text = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
+                        DesignTime = designTimeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
                     },
                     new()
                     {
                         Type = "ir",
                         Label = "IR",
                         Language = "csharp",
-                        Text = new(() => new(codeDocument.Unwrap()?.GetDocumentIntermediateNode().Serialize() ?? "")),
-                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetDocumentIntermediateNode().Serialize() ?? "")),
+                        Text = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
+                        DesignTime = designTimeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
                     },
-                    .. razorDiagnostics.TryGetValue(out var d1) && string.IsNullOrEmpty(d1) &&
-                        designRazorDiagnostics.TryGetValue(out var d2) && string.IsNullOrEmpty(d2)
+                    .. string.IsNullOrEmpty(razorDiagnostics) && string.IsNullOrEmpty(designRazorDiagnostics)
                         ? ImmutableArray<CompiledFileOutput>.Empty
                         : [
                             new()
                             {
                                 Type = "razorErrors",
                                 Label = "Razor Error List",
-                                Text = new(() => new(razorDiagnostics.Unwrap())),
-                                DesignTime = new(() => new(designRazorDiagnostics.Unwrap())),
+                                Text = razorDiagnostics,
+                                DesignTime = designRazorDiagnostics,
                             }
                         ],
                     new()
@@ -171,8 +170,8 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         Type = "cs",
                         Label = "C#",
                         Language = "csharp",
-                        Text = new(() => new(codeDocument.Unwrap()?.GetCSharpDocument().GetGeneratedCode() ?? "")),
-                        DesignTime = new(() => new(designTimeDocument.Unwrap()?.GetCSharpDocument().GetGeneratedCode() ?? "")),
+                        Text = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
+                        DesignTime = designTimeDocument.Map(d => d?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
                 ]);
@@ -705,6 +704,16 @@ internal sealed class ConfigureRazorParserOptions(CSharpParseOptions cSharpParse
     }
 }
 
+internal static class Result
+{
+    public static string Serialize(this Result<string> result)
+    {
+        return result.TryGetValueOrException(out var value, out var exception)
+            ? value
+            : exception.SourceException.ToString();
+    }
+}
+
 internal readonly struct Result<T>
 {
     private readonly ExceptionDispatchInfo? _exception;
@@ -749,14 +758,23 @@ internal readonly struct Result<T>
 
     public bool TryGetValue([NotNullWhen(returnValue: true)] out T? value)
     {
-        if (_exception is null)
+        return TryGetValueOrException(out value, out _);
+    }
+
+    public bool TryGetValueOrException(
+        [NotNullWhen(returnValue: true)] out T? value,
+        [NotNullWhen(returnValue: false)] out ExceptionDispatchInfo? exception)
+    {
+        if (_exception is { } ex)
         {
-            value = _value!;
-            return true;
+            value = default;
+            exception = ex;
+            return false;
         }
 
-        value = default;
-        return false;
+        value = _value!;
+        exception = null;
+        return true;
     }
 
     public Result<R> Map<R>(Func<T, R> mapper)
