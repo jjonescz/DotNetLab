@@ -689,7 +689,7 @@ internal sealed class ConfigureRazorParserOptions(CSharpParseOptions cSharpParse
 {
     public int Order { get; set; }
 
-    public void Configure(RazorParserOptionsBuilder options)
+    public void Configure(RazorParserOptions.Builder options)
     {
         if (options.GetType().GetProperty("UseRoslynTokenizer") is { } useRoslynTokenizerProperty)
         {
