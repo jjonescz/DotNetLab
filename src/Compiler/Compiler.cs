@@ -430,12 +430,25 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         References = references,
                     });
 
-                    b.Features.Add(new ConfigureRazorParserOptions(parseOptions));
+                    b.ConfigureRazorParserOptionsSafe(options =>
+                    {
+                        if (options.GetType().GetProperty("UseRoslynTokenizer") is { } useRoslynTokenizerProperty)
+                        {
+                            var useRoslynTokenizer = parseOptions.Features.TryGetValue("use-roslyn-tokenizer", out var useRoslynTokenizerValue) &&
+                                string.Equals(useRoslynTokenizerValue, bool.TrueString, StringComparison.OrdinalIgnoreCase);
+                            useRoslynTokenizerProperty.SetValue(options, useRoslynTokenizer);
+                        }
+
+                        if (options.GetType().GetProperty("CSharpParseOptions") is { } cSharpParseOptionsProperty)
+                        {
+                            cSharpParseOptionsProperty.SetValue(options, parseOptions);
+                        }
+                    });
 
                     CompilerFeatures.Register(b);
                     RazorExtensions.Register(b);
 
-                    b.SetCSharpLanguageVersion(LanguageVersion.Preview);
+                    b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
             }
         }
@@ -684,27 +697,6 @@ internal sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
 
     public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
         => Options.TryGetValue(key, out value);
-}
-
-internal sealed class ConfigureRazorParserOptions(CSharpParseOptions cSharpParseOptions)
-    : RazorEngineFeatureBase, IConfigureRazorParserOptionsFeature
-{
-    public int Order { get; set; }
-
-    public void Configure(RazorParserOptions.Builder options)
-    {
-        if (options.GetType().GetProperty("UseRoslynTokenizer") is { } useRoslynTokenizerProperty)
-        {
-            var useRoslynTokenizer = cSharpParseOptions.Features.TryGetValue("use-roslyn-tokenizer", out var useRoslynTokenizerValue) &&
-                string.Equals(useRoslynTokenizerValue, bool.TrueString, StringComparison.OrdinalIgnoreCase);
-            useRoslynTokenizerProperty.SetValue(options, useRoslynTokenizer);
-        }
-
-        if (options.GetType().GetProperty("CSharpParseOptions") is { } cSharpParseOptionsProperty)
-        {
-            cSharpParseOptionsProperty.SetValue(options, cSharpParseOptions);
-        }
-    }
 }
 
 internal static class Result
