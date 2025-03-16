@@ -15,6 +15,11 @@ namespace DotNetLab;
 
 public class Compiler(ILogger<Compiler> logger) : ICompiler
 {
+    private const string ToolchainHelpText = """
+
+        You can try selecting different Razor toolchain in Settings / Advanced.
+        """;
+
     private (CompilationInput Input, CompiledAssembly Output)? lastResult;
 
     public CompiledAssembly Compile(
@@ -458,7 +463,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return compilationInput.RazorToolchain switch
             {
                 RazorToolchain.SourceGenerator => designTime
-                    ? throw new NotSupportedException("Cannot use source generator to obtain design-time internals.")
+                    ? throw new NotSupportedException("Cannot use source generator to obtain design-time internals." + ToolchainHelpText)
                     : getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: true),
                 RazorToolchain.InternalApi => getInternalApiRazorCodeDocument(filePath, designTime),
                 RazorToolchain.SourceGeneratorOrInternalApi => designTime
@@ -483,7 +488,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
             if (throwIfUnsupported)
             {
-                throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals.");
+                throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
             }
 
             return null;
