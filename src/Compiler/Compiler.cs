@@ -129,8 +129,8 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             {
                 var syntaxTree = cSharpSource.SyntaxTree;
                 var compiledFile = new CompiledFile([
-                    new() { Type = "syntax", Label = "Syntax", Text = syntaxTree.GetRoot().Dump() },
-                    new() { Type = "syntaxTrivia", Label = "Syntax + Trivia", Text = syntaxTree.GetRoot().DumpExtended() },
+                    new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
+                    new() { Type = "syntaxTrivia", Label = "Syntax + Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
             }).Concat(additionalSources.Select((input) =>
@@ -150,14 +150,14 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     {
                         Type = "syntax",
                         Label = "Syntax",
-                        Text = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
                     },
                     new()
                     {
                         Type = "ir",
                         Label = "IR",
                         Language = "csharp",
-                        Text = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
                         ? ImmutableArray<CompiledFileOutput>.Empty
@@ -166,7 +166,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                             {
                                 Type = "razorErrors",
                                 Label = "Razor Error List",
-                                Text = razorDiagnostics,
+                                EagerText = razorDiagnostics,
                             }
                         ],
                     new()
@@ -174,7 +174,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         Type = "cs",
                         Label = "C#",
                         Language = "csharp",
-                        Text = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
                 ]);
@@ -191,7 +191,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     Type = "il",
                     Label = "IL",
                     Language = "csharp",
-                    Text = new(() =>
+                    LazyText = new(() =>
                     {
                         peFile ??= getPeFile(finalCompilation);
                         return new(getIl(peFile));
@@ -201,7 +201,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 {
                     Type = "seq",
                     Label = "Sequence points",
-                    Text = new(async () =>
+                    LazyText = new(async () =>
                     {
                         peFile ??= getPeFile(finalCompilation);
                         return await getSequencePoints(peFile);
@@ -212,7 +212,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     Type = "cs",
                     Label = "C#",
                     Language = "csharp",
-                    Text = new(async () =>
+                    LazyText = new(async () =>
                     {
                         peFile ??= getPeFile(finalCompilation);
                         return await getCSharpAsync(peFile);
@@ -222,7 +222,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 {
                     Type = "run",
                     Label = "Run",
-                    Text = new(() =>
+                    LazyText = new(() =>
                     {
                         var executableCompilation = finalCompilation.Options.OutputKind == OutputKind.ConsoleApplication
                             ? finalCompilation
@@ -242,7 +242,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     Type = CompiledAssembly.DiagnosticsOutputType,
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
                     Language = "csharp",
-                    Text = new(diagnosticsText),
+                    EagerText = diagnosticsText,
                     Priority = numErrors > 0 ? 2 : 0,
                 },
             ]);

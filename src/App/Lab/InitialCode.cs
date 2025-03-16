@@ -85,7 +85,7 @@ internal sealed record InitialCode
     public InitialCode(string suggestedFileName, string textTemplate)
     {
         SuggestedFileName = suggestedFileName;
-        TextTemplate = textTemplate.ReplaceLineEndings();
+        TextTemplate = textTemplate;
     }
 
     public string SuggestedFileName { get; }

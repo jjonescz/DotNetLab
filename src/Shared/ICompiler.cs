@@ -100,7 +100,7 @@ public sealed record CompiledAssembly(
                 {
                     Type = DiagnosticsOutputType,
                     Label = DiagnosticsOutputLabel,
-                    Text = output,
+                    EagerText = output,
                 },
             ],
             NumErrors: 1,
@@ -135,69 +135,54 @@ public sealed record CompiledFile(ImmutableArray<CompiledFileOutput> Outputs)
 
 public sealed class CompiledFileOutput
 {
+    private object? text;
+
     public required string Type { get; init; }
     public required string Label { get; init; }
     public int Priority { get; init; }
     public string? Language { get; init; }
 
-    [JsonIgnore]
-    public LazyText Text { get; init; }
-
-    [Obsolete("Only for JSON serialization.", error: true)]
     public string? EagerText
     {
         get
         {
-            return Text.EagerValue;
-        }
-        init
-        {
-            Text = new(value);
-        }
-    }
-}
-
-public struct LazyText
-{
-    private object? value;
-
-    public LazyText(string? text)
-    {
-        value = text;
-    }
-
-    public LazyText(Func<ValueTask<string>> factory)
-    {
-        value = factory;
-    }
-
-    public string? EagerValue
-    {
-        get
-        {
-            if (value is string eagerText)
+            if (text is string eagerText)
             {
                 return eagerText;
             }
 
-            if (value is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
+            if (text is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
             {
-                value = taskResult;
+                text = taskResult;
                 return taskResult;
             }
 
             return null;
         }
+        init
+        {
+            Debug.Assert(text is null, Type);
+            text = value;
+        }
     }
 
-    public ValueTask<string> GetValueAsync(Func<ValueTask<string>>? outputFactory)
+    public Func<ValueTask<string>> LazyText
     {
-        if (EagerValue is { } eagerText)
+        init
+        {
+            Debug.Assert(text is null, Type);
+            text = value;
+        }
+    }
+
+    public ValueTask<string> GetTextAsync(Func<ValueTask<string>>? outputFactory)
+    {
+        if (EagerText is { } eagerText)
         {
             return new(eagerText);
         }
 
-        if (value is null)
+        if (text is null)
         {
             if (outputFactory is null)
             {
@@ -205,24 +190,22 @@ public struct LazyText
             }
 
             var output = outputFactory();
-            value = output;
+            text = output;
             return output;
         }
 
-        if (value is ValueTask<string> valueTask)
+        if (text is ValueTask<string> valueTask)
         {
             return valueTask;
         }
 
-        if (value is Func<ValueTask<string>> factory)
+        if (text is Func<ValueTask<string>> factory)
         {
             var result = factory();
-            value = result;
+            text = result;
             return result;
         }
 
-        throw new InvalidOperationException($"Unrecognized {nameof(LazyText)}.{nameof(value)}: {value?.GetType().FullName ?? "null"}");
+        throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
     }
-
-    public static implicit operator LazyText(string? text) => new(text);
 }

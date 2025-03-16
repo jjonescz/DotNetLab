@@ -771,7 +771,7 @@
         output = o;
         file = f;
 
-        if (output.Text.EagerValue is { } eagerText)
+        if (output.EagerText is { } eagerText)
         {
             text = eagerText;
             return true;
@@ -805,7 +805,7 @@
             try
             {
                 // The text will be cached and loaded synchronously next time (from `output.EagerText`).
-                result = await output.Text.GetValueAsync(outputFactory: async () =>
+                result = await output.GetTextAsync(outputFactory: async () =>
                 {
                     return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
                 });
