@@ -263,6 +263,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
                     CSharpSyntaxTree.ParseText("""
                         global using DotNetLab;
+                        global using Microsoft.CodeAnalysis;
                         global using Microsoft.CodeAnalysis.CSharp;
                         global using System;
                         """, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
