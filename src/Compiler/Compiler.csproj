@@ -2,8 +2,8 @@
 
   <ItemGroup>
     <PackageReference Include="Basic.Reference.Assemblies.AspNet90" />
-    <PackageReference Include="MetadataReferenceService.BlazorWasm" />
     <PackageReference Include="ICSharpCode.Decompiler" />
+    <PackageReference Include="MetadataReferenceService.BlazorWasm" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
   </ItemGroup>

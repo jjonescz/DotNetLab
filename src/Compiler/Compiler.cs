@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Razor.Extensions;
 using Microsoft.AspNetCore.Razor.Language;
+using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -191,6 +192,42 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
+                    new()
+                    {
+                        Type = "html",
+                        Label = "HTML",
+                        Language = "html",
+                        LazyText = new(() =>
+                        {
+                            var document = codeDocument.Unwrap()?.GetDocumentIntermediateNode()
+                                ?? throw new InvalidOperationException("No IR available.");
+
+                            if (document.FindPrimaryNamespace() is not { } primaryNamespace)
+                            {
+                                throw new InvalidOperationException("Cannot find primary namespace.");
+                            }
+
+                            if (document.FindPrimaryClass() is not { } primaryClass)
+                            {
+                                throw new InvalidOperationException("Cannot find primary class.");
+                            }
+
+                            var ns = primaryNamespace.Content;
+                            var cls = primaryClass.ClassName;
+
+                            if (string.IsNullOrEmpty(cls))
+                            {
+                                throw new InvalidOperationException("Primary class name is empty.");
+                            }
+
+                            var componentTypeName = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
+
+                            ValueTask<string> result = tryGetEmitStream(finalCompilation, out var emitStream, out var error)
+                                ? new(Executor.RenderToHtmlAsync(emitStream, componentTypeName))
+                                : new(error);
+                            return result;
+                        }),
+                    },
                 ]);
 
                 return KeyValuePair.Create(input.FileName, compiledFile);
@@ -238,15 +275,9 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     Label = "Run",
                     LazyText = new(() =>
                     {
-                        var executableCompilation = finalCompilation.Options.OutputKind == OutputKind.ConsoleApplication
-                            ? finalCompilation
-                            : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
-                        var emitStream = getEmitStream(executableCompilation);
-                        string output = emitStream is null
-                            ? executableCompilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } error
-                                ? error.GetMessage(CultureInfo.InvariantCulture)
-                                : "Cannot execute due to compilation errors."
-                            : Executor.Execute(emitStream);
+                        string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
+                            ? Executor.Execute(emitStream)
+                            : error;
                         return new(output);
                     }),
                     Priority = 1,
@@ -525,6 +556,13 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return null;
         }
 
+        CSharpCompilation getExecutableCompilation()
+        {
+            return finalCompilation.Options.OutputKind == OutputKind.ConsoleApplication
+                ? finalCompilation
+                : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
+        }
+
         MemoryStream? getEmitStream(CSharpCompilation compilation)
         {
             var stream = new MemoryStream();
@@ -537,6 +575,23 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
             stream.Position = 0;
             return stream;
+        }
+
+        bool tryGetEmitStream(CSharpCompilation compilation,
+            [NotNullWhen(returnValue: true)] out MemoryStream? emitStream,
+            [NotNullWhen(returnValue: false)] out string? error)
+        {
+            emitStream = getEmitStream(compilation);
+            if (emitStream is null)
+            {
+                error = compilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } d
+                    ? d.GetMessage(CultureInfo.InvariantCulture)
+                    : "Cannot execute due to compilation errors.";
+                return false;
+            }
+
+            error = null;
+            return true;
         }
 
         static ImmutableArray<Diagnostic> getEmitDiagnostics(CSharpCompilation compilation)
@@ -761,7 +816,7 @@ internal readonly struct Result<T>
         }
         catch (Exception ex)
         {
-            _exception = ExceptionDispatchInfo .Capture(ex);
+            _exception = ExceptionDispatchInfo.Capture(ex);
             _value = default;
         }
     }
