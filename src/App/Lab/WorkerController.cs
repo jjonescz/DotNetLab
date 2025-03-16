@@ -173,15 +173,16 @@ internal sealed class WorkerController
     /// <summary>
     /// Instructs the <see cref="DependencyRegistry"/> to use this package.
     /// </summary>
-    public async Task UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
+    public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
     {
-        await PostMessageAsync(new WorkerInputMessage.UseCompilerVersion(
+        return PostAndReceiveMessageAsync(new WorkerInputMessage.UseCompilerVersion(
             CompilerKind: compilerKind,
             Version: version,
             Configuration: configuration)
         {
             Id = messageId++,
-        });
+        },
+        deserializeAs: default(bool));
     }
 
     public Task<CompilerDependencyInfo> GetCompilerDependencyInfoAsync(CompilerKind compilerKind)

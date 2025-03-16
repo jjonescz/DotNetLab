@@ -49,12 +49,12 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Contains("Language version: 10.0", diagnosticsText);
     }
 
-    [Fact]
-    public async Task SpecifiedNuGetRazorVersion()
+    [Theory]
+    [InlineData("9.0.0-preview.24413.5")]
+    [InlineData("9.0.0-preview.25128.1")]
+    public async Task SpecifiedNuGetRazorVersion(string version)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
-
-        var version = "9.0.0-preview.24413.5";
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Razor, version, BuildConfiguration.Release);
@@ -62,7 +62,11 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = "test" }])));
 
-        var cSharpText = compiled.Files.Single().Value.GetOutput("cs")!.EagerText!;
+        var diagnosticsText = compiled.GetGlobalOutput(CompiledAssembly.DiagnosticsOutputType)!.EagerText!;
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var cSharpText = await compiled.GetGlobalOutput("cs")!.GetTextAsync(outputFactory: null);
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
     }

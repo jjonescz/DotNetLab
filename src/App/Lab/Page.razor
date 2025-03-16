@@ -18,7 +18,7 @@
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
         @* Input presets (quick-start templates) *@
-        <FluentMenuButton Text="Template" Items="presets" OnMenuChanged="OnInputPresetSelectedAsync"
+        <FluentMenuButton Text="Template" Items="WellKnownSlugs.ShorthandToTitle" OnMenuChanged="OnInputPresetSelectedAsync"
         ButtonStyle="margin-left: 0.5em" />
     </div>
 
@@ -191,17 +191,6 @@
                 <div slot="end">
                     @* Output loading indicator *@
                     <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
-
-                    @* Design time / runtime toggle *@
-                    @if (CurrentCompiledFile?.GetOutput(selectedOutputType!)?.DesignTimeText is not null)
-                    {
-                        <FluentSelect TOption="string" AriaLabel="Generation Strategy"
-                        @bind-Value="generationStrategy" @bind-Value:after="() => UpdateOutputDisplayAsync()"
-                        Style="min-width: 7em; margin-right: 0.2em">
-                            <FluentOption Value="runtime">Runtime</FluentOption>
-                            <FluentOption Value="@designTime">Design</FluentOption>
-                        </FluentSelect>
-                    }
                 </div>
             </FluentTabs>
 
@@ -215,13 +204,6 @@
 </FluentMultiSplitter>
 
 @code {
-    private static readonly Dictionary<string, string> presets = new()
-        {
-            [nameof(InputPreset.CSharp)] = "C#",
-            [nameof(InputPreset.Razor)] = "Razor",
-            [nameof(InputPreset.Cshtml)] = "CSHTML",
-        };
-
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
     private bool editorInitializationStarted;
@@ -234,7 +216,6 @@
     private StandaloneCodeEditor inputEditor = null!;
     private StandaloneCodeEditor outputEditor = null!;
     private string? selectedOutputType;
-    private string? generationStrategy;
     private bool compilationInProgress;
     private bool outputOutdated;
     private bool outputLoading;
@@ -243,7 +224,6 @@
     private bool wordWrap;
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
-    private const string designTime = "designTime";
 
     private sealed record Input(string FileName, TextModel Model)
     {
@@ -252,13 +232,6 @@
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
-
-    private enum InputPreset
-    {
-        CSharp,
-        Razor,
-        Cshtml,
-    }
 
     private enum SpecialInput
     {
@@ -337,6 +310,7 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        RefreshCurrentSlug();
         await LoadStateFromUrlAsync();
         StateHasChanged();
     }
@@ -389,35 +363,9 @@
 
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
-        var initialCode = args.Id switch
+        if (args.Id is { } slug && NavigateToSlug(slug))
         {
-            nameof(InputPreset.CSharp) => InitialCode.CSharp,
-            nameof(InputPreset.Razor) => InitialCode.Razor,
-            nameof(InputPreset.Cshtml) => InitialCode.Cshtml,
-            _ => null,
-        };
-        if (initialCode != null)
-        {
-            await SaveStateToUrlAsync();
-
-            inputs.Clear();
-            activeInputTabId = IndexToInputTabId(0);
-            await AddInputAsync(initialCode);
-
-            if (args.Id == nameof(InputPreset.Razor))
-            {
-                await AddInputAsync(InitialCode.RazorImports, selectAsCurrent: false);
-            }
-
-            var state = await SaveStateToUrlAsync(static state => state with
-            {
-                // We want a nice slug like `#razor`, so clean up the state
-                // (if users want the timestamp in the state to ensure it gets a unique cache entry,
-                // they can always click Compile).
-                Timestamp = null,
-            });
-
-            await TryLoadFromTemplateCacheAsync(state);
+            await LoadStateFromUrlAsync();
         }
     }
 
@@ -731,7 +679,6 @@
                 // so we can save both selected input and output here.
                 SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
                 SelectedOutputType = selectedOutputType,
-                GenerationStrategy = generationStrategy,
 
                 // If state is going to be cached, update the timestamp so the cache key is unique
                 // (it is not possible to overwrite cache entries
@@ -784,12 +731,6 @@
 
         output = o;
         file = f;
-
-        if (output.DesignTimeText is { } designTimeText && generationStrategy == designTime)
-        {
-            text = designTimeText;
-            return true;
-        }
 
         if (output.EagerText is { } eagerText)
         {
@@ -888,8 +829,7 @@
     {
         if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
-            compiled = (input, output, new(null));
-            await AfterCompiledLoadedFromCacheAsync();
+            await TrySetCompiledFromCacheAsync(input, output, new(null));
             return true;
         }
 
@@ -901,14 +841,20 @@
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            compiled = (state.ToCompilationInput(), output, new(timestamp));
-            await AfterCompiledLoadedFromCacheAsync();
+            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp));
             StateHasChanged();
         }
     }
 
-    private async Task AfterCompiledLoadedFromCacheAsync()
+    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info)
     {
+        // If the local compilation finishes before the cache is loaded, don't overwrite it.
+        if (compiled is (var existingInput, _, _) && Equals(input, existingInput))
+        {
+            return;
+        }
+
+        compiled = (input, output, info);
         outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
@@ -960,5 +906,11 @@
     private static Orientation GetAutoOrientation()
     {
         return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal; ;
+    }
+
+    public void OnSettingsInputChanged()
+    {
+        outputOutdated = true;
+        StateHasChanged();
     }
 }

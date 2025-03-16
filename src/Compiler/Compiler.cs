@@ -3,15 +3,23 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
 
 namespace DotNetLab;
 
 public class Compiler(ILogger<Compiler> logger) : ICompiler
 {
+    private const string ToolchainHelpText = """
+
+        You can try selecting different Razor toolchain in Settings / Advanced.
+        """;
+
     private (CompilationInput Input, CompiledAssembly Output)? lastResult;
 
     public CompiledAssembly Compile(
@@ -42,19 +50,224 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
+            allowUnsafe: true,
+            nullableContextOptions: NullableContextOptions.Enable,
+            concurrentBuild: false);
 
         var references = Basic.Reference.Assemblies.AspNet90.References.All;
 
         // If we have a configuration, compile and execute it.
         if (compilationInput.Configuration is { } configuration)
         {
+            executeConfiguration(configuration);
+        }
+
+        const string projectName = "TestProject";
+        const string directory = "/";
+
+        var optionsProvider = new TestAnalyzerConfigOptionsProvider
+        {
+            TestGlobalOptions =
+            {
+                ["build_property.RazorConfiguration"] = "Default",
+                ["build_property.RootNamespace"] = "TestNamespace",
+                ["build_property.RazorLangVersion"] = "Latest",
+                ["build_property.GenerateRazorMetadataSourceChecksumAttributes"] = "false",
+            },
+        };
+
+        var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
+        var additionalSources = new List<InputCode>();
+
+        foreach (var input in compilationInput.Inputs.Value)
+        {
+            if (isCSharp(input))
+            {
+                var filePath = getFilePath(input);
+                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, parseOptions, filePath, Encoding.UTF8);
+                cSharpSources.Add((input, syntaxTree));
+            }
+            else
+            {
+                additionalSources.Add(input);
+            }
+        }
+
+        // Choose output kind EXE if there are top-level statements, otherwise DLL.
+        var outputKind = cSharpSources.Any(static s => s.SyntaxTree.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
+            ? OutputKind.ConsoleApplication
+            : OutputKind.DynamicallyLinkedLibrary;
+
+        options = options.WithOutputKind(outputKind);
+
+        GeneratorRunResult razorResult = default;
+        ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
+
+        var effectiveToolchain = compilationInput.RazorToolchain switch
+        {
+            RazorToolchain.SourceGeneratorOrInternalApi =>
+                compilationInput.RazorStrategy == RazorStrategy.DesignTime
+                    ? RazorToolchain.InternalApi
+                    : RazorToolchain.SourceGenerator,
+            var other => other,
+        };
+
+        var (finalCompilation, additionalDiagnostics) = effectiveToolchain switch
+        {
+            RazorToolchain.SourceGenerator => runRazorSourceGenerator(),
+            RazorToolchain.InternalApi => runRazorInternalApi(),
+            var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
+        };
+
+        ICSharpCode.Decompiler.Metadata.PEFile? peFile = null;
+
+        IEnumerable<Diagnostic> diagnostics = getEmitDiagnostics(finalCompilation)
+            .Concat(additionalDiagnostics)
+            .Where(d => d.Severity != DiagnosticSeverity.Hidden);
+        string diagnosticsText = diagnostics.GetDiagnosticsText();
+        int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
+        int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
+        ImmutableArray<DiagnosticData> diagnosticData = diagnostics
+            .Select(d => d.ToDiagnosticData())
+            .ToImmutableArray();
+
+        var result = new CompiledAssembly(
+            BaseDirectory: directory,
+            Files: cSharpSources.Select(static (cSharpSource) =>
+            {
+                var syntaxTree = cSharpSource.SyntaxTree;
+                var compiledFile = new CompiledFile([
+                    new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
+                    new() { Type = "syntaxTrivia", Label = "Syntax + Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
+                ]);
+                return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
+            }).Concat(additionalSources.Select((input) =>
+            {
+                var filePath = getFilePath(input);
+                Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: compilationInput.RazorStrategy == RazorStrategy.DesignTime));
+
+                if (codeDocument.TryGetValue(out var c) && c is null)
+                {
+                    return KeyValuePair.Create(input.FileName, new CompiledFile([]));
+                }
+
+                string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
+
+                var compiledFile = new CompiledFile([
+                    new()
+                    {
+                        Type = "syntax",
+                        Label = "Syntax",
+                        EagerText = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
+                    },
+                    new()
+                    {
+                        Type = "ir",
+                        Label = "IR",
+                        Language = "csharp",
+                        EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
+                    },
+                    .. string.IsNullOrEmpty(razorDiagnostics)
+                        ? ImmutableArray<CompiledFileOutput>.Empty
+                        : [
+                            new()
+                            {
+                                Type = "razorErrors",
+                                Label = "Razor Error List",
+                                EagerText = razorDiagnostics,
+                            }
+                        ],
+                    new()
+                    {
+                        Type = "gcs",
+                        Label = "C#",
+                        Language = "csharp",
+                        EagerText = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
+                        Priority = 1,
+                    },
+                ]);
+
+                return KeyValuePair.Create(input.FileName, compiledFile);
+            })).ToImmutableSortedDictionary(static p => p.Key, static p => p.Value),
+            NumWarnings: numWarnings,
+            NumErrors: numErrors,
+            Diagnostics: diagnosticData,
+            GlobalOutputs:
+            [
+                new()
+                {
+                    Type = "il",
+                    Label = "IL",
+                    Language = "csharp",
+                    LazyText = new(() =>
+                    {
+                        peFile ??= getPeFile(finalCompilation);
+                        return new(getIl(peFile));
+                    }),
+                },
+                new()
+                {
+                    Type = "seq",
+                    Label = "Sequence points",
+                    LazyText = new(async () =>
+                    {
+                        peFile ??= getPeFile(finalCompilation);
+                        return await getSequencePoints(peFile);
+                    }),
+                },
+                new()
+                {
+                    Type = "cs",
+                    Label = "C#",
+                    Language = "csharp",
+                    LazyText = new(async () =>
+                    {
+                        peFile ??= getPeFile(finalCompilation);
+                        return await getCSharpAsync(peFile);
+                    }),
+                },
+                new()
+                {
+                    Type = "run",
+                    Label = "Run",
+                    LazyText = new(() =>
+                    {
+                        var executableCompilation = finalCompilation.Options.OutputKind == OutputKind.ConsoleApplication
+                            ? finalCompilation
+                            : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
+                        var emitStream = getEmitStream(executableCompilation);
+                        string output = emitStream is null
+                            ? executableCompilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } error
+                                ? error.GetMessage(CultureInfo.InvariantCulture)
+                                : "Cannot execute due to compilation errors."
+                            : Executor.Execute(emitStream);
+                        return new(output);
+                    }),
+                    Priority = 1,
+                },
+                new()
+                {
+                    Type = CompiledAssembly.DiagnosticsOutputType,
+                    Label = CompiledAssembly.DiagnosticsOutputLabel,
+                    Language = "csharp",
+                    EagerText = diagnosticsText,
+                    Priority = numErrors > 0 ? 2 : 0,
+                },
+            ]);
+
+        return result;
+
+        void executeConfiguration(string code)
+        {
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
                 syntaxTrees:
                 [
-                    CSharpSyntaxTree.ParseText(configuration, parseOptions, "Configuration.cs", Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
                     CSharpSyntaxTree.ParseText("""
                         global using DotNetLab;
+                        global using Microsoft.CodeAnalysis;
                         global using Microsoft.CodeAnalysis.CSharp;
                         global using System;
                         """, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
@@ -87,201 +300,10 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             Executor.InvokeEntryPoint(entryPoint);
 
             parseOptions = Config.CurrentCSharpParseOptions;
+            options = Config.CurrentCSharpCompilationOptions;
 
             logger.LogDebug("Using language version {LangVersion} (specified {SpecifiedLangVersion})", parseOptions.LanguageVersion, parseOptions.SpecifiedLanguageVersion);
         }
-
-        var directory = "/TestProject/";
-        var fileSystem = new VirtualRazorProjectFileSystemProxy();
-        var cSharp = new Dictionary<string, CSharpSyntaxTree>();
-        foreach (var input in compilationInput.Inputs.Value)
-        {
-            var filePath = directory + input.FileName;
-            switch (input.FileExtension)
-            {
-                case ".razor":
-                case ".cshtml":
-                    {
-                        var item = RazorAccessors.CreateSourceGeneratorProjectItem(
-                            basePath: "/",
-                            filePath: filePath,
-                            relativePhysicalPath: input.FileName,
-                            fileKind: null!, // will be automatically determined from file path
-                            additionalText: new TestAdditionalText(input.Text, encoding: Encoding.UTF8, path: filePath),
-                            cssScope: null);
-                        fileSystem.Add(item);
-                        break;
-                    }
-                case ".cs":
-                    {
-                        cSharp[input.FileName] = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, parseOptions, path: filePath, Encoding.UTF8);
-                        break;
-                    }
-            }
-        }
-
-        // Choose output kind EXE if there are top-level statements, otherwise DLL.
-        var outputKind = cSharp.Values.Any(tree => tree.GetRoot().DescendantNodes().OfType<GlobalStatementSyntax>().Any())
-            ? OutputKind.ConsoleApplication
-            : OutputKind.DynamicallyLinkedLibrary;
-
-        var options = createCompilationOptions(outputKind);
-
-        var config = RazorConfiguration.Default;
-
-        // Phase 1: Declaration only (to be used as a reference from which tag helpers will be discovered).
-        RazorProjectEngine declarationProjectEngine = createProjectEngine([]);
-        var declarationCompilation = CSharpCompilation.Create("TestAssembly",
-            syntaxTrees: [
-                ..fileSystem.Inner.EnumerateItemsSafe("/").Select((item) =>
-                {
-                    RazorCodeDocument declarationCodeDocument = declarationProjectEngine.ProcessDeclarationOnlySafe(item);
-                    string declarationCSharp = declarationCodeDocument.GetCSharpDocument().GetGeneratedCode();
-                    return CSharpSyntaxTree.ParseText(declarationCSharp, parseOptions, encoding: Encoding.UTF8);
-                }),
-                ..cSharp.Values,
-            ],
-            references,
-            options);
-
-        // Phase 2: Full generation.
-        RazorProjectEngine projectEngine = createProjectEngine([
-            ..references,
-            declarationCompilation.ToMetadataReference()]);
-        List<Diagnostic> allRazorDiagnostics = new();
-        var compiledRazorFiles = fileSystem.Inner.EnumerateItemsSafe("/")
-            .ToImmutableSortedDictionary(
-                keySelector: (item) => item.RelativePhysicalPath,
-                elementSelector: (item) =>
-                {
-                    RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
-                    RazorCodeDocument designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
-
-                    string syntax = codeDocument.GetSyntaxTree().Serialize();
-                    string ir = codeDocument.GetDocumentIntermediateNode().Serialize();
-                    string cSharp = codeDocument.GetCSharpDocument().GetGeneratedCode();
-                    IReadOnlyList<RazorDiagnostic> razorDiagnosticsOriginal = codeDocument.GetCSharpDocument().GetDiagnostics();
-                    string razorDiagnostics = razorDiagnosticsOriginal.JoinToString(Environment.NewLine);
-
-                    string designSyntax = designTimeDocument.GetSyntaxTree().Serialize();
-                    string designIr = designTimeDocument.GetDocumentIntermediateNode().Serialize();
-                    string designCSharp = designTimeDocument.GetCSharpDocument().GetGeneratedCode();
-                    string designRazorDiagnostics = designTimeDocument.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine);
-
-                    allRazorDiagnostics.AddRange(razorDiagnosticsOriginal.Select(RazorUtil.ToDiagnostic));
-
-                    return new CompiledFile([
-                        new() { Type = "syntax", Label = "Syntax", EagerText = syntax, DesignTimeText = designSyntax },
-                        new() { Type = "ir", Label = "IR", Language = "csharp", EagerText = ir, DesignTimeText = designIr },
-                        ..(string.IsNullOrEmpty(razorDiagnostics) && string.IsNullOrEmpty(designRazorDiagnostics)
-                            ? ImmutableArray<CompiledFileOutput>.Empty
-                            : [new() { Type = "razorErrors", Label = "Razor Error List", EagerText = razorDiagnostics, DesignTimeText = designRazorDiagnostics }]),
-                        new() { Type = "cs", Label = "C#", Language = "csharp", EagerText = cSharp, DesignTimeText = designCSharp, Priority = 1 },
-                    ]);
-                });
-
-        var finalCompilation = CSharpCompilation.Create("TestAssembly",
-            [
-                ..compiledRazorFiles.Values.Select((file) =>
-                {
-                    var cSharpText = file.GetOutput("cs")!.EagerText!;
-                    return CSharpSyntaxTree.ParseText(cSharpText, parseOptions, encoding: Encoding.UTF8);
-                }),
-                ..cSharp.Values,
-            ],
-            references,
-            options);
-
-        ICSharpCode.Decompiler.Metadata.PEFile? peFile = null;
-
-        var compiledFiles = compiledRazorFiles.AddRange(
-            cSharp.Select((pair) => new KeyValuePair<string, CompiledFile>(
-                pair.Key,
-                new([
-                    new() { Type = "syntax", Label = "Syntax", EagerText = pair.Value.GetRoot().Dump() },
-                    new() { Type = "syntaxTrivia", Label = "Syntax + Trivia", EagerText = pair.Value.GetRoot().DumpExtended() },
-                    new()
-                    {
-                        Type = "il",
-                        Label = "IL",
-                        Language = "csharp",
-                        LazyText = () =>
-                        {
-                            peFile ??= getPeFile(finalCompilation);
-                            return new(getIl(peFile));
-                        },
-                    },
-                    new()
-                    {
-                        Type = "seq",
-                        Label = "Sequence points",
-                        LazyText = async () =>
-                        {
-                            peFile ??= getPeFile(finalCompilation);
-                            return await getSequencePoints(peFile);
-                        },
-                    },
-                    new()
-                    {
-                        Type = "cs",
-                        Label = "C#",
-                        Language = "csharp",
-                        LazyText = async () =>
-                        {
-                            peFile ??= getPeFile(finalCompilation);
-                            return await getCSharpAsync(peFile);
-                        },
-                    },
-                    new()
-                    {
-                        Type = "run",
-                        Label = "Run",
-                        LazyText = () =>
-                        {
-                            var executableCompilation = finalCompilation.Options.OutputKind == OutputKind.ConsoleApplication
-                                ? finalCompilation
-                                : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
-                            var emitStream = getEmitStream(executableCompilation);
-                            string output = emitStream is null
-                                ? executableCompilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } error
-                                    ? error.GetMessage(CultureInfo.InvariantCulture)
-                                    : "Cannot execute due to compilation errors."
-                                : Executor.Execute(emitStream);
-                            return new(output);
-                        },
-                        Priority = 1,
-                    },
-                ]))));
-
-        IEnumerable<Diagnostic> diagnostics = getEmitDiagnostics(finalCompilation)
-            .Concat(allRazorDiagnostics)
-            .Where(d => d.Severity != DiagnosticSeverity.Hidden);
-        string diagnosticsText = diagnostics.GetDiagnosticsText();
-        int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
-        int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
-        ImmutableArray<DiagnosticData> diagnosticData = diagnostics
-            .Select(d => d.ToDiagnosticData())
-            .ToImmutableArray();
-
-        var result = new CompiledAssembly(
-            BaseDirectory: directory,
-            Files: compiledFiles,
-            NumWarnings: numWarnings,
-            NumErrors: numErrors,
-            Diagnostics: diagnosticData,
-            GlobalOutputs:
-            [
-                new()
-                {
-                    Type = CompiledAssembly.DiagnosticsOutputType,
-                    Label = CompiledAssembly.DiagnosticsOutputLabel,
-                    Language = "csharp",
-                    EagerText = diagnosticsText,
-                    Priority = numErrors > 0 ? 2 : 0,
-                },
-            ]);
-
-        return result;
 
         static CSharpCompilationOptions createCompilationOptions(OutputKind outputKind)
         {
@@ -292,26 +314,200 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 concurrentBuild: false);
         }
 
-        RazorProjectEngine createProjectEngine(IReadOnlyList<MetadataReference> references)
+        static string getFilePath(InputCode input) => directory + input.FileName;
+
+        static bool isCSharp(InputCode input) => ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+
+        (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
-            return RazorProjectEngine.Create(config, fileSystem.Inner, b =>
+            var additionalTextsBuilder = ImmutableArray.CreateBuilder<AdditionalText>();
+
+            foreach (var input in additionalSources)
             {
-                b.SetRootNamespace("TestNamespace");
-
-                b.Features.Add(RazorAccessors.CreateDefaultTypeNameFeature());
-                b.Features.Add(new CompilationTagHelperFeature());
-                b.Features.Add(new DefaultMetadataReferenceFeature
+                var filePath = getFilePath(input);
+                additionalTextsBuilder.Add(new TestAdditionalText(text: input.Text, encoding: Encoding.UTF8, path: filePath));
+                optionsProvider.AdditionalTextOptions[filePath] = new TestAnalyzerConfigOptions
                 {
-                    References = references,
+                    ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
+                };
+            }
+
+            var initialCompilation = CSharpCompilation.Create(
+                assemblyName: projectName,
+                syntaxTrees: cSharpSources.Select(static s => s.SyntaxTree),
+                references: references,
+                options: options);
+
+            var driver = CSharpGeneratorDriver.Create(
+                generators: [new RazorSourceGenerator().AsSourceGenerator()],
+                additionalTexts: additionalTextsBuilder.ToImmutable(),
+                parseOptions: parseOptions,
+                optionsProvider: optionsProvider);
+
+            driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
+                initialCompilation,
+                out var finalCommonCompilation,
+                out var generatorDiagnostics);
+
+            razorResult = driver.GetRunResult().Results.FirstOrDefault();
+
+            var finalCompilation = (CSharpCompilation)finalCommonCompilation;
+
+            return (finalCompilation, generatorDiagnostics);
+        }
+
+        (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorInternalApi()
+        {
+            var fileSystem = new VirtualRazorProjectFileSystemProxy();
+            foreach (var input in additionalSources)
+            {
+                if (".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
+                    ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    var filePath = getFilePath(input);
+                    var item = RazorAccessors.CreateSourceGeneratorProjectItem(
+                        basePath: "/",
+                        filePath: filePath,
+                        relativePhysicalPath: input.FileName,
+                        fileKind: null!, // will be automatically determined from file path
+                        additionalText: new TestAdditionalText(input.Text, encoding: Encoding.UTF8, path: filePath),
+                        cssScope: null);
+                    fileSystem.Add(item);
+                }
+            }
+
+            var cSharpSyntaxTrees = cSharpSources.Select(static s => s.SyntaxTree);
+
+            var config = RazorConfiguration.Default;
+
+            // Phase 1: Declaration only (to be used as a reference from which tag helpers will be discovered).
+            RazorProjectEngine declarationProjectEngine = createProjectEngine([]);
+            var declarationCompilation = CSharpCompilation.Create("TestAssembly",
+                syntaxTrees: [
+                    .. fileSystem.Inner.EnumerateItemsSafe("/").Select((item) =>
+                    {
+                        RazorCodeDocument declarationCodeDocument = declarationProjectEngine.ProcessDeclarationOnlySafe(item);
+                        string declarationCSharp = declarationCodeDocument.GetCSharpDocument().GetGeneratedCode();
+                        return CSharpSyntaxTree.ParseText(declarationCSharp, parseOptions, encoding: Encoding.UTF8);
+                    }),
+                    .. cSharpSyntaxTrees,
+                ],
+                references,
+                options);
+
+            // Phase 2: Full generation.
+            var projectEngine = createProjectEngine([
+                .. references,
+                declarationCompilation.ToMetadataReference()
+            ]);
+            var allRazorDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+            razorMap = fileSystem.Inner.EnumerateItemsSafe("/")
+                .ToImmutableDictionary(
+                    keySelector: static (item) => item.FilePath,
+                    elementSelector: (item) =>
+                    {
+                        RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
+                        RazorCodeDocument designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
+
+                        allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocument().GetDiagnostics().Select(RazorUtil.ToDiagnostic));
+
+                        return (codeDocument, designTimeDocument);
+                    });
+
+            var finalCompilation = CSharpCompilation.Create("TestAssembly",
+                [
+                    .. razorMap.Values.Select((docs) =>
+                    {
+                        var cSharpText = docs.Runtime.GetCSharpDocument().GetGeneratedCode();
+                        return CSharpSyntaxTree.ParseText(cSharpText, parseOptions, encoding: Encoding.UTF8);
+                    }),
+                    .. cSharpSyntaxTrees,
+                ],
+                references,
+                options);
+
+            return (finalCompilation, allRazorDiagnostics.ToImmutable());
+
+            RazorProjectEngine createProjectEngine(IReadOnlyList<MetadataReference> references)
+            {
+                return RazorProjectEngine.Create(config, fileSystem.Inner, b =>
+                {
+                    b.SetRootNamespace("TestNamespace");
+
+                    b.Features.Add(RazorAccessors.CreateDefaultTypeNameFeature());
+                    b.Features.Add(new CompilationTagHelperFeature());
+                    b.Features.Add(new DefaultMetadataReferenceFeature
+                    {
+                        References = references,
+                    });
+
+                    b.ConfigureRazorParserOptionsSafe(options =>
+                    {
+                        if (options.GetType().GetProperty("UseRoslynTokenizer") is { } useRoslynTokenizerProperty)
+                        {
+                            var useRoslynTokenizer = parseOptions.Features.TryGetValue("use-roslyn-tokenizer", out var useRoslynTokenizerValue) &&
+                                string.Equals(useRoslynTokenizerValue, bool.TrueString, StringComparison.OrdinalIgnoreCase);
+                            useRoslynTokenizerProperty.SetValue(options, useRoslynTokenizer);
+                        }
+
+                        if (options.GetType().GetProperty("CSharpParseOptions") is { } cSharpParseOptionsProperty)
+                        {
+                            cSharpParseOptionsProperty.SetValue(options, parseOptions);
+                        }
+                    });
+
+                    CompilerFeatures.Register(b);
+                    RazorExtensions.Register(b);
+
+                    b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
+            }
+        }
 
-                b.Features.Add(new ConfigureRazorParserOptions(parseOptions));
+        RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
+        {
+            return compilationInput.RazorToolchain switch
+            {
+                RazorToolchain.SourceGenerator => designTime
+                    ? throw new NotSupportedException("Cannot use source generator to obtain design-time internals." + ToolchainHelpText)
+                    : getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: true),
+                RazorToolchain.InternalApi => getInternalApiRazorCodeDocument(filePath, designTime),
+                RazorToolchain.SourceGeneratorOrInternalApi => designTime
+                    ? getInternalApiRazorCodeDocument(filePath, designTime)
+                    : (getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: false) ?? getInternalApiRazorCodeDocument(filePath, designTime)),
+                _ => throw new InvalidOperationException($"Invalid Razor toolchain '{compilationInput.RazorToolchain}'."),
+            };
+        }
 
-                CompilerFeatures.Register(b);
-                RazorExtensions.Register(b);
+        RazorCodeDocument? getSourceGeneratorRazorCodeDocument(string filePath, bool throwIfUnsupported)
+        {
+            if (razorResult.TryGetHostOutputSafe("RazorGeneratorResult", out var hostOutput) &&
+                hostOutput is not null)
+            {
+                if (new RazorGeneratorResultSafe(hostOutput).TryGetCodeDocument(filePath, out var codeDocument))
+                {
+                    return codeDocument;
+                }
 
-                b.SetCSharpLanguageVersion(LanguageVersion.Preview);
-            });
+                return null;
+            }
+
+            if (throwIfUnsupported)
+            {
+                throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
+            }
+
+            return null;
+        }
+
+        RazorCodeDocument? getInternalApiRazorCodeDocument(string filePath, bool designTime)
+        {
+            if (razorMap != null && razorMap.TryGetValue(filePath, out var docs))
+            {
+                return designTime ? docs.DesignTime : docs.Runtime;
+            }
+
+            return null;
         }
 
         MemoryStream? getEmitStream(CSharpCompilation compilation)
@@ -464,23 +660,134 @@ internal sealed class TestAdditionalText(string path, SourceText text) : Additio
     public override SourceText GetText(CancellationToken cancellationToken = default) => text;
 }
 
-internal sealed class ConfigureRazorParserOptions(CSharpParseOptions cSharpParseOptions)
-    : RazorEngineFeatureBase, IConfigureRazorParserOptionsFeature
+internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
 {
-    public int Order { get; set; }
+    public override AnalyzerConfigOptions GlobalOptions => TestGlobalOptions;
 
-    public void Configure(RazorParserOptionsBuilder options)
+    public TestAnalyzerConfigOptions TestGlobalOptions { get; } = new TestAnalyzerConfigOptions();
+
+    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
+
+    public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
+
+    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        if (options.GetType().GetProperty("UseRoslynTokenizer") is { } useRoslynTokenizerProperty)
+        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options) ? options : new TestAnalyzerConfigOptions();
+    }
+
+    public TestAnalyzerConfigOptionsProvider Clone()
+    {
+        var provider = new TestAnalyzerConfigOptionsProvider();
+        foreach (var option in this.TestGlobalOptions.Options)
         {
-            var useRoslynTokenizer = cSharpParseOptions.Features.TryGetValue("use-roslyn-tokenizer", out var useRoslynTokenizerValue) &&
-                string.Equals(useRoslynTokenizerValue, bool.TrueString, StringComparison.OrdinalIgnoreCase);
-            useRoslynTokenizerProperty.SetValue(options, useRoslynTokenizer);
+            provider.TestGlobalOptions[option.Key] = option.Value;
+        }
+        foreach (var option in this.AdditionalTextOptions)
+        {
+            TestAnalyzerConfigOptions newOptions = new TestAnalyzerConfigOptions();
+            foreach (var subOption in option.Value.Options)
+            {
+                newOptions[subOption.Key] = subOption.Value;
+            }
+            provider.AdditionalTextOptions[option.Key] = newOptions;
+
+        }
+        return provider;
+    }
+}
+
+internal sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+{
+    public Dictionary<string, string> Options { get; } = new();
+
+    public string this[string name]
+    {
+        get => Options[name];
+        set => Options[name] = value;
+    }
+
+    public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
+        => Options.TryGetValue(key, out value);
+}
+
+internal static class Result
+{
+    public static string Serialize(this Result<string> result)
+    {
+        return result.TryGetValueOrException(out var value, out var exception)
+            ? value
+            : exception.SourceException.ToString();
+    }
+}
+
+internal readonly struct Result<T>
+{
+    private readonly ExceptionDispatchInfo? _exception;
+    private readonly T? _value;
+
+    public Result(ExceptionDispatchInfo exception)
+    {
+        _exception = exception;
+        _value = default;
+    }
+
+    public Result(T value)
+    {
+        _exception = null;
+        _value = value;
+    }
+
+    public Result(Func<T> factory)
+    {
+        try
+        {
+            _exception = null;
+            _value = factory();
+        }
+        catch (Exception ex)
+        {
+            _exception = ExceptionDispatchInfo .Capture(ex);
+            _value = default;
+        }
+    }
+
+    public T Unwrap()
+    {
+        if (_exception is { } exception)
+        {
+            exception.Throw();
+            throw exception.SourceException; // unreachable
         }
 
-        if (options.GetType().GetProperty("CSharpParseOptions") is { } cSharpParseOptionsProperty)
+        return _value!;
+    }
+
+    public bool TryGetValue([NotNullWhen(returnValue: true)] out T? value)
+    {
+        return TryGetValueOrException(out value, out _);
+    }
+
+    public bool TryGetValueOrException(
+        [NotNullWhen(returnValue: true)] out T? value,
+        [NotNullWhen(returnValue: false)] out ExceptionDispatchInfo? exception)
+    {
+        if (_exception is { } ex)
         {
-            cSharpParseOptionsProperty.SetValue(options, cSharpParseOptions);
+            value = default;
+            exception = ex;
+            return false;
         }
+
+        value = _value!;
+        exception = null;
+        return true;
+    }
+
+    public Result<R> Map<R>(Func<T, R> mapper)
+    {
+        var value = _value;
+        return _exception is { } exception
+            ? new Result<R>(exception)
+            : new Result<R>(() => mapper(value!));
     }
 }

@@ -7,20 +7,22 @@ namespace DotNetLab.Lab;
 static class WellKnownSlugs
 {
     public static readonly FrozenDictionary<string, SavedState> ShorthandToState;
+    public static readonly Dictionary<string, string> ShorthandToTitle;
     public static readonly FrozenDictionary<string, string> FullSlugToShorthand;
 
     static WellKnownSlugs()
     {
-        IEnumerable<KeyValuePair<string, SavedState>> entries =
+        IEnumerable<(string Shorthand, string Title, SavedState State)> entries =
         [
-            new("razor", SavedState.Razor),
-            new("csharp", SavedState.CSharp),
-            new("cshtml", SavedState.Cshtml),
+            ("razor", "Razor", SavedState.Razor),
+            ("csharp", "C#", SavedState.CSharp),
+            ("cshtml", "CSHTML", SavedState.Cshtml),
         ];
 
-        ShorthandToState = entries.ToFrozenDictionary();
+        ShorthandToState = entries.Select(t => KeyValuePair.Create(t.Shorthand, t.State)).ToFrozenDictionary();
+        ShorthandToTitle = entries.Select(t => KeyValuePair.Create(t.Shorthand, t.Title)).ToDictionary();
         FullSlugToShorthand = entries
-            .Select(static p => KeyValuePair.Create(Compressor.Compress(p.Value), p.Key))
+            .Select(static t => KeyValuePair.Create(Compressor.Compress(t.State), t.Shorthand))
             .ToFrozenDictionary();
     }
 }
@@ -28,16 +30,23 @@ static class WellKnownSlugs
 partial class Page
 {
     private SavedState savedState = SavedState.Initial;
+    private string? currentSlug;
 
-    private string GetCurrentSlug()
+    [MemberNotNull(nameof(currentSlug))]
+    private void RefreshCurrentSlug()
     {
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-        return uri.Fragment.TrimStart('#');
+        currentSlug = uri.Fragment.TrimStart('#');
     }
 
     private async Task LoadStateFromUrlAsync()
     {
-        var slug = GetCurrentSlug();
+        if (currentSlug is null)
+        {
+            RefreshCurrentSlug();
+        }
+
+        var slug = currentSlug;
 
         var state = slug switch
         {
@@ -86,7 +95,6 @@ partial class Page
 
         activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
-        generationStrategy = savedState.GenerationStrategy;
 
         OnWorkspaceChanged();
 
@@ -104,6 +112,18 @@ partial class Page
         {
             _ = TryLoadFromCacheAsync(state);
         }
+    }
+
+    private bool NavigateToSlug(string slug)
+    {
+        if (slug != currentSlug)
+        {
+            NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + slug, forceLoad: false);
+            currentSlug = slug;
+            return true;
+        }
+
+        return false;
     }
 
     internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
@@ -133,10 +153,7 @@ partial class Page
             newSlug = wellKnownSlug;
         }
 
-        if (newSlug != GetCurrentSlug())
-        {
-            NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
-        }
+        NavigateToSlug(newSlug);
 
         return savedState;
 
@@ -168,27 +185,29 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
-    public static SavedState Initial => Razor;
-
-    // Well-known slugs should have `SelectedOutputType` set so choosing them in the Template drop down
-    // matches the well-known state and hence the corresponding well-known slug is displayed in the URL.
-
-    public static SavedState Razor { get; } = new()
+    private static readonly SavedState defaults = new()
     {
-        Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
-        SelectedOutputType = "cs",
+        RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi,
     };
 
-    public static SavedState CSharp { get; } = new()
+    public static SavedState Initial => Razor;
+
+    public static SavedState Razor { get; } = defaults with
+    {
+        Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
+        SelectedOutputType = "gcs",
+    };
+
+    public static SavedState CSharp { get; } = defaults with
     {
         Inputs = [InitialCode.CSharp.ToInputCode()],
         SelectedOutputType = "run",
     };
 
-    public static SavedState Cshtml { get; } = new()
+    public static SavedState Cshtml { get; } = defaults with
     {
         Inputs = [InitialCode.Cshtml.ToInputCode()],
-        SelectedOutputType = "cs",
+        SelectedOutputType = "gcs",
     };
 
     [ProtoMember(1)]
@@ -201,10 +220,20 @@ internal sealed record SavedState
     public string? SelectedOutputType { get; init; }
 
     [ProtoMember(10)]
-    public string? GenerationStrategy { get; init; }
+    [Obsolete($"Use {nameof(RazorStrategy)} instead", error: true)]
+    public string? GenerationStrategy
+    {
+        get => RazorStrategy == RazorStrategy.DesignTime ? "designTime" : null;
+        init => RazorStrategy = value == "designTime" ? RazorStrategy.DesignTime : RazorStrategy.Runtime;
+    }
 
     [ProtoMember(5)]
     public string? Configuration { get; init; }
+
+    [ProtoMember(12)]
+    public RazorToolchain RazorToolchain { get; init; }
+
+    public RazorStrategy RazorStrategy { get; init; }
 
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
@@ -250,7 +279,6 @@ internal sealed record SavedState
         {
             SelectedInputIndex = 0,
             SelectedOutputType = null,
-            GenerationStrategy = null,
             SdkVersion = null,
         };
     }
@@ -265,6 +293,19 @@ internal sealed record SavedState
         return new(Inputs)
         {
             Configuration = Configuration,
+            RazorToolchain = RazorToolchain,
+            RazorStrategy = RazorStrategy,
+        };
+    }
+
+    public static SavedState From(CompilationInput input)
+    {
+        return new()
+        {
+            Inputs = input.Inputs,
+            Configuration = input.Configuration,
+            RazorToolchain = input.RazorToolchain,
+            RazorStrategy = input.RazorStrategy,
         };
     }
 }

@@ -1,5 +1,6 @@
 using ProtoBuf;
 using System.Runtime.Loader;
+using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -21,6 +22,21 @@ public sealed record CompilationInput
 
     public Sequence<InputCode> Inputs { get; }
     public string? Configuration { get; init; }
+    public RazorToolchain RazorToolchain { get; init; }
+    public RazorStrategy RazorStrategy { get; init; }
+}
+
+public enum RazorToolchain
+{
+    InternalApi,
+    SourceGeneratorOrInternalApi,
+    SourceGenerator,
+}
+
+public enum RazorStrategy
+{
+    Runtime,
+    DesignTime,
 }
 
 [ProtoContract]
@@ -125,7 +141,6 @@ public sealed class CompiledFileOutput
     public required string Label { get; init; }
     public int Priority { get; init; }
     public string? Language { get; init; }
-    public string? DesignTimeText { get; init; }
 
     public string? EagerText
     {
@@ -146,6 +161,7 @@ public sealed class CompiledFileOutput
         }
         init
         {
+            Debug.Assert(text is null, Type);
             text = value;
         }
     }
@@ -154,6 +170,7 @@ public sealed class CompiledFileOutput
     {
         init
         {
+            Debug.Assert(text is null, Type);
             text = value;
         }
     }
@@ -169,7 +186,7 @@ public sealed class CompiledFileOutput
         {
             if (outputFactory is null)
             {
-                throw new InvalidOperationException($"For lazy outputs, {nameof(outputFactory)} must be provided.");
+                throw new InvalidOperationException($"For uncached lazy texts, {nameof(outputFactory)} must be provided.");
             }
 
             var output = outputFactory();
@@ -189,6 +206,6 @@ public sealed class CompiledFileOutput
             return result;
         }
 
-        throw new InvalidOperationException($"Unrecognized {nameof(text)}: {text?.GetType().FullName ?? "null"}");
+        throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
     }
 }

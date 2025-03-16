@@ -41,7 +41,7 @@ public static class RazorAccessors
     }
 }
 
-public class VirtualRazorProjectFileSystemProxy
+public sealed class VirtualRazorProjectFileSystemProxy
 {
     private readonly VirtualRazorProjectFileSystem inner = new();
 

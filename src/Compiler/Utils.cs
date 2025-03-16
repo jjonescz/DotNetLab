@@ -1,11 +1,28 @@
 using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace DotNetLab;
 
 public static class CodeAnalysisUtil
 {
+    public static bool TryGetHostOutputSafe(
+        this GeneratorRunResult result,
+        string key,
+        [NotNullWhen(returnValue: true)] out object? value)
+    {
+        if (result.GetType().GetProperty("HostOutputs")?.GetValue(result) is ImmutableDictionary<string, object?> hostOutputs)
+        {
+            return hostOutputs.TryGetValue(key, out value);
+        }
+
+        value = null;
+        return false;
+    }
+
     public static DiagnosticData ToDiagnosticData(this Diagnostic d)
     {
         string? filePath = d.Location.SourceTree?.FilePath;
@@ -43,6 +60,44 @@ public static class CodeAnalysisUtil
 
 internal static class RazorUtil
 {
+    private static readonly Lazy<Func<Action<object>, IRazorFeature>> configureRazorParserOptionsFactory = new(CreateConfigureRazorParserOptionsFactory);
+
+    private static Func<Action<object>, IRazorFeature> CreateConfigureRazorParserOptionsFactory()
+    {
+        var asm = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(Guid.NewGuid().ToString()), AssemblyBuilderAccess.Run);
+        var mod = asm.DefineDynamicModule("Module");
+        var featureInterface = typeof(IConfigureRazorParserOptionsFeature);
+        var type = mod.DefineType("ConfigureRazorParserOptions", TypeAttributes.Public, parent: typeof(RazorEngineFeatureBase), interfaces: [featureInterface]);
+        var field = type.DefineField("configure", typeof(Action<object>), FieldAttributes.Public);
+        var orderProperty = featureInterface.GetProperty(nameof(IConfigureRazorParserOptionsFeature.Order))!;
+        var orderPropertyDefined = type.DefineProperty(orderProperty.Name, PropertyAttributes.None, orderProperty.PropertyType, null);
+        var orderPropertyGetter = type.DefineMethod(orderProperty.GetMethod!.Name, MethodAttributes.Public | MethodAttributes.Virtual, orderProperty.PropertyType, null);
+        var orderPropertyGetterIl = orderPropertyGetter.GetILGenerator();
+        orderPropertyGetterIl.Emit(OpCodes.Ldc_I4_0);
+        orderPropertyGetterIl.Emit(OpCodes.Ret);
+        type.DefineMethodOverride(orderPropertyGetter, orderProperty.GetMethod);
+        var configureMethod = featureInterface.GetMethod(nameof(IConfigureRazorParserOptionsFeature.Configure))!;
+        var configureMethodDefined = type.DefineMethod(configureMethod.Name, MethodAttributes.Public | MethodAttributes.Virtual, configureMethod.ReturnType, configureMethod.GetParameters().Select(p => p.ParameterType).ToArray());
+        var configureMethodIl = configureMethodDefined.GetILGenerator();
+        configureMethodIl.Emit(OpCodes.Ldarg_0);
+        configureMethodIl.Emit(OpCodes.Ldfld, field);
+        configureMethodIl.Emit(OpCodes.Ldarg_1);
+        configureMethodIl.Emit(OpCodes.Callvirt, typeof(Action<object>).GetMethod(nameof(Action<object>.Invoke))!);
+        configureMethodIl.Emit(OpCodes.Ret);
+        type.DefineMethodOverride(configureMethodDefined, configureMethod);
+        return (configure) =>
+        {
+            var feature = Activator.CreateInstance(type.CreateType())!;
+            feature.GetType().GetField(field.Name)!.SetValue(feature, configure);
+            return (IRazorFeature)feature;
+        };
+    }
+
+    public static void ConfigureRazorParserOptionsSafe(this RazorProjectEngineBuilder builder, Action<object> configure)
+    {
+        builder.Features.Add(configureRazorParserOptionsFactory.Value(configure));
+    }
+
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)
     {
         // Different razor versions return IReadOnlyList vs ImmutableArray,
@@ -120,6 +175,17 @@ internal static class RazorUtil
             .Invoke(engine, [projectItem, ..Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
     }
 
+    public static void SetCSharpLanguageVersionSafe(this RazorProjectEngineBuilder builder, LanguageVersion languageVersion)
+    {
+        // Changed in https://github.com/dotnet/razor/commit/40384334fd4c20180c25b3c88a82d3ca5da07487.
+        var asm = builder.GetType().Assembly;
+        var method = asm.GetType($"Microsoft.AspNetCore.Razor.Language.{nameof(RazorProjectEngineBuilderExtensions)}")
+                ?.GetMethod(nameof(RazorProjectEngineBuilderExtensions.SetCSharpLanguageVersion))
+            ?? asm.GetType($"Microsoft.CodeAnalysis.Razor.{nameof(RazorProjectEngineBuilderExtensions)}")
+                ?.GetMethod(nameof(RazorProjectEngineBuilderExtensions.SetCSharpLanguageVersion));
+        method!.Invoke(null, [builder, languageVersion]);
+    }
+
     public static Diagnostic ToDiagnostic(this RazorDiagnostic d)
     {
         DiagnosticSeverity severity = d.Severity.ToDiagnosticSeverity();
@@ -177,5 +243,26 @@ internal static class RazorUtil
     public static TextSpan ToTextSpan(this SourceSpan span)
     {
         return new TextSpan(span.AbsoluteIndex, span.Length);
+    }
+}
+
+internal readonly record struct RazorGeneratorResultSafe(object Inner)
+{
+    public bool TryGetCodeDocument(
+        string physicalPath,
+        [NotNullWhen(returnValue: true)] out RazorCodeDocument? result)
+    {
+        var method = Inner.GetType().GetMethod("GetCodeDocument");
+        if (method is not null &&
+            method.GetParameters() is [{ } param] &&
+            param.ParameterType == typeof(string) &&
+            method.Invoke(Inner, [physicalPath]) is RazorCodeDocument innerResult)
+        {
+            result = innerResult;
+            return true;
+        }
+
+        result = null;
+        return false;
     }
 }

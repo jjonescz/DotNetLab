@@ -78,14 +78,21 @@ internal sealed record InitialCode
     public static readonly InitialCode Configuration = new("Configuration.cs", """
         Config.CSharpParseOptions(options => options
             .WithLanguageVersion(LanguageVersion.Preview)
-            .WithFeatures([new("use-roslyn-tokenizer", "true")]));
+            .WithFeatures([new("use-roslyn-tokenizer", "true")])
+        );
+
+        Config.CSharpCompilationOptions(options => options
+            .WithAllowUnsafe(true)
+            .WithNullableContextOptions(NullableContextOptions.Enable)
+            .WithOptimizationLevel(OptimizationLevel.Debug)
+        );
 
         """);
 
     public InitialCode(string suggestedFileName, string textTemplate)
     {
         SuggestedFileName = suggestedFileName;
-        TextTemplate = textTemplate.ReplaceLineEndings();
+        TextTemplate = textTemplate;
     }
 
     public string SuggestedFileName { get; }

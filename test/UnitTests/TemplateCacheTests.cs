@@ -18,8 +18,6 @@ public sealed class TemplateCacheTests
     [Theory, MemberData(nameof(GetIndices))]
     public async Task UpToDate(int index)
     {
-        Assert.SkipUnless(Environment.NewLine is "\n", "Snapshots have LF line endings.");
-
         var (input, actualJsonFactory) = cache.Entries[index];
 
         // Compile to get the output corresponding to a template input.
@@ -32,8 +30,17 @@ public sealed class TemplateCacheTests
             .Concat(actualOutput.GlobalOutputs);
         foreach (var output in allOutputs)
         {
-            await output.GetTextAsync(outputFactory: null);
-            Assert.NotNull(output.EagerText);
+            var value = await output.GetTextAsync(outputFactory: null);
+            Assert.NotNull(value);
+            Assert.Equal(value, output.EagerText);
+        }
+
+        Assert.True(cache.TryGetOutput(SavedState.From(input), out _, out var expectedOutput));
+
+        // Code generation depends on system new line sequence, so continue only on systems where new line is '\n'.
+        if (Environment.NewLine is not "\n")
+        {
+            return;
         }
 
         // Compare JSONs (do this early so when templates are updated,
@@ -49,7 +56,6 @@ public sealed class TemplateCacheTests
         }
 
         // Compare the objects as well.
-        Assert.True(cache.TryGetOutput(new SavedState { Inputs = input.Inputs }, out _, out var expectedOutput));
         actualOutput.Should().BeEquivalentTo(expectedOutput);
     }
 
