@@ -18,7 +18,7 @@
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
         @* Input presets (quick-start templates) *@
-        <FluentMenuButton Text="Template" Items="presets" OnMenuChanged="OnInputPresetSelectedAsync"
+        <FluentMenuButton Text="Template" Items="WellKnownSlugs.ShorthandToTitle" OnMenuChanged="OnInputPresetSelectedAsync"
         ButtonStyle="margin-left: 0.5em" />
     </div>
 
@@ -204,13 +204,6 @@
 </FluentMultiSplitter>
 
 @code {
-    private static readonly Dictionary<string, string> presets = new()
-        {
-            [nameof(InputPreset.CSharp)] = "C#",
-            [nameof(InputPreset.Razor)] = "Razor",
-            [nameof(InputPreset.Cshtml)] = "CSHTML",
-        };
-
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
     private bool editorInitializationStarted;
@@ -239,13 +232,6 @@
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
-
-    private enum InputPreset
-    {
-        CSharp,
-        Razor,
-        Cshtml,
-    }
 
     private enum SpecialInput
     {
@@ -324,6 +310,7 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        RefreshCurrentSlug();
         await LoadStateFromUrlAsync();
         StateHasChanged();
     }
@@ -376,35 +363,9 @@
 
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
-        var initialCode = args.Id switch
+        if (args.Id is { } slug && NavigateToSlug(slug))
         {
-            nameof(InputPreset.CSharp) => InitialCode.CSharp,
-            nameof(InputPreset.Razor) => InitialCode.Razor,
-            nameof(InputPreset.Cshtml) => InitialCode.Cshtml,
-            _ => null,
-        };
-        if (initialCode != null)
-        {
-            await SaveStateToUrlAsync();
-
-            inputs.Clear();
-            activeInputTabId = IndexToInputTabId(0);
-            await AddInputAsync(initialCode);
-
-            if (args.Id == nameof(InputPreset.Razor))
-            {
-                await AddInputAsync(InitialCode.RazorImports, selectAsCurrent: false);
-            }
-
-            var state = await SaveStateToUrlAsync(static state => state with
-            {
-                // We want a nice slug like `#razor`, so clean up the state
-                // (if users want the timestamp in the state to ensure it gets a unique cache entry,
-                // they can always click Compile).
-                Timestamp = null,
-            });
-
-            await TryLoadFromTemplateCacheAsync(state);
+            await LoadStateFromUrlAsync();
         }
     }
 

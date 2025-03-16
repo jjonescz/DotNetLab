@@ -7,20 +7,22 @@ namespace DotNetLab.Lab;
 static class WellKnownSlugs
 {
     public static readonly FrozenDictionary<string, SavedState> ShorthandToState;
+    public static readonly Dictionary<string, string> ShorthandToTitle;
     public static readonly FrozenDictionary<string, string> FullSlugToShorthand;
 
     static WellKnownSlugs()
     {
-        IEnumerable<KeyValuePair<string, SavedState>> entries =
+        IEnumerable<(string Shorthand, string Title, SavedState State)> entries =
         [
-            new("razor", SavedState.Razor),
-            new("csharp", SavedState.CSharp),
-            new("cshtml", SavedState.Cshtml),
+            ("razor", "Razor", SavedState.Razor),
+            ("csharp", "C#", SavedState.CSharp),
+            ("cshtml", "CSHTML", SavedState.Cshtml),
         ];
 
-        ShorthandToState = entries.ToFrozenDictionary();
+        ShorthandToState = entries.Select(t => KeyValuePair.Create(t.Shorthand, t.State)).ToFrozenDictionary();
+        ShorthandToTitle = entries.Select(t => KeyValuePair.Create(t.Shorthand, t.Title)).ToDictionary();
         FullSlugToShorthand = entries
-            .Select(static p => KeyValuePair.Create(Compressor.Compress(p.Value), p.Key))
+            .Select(static t => KeyValuePair.Create(Compressor.Compress(t.State), t.Shorthand))
             .ToFrozenDictionary();
     }
 }
@@ -28,16 +30,23 @@ static class WellKnownSlugs
 partial class Page
 {
     private SavedState savedState = SavedState.Initial;
+    private string? currentSlug;
 
-    private string GetCurrentSlug()
+    [MemberNotNull(nameof(currentSlug))]
+    private void RefreshCurrentSlug()
     {
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-        return uri.Fragment.TrimStart('#');
+        currentSlug = uri.Fragment.TrimStart('#');
     }
 
     private async Task LoadStateFromUrlAsync()
     {
-        var slug = GetCurrentSlug();
+        if (currentSlug is null)
+        {
+            RefreshCurrentSlug();
+        }
+
+        var slug = currentSlug;
 
         var state = slug switch
         {
@@ -105,6 +114,18 @@ partial class Page
         }
     }
 
+    private bool NavigateToSlug(string slug)
+    {
+        if (slug != currentSlug)
+        {
+            NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + slug, forceLoad: false);
+            currentSlug = slug;
+            return true;
+        }
+
+        return false;
+    }
+
     internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
     {
         // Always save the current editor texts.
@@ -132,10 +153,7 @@ partial class Page
             newSlug = wellKnownSlug;
         }
 
-        if (newSlug != GetCurrentSlug())
-        {
-            NavigationManager.NavigateTo(NavigationManager.BaseUri + "#" + newSlug, forceLoad: false);
-        }
+        NavigateToSlug(newSlug);
 
         return savedState;
 
@@ -173,9 +191,6 @@ internal sealed record SavedState
     };
 
     public static SavedState Initial => Razor;
-
-    // Well-known slugs should have `SelectedOutputType` set so choosing them in the Template drop down
-    // matches the well-known state and hence the corresponding well-known slug is displayed in the URL.
 
     public static SavedState Razor { get; } = defaults with
     {
