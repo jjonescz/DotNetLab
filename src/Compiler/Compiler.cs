@@ -171,7 +171,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         ],
                     new()
                     {
-                        Type = "cs",
+                        Type = "gcs",
                         Label = "C#",
                         Language = "csharp",
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),

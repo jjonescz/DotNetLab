@@ -35,6 +35,8 @@ public sealed class TemplateCacheTests
             Assert.Equal(value, output.EagerText);
         }
 
+        Assert.True(cache.TryGetOutput(SavedState.From(input), out _, out var expectedOutput));
+
         // Code generation depends on system new line sequence, so continue only on systems where new line is '\n'.
         if (Environment.NewLine is not "\n")
         {
@@ -54,7 +56,6 @@ public sealed class TemplateCacheTests
         }
 
         // Compare the objects as well.
-        Assert.True(cache.TryGetOutput(new SavedState { Inputs = input.Inputs }, out _, out var expectedOutput));
         actualOutput.Should().BeEquivalentTo(expectedOutput);
     }
 

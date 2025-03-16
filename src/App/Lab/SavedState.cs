@@ -167,27 +167,32 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
+    private static readonly SavedState defaults = new()
+    {
+        RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi,
+    };
+
     public static SavedState Initial => Razor;
 
     // Well-known slugs should have `SelectedOutputType` set so choosing them in the Template drop down
     // matches the well-known state and hence the corresponding well-known slug is displayed in the URL.
 
-    public static SavedState Razor { get; } = new()
+    public static SavedState Razor { get; } = defaults with
     {
         Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
-        SelectedOutputType = "cs",
+        SelectedOutputType = "gcs",
     };
 
-    public static SavedState CSharp { get; } = new()
+    public static SavedState CSharp { get; } = defaults with
     {
         Inputs = [InitialCode.CSharp.ToInputCode()],
         SelectedOutputType = "run",
     };
 
-    public static SavedState Cshtml { get; } = new()
+    public static SavedState Cshtml { get; } = defaults with
     {
         Inputs = [InitialCode.Cshtml.ToInputCode()],
-        SelectedOutputType = "cs",
+        SelectedOutputType = "gcs",
     };
 
     [ProtoMember(1)]
@@ -275,6 +280,17 @@ internal sealed record SavedState
             Configuration = Configuration,
             RazorToolchain = RazorToolchain,
             RazorStrategy = RazorStrategy,
+        };
+    }
+
+    public static SavedState From(CompilationInput input)
+    {
+        return new()
+        {
+            Inputs = input.Inputs,
+            Configuration = input.Configuration,
+            RazorToolchain = input.RazorToolchain,
+            RazorStrategy = input.RazorStrategy,
         };
     }
 }
