@@ -50,13 +50,17 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
+            allowUnsafe: true,
+            nullableContextOptions: NullableContextOptions.Enable,
+            concurrentBuild: false);
 
         var references = Basic.Reference.Assemblies.AspNet90.References.All;
 
         // If we have a configuration, compile and execute it.
         if (compilationInput.Configuration is { } configuration)
         {
-            executeConfiguration(configuration, ref parseOptions);
+            executeConfiguration(configuration);
         }
 
         const string projectName = "TestProject";
@@ -95,7 +99,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             ? OutputKind.ConsoleApplication
             : OutputKind.DynamicallyLinkedLibrary;
 
-        var options = createCompilationOptions(outputKind);
+        options = options.WithOutputKind(outputKind);
 
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
@@ -254,7 +258,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
         return result;
 
-        void executeConfiguration(string code, ref CSharpParseOptions parseOptions)
+        void executeConfiguration(string code)
         {
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
@@ -296,6 +300,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             Executor.InvokeEntryPoint(entryPoint);
 
             parseOptions = Config.CurrentCSharpParseOptions;
+            options = Config.CurrentCSharpCompilationOptions;
 
             logger.LogDebug("Using language version {LangVersion} (specified {SpecifiedLangVersion})", parseOptions.LanguageVersion, parseOptions.SpecifiedLanguageVersion);
         }
