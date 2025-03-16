@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Runtime.Loader;
 
 namespace DotNetLab;
@@ -36,5 +39,25 @@ public static class Executor
             ? null
             : new object[] { Array.Empty<string>() };
         return entryPoint.Invoke(null, parameters) is int e ? e : 0;
+    }
+
+    public static async Task<string> RenderToHtmlAsync(MemoryStream emitStream, string componentTypeName)
+    {
+        var alc = new AssemblyLoadContext(nameof(RenderToHtmlAsync));
+        var assembly = alc.LoadFromStream(emitStream);
+        var componentType = assembly.GetType(componentTypeName)
+            ?? throw new InvalidOperationException($"Cannot find component '{componentTypeName}' in the assembly.");
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var serviceProvider = services.BuildServiceProvider();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+        var html = await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var output = await renderer.RenderComponentAsync(componentType);
+            return output.ToHtmlString();
+        });
+        return html;
     }
 }
