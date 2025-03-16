@@ -868,8 +868,7 @@
     {
         if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
-            compiled = (input, output, new(null));
-            await AfterCompiledLoadedFromCacheAsync();
+            await TrySetCompiledFromCacheAsync(input, output, new(null));
             return true;
         }
 
@@ -881,14 +880,20 @@
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            compiled = (state.ToCompilationInput(), output, new(timestamp));
-            await AfterCompiledLoadedFromCacheAsync();
+            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp));
             StateHasChanged();
         }
     }
 
-    private async Task AfterCompiledLoadedFromCacheAsync()
+    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info)
     {
+        // If the local compilation finishes before the cache is loaded, don't overwrite it.
+        if (compiled is (var existingInput, _, _) && Equals(input, existingInput))
+        {
+            return;
+        }
+
+        compiled = (input, output, info);
         outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
