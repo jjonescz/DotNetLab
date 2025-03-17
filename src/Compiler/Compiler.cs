@@ -202,6 +202,11 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                             var document = codeDocument.Unwrap()?.GetDocumentIntermediateNode()
                                 ?? throw new InvalidOperationException("No IR available.");
 
+                            if (document.DocumentKind.StartsWith("mvc"))
+                            {
+                                throw new InvalidOperationException("Rendering Razor Pages (.cshtml) to HTML is currently not supported. Try Razor Components (.razor) instead.");
+                            }
+
                             if (document.FindPrimaryNamespace() is not { } primaryNamespace)
                             {
                                 throw new InvalidOperationException("Cannot find primary namespace.");
@@ -223,7 +228,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                             var componentTypeName = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
 
                             ValueTask<string> result = tryGetEmitStream(finalCompilation, out var emitStream, out var error)
-                                ? new(Executor.RenderToHtmlAsync(emitStream, componentTypeName))
+                                ? new(Executor.RenderComponentToHtmlAsync(emitStream, componentTypeName))
                                 : new(error);
                             return result;
                         }),
