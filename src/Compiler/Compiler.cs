@@ -23,6 +23,11 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
     private (CompilationInput Input, CompiledAssembly Output)? lastResult;
 
+    /// <summary>
+    /// Reused for incremental source generation.
+    /// </summary>
+    private GeneratorDriver? generatorDriver;
+
     public CompiledAssembly Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
@@ -369,18 +374,28 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 references: references,
                 options: options);
 
-            var driver = CSharpGeneratorDriver.Create(
-                generators: [new RazorSourceGenerator().AsSourceGenerator()],
-                additionalTexts: additionalTextsBuilder.ToImmutable(),
-                parseOptions: parseOptions,
-                optionsProvider: optionsProvider);
+            if (generatorDriver is null)
+            {
+                generatorDriver = CSharpGeneratorDriver.Create(
+                    generators: [new RazorSourceGenerator().AsSourceGenerator()],
+                    additionalTexts: additionalTextsBuilder.ToImmutable(),
+                    parseOptions: parseOptions,
+                    optionsProvider: optionsProvider);
+            }
+            else
+            {
+                generatorDriver = generatorDriver
+                    .ReplaceAdditionalTexts(additionalTextsBuilder.ToImmutable())
+                    .WithUpdatedParseOptions(parseOptions)
+                    .WithUpdatedAnalyzerConfigOptions(optionsProvider);
+            }
 
-            driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
+            generatorDriver = (CSharpGeneratorDriver)generatorDriver.RunGeneratorsAndUpdateCompilation(
                 initialCompilation,
                 out var finalCommonCompilation,
                 out var generatorDiagnostics);
 
-            razorResult = driver.GetRunResult().Results.FirstOrDefault();
+            razorResult = generatorDriver.GetRunResult().Results.FirstOrDefault();
 
             var finalCompilation = (CSharpCompilation)finalCommonCompilation;
 
