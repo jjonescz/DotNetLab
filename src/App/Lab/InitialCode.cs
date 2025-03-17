@@ -23,7 +23,11 @@ internal sealed record InitialCode
         """);
 
     public static readonly InitialCode Razor = new("TestComponent.razor", """
-        <TestComponent Param="1" />
+        <div>@Param</div>
+        @if (Param == 0)
+        {
+            <TestComponent Param="1" />
+        }
 
         @code {
             [Parameter] public int Param { get; set; }
