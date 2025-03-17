@@ -41,9 +41,9 @@ public static class Executor
         return entryPoint.Invoke(null, parameters) is int e ? e : 0;
     }
 
-    public static async Task<string> RenderToHtmlAsync(MemoryStream emitStream, string componentTypeName)
+    public static async Task<string> RenderComponentToHtmlAsync(MemoryStream emitStream, string componentTypeName)
     {
-        var alc = new AssemblyLoadContext(nameof(RenderToHtmlAsync));
+        var alc = new AssemblyLoadContext(nameof(RenderComponentToHtmlAsync));
         var assembly = alc.LoadFromStream(emitStream);
         var componentType = assembly.GetType(componentTypeName)
             ?? throw new InvalidOperationException($"Cannot find component '{componentTypeName}' in the assembly.");
