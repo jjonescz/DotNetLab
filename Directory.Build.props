@@ -12,6 +12,7 @@
     -->
     <PublishTrimmed>false</PublishTrimmed>
     <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+    <GenerateMvcApplicationPartsAssemblyAttributes>false</GenerateMvcApplicationPartsAssemblyAttributes>
   </PropertyGroup>
 
   <ItemGroup>

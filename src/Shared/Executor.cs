@@ -1,4 +1,15 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Runtime.Loader;
@@ -59,5 +70,100 @@ public static class Executor
             return output.ToHtmlString();
         });
         return html;
+    }
+
+    public static async Task<string> RenderRazorPageToHtmlAsync(MemoryStream emitStream, string pageTypeName)
+    {
+        var alc = new AssemblyLoadContext(nameof(RenderRazorPageToHtmlAsync));
+        var assembly = alc.LoadFromStream(emitStream);
+        var pageType = assembly.GetType(pageTypeName)
+            ?? throw new InvalidOperationException($"Cannot find page '{pageTypeName}' in the assembly.");
+
+        var page = (RazorPageBase)Activator.CreateInstance(pageType)!;
+
+        // Create ViewContext.
+        var appBuilder = WebApplication.CreateBuilder();
+        appBuilder.Services.AddMvc().ConfigureApplicationPartManager(manager =>
+        {
+            var partFactory = new ConsolidatedAssemblyApplicationPartFactory();
+            foreach (var applicationPart in partFactory.GetApplicationParts(assembly))
+            {
+                manager.ApplicationParts.Add(applicationPart);
+            }
+        });
+        var app = appBuilder.Build();
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = app.Services
+        };
+        var requestFeature = new HttpRequestFeature
+        {
+            Method = HttpMethods.Get,
+            Protocol = HttpProtocol.Http2,
+            Scheme = "http"
+        };
+        requestFeature.Headers.Host = "localhost";
+        httpContext.Features.Set<IHttpRequestFeature>(requestFeature);
+        var actionContext = new ActionContext(
+            httpContext,
+            new RouteData(),
+            new ActionDescriptor());
+        var tempDataProvider = new TestTempDataProvider();
+        var tempDataFactory = new TempDataDictionaryFactory(tempDataProvider);
+        var viewStarts = getViewStartNames(pageType.Name)
+            .Select(n => assembly.GetType(string.IsNullOrEmpty(pageType.Namespace) ? n : $"{pageType.Namespace}.{n}"))
+            .Where(t => t is not null)
+            .Select(t => (IRazorPage)Activator.CreateInstance(t!)!)
+            .ToImmutableArray();
+        var view = ActivatorUtilities.CreateInstance<RazorView>(app.Services,
+            /* IReadOnlyList<IRazorPage> viewStartPages */ viewStarts,
+            /* IRazorPage razorPage */ page);
+        var writer = new StringWriter();
+        var viewContext = new ViewContext(
+            actionContext,
+            view,
+            new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
+            tempDataFactory.GetTempData(httpContext),
+            writer,
+            new HtmlHelperOptions());
+
+        // Render the page.
+        await view.RenderAsync(viewContext);
+
+        return writer.ToString();
+
+        // Inspired by Microsoft.AspNetCore.Mvc.Razor.RazorFileHierarchy.GetViewStartPaths.
+        static IEnumerable<string> getViewStartNames(string name)
+        {
+            var builder = new StringBuilder(name);
+            var index = name.Length;
+            for (var currentIteration = 0; currentIteration < 255; currentIteration++)
+            {
+                if (index <= 1 || (index = name.LastIndexOf('_', index - 1)) < 0)
+                {
+                    break;
+                }
+
+                builder.Length = index + 1;
+                builder.Append("_ViewStart");
+
+                var itemPath = builder.ToString();
+                yield return itemPath;
+            }
+        }
+    }
+}
+
+internal sealed class TestTempDataProvider : ITempDataProvider
+{
+    private readonly Dictionary<string, object> data = new();
+
+    public IDictionary<string, object> LoadTempData(HttpContext context)
+    {
+        return data;
+    }
+
+    public void SaveTempData(HttpContext context, IDictionary<string, object> values)
+    {
     }
 }

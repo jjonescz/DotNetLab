@@ -1,11 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageDownload Include="Microsoft.AspNetCore.App.Runtime.win-x64" Version="[$(DotNetRuntimePackagesVersion)]" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="protobuf-net" />
   </ItemGroup>
 
   <!-- IMPORTANT: Do not add references to Roslyn/Razor here. -->
+
+  <PropertyGroup>
+    <_AspNetCoreRuntimePath>$(NuGetPackageRoot)microsoft.aspnetcore.app.runtime.win-x64\$(DotNetRuntimePackagesVersion)\runtimes\win-x64\lib\net9.0\</_AspNetCoreRuntimePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Http.Abstractions.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Http.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Http.Features.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Mvc.Abstractions.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Mvc.Core.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Mvc.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Mvc.Razor.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Mvc.ViewFeatures.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.AspNetCore.Routing.Abstractions.dll" />
+    <Reference Include="$(_AspNetCoreRuntimePath)Microsoft.Extensions.Features.dll" />
+  </ItemGroup>
 
 </Project>
