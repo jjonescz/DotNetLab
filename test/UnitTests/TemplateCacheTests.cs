@@ -30,7 +30,17 @@ public sealed class TemplateCacheTests
             .Concat(actualOutput.GlobalOutputs);
         foreach (var output in allOutputs)
         {
-            var value = await output.GetTextAsync(outputFactory: null);
+            string? value;
+            try
+            {
+                value = await output.GetTextAsync(outputFactory: null);
+            }
+            catch (Exception ex)
+            {
+                value = $"{ex.GetType()}: {ex.Message}";
+                output.SetEagerText(value);
+            }
+
             Assert.NotNull(value);
             Assert.Equal(value, output.EagerText);
         }

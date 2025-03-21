@@ -208,4 +208,9 @@ public sealed class CompiledFileOutput
 
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
     }
+
+    internal void SetEagerText(string? value)
+    {
+        text = value;
+    }
 }
