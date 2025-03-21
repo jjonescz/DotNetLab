@@ -2,6 +2,26 @@
 
 internal sealed record InitialCode
 {
+    public static readonly InitialCode CSharp = new("Program.cs", """
+        using System;
+        using System.Collections.Generic;
+        using System.Collections.Immutable;
+        using System.Diagnostics;
+        using System.Diagnostics.CodeAnalysis;
+        using System.Linq;
+        using System.Threading;
+        using System.Threading.Tasks;
+
+        class Program
+        {
+            static void Main()
+            {
+                Console.WriteLine("Hello.");
+            }
+        }
+
+        """);
+
     public static readonly InitialCode Razor = new("TestComponent.razor", """
         <TestComponent Param="1" />
 
@@ -22,26 +42,6 @@ internal sealed record InitialCode
         @using static Microsoft.AspNetCore.Components.Web.RenderMode
         @using Microsoft.AspNetCore.Components.Web.Virtualization
         @using Microsoft.JSInterop
-
-        """);
-
-    public static readonly InitialCode CSharp = new("Program.cs", """
-        using System;
-        using System.Collections.Generic;
-        using System.Collections.Immutable;
-        using System.Diagnostics;
-        using System.Diagnostics.CodeAnalysis;
-        using System.Linq;
-        using System.Threading;
-        using System.Threading.Tasks;
-
-        class Program
-        {
-            static void Main()
-            {
-                Console.WriteLine("Hello.");
-            }
-        }
 
         """);
 

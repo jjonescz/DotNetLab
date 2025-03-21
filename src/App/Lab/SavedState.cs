@@ -14,8 +14,8 @@ static class WellKnownSlugs
     {
         IEnumerable<(string Shorthand, string Title, SavedState State)> entries =
         [
-            ("razor", "Razor", SavedState.Razor),
             ("csharp", "C#", SavedState.CSharp),
+            ("razor", "Razor", SavedState.Razor),
             ("cshtml", "CSHTML", SavedState.Cshtml),
         ];
 
@@ -190,18 +190,18 @@ internal sealed record SavedState
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi,
     };
 
-    public static SavedState Initial => Razor;
-
-    public static SavedState Razor { get; } = defaults with
-    {
-        Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
-        SelectedOutputType = "gcs",
-    };
+    public static SavedState Initial => CSharp;
 
     public static SavedState CSharp { get; } = defaults with
     {
         Inputs = [InitialCode.CSharp.ToInputCode()],
         SelectedOutputType = "run",
+    };
+
+    public static SavedState Razor { get; } = defaults with
+    {
+        Inputs = [InitialCode.Razor.ToInputCode(), InitialCode.RazorImports.ToInputCode()],
+        SelectedOutputType = "gcs",
     };
 
     public static SavedState Cshtml { get; } = defaults with
