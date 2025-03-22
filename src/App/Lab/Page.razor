@@ -902,7 +902,7 @@
     private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
-        if (compiled is (var existingInput, _, _) && Equals(input, existingInput))
+        if (compiled is (var existingInput, _, null) && Equals(input, existingInput))
         {
             return;
         }
