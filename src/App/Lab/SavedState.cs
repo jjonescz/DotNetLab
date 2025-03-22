@@ -69,21 +69,22 @@ partial class Page
         inputs.Clear();
         activeInputTabId = IndexToInputTabId(0);
         var activeIndex = savedState.SelectedInputIndex;
-        TextModel? firstModel = null;
-        TextModel? activeModel = null;
+        Input? firstInput = null;
+        Input? activeInput = null;
         foreach (var (index, input) in savedState.Inputs.Index())
         {
             var model = await CreateModelAsync(input);
-            inputs.Add(new(input.FileName, model) { NewContent = input.Text });
+            Input inputModel = new(input.FileName, model) { NewContent = input.Text };
+            inputs.Add(inputModel);
 
             if (index == 0)
             {
-                firstModel = model;
+                firstInput = inputModel;
             }
 
             if (index == activeIndex)
             {
-                activeModel = model;
+                activeInput = inputModel;
             }
         }
 
@@ -98,9 +99,10 @@ partial class Page
 
         OnWorkspaceChanged();
 
-        if ((activeModel ?? firstModel) is { } selectModel)
+        if ((activeInput ?? firstInput) is { } selectInput)
         {
-            await inputEditor.SetModel(selectModel);
+            currentInput = selectInput;
+            await inputEditor.SetModel(selectInput.Model);
         }
 
         // Load settings.

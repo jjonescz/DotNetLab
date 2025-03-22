@@ -215,6 +215,7 @@
     private string activeInputTabId = IndexToInputTabId(0);
     private StandaloneCodeEditor inputEditor = null!;
     private StandaloneCodeEditor outputEditor = null!;
+    private Input? currentInput;
     private string? selectedOutputType;
     private bool compilationInProgress;
     private bool outputOutdated;
@@ -229,6 +230,7 @@
     {
         public string FileName { get; set; } = FileName;
         public string? NewContent { get; set; }
+        public MonacoEditorViewState ViewState { get; set; }
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
@@ -501,8 +503,16 @@
 
     private async Task SelectInputTabAsync(Input input, int index)
     {
+        if (currentInput is { } previousInput)
+        {
+            previousInput.ViewState = await inputEditor.SaveViewStateAsync(JSRuntime);
+        }
+
+        currentInput = input;
+
         // Update the editor.
         await inputEditor.SetModel(input.Model);
+        await inputEditor.RestoreViewStateAsync(input.ViewState, JSRuntime);
 
         // Update the tabs.
         activeInputTabId = IndexToInputTabId(index);
