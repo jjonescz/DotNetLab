@@ -21,4 +21,10 @@ internal static class MonacoUtil
     }
 }
 
-public readonly record struct MonacoEditorViewState(IJSObjectReference? Inner);
+public readonly record struct MonacoEditorViewState(IJSObjectReference? Inner) : IAsyncDisposable
+{
+    public ValueTask DisposeAsync()
+    {
+        return Inner is { } inner ? inner.DisposeAsync() : default;
+    }
+}

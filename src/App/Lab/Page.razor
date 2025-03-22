@@ -226,11 +226,17 @@
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
 
-    private sealed record Input(string FileName, TextModel Model)
+    private sealed record Input(string FileName, TextModel Model) : IAsyncDisposable
     {
         public string FileName { get; set; } = FileName;
         public string? NewContent { get; set; }
         public MonacoEditorViewState ViewState { get; set; }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Model.DisposeModel();
+            await ViewState.DisposeAsync();
+        }
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
@@ -297,6 +303,11 @@
         ScreenInfo.Updated -= OnScreenInfoUpdated;
 
         unregisterEventListeners?.Invoke();
+
+        foreach (var input in inputs)
+        {
+            await input.DisposeAsync();
+        }
 
         if (module is not null)
         {
@@ -424,7 +435,9 @@
         }
         else if (inputs.Count > 1)
         {
+            var removedInput = inputs[i];
             inputs.RemoveAt(i);
+            await removedInput.DisposeAsync();
         }
         else
         {

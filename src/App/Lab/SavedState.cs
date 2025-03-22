@@ -65,8 +65,15 @@ partial class Page
 
         savedState = state;
 
-        // Load inputs.
+        // Dispose old inputs.
+        foreach (var input in inputs)
+        {
+            await input.DisposeAsync();
+        }
+
         inputs.Clear();
+
+        // Load inputs.
         activeInputTabId = IndexToInputTabId(0);
         var activeIndex = savedState.SelectedInputIndex;
         Input? firstInput = null;
