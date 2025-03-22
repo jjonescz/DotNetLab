@@ -53,6 +53,7 @@ public static class WorkerServices
         services.AddScoped<ICompilerDependencyResolver, AzDoDownloader>();
         services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(sp => sp.GetRequiredService<BuiltInCompilerProvider>());
         services.AddScoped<LanguageServices>();
+        services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }

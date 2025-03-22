@@ -27,9 +27,13 @@ internal sealed class WorkerController
         this.jsRuntime = jsRuntime;
         this.hostEnvironment = hostEnvironment;
         worker = new(CreateWorker);
-        workerServices = new(() => WorkerServices.Create(
-            baseUrl: hostEnvironment.BaseAddress,
-            debugLogs: DebugLogs));
+        workerServices = new(() =>
+        {
+            var workerAssembly = Assembly.Load("DotNetLab.Worker");
+            return (IServiceProvider)workerAssembly.GetType("DotNetLab.Worker.WorkerServices")!
+                .GetMethod("Create")!
+                .Invoke(null, [hostEnvironment.BaseAddress, DebugLogs])!;
+        });
     }
 
     public bool DebugLogs { get; set; }
@@ -95,7 +99,8 @@ internal sealed class WorkerController
 
         if (worker is null)
         {
-            return await message.HandleAndGetOutputAsync(workerServices.Value);
+            var executor = workerServices.Value.GetRequiredService<WorkerInputMessage.IExecutor>();
+            return await message.HandleAndGetOutputAsync(executor);
         }
 
         // TODO: Use ProtoBuf.

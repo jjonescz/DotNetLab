@@ -8,6 +8,7 @@
 	<ItemGroup>
 		<PackageReference Include="Blazored.LocalStorage" />
 		<PackageReference Include="BlazorMonaco" />
+		<PackageReference Include="KristofferStrube.Blazor.WebWorkers" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
@@ -21,9 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Compiler\Compiler.csproj" />
 		<ProjectReference Include="..\Shared\Shared.csproj" />
-		<ProjectReference Include="..\Worker\Worker.csproj" />
+		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

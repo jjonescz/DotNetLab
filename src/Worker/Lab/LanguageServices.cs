@@ -164,8 +164,3 @@ internal sealed class LanguageServices
         return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
     }
 }
-
-public sealed record ModelInfo(string Uri, string FileName)
-{
-    public string? NewContent { get; set; }
-}

@@ -12,7 +12,6 @@ internal sealed class AzDoDownloader(
     HttpClient client)
     : ICompilerDependencyResolver
 {
-    private static readonly string baseAddress = "https://dev.azure.com/dnceng-public/public";
     private static readonly JsonSerializerOptions options = new(JsonSerializerDefaults.Web)
     {
         Converters =
@@ -22,11 +21,6 @@ internal sealed class AzDoDownloader(
         },
     };
     private static readonly Task<CompilerDependency?> nullResult = Task.FromResult<CompilerDependency?>(null);
-
-    public static string GetBuildListUrl(int definitionId)
-    {
-        return $"{baseAddress}/_build?definitionId={definitionId}";
-    }
 
     public Task<CompilerDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
@@ -216,7 +210,7 @@ internal sealed class AzDoDownloader(
 
     private async Task<Build> GetBuildAsync(int buildId)
     {
-        var uri = new UriBuilder(baseAddress);
+        var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString());
         uri.AppendQuery("api-version", "7.1");
         return await client.GetFromJsonAsync<Build>(uri.ToString(), options)
@@ -225,7 +219,7 @@ internal sealed class AzDoDownloader(
 
     private async Task<AzDoCollection<Build>?> GetBuildsAsync(int definitionId, string branchName, int top)
     {
-        var uri = new UriBuilder(baseAddress);
+        var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds");
         uri.AppendQuery("definitions", definitionId.ToString());
         uri.AppendQuery("branchName", branchName);
@@ -237,7 +231,7 @@ internal sealed class AzDoDownloader(
 
     private async Task<BuildArtifact> GetArtifactAsync(int buildId, string artifactName)
     {
-        var uri = new UriBuilder(baseAddress);
+        var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString(), "artifacts");
         uri.AppendQuery("artifactName", artifactName);
         uri.AppendQuery("api-version", "7.1");
@@ -291,7 +285,7 @@ internal sealed class AzDoDownloader(
 
     private static string GetFileUri(int buildId, string artifactName, string fileId)
     {
-        var uri = new UriBuilder(baseAddress);
+        var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString(), "artifacts");
         uri.AppendQuery("artifactName", artifactName);
         uri.AppendQuery("fileId", fileId);
