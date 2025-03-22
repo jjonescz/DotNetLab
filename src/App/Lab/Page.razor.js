@@ -12,3 +12,12 @@
         document.removeEventListener('keydown', keyDownHandler);
     };
 }
+
+export function saveMonacoEditorViewState(editorId) {
+    const result = blazorMonaco.editor.getEditor(editorId)?.saveViewState();
+    return { Inner: result ? DotNet.createJSObjectReference(result) : null };
+}
+
+export function restoreMonacoEditorViewState(editorId, state) {
+    blazorMonaco.editor.getEditor(editorId)?.restoreViewState(state);
+}

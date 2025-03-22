@@ -209,7 +209,7 @@
     private bool editorInitializationStarted;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
-    private IJSObjectReference? module;
+    private IJSObjectReference module = null!;
     private bool loadedDarkTheme;
     private Input? configuration;
     private string activeInputTabId = IndexToInputTabId(0);
@@ -332,7 +332,7 @@
     {
         if (firstRender)
         {
-            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js");
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
             dotNetObjectReference = DotNetObjectReference.Create(this);
             unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
         }
@@ -518,14 +518,14 @@
     {
         if (currentInput is { } previousInput)
         {
-            previousInput.ViewState = await inputEditor.SaveViewStateAsync(JSRuntime);
+            previousInput.ViewState = await inputEditor.SaveViewStateAsync(module);
         }
 
         currentInput = input;
 
         // Update the editor.
         await inputEditor.SetModel(input.Model);
-        await inputEditor.RestoreViewStateAsync(input.ViewState, JSRuntime);
+        await inputEditor.RestoreViewStateAsync(input.ViewState, module);
 
         // Update the tabs.
         activeInputTabId = IndexToInputTabId(index);

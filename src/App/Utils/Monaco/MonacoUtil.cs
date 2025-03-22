@@ -5,23 +5,22 @@ namespace DotNetLab;
 
 internal static class MonacoUtil
 {
-    public static async ValueTask<MonacoEditorViewState> SaveViewStateAsync(this Editor editor, IJSRuntime jsRuntime)
+    public static async ValueTask<MonacoEditorViewState> SaveViewStateAsync(this Editor editor, IJSObjectReference module)
     {
-        var editorRef = await jsRuntime.InvokeAsync<IJSObjectReference>("blazorMonaco.editor.getEditor", editor.Id);
-        return new(await editorRef.InvokeAsync<IJSObjectReference>("saveViewState"));
+        var result = await module.InvokeAsync<MonacoEditorViewState>("saveMonacoEditorViewState", editor.Id);
+        return result;
     }
 
-    public static async ValueTask RestoreViewStateAsync(this Editor editor, MonacoEditorViewState viewState, IJSRuntime jsRuntime)
+    public static async ValueTask RestoreViewStateAsync(this Editor editor, MonacoEditorViewState viewState, IJSObjectReference module)
     {
         if (viewState.Inner is { } inner)
         {
-            var editorRef = await jsRuntime.InvokeAsync<IJSObjectReference>("blazorMonaco.editor.getEditor", editor.Id);
-            await editorRef.InvokeVoidAsync("restoreViewState", inner);
+            await module.InvokeVoidAsync("restoreMonacoEditorViewState", editor.Id, inner);
         }
     }
 }
 
-public readonly record struct MonacoEditorViewState(IJSObjectReference? Inner) : IAsyncDisposable
+internal readonly record struct MonacoEditorViewState(IJSObjectReference? Inner) : IAsyncDisposable
 {
     public ValueTask DisposeAsync()
     {
