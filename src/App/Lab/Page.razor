@@ -206,15 +206,18 @@
 @code {
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
+    private readonly Dictionary<string, EditorState> outputStates = new();
     private bool editorInitializationStarted;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
-    private IJSObjectReference? module;
+    private IJSObjectReference module = null!;
     private bool loadedDarkTheme;
     private Input? configuration;
     private string activeInputTabId = IndexToInputTabId(0);
     private StandaloneCodeEditor inputEditor = null!;
     private StandaloneCodeEditor outputEditor = null!;
+    private Input? currentInput;
+    private EditorState? currentOutput;
     private string? selectedOutputType;
     private bool compilationInProgress;
     private bool outputOutdated;
@@ -225,7 +228,18 @@
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
 
-    private sealed record Input(string FileName, TextModel Model)
+    private record EditorState(TextModel Model) : IAsyncDisposable
+    {
+        public MonacoEditorViewState ViewState { get; set; }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Model.DisposeModel();
+            await ViewState.DisposeAsync();
+        }
+    }
+
+    private sealed record Input(string FileName, TextModel Model) : EditorState(Model)
     {
         public string FileName { get; set; } = FileName;
         public string? NewContent { get; set; }
@@ -296,6 +310,16 @@
 
         unregisterEventListeners?.Invoke();
 
+        foreach (var input in inputs)
+        {
+            await input.DisposeAsync();
+        }
+
+        foreach (var outputModel in outputStates.Values)
+        {
+            await outputModel.DisposeAsync();
+        }
+
         if (module is not null)
         {
             try
@@ -313,16 +337,6 @@
         RefreshCurrentSlug();
         await LoadStateFromUrlAsync();
         StateHasChanged();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js");
-            dotNetObjectReference = DotNetObjectReference.Create(this);
-            unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
-        }
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
@@ -422,7 +436,9 @@
         }
         else if (inputs.Count > 1)
         {
+            var removedInput = inputs[i];
             inputs.RemoveAt(i);
+            await removedInput.DisposeAsync();
         }
         else
         {
@@ -501,8 +517,16 @@
 
     private async Task SelectInputTabAsync(Input input, int index)
     {
+        if (currentInput is { } previousInput)
+        {
+            previousInput.ViewState = await inputEditor.SaveViewStateAsync(module);
+        }
+
+        currentInput = input;
+
         // Update the editor.
         await inputEditor.SetModel(input.Model);
+        await inputEditor.RestoreViewStateAsync(input.ViewState, module);
 
         // Update the tabs.
         activeInputTabId = IndexToInputTabId(index);
@@ -641,18 +665,16 @@
         if (compiled is null || selectedOutputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
-            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
+            await setModelAsync("", "", null);
         }
         else
         {
             var compiledOutput = compiled?.Output;
-            var output = GetOutput(selectedOutputType);
+            var outputType = selectedOutputType;
+            var output = GetOutput(outputType);
             var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
-            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
-                JSRuntime,
-                value: outputText,
-                language: output?.Output.Language));
+            await setModelAsync(outputType, outputText, output?.Output.Language);
 
             if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
             {
@@ -685,6 +707,33 @@
                 // to prevent anyone changing already shared snippet outputs).
                 Timestamp = updateTimestamp ? DateTime.UtcNow : state.Timestamp,
             });
+        }
+
+        async Task setModelAsync(string outputType, string text, string? language)
+        {
+            if (!outputStates.TryGetValue(outputType, out var state))
+            {
+                state = new(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: text, language: language));
+                outputStates[outputType] = state;
+            }
+            else
+            {
+                await state.Model.SetValue(text);
+                if (language is not null)
+                {
+                    await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
+                }
+            }
+
+            if (currentOutput is { } previousOutput)
+            {
+                previousOutput.ViewState = await outputEditor.SaveViewStateAsync(module);
+            }
+
+            currentOutput = state;
+
+            await outputEditor.SetModel(state.Model);
+            await outputEditor.RestoreViewStateAsync(state.ViewState, module);
         }
     }
 
@@ -807,6 +856,10 @@
 
         editorInitializationStarted = true;
 
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
+
         await settings.InitializeAsync();
 
         await LoadStateFromUrlAsync();
@@ -825,31 +878,31 @@
         }
     }
 
-    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
     {
         if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(input, output, new(null));
+            await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
             return true;
         }
 
         return false;
     }
 
-    private async Task TryLoadFromCacheAsync(SavedState state)
+    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput)
     {
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp));
+            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info)
+    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
-        if (compiled is (var existingInput, _, _) && Equals(input, existingInput))
+        if (compiled is (var existingInput, _, null) && Equals(input, existingInput))
         {
             return;
         }
@@ -858,9 +911,13 @@
         outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
-        await AutoSelectOutputAsync(
-            updateTimestampMode: OutputActionMode.Never,
-            storeInCacheMode: OutputActionMode.Never);
+
+        if (updateOutput)
+        {
+            await AutoSelectOutputAsync(
+                updateTimestampMode: OutputActionMode.Never,
+                storeInCacheMode: OutputActionMode.Never);
+        }
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
