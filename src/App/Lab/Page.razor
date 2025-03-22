@@ -941,11 +941,17 @@
     private void OnWorkspaceChanged()
     {
         outputOutdated = true;
+
+        if (LanguageServices.Disabled)
+        {
+            return;
+        }
+
         var models = inputs
             .Select(i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = i.NewContent })
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
-        Worker.OnDidChangeWorkspace(models);
+        LanguageServices.OnDidChangeWorkspace(models);
     }
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)
