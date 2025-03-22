@@ -116,10 +116,16 @@ partial class Page
         await settings.LoadFromStateAsync(savedState);
 
         // Try loading from cache.
-        if (!await TryLoadFromTemplateCacheAsync(state) &&
+        if (!await TryLoadFromTemplateCacheAsync(state, updateOutput: false) &&
             settings.EnableCaching)
         {
-            _ = TryLoadFromCacheAsync(state);
+            _ = TryLoadFromCacheAsync(state, updateOutput: true);
+        }
+        else
+        {
+            await UpdateOutputDisplayAsync(
+                updateTimestampMode: OutputActionMode.Never,
+                storeInCacheMode: OutputActionMode.Never);
         }
     }
 

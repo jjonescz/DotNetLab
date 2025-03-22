@@ -339,16 +339,6 @@
         StateHasChanged();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
-            dotNetObjectReference = DotNetObjectReference.Create(this);
-            unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
-        }
-    }
-
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
     {
         return EditorConstructionOptions(editor, output: false);
@@ -866,6 +856,10 @@
 
         editorInitializationStarted = true;
 
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
+
         await settings.InitializeAsync();
 
         await LoadStateFromUrlAsync();
@@ -884,28 +878,28 @@
         }
     }
 
-    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
     {
         if (TemplateCache.TryGetOutput(state, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(input, output, new(null));
+            await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
             return true;
         }
 
         return false;
     }
 
-    private async Task TryLoadFromCacheAsync(SavedState state)
+    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput)
     {
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp));
+            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info)
+    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is (var existingInput, _, _) && Equals(input, existingInput))
@@ -917,9 +911,13 @@
         outputOutdated = false;
         StateHasChanged();
         await DisplaySquigglesAsync();
-        await AutoSelectOutputAsync(
-            updateTimestampMode: OutputActionMode.Never,
-            storeInCacheMode: OutputActionMode.Never);
+
+        if (updateOutput)
+        {
+            await AutoSelectOutputAsync(
+                updateTimestampMode: OutputActionMode.Never,
+                storeInCacheMode: OutputActionMode.Never);
+        }
     }
 
     private async Task<TextModel> CreateModelAsync(InputCode inputCode)
