@@ -10,11 +10,6 @@ namespace DotNetLab.Lab;
 
 public static class NuGetUtil
 {
-    public static string GetPackageVersionListUrl(string packageId)
-    {
-        return $"https://dev.azure.com/dnceng/public/_artifacts/feed/dotnet-tools/NuGet/{packageId}/versions";
-    }
-
     internal static ImmutableArray<LoadedAssembly> GetAssembliesFromNupkg(Stream nupkgStream, string folder)
     {
         const string extension = ".dll";

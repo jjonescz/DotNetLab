@@ -39,6 +39,7 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 - `src/Shared`: code used by `Compiler` that does not depend on Roslyn/Razor.
 - `src/Worker`: an app loaded in a web worker (a separate process in the browser),
   so it does all the CPU-intensive work to avoid lagging the user interface.
+- `src/WorkerApi`: shared code between `Worker` and `App`.
 - `test/UnitTests`
   - `dotnet test`
 

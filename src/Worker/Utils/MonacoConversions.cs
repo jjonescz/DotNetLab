@@ -93,32 +93,9 @@ public static class MonacoConversions
         return new LinePosition(position.LineNumber - 1, position.Column - 1);
     }
 
-    public static MarkerData ToMarkerData(this DiagnosticData d)
-    {
-        return new MarkerData
-        {
-            CodeAsObject = new()
-            {
-                Value = d.Id,
-                TargetUri = d.HelpLinkUri,
-            },
-            Message = d.Message,
-            StartLineNumber = d.StartLineNumber,
-            StartColumn = d.StartColumn,
-            EndLineNumber = d.EndLineNumber,
-            EndColumn = d.EndColumn,
-            Severity = d.Severity switch
-            {
-                DiagnosticDataSeverity.Error => MarkerSeverity.Error,
-                DiagnosticDataSeverity.Warning => MarkerSeverity.Warning,
-                _ => MarkerSeverity.Info,
-            },
-        };
-    }
-
     public static MarkerData ToMarkerData(this Diagnostic d)
     {
-        return ToMarkerData(d.ToDiagnosticData());
+        return SimpleMonacoConversions.ToMarkerData(d.ToDiagnosticData());
     }
 
     public static MonacoRange ToRange(this LinePositionSpan span)
