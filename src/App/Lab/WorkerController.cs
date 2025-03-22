@@ -1,11 +1,8 @@
-﻿using BlazorMonaco;
+using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
-using KristofferStrube.Blazor.DOM;
-using KristofferStrube.Blazor.WebWorkers;
-using KristofferStrube.Blazor.Window;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.JSInterop;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Threading.Channels;
 
@@ -14,65 +11,103 @@ namespace DotNetLab.Lab;
 internal sealed class WorkerController
 {
     private readonly ILogger<WorkerController> logger;
-    private readonly IJSRuntime jsRuntime;
     private readonly IWebAssemblyHostEnvironment hostEnvironment;
-    private readonly Lazy<Task<SlimWorker?>> worker;
+    private readonly Dispatcher dispatcher;
+    private readonly Lazy<Task<JSObject?>> worker;
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
     private int messageId;
 
-    public WorkerController(ILogger<WorkerController> logger, IJSRuntime jsRuntime, IWebAssemblyHostEnvironment hostEnvironment)
+    public WorkerController(
+        ILogger<WorkerController> logger,
+        IWebAssemblyHostEnvironment hostEnvironment)
     {
         this.logger = logger;
-        this.jsRuntime = jsRuntime;
         this.hostEnvironment = hostEnvironment;
+        dispatcher = Dispatcher.CreateDefault();
+#pragma warning disable CA1416 // Platform support is checked inside the lazy factory
         worker = new(CreateWorker);
-        workerServices = new(() => WorkerServices.Create(
-            baseUrl: hostEnvironment.BaseAddress,
-            debugLogs: DebugLogs));
+#pragma warning restore CA1416
+        workerServices = new(CreateWorkerServices);
     }
 
     public bool DebugLogs { get; set; }
     public bool Disabled { get; set; }
 
-    private Task<SlimWorker?> Worker => worker.Value;
+#pragma warning disable CA1416 // Platform support is checked inside the lazy factory
+    private Task<JSObject?> Worker => worker.Value;
+#pragma warning restore CA1416
 
-    private async Task<SlimWorker?> CreateWorker()
+    private IServiceProvider CreateWorkerServices()
+    {
+        return WorkerServices.Create(
+           baseUrl: hostEnvironment.BaseAddress,
+           debugLogs: DebugLogs);
+    }
+
+    private async Task<JSObject?> CreateWorker()
     {
         if (Disabled)
         {
             return null;
         }
 
-        var workerReady = new TaskCompletionSource();
-        var worker = await SlimWorker.CreateAsync(
-            jsRuntime,
-            assembly: "DotNetLab.Worker",
-            args: [hostEnvironment.BaseAddress, DebugLogs.ToString()]);
-        var listener = await EventListener<MessageEvent>.CreateAsync(jsRuntime, async e =>
+        if (!OperatingSystem.IsBrowser())
         {
-            var data = await e.Data.GetValueAsync() as string ?? string.Empty;
-            var message = JsonSerializer.Deserialize<WorkerOutputMessage>(data)!;
-            logger.LogDebug("📩 {Id}: {Type} ({Size})",
-                message.Id,
-                message.GetType().Name,
-                data.Length.SeparateThousands());
-            if (message is WorkerOutputMessage.Ready)
+            throw new InvalidOperationException("Workers are only supported in the browser.");
+        }
+
+        var workerReady = new TaskCompletionSource();
+        await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js");
+        var worker = WorkerControllerInterop.CreateWorker(
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            void (string data) =>
             {
-                workerReady.SetResult();
-            }
-            else if (message.Id < 0)
+                dispatcher.InvokeAsync(async () =>
+                {
+                    var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
+                    logger.LogDebug("📩 {Id}: {Type} ({Size})",
+                        message.Id,
+                        message.GetType().Name,
+                        data.Length.SeparateThousands());
+                    if (message is WorkerOutputMessage.Ready)
+                    {
+                        workerReady.SetResult();
+                    }
+                    else if (message.Id < 0)
+                    {
+                        logger.LogError("Unpaired message {Message}", message);
+                    }
+                    else
+                    {
+                        await workerMessages.Writer.WriteAsync(message);
+                    }
+                });
+            },
+            void (string error) =>
             {
-                logger.LogError("Unpaired message {Message}", message);
-            }
-            else
-            {
-                await workerMessages.Writer.WriteAsync(message);
-            }
-        });
-        await worker.AddOnMessageEventListenerAsync(listener);
+                logger.LogError("Worker error: {Error}", error);
+            });
         await workerReady.Task;
         return worker;
+
+        static string getWorkerUrl(string url, ReadOnlySpan<string> args)
+        {
+            // Append args as ?arg=...&arg=...&arg=...
+            var sb = new StringBuilder(url);
+            sb.Append('?');
+            int i = 0;
+            foreach (var arg in args)
+            {
+                sb.Append("arg=");
+                sb.Append(Uri.EscapeDataString(arg));
+                if (++i < args.Length)
+                {
+                    sb.Append('&');
+                }
+            }
+            return sb.ToString();
+        }
     }
 
     private async Task<WorkerOutputMessage> ReceiveWorkerMessageAsync(int id)
@@ -91,11 +126,13 @@ internal sealed class WorkerController
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        SlimWorker? worker = await Worker;
+        JSObject? worker = await Worker;
 
         if (worker is null)
         {
-            return await message.HandleAndGetOutputAsync(workerServices.Value);
+            var workerServices = this.workerServices.Value;
+            var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
+            return await message.HandleAndGetOutputAsync(executor);
         }
 
         // TODO: Use ProtoBuf.
@@ -104,7 +141,7 @@ internal sealed class WorkerController
             message.Id,
             message.GetType().Name,
             serialized.Length.SeparateThousands());
-        await worker.PostMessageAsync(serialized);
+        WorkerControllerInterop.PostMessage(worker, serialized);
 
         return await ReceiveWorkerMessageAsync(message.Id);
     }
@@ -230,4 +267,18 @@ internal sealed class WorkerController
             new WorkerInputMessage.GetDiagnostics() { Id = messageId++ },
             deserializeAs: default(ImmutableArray<MarkerData>));
     }
+}
+
+internal static partial class WorkerControllerInterop
+{
+    [JSImport("createWorker", nameof(WorkerController))]
+    public static partial JSObject CreateWorker(
+        string scriptUrl,
+        [JSMarshalAs<JSType.Function<JSType.String>>]
+        Action<string> messageHandler,
+        [JSMarshalAs<JSType.Function<JSType.String>>]
+        Action<string> errorHandler);
+
+    [JSImport("postMessage", nameof(WorkerController))]
+    public static partial void PostMessage(JSObject worker, string message);
 }

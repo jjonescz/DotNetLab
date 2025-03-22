@@ -1,11 +1,17 @@
 ﻿using DotNetLab;
-using KristofferStrube.Blazor.WebWorkers;
+using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.Versioning;
 using System.Text.Json;
 
 Console.WriteLine("Worker started.");
 
-var serviceProvider = WorkerServices.Create(
+if (args.Length != 2)
+{
+    Console.WriteLine($"Expected 2 args, got {args.Length}.");
+    return;
+}
+
+var services = WorkerServices.Create(
     baseUrl: args[0],
     debugLogs: args[1] == bool.TrueString);
 
@@ -15,7 +21,8 @@ Imports.RegisterOnMessage(async e =>
     {
         var data = e.GetPropertyAsString("data") ?? string.Empty;
         var incoming = JsonSerializer.Deserialize<WorkerInputMessage>(data);
-        PostMessage(await incoming!.HandleAndGetOutputAsync(serviceProvider));
+        var executor = services.GetRequiredService<WorkerInputMessage.IExecutor>();
+        PostMessage(await incoming!.HandleAndGetOutputAsync(executor));
     }
     catch (Exception ex)
     {

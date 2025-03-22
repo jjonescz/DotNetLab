@@ -6,6 +6,8 @@
     <RootNamespace>DotNetLab</RootNamespace>
     <AssemblyName>DotNetLab.$([System.IO.Path]::GetFileName(`$(MSBuildProjectDirectory)`))</AssemblyName>
     <Features>$(Features);use-roslyn-tokenizer=true</Features>
+    <CompressionEnabled>false</CompressionEnabled>
+    <LangVersion>preview</LangVersion>
 
     <!--
       Cannot trim because we dynamically execute programs

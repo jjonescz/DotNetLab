@@ -80,11 +80,3 @@ public sealed class Dependencies
         public required string Version { get; init; }
     }
 }
-
-public sealed record SdkInfo
-{
-    public required string SdkVersion { get; init; }
-    public required CommitLink Commit { get; init; }
-    public required string RoslynVersion { get; init; }
-    public required string RazorVersion { get; init; }
-}
