@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DotNetLab</RootNamespace>
     <AssemblyName>DotNetLab.$([System.IO.Path]::GetFileName(`$(MSBuildProjectDirectory)`))</AssemblyName>
+    <Features>$(Features);use-roslyn-tokenizer=true</Features>
 
     <!--
       Cannot trim because we dynamically execute programs
