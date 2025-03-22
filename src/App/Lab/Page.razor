@@ -206,6 +206,7 @@
 @code {
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
+    private readonly Dictionary<string, EditorState> outputStates = new();
     private bool editorInitializationStarted;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
@@ -216,6 +217,7 @@
     private StandaloneCodeEditor inputEditor = null!;
     private StandaloneCodeEditor outputEditor = null!;
     private Input? currentInput;
+    private EditorState? currentOutput;
     private string? selectedOutputType;
     private bool compilationInProgress;
     private bool outputOutdated;
@@ -226,10 +228,8 @@
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
 
-    private sealed record Input(string FileName, TextModel Model) : IAsyncDisposable
+    private record EditorState(TextModel Model) : IAsyncDisposable
     {
-        public string FileName { get; set; } = FileName;
-        public string? NewContent { get; set; }
         public MonacoEditorViewState ViewState { get; set; }
 
         public async ValueTask DisposeAsync()
@@ -237,6 +237,12 @@
             await Model.DisposeModel();
             await ViewState.DisposeAsync();
         }
+    }
+
+    private sealed record Input(string FileName, TextModel Model) : EditorState(Model)
+    {
+        public string FileName { get; set; } = FileName;
+        public string? NewContent { get; set; }
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
@@ -307,6 +313,11 @@
         foreach (var input in inputs)
         {
             await input.DisposeAsync();
+        }
+
+        foreach (var outputModel in outputStates.Values)
+        {
+            await outputModel.DisposeAsync();
         }
 
         if (module is not null)
@@ -664,18 +675,16 @@
         if (compiled is null || selectedOutputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
-            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: ""));
+            await setModelAsync("", "", null);
         }
         else
         {
             var compiledOutput = compiled?.Output;
-            var output = GetOutput(selectedOutputType);
+            var outputType = selectedOutputType;
+            var output = GetOutput(outputType);
             var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
-            await outputEditor.SetModel(await BlazorMonaco.Editor.Global.CreateModel(
-                JSRuntime,
-                value: outputText,
-                language: output?.Output.Language));
+            await setModelAsync(outputType, outputText, output?.Output.Language);
 
             if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
             {
@@ -708,6 +717,33 @@
                 // to prevent anyone changing already shared snippet outputs).
                 Timestamp = updateTimestamp ? DateTime.UtcNow : state.Timestamp,
             });
+        }
+
+        async Task setModelAsync(string outputType, string text, string? language)
+        {
+            if (!outputStates.TryGetValue(outputType, out var state))
+            {
+                state = new(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: text, language: language));
+                outputStates[outputType] = state;
+            }
+            else
+            {
+                await state.Model.SetValue(text);
+                if (language is not null)
+                {
+                    await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
+                }
+            }
+
+            if (currentOutput is { } previousOutput)
+            {
+                previousOutput.ViewState = await outputEditor.SaveViewStateAsync(module);
+            }
+
+            currentOutput = state;
+
+            await outputEditor.SetModel(state.Model);
+            await outputEditor.RestoreViewStateAsync(state.ViewState, module);
         }
     }
 
