@@ -145,7 +145,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 var syntaxTree = cSharpSource.SyntaxTree;
                 var compiledFile = new CompiledFile([
                     new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
-                    new() { Type = "syntaxTrivia", Label = "Syntax + Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
+                    new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
             }).Concat(additionalSources.Select((input) =>
