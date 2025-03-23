@@ -486,4 +486,5 @@ $RECYCLE.BIN/
 /output/
 
 jslib.js*
-/src/Worker/Properties/launchSettings.json
+dotnet.d.ts
+/src/App/wwwroot/worker/

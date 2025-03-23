@@ -1,12 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
 
 	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="KristofferStrube.Blazor.WebWorkers" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" />
 		<PackageReference Include="Microsoft.Extensions.Logging" />
 		<PackageReference Include="Microsoft.TeamFoundationServer.Client" />
@@ -17,5 +15,12 @@
 		<ProjectReference Include="..\Compiler\Compiler.csproj" />
 		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
 	</ItemGroup>
+
+	<Target Name="CopyDotnetDTs" AfterTargets="ProcessFrameworkReferences">
+		<ItemGroup>
+			<_DotnetDTsPath Include="%(RuntimePack.PackageDirectory)\runtimes\browser-wasm\native\dotnet.d.ts" Condition="'%(RuntimePack.Identity)' == 'Microsoft.NETCore.App.Runtime.Mono.browser-wasm'" />
+		</ItemGroup>
+		<Copy SourceFiles="@(_DotnetDTsPath)" DestinationFolder="$(MSBuildProjectDirectory)\wwwroot" />
+	</Target>
 
 </Project>

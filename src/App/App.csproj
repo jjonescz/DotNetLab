@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -8,7 +8,6 @@
 	<ItemGroup>
 		<PackageReference Include="Blazored.LocalStorage" />
 		<PackageReference Include="BlazorMonaco" />
-		<PackageReference Include="KristofferStrube.Blazor.WebWorkers" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
@@ -44,7 +43,7 @@
 		<Content Include="@(NpmOutput)" />
 	</ItemGroup>
 
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
+	<Target Name="NpmBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
 		<Exec Command="npm install" WorkingDirectory="Npm" />
 		<Exec Command="npm run build" WorkingDirectory="Npm" />
 		<!--
@@ -53,6 +52,12 @@
 			so this target does not re-run unnecessarily.
 		-->
 		<Touch Files="@(NpmOutput)" AlwaysCreate="true" />
+	</Target>
+
+	<Target Name="GetPublishedWorker" BeforeTargets="PostBuildEvent" Condition="'$(DesignTimeBuild)' != 'true'">
+		<MSBuild Projects="..\Worker\Worker.csproj"
+				 Targets="Restore;Publish"
+				 Properties="Configuration=$(Configuration);PublishDir=$(MSBuildProjectDirectory)\wwwroot\worker;CompressionEnabled=false" />
 	</Target>
 
 </Project>

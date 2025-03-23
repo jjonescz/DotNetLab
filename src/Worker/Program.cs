@@ -1,10 +1,14 @@
 ﻿using DotNetLab;
-using KristofferStrube.Blazor.WebWorkers;
 using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.Versioning;
 using System.Text.Json;
 
 Console.WriteLine("Worker started.");
+
+if (args.Length != 2)
+{
+    Console.WriteLine($"Expected 2 args, got {args.Length}.");
+    return;
+}
 
 var services = WorkerServices.Create(
     baseUrl: args[0],
@@ -37,6 +41,3 @@ static void PostMessage(WorkerOutputMessage message)
 {
     Imports.PostMessage(JsonSerializer.Serialize(message));
 }
-
-[SupportedOSPlatform("browser")]
-partial class Program;
