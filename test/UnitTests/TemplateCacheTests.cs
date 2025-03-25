@@ -55,7 +55,7 @@ public sealed class TemplateCacheTests
 
         // Compare JSONs (do this early so when templates are updated,
         // this fails and can be used to do manual updates of the JSON snapshots).
-        var expectedJson = JsonSerializer.Serialize(actualOutput);
+        var expectedJson = JsonSerializer.Serialize(actualOutput, WorkerJsonContext.Default.CompiledAssembly);
         var actualJson = Encoding.UTF8.GetString(actualJsonFactory());
         if (expectedJson != actualJson)
         {

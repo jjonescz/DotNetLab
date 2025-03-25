@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 
 namespace DotNetLab.Lab;
 
@@ -17,7 +18,7 @@ internal sealed class AssemblyDownloader
 
     private async Task<FrozenDictionary<string, string>> GetFingerprintedFileNamesAsync()
     {
-        var manifest = await client.GetFromJsonAsync<BlazorBootJson>("_framework/blazor.boot.json");
+        var manifest = await client.GetFromJsonAsync<BlazorBootJson>("_framework/blazor.boot.json", LabWorkerJsonContext.Default.Options);
         return manifest!.Resources.Assembly.Keys.ToFrozenDictionary(n => manifest.Resources.Fingerprinting[n], n => n);
     }
 
@@ -34,15 +35,15 @@ internal sealed class AssemblyDownloader
         var bytes = await client.GetByteArrayAsync($"_framework/{fileName}");
         return ImmutableCollectionsMarshal.AsImmutableArray(bytes);
     }
+}
 
-    private sealed class BlazorBootJson
-    {
-        public required BlazorBootJsonResources Resources { get; init; }
-    }
+internal sealed class BlazorBootJson
+{
+    public required BlazorBootJsonResources Resources { get; init; }
+}
 
-    private sealed class BlazorBootJsonResources
-    {
-        public required IReadOnlyDictionary<string, string> Fingerprinting { get; init; }
-        public required IReadOnlyDictionary<string, string> Assembly { get; init; }
-    }
+internal sealed class BlazorBootJsonResources
+{
+    public required IReadOnlyDictionary<string, string> Fingerprinting { get; init; }
+    public required IReadOnlyDictionary<string, string> Assembly { get; init; }
 }

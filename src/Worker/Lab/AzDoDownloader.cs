@@ -12,14 +12,7 @@ internal sealed class AzDoDownloader(
     HttpClient client)
     : ICompilerDependencyResolver
 {
-    private static readonly JsonSerializerOptions options = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter(),
-            new TypeConverterJsonConverterFactory(),
-        },
-    };
+    private static readonly JsonSerializerOptions options = AzDoJsonContext.Default.Options;
     private static readonly Task<CompilerDependency?> nullResult = Task.FromResult<CompilerDependency?>(null);
 
     public Task<CompilerDependency?> TryResolveCompilerAsync(
@@ -383,3 +376,11 @@ internal sealed class ArtifactFileBlob
     public required string Id { get; init; }
     public required long Size { get; init; }
 }
+
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web,
+    Converters = [typeof(JsonStringEnumConverter), typeof(TypeConverterJsonConverterFactory)])]
+[JsonSerializable(typeof(Build))]
+[JsonSerializable(typeof(AzDoCollection<Build>))]
+[JsonSerializable(typeof(BuildArtifact))]
+[JsonSerializable(typeof(ArtifactFiles))]
+internal sealed partial class AzDoJsonContext : JsonSerializerContext;

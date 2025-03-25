@@ -46,7 +46,7 @@ internal sealed class TemplateCache
         }
 
         var json = jsonFactory();
-        output = map.GetOrAdd(input, JsonSerializer.Deserialize<CompiledAssembly>(json)!);
+        output = map.GetOrAdd(input, JsonSerializer.Deserialize(json, WorkerJsonContext.Default.CompiledAssembly)!);
         return true;
     }
 
