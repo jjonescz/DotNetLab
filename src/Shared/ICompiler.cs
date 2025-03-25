@@ -1,6 +1,5 @@
 using ProtoBuf;
 using System.Runtime.Loader;
-using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -161,8 +160,7 @@ public sealed class CompiledFileOutput
         }
         init
         {
-            Debug.Assert(text is null, Type);
-            text = value;
+            text ??= value;
         }
     }
 
@@ -170,8 +168,7 @@ public sealed class CompiledFileOutput
     {
         init
         {
-            Debug.Assert(text is null, Type);
-            text = value;
+            text ??= value;
         }
     }
 

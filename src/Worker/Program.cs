@@ -20,7 +20,7 @@ Imports.RegisterOnMessage(async e =>
     try
     {
         var data = e.GetPropertyAsString("data") ?? string.Empty;
-        var incoming = JsonSerializer.Deserialize<WorkerInputMessage>(data);
+        var incoming = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerInputMessage);
         var executor = services.GetRequiredService<WorkerInputMessage.IExecutor>();
         PostMessage(await incoming!.HandleAndGetOutputAsync(executor));
     }
@@ -40,7 +40,7 @@ while (true)
 
 static void PostMessage(WorkerOutputMessage message)
 {
-    Imports.PostMessage(JsonSerializer.Serialize(message));
+    Imports.PostMessage(JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerOutputMessage));
 }
 
 [SupportedOSPlatform("browser")]

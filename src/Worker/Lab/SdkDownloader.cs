@@ -25,7 +25,7 @@ internal sealed class SdkDownloader(
             var url = $"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json";
             using var response = await client.GetAsync(url.WithCorsProxy());
             response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<ProductCommit>();
+            var result = await response.Content.ReadFromJsonAsync<ProductCommit>(LabWorkerJsonContext.Default.Options);
             return new() { Hash = result?.Sdk.Commit ?? "", RepoUrl = sdkRepoUrl };
         }
 
@@ -51,15 +51,15 @@ internal sealed class SdkDownloader(
             };
         }
     }
+}
 
-    private sealed class ProductCommit
+internal sealed class ProductCommit
+{
+    public required Entry Sdk { get; init; }
+
+    public sealed class Entry
     {
-        public required Entry Sdk { get; init; }
-
-        public sealed class Entry
-        {
-            public required string Commit { get; init; }
-        }
+        public required string Commit { get; init; }
     }
 }
 

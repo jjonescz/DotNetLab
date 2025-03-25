@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using System.ComponentModel;
 using System.Net.Http.Json;
@@ -12,14 +13,7 @@ internal sealed class AzDoDownloader(
     HttpClient client)
     : ICompilerDependencyResolver
 {
-    private static readonly JsonSerializerOptions options = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter(),
-            new TypeConverterJsonConverterFactory(),
-        },
-    };
+    private static readonly JsonSerializerOptions options = AzDoJsonContext.Default.Options;
     private static readonly Task<CompilerDependency?> nullResult = Task.FromResult<CompilerDependency?>(null);
 
     public Task<CompilerDependency?> TryResolveCompilerAsync(
@@ -383,3 +377,22 @@ internal sealed class ArtifactFileBlob
     public required string Id { get; init; }
     public required long Size { get; init; }
 }
+
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web,
+    Converters =
+    [
+        typeof(TypeConverterJsonConverterFactory),
+        typeof(JsonStringEnumConverter<BuildStatus>),
+        typeof(JsonStringEnumConverter<BuildResult>),
+        typeof(JsonStringEnumConverter<BuildReason>),
+        typeof(JsonStringEnumConverter<DefinitionType>),
+        typeof(JsonStringEnumConverter<DefinitionQueueStatus>),
+        typeof(JsonStringEnumConverter<ProjectState>),
+        typeof(JsonStringEnumConverter<ProjectVisibility>),
+        typeof(JsonStringEnumConverter<QueuePriority>),
+    ])]
+[JsonSerializable(typeof(Build))]
+[JsonSerializable(typeof(AzDoCollection<Build>))]
+[JsonSerializable(typeof(BuildArtifact))]
+[JsonSerializable(typeof(ArtifactFiles))]
+internal sealed partial class AzDoJsonContext : JsonSerializerContext;

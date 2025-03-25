@@ -20,7 +20,7 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
             var key = SlugToCacheKey(state.ToCacheSlug());
             var response = await client.PostAsync(
                 $"{endpoint}/add/{key}",
-                new StringContent(JsonSerializer.Serialize(output), Encoding.UTF8, "text/plain"));
+                new StringContent(JsonSerializer.Serialize(output, WorkerJsonContext.Default.CompiledAssembly), Encoding.UTF8, "text/plain"));
             response.EnsureSuccessStatusCode();
         }
         catch (Exception e)
@@ -45,7 +45,7 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
                 return null;
             }
 
-            if (await response.Content.ReadFromJsonAsync<CompiledAssembly>() is not { } output)
+            if (await response.Content.ReadFromJsonAsync<CompiledAssembly>(WorkerJsonContext.Default.Options) is not { } output)
             {
                 logger.LogError("No output.");
                 return null;

@@ -1,4 +1,4 @@
-using BlazorMonaco;
+﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -136,7 +136,7 @@ internal sealed class WorkerController
         }
 
         // TODO: Use ProtoBuf.
-        var serialized = JsonSerializer.Serialize(message);
+        var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
         logger.LogDebug("📨 {Id}: {Type} ({Size})",
             message.Id,
             message.GetType().Name,
