@@ -1,4 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+﻿<Project>
+
+	<Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.WebAssembly" />
 
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -22,5 +24,10 @@
 		</ItemGroup>
 		<Copy SourceFiles="@(_DotnetDTsPath)" DestinationFolder="$(MSBuildProjectDirectory)\wwwroot" />
 	</Target>
+
+	<Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.WebAssembly" />
+
+	<!-- Override this target to avoid propagating assets to the App (they would conflict). -->
+	<Target Name="GetStaticWebAssetsProjectConfiguration" />
 
 </Project>

@@ -23,6 +23,10 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Shared.csproj" />
 		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
+		<ProjectReference Include="..\Worker\Worker.csproj"
+						  Targets="Publish"
+						  ReferenceOutputAssembly="false"
+						  Properties="PublishDir=$(MSBuildProjectDirectory)\wwwroot\worker" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -52,12 +56,6 @@
 			so this target does not re-run unnecessarily.
 		-->
 		<Touch Files="@(NpmOutput)" AlwaysCreate="true" />
-	</Target>
-
-	<Target Name="GetPublishedWorker" BeforeTargets="PostBuildEvent" Condition="'$(DesignTimeBuild)' != 'true'">
-		<MSBuild Projects="..\Worker\Worker.csproj"
-				 Targets="Restore;Publish"
-				 Properties="Configuration=$(Configuration);PublishDir=$(MSBuildProjectDirectory)\wwwroot\worker;CompressionEnabled=false" />
 	</Target>
 
 </Project>
