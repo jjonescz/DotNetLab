@@ -5,6 +5,8 @@
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
 		<PublishTrimmed>true</PublishTrimmed>
 		<UsingBrowserRuntimeWorkload>true</UsingBrowserRuntimeWorkload>
+		<RunAOTCompilation>true</RunAOTCompilation>
+		<WasmStripILAfterAOT>true</WasmStripILAfterAOT>
 	</PropertyGroup>
 
 	<ItemGroup>
