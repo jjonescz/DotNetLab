@@ -3,6 +3,8 @@
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+		<PublishTrimmed>true</PublishTrimmed>
+		<UsingBrowserRuntimeWorkload>true</UsingBrowserRuntimeWorkload>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -26,6 +28,7 @@
 		<ProjectReference Include="..\Worker\Worker.csproj"
 						  Targets="Publish"
 						  ReferenceOutputAssembly="false"
+						  Condition="'$(WasmBuildingForNestedPublish)' != 'true'"
 						  Properties="PublishDir=$(MSBuildProjectDirectory)\wwwroot\worker" />
 	</ItemGroup>
 
