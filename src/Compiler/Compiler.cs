@@ -9,12 +9,17 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using ReferenceInfo = Basic.Reference.Assemblies.AspNet90.ReferenceInfo;
 
 namespace DotNetLab;
 
-public class Compiler(ILogger<Compiler> logger) : ICompiler
+public class Compiler(
+    ILogger<Compiler> logger,
+    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
 
@@ -62,6 +67,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             concurrentBuild: false);
 
         var references = Basic.Reference.Assemblies.AspNet90.References.All;
+        var referenceInfos = Basic.Reference.Assemblies.AspNet90.ReferenceInfos.All;
 
         // If we have a configuration, compile and execute it.
         if (compilationInput.Configuration is { } configuration)
@@ -626,7 +632,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         }
 
         // Inspired by https://github.com/icsharpcode/ILSpy/pull/1040.
-        static async Task<string> getSequencePoints(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getSequencePoints(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
         {
             if (peFile is null)
             {
@@ -688,7 +694,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return result.ToString();
         }
 
-        static async Task<string> getCSharpAsync(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getCSharpAsync(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
         {
             if (peFile is null)
             {
@@ -699,27 +705,64 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return decompiler.DecompileWholeModuleAsString();
         }
 
-        static async Task<ICSharpCode.Decompiler.CSharp.CSharpDecompiler> getCSharpDecompilerAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
+        async Task<ICSharpCode.Decompiler.CSharp.CSharpDecompiler> getCSharpDecompilerAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
         {
             return new ICSharpCode.Decompiler.CSharp.CSharpDecompiler(
                 await getCSharpDecompilerTypeSystemAsync(peFile),
                 getCSharpDecompilerSettings());
         }
 
-        static async Task<ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem> getCSharpDecompilerTypeSystemAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
+        async Task<ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem> getCSharpDecompilerTypeSystemAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new ICSharpCode.Decompiler.Metadata.UniversalAssemblyResolver(
-                    mainAssemblyFileName: null,
-                    throwOnError: false,
-                    targetFramework: ".NETCoreApp,Version=9.0"));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
         }
 
         static ICSharpCode.Decompiler.DecompilerSettings getCSharpDecompilerSettings()
         {
             return new ICSharpCode.Decompiler.DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1);
         }
+    }
+}
+
+public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<ReferenceInfo> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
+{
+    public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
+    {
+        return Task.FromResult(Resolve(reference));
+    }
+
+    public ICSharpCode.Decompiler.Metadata.MetadataFile? Resolve(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
+    {
+        foreach (var r in references)
+        {
+            if (withoutExtension(r.FileName).Equals(reference.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                var peReader = new PEReader(ImmutableCollectionsMarshal.AsImmutableArray(r.ImageBytes));
+                return new ICSharpCode.Decompiler.Metadata.PEFile(r.FileName, peReader);
+            }
+        }
+
+        logger.LogError("Cannot resolve assembly '{Name}'.", reference.Name);
+        return null;
+
+        static ReadOnlySpan<char> withoutExtension(ReadOnlySpan<char> fileName)
+        {
+            int index = fileName.LastIndexOf('.');
+            return index < 0 ? fileName : fileName[..index];
+        }
+    }
+
+    public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveModuleAsync(ICSharpCode.Decompiler.Metadata.MetadataFile mainModule, string moduleName)
+    {
+        return Task.FromResult(ResolveModule(mainModule, moduleName));
+    }
+
+    public ICSharpCode.Decompiler.Metadata.MetadataFile? ResolveModule(ICSharpCode.Decompiler.Metadata.MetadataFile mainModule, string moduleName)
+    {
+        logger.LogError("Module resolving not implemented ({ModuleName}).", moduleName);
+        return null;
     }
 }
 

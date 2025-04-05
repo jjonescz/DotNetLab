@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DotNetLab</RootNamespace>
     <AssemblyName>DotNetLab.$([System.IO.Path]::GetFileName(`$(MSBuildProjectDirectory)`))</AssemblyName>
+    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
 
     <!--
       Cannot trim because we dynamically execute programs
