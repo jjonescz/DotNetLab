@@ -92,12 +92,20 @@ public class Compiler(
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
         var additionalSources = new List<InputCode>();
 
+        CSharpParseOptions? scriptOptions = null;
+
         foreach (var input in compilationInput.Inputs.Value)
         {
-            if (isCSharp(input))
+            if (isCSharp(input, out bool script))
             {
+                if (script)
+                {
+                    scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
+                }
+
                 var filePath = getFilePath(input);
-                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, parseOptions, filePath, Encoding.UTF8);
+                var currentParseOptions = script ? scriptOptions : parseOptions;
+                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
                 cSharpSources.Add((input, syntaxTree));
             }
             else
@@ -363,7 +371,11 @@ public class Compiler(
 
         static string getFilePath(InputCode input) => directory + input.FileName;
 
-        static bool isCSharp(InputCode input) => ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        static bool isCSharp(InputCode input, out bool script)
+        {
+            return (script = ".csx".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase)) ||
+                ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        }
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
