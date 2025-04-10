@@ -80,7 +80,7 @@ public class Compiler(
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
-            TestGlobalOptions =
+            GlobalOptions =
             {
                 ["build_property.RazorConfiguration"] = "Default",
                 ["build_property.RootNamespace"] = "TestNamespace",
@@ -92,12 +92,20 @@ public class Compiler(
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
         var additionalSources = new List<InputCode>();
 
+        CSharpParseOptions? scriptOptions = null;
+
         foreach (var input in compilationInput.Inputs.Value)
         {
-            if (isCSharp(input))
+            if (isCSharp(input, out bool script))
             {
+                if (script)
+                {
+                    scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
+                }
+
                 var filePath = getFilePath(input);
-                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, parseOptions, filePath, Encoding.UTF8);
+                var currentParseOptions = script ? scriptOptions : parseOptions;
+                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
                 cSharpSources.Add((input, syntaxTree));
             }
             else
@@ -363,7 +371,11 @@ public class Compiler(
 
         static string getFilePath(InputCode input) => directory + input.FileName;
 
-        static bool isCSharp(InputCode input) => ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        static bool isCSharp(InputCode input, out bool script)
+        {
+            return (script = ".csx".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase)) ||
+                ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        }
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
@@ -377,6 +389,17 @@ public class Compiler(
                 {
                     ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
                 };
+
+                // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
+                if (isRazorOrCshtml(input))
+                {
+                    string cssFileName = input.FileName + ".css";
+                    if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        optionsProvider.AdditionalTextOptions[filePath]["build_metadata.AdditionalFiles.CssScope"] =
+                            RazorUtil.GenerateScope(projectName, filePath);
+                    }
+                }
             }
 
             var initialCompilation = CSharpCompilation.Create(
@@ -418,8 +441,7 @@ public class Compiler(
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
             foreach (var input in additionalSources)
             {
-                if (".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
-                    ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase))
+                if (isRazorOrCshtml(input))
                 {
                     var filePath = getFilePath(input);
                     var item = RazorAccessors.CreateSourceGeneratorProjectItem(
@@ -519,6 +541,12 @@ public class Compiler(
                     b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
             }
+        }
+
+        static bool isRazorOrCshtml(InputCode input)
+        {
+            return ".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
+                ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
         }
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
@@ -780,43 +808,27 @@ internal sealed class TestAdditionalText(string path, SourceText text) : Additio
 
 internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
 {
-    public override AnalyzerConfigOptions GlobalOptions => TestGlobalOptions;
-
-    public TestAnalyzerConfigOptions TestGlobalOptions { get; } = new TestAnalyzerConfigOptions();
+    public override TestAnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
 
     public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
 
     public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
 
-    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+    public override TestAnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options) ? options : new TestAnalyzerConfigOptions();
-    }
-
-    public TestAnalyzerConfigOptionsProvider Clone()
-    {
-        var provider = new TestAnalyzerConfigOptionsProvider();
-        foreach (var option in this.TestGlobalOptions.Options)
+        if (!AdditionalTextOptions.TryGetValue(textFile.Path, out var options))
         {
-            provider.TestGlobalOptions[option.Key] = option.Value;
+            options = new TestAnalyzerConfigOptions();
+            AdditionalTextOptions[textFile.Path] = options;
         }
-        foreach (var option in this.AdditionalTextOptions)
-        {
-            TestAnalyzerConfigOptions newOptions = new TestAnalyzerConfigOptions();
-            foreach (var subOption in option.Value.Options)
-            {
-                newOptions[subOption.Key] = subOption.Value;
-            }
-            provider.AdditionalTextOptions[option.Key] = newOptions;
 
-        }
-        return provider;
+        return options;
     }
 }
 
 internal sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
 {
-    public Dictionary<string, string> Options { get; } = new();
+    public Dictionary<string, string> Options { get; } = new(KeyComparer);
 
     public string this[string name]
     {
