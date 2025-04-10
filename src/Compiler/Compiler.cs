@@ -80,7 +80,7 @@ public class Compiler(
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
-            TestGlobalOptions =
+            GlobalOptions =
             {
                 ["build_property.RazorConfiguration"] = "Default",
                 ["build_property.RootNamespace"] = "TestNamespace",
@@ -780,43 +780,27 @@ internal sealed class TestAdditionalText(string path, SourceText text) : Additio
 
 internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
 {
-    public override AnalyzerConfigOptions GlobalOptions => TestGlobalOptions;
-
-    public TestAnalyzerConfigOptions TestGlobalOptions { get; } = new TestAnalyzerConfigOptions();
+    public override TestAnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
 
     public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
 
     public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
 
-    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+    public override TestAnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options) ? options : new TestAnalyzerConfigOptions();
-    }
-
-    public TestAnalyzerConfigOptionsProvider Clone()
-    {
-        var provider = new TestAnalyzerConfigOptionsProvider();
-        foreach (var option in this.TestGlobalOptions.Options)
+        if (!AdditionalTextOptions.TryGetValue(textFile.Path, out var options))
         {
-            provider.TestGlobalOptions[option.Key] = option.Value;
+            options = new TestAnalyzerConfigOptions();
+            AdditionalTextOptions[textFile.Path] = options;
         }
-        foreach (var option in this.AdditionalTextOptions)
-        {
-            TestAnalyzerConfigOptions newOptions = new TestAnalyzerConfigOptions();
-            foreach (var subOption in option.Value.Options)
-            {
-                newOptions[subOption.Key] = subOption.Value;
-            }
-            provider.AdditionalTextOptions[option.Key] = newOptions;
 
-        }
-        return provider;
+        return options;
     }
 }
 
 internal sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
 {
-    public Dictionary<string, string> Options { get; } = new();
+    public Dictionary<string, string> Options { get; } = new(KeyComparer);
 
     public string this[string name]
     {
