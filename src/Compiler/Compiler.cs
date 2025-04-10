@@ -377,6 +377,17 @@ public class Compiler(
                 {
                     ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
                 };
+
+                // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
+                if (isRazorOrCshtml(input))
+                {
+                    string cssFileName = input.FileName + ".css";
+                    if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        optionsProvider.AdditionalTextOptions[filePath]["build_metadata.AdditionalFiles.CssScope"] =
+                            RazorUtil.GenerateScope(projectName, filePath);
+                    }
+                }
             }
 
             var initialCompilation = CSharpCompilation.Create(
@@ -418,8 +429,7 @@ public class Compiler(
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
             foreach (var input in additionalSources)
             {
-                if (".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
-                    ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase))
+                if (isRazorOrCshtml(input))
                 {
                     var filePath = getFilePath(input);
                     var item = RazorAccessors.CreateSourceGeneratorProjectItem(
@@ -519,6 +529,12 @@ public class Compiler(
                     b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
             }
+        }
+
+        static bool isRazorOrCshtml(InputCode input)
+        {
+            return ".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
+                ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
         }
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
