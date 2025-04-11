@@ -90,6 +90,7 @@ public class Compiler(
         };
 
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
+        var msBuildSources = new List<InputCode>();
         var additionalSources = new List<InputCode>();
 
         CSharpParseOptions? scriptOptions = null;
@@ -107,6 +108,10 @@ public class Compiler(
                 var currentParseOptions = script ? scriptOptions : parseOptions;
                 var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
                 cSharpSources.Add((input, syntaxTree));
+            }
+            else if (".proj".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                msBuildSources.Add(input);
             }
             else
             {
@@ -162,7 +167,24 @@ public class Compiler(
                     new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
-            }).Concat(additionalSources.Select((input) =>
+            })
+            .Concat(msBuildSources.Select((input) =>
+            {
+                var compiledFile = new CompiledFile(
+                [
+                    new()
+                    {
+                        Type = "eval",
+                        Label = "Evaluated",
+                        Language = "xml",
+                        EagerText = MsBuildEvaluator.Evaluate(input.Text),
+                        Priority = 1,
+                    },
+                ]);
+
+                return KeyValuePair.Create(input.FileName, compiledFile);
+            }))
+            .Concat(additionalSources.Select((input) =>
             {
                 var filePath = getFilePath(input);
                 Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: compilationInput.RazorStrategy == RazorStrategy.DesignTime));

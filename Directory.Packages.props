@@ -19,6 +19,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.2" />
+    <PackageVersion Include="Microsoft.Build" Version="17.13.9" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0-3.25164.10" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0-3.25164.10" />
     <PackageVersion Include="Microsoft.DotNet.Arcade.Sdk" Version="9.0.0-beta.24372.7" />
