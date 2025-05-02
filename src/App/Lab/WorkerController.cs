@@ -12,8 +12,9 @@ internal sealed class WorkerController
 {
     private readonly ILogger<WorkerController> logger;
     private readonly IWebAssemblyHostEnvironment hostEnvironment;
+    private readonly Dispatcher dispatcher;
     private readonly Lazy<Task<JSObject?>> worker;
-    private readonly Lazy<Task<IServiceProvider>> workerServices;
+    private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
     private int messageId;
 
@@ -23,14 +24,9 @@ internal sealed class WorkerController
     {
         this.logger = logger;
         this.hostEnvironment = hostEnvironment;
+        dispatcher = Dispatcher.CreateDefault();
         worker = new(CreateWorker);
-        workerServices = new(async () =>
-        {
-            // We need to first load the Worker DLL before the JIT can use any types from it,
-            // hence WorkerServices must be referenced inside CreateWorkerServices.
-            //await LoadWorkerAssembliesAsync();
-            return CreateWorkerServices();
-        });
+        workerServices = new(CreateWorkerServices);
     }
 
     public bool DebugLogs { get; set; }
@@ -40,10 +36,9 @@ internal sealed class WorkerController
 
     private IServiceProvider CreateWorkerServices()
     {
-        throw new NotImplementedException();
-        //return WorkerServices.Create(
-        //    baseUrl: hostEnvironment.BaseAddress,
-        //    debugLogs: DebugLogs);
+        return WorkerServices.Create(
+           baseUrl: hostEnvironment.BaseAddress,
+           debugLogs: DebugLogs);
     }
 
     private async Task<JSObject?> CreateWorker()
@@ -61,27 +56,29 @@ internal sealed class WorkerController
         var workerReady = new TaskCompletionSource();
         await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js");
         var worker = WorkerControllerInterop.CreateWorker(
-            getWorkerUrl("../worker/wwwroot/main.js", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
-            // TODO: Should not be `async void`.
-            async void (string data) =>
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            void (string data) =>
             {
-                var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
-                logger.LogDebug("📩 {Id}: {Type} ({Size})",
-                    message.Id,
-                    message.GetType().Name,
-                    data.Length.SeparateThousands());
-                if (message is WorkerOutputMessage.Ready)
+                dispatcher.InvokeAsync(async () =>
                 {
-                    workerReady.SetResult();
-                }
-                else if (message.Id < 0)
-                {
-                    logger.LogError("Unpaired message {Message}", message);
-                }
-                else
-                {
-                    await workerMessages.Writer.WriteAsync(message);
-                }
+                    var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
+                    logger.LogDebug("📩 {Id}: {Type} ({Size})",
+                        message.Id,
+                        message.GetType().Name,
+                        data.Length.SeparateThousands());
+                    if (message is WorkerOutputMessage.Ready)
+                    {
+                        workerReady.SetResult();
+                    }
+                    else if (message.Id < 0)
+                    {
+                        logger.LogError("Unpaired message {Message}", message);
+                    }
+                    else
+                    {
+                        await workerMessages.Writer.WriteAsync(message);
+                    }
+                });
             },
             void (string error) =>
             {
@@ -129,7 +126,7 @@ internal sealed class WorkerController
 
         if (worker is null)
         {
-            var workerServices = await this.workerServices.Value;
+            var workerServices = this.workerServices.Value;
             var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
             return await message.HandleAndGetOutputAsync(executor);
         }

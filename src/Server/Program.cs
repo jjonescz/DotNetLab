@@ -8,7 +8,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseBlazorFrameworkFiles();
-app.UseStaticFiles(new StaticFileOptions { ServeUnknownFileTypes = true });
+app.UseStaticFiles();
 app.MapFallbackToFile("index.html");
 
 app.Run();

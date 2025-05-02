@@ -3,10 +3,6 @@
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
-		<PublishTrimmed>true</PublishTrimmed>
-		<UsingBrowserRuntimeWorkload>true</UsingBrowserRuntimeWorkload>
-		<RunAOTCompilation>true</RunAOTCompilation>
-		<WasmStripILAfterAOT>true</WasmStripILAfterAOT>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -25,13 +21,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Shared\Shared.csproj" />
-		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
-		<ProjectReference Include="..\Worker\Worker.csproj"
-						  Targets="Publish"
-						  ReferenceOutputAssembly="false"
-						  Condition="'$(WasmBuildingForNestedPublish)' != 'true'"
-						  Properties="PublishDir=$(MSBuildProjectDirectory)\wwwroot\worker" />
+		<ProjectReference Include="..\Worker\Worker.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

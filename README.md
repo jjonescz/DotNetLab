@@ -40,6 +40,8 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 - `src/Worker`: an app loaded in a web worker (a separate process in the browser),
   so it does all the CPU-intensive work to avoid lagging the user interface.
 - `src/WorkerApi`: shared code between `Worker` and `App`.
+  This is in preparation for making the worker independent of the app,
+  so the app can be optimized (trimming, NativeAOT) and the worker can be loaded more lazily.
 - `test/UnitTests`
   - `dotnet test`
 
