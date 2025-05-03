@@ -52,6 +52,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [Theory]
     [InlineData("9.0.0-preview.24413.5")]
     [InlineData("9.0.0-preview.25128.1")]
+    [InlineData("10.0.0-preview.25252.1")]
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));

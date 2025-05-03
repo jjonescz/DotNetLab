@@ -420,7 +420,6 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                         basePath: "/",
                         filePath: filePath,
                         relativePhysicalPath: input.FileName,
-                        fileKind: null!, // will be automatically determined from file path
                         additionalText: new TestAdditionalText(input.Text, encoding: Encoding.UTF8, path: filePath),
                         cssScope: null);
                     fileSystem.Add(item);

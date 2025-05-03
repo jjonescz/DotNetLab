@@ -6,7 +6,7 @@
             "type": "blazorwasm",
             "request": "launch",
             "hosted": true,
-            "program": "${workspaceFolder}/src/Server/bin/Debug/net9.0/DotNetLab.Server.dll",
+            "program": "${workspaceFolder}/src/Server/bin/Debug/net10.0/DotNetLab.Server.dll",
             "cwd": "${workspaceFolder}/src/App"
         },
         {

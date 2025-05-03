@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DotNetLab</RootNamespace>
@@ -18,7 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset">
+    <!-- Condition is currently needed because the toolset package has a bug with net472 build task and RoslynCompilerType. -->
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Condition="'$(MSBuildRuntimeType)' != 'Full'">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

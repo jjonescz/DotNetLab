@@ -15,17 +15,16 @@ public static class RazorAccessors
         string basePath,
         string filePath,
         string relativePhysicalPath,
-        string fileKind,
         AdditionalText additionalText,
         string? cssScope)
     {
-        return new SourceGeneratorProjectItem(
-            basePath: basePath,
-            filePath: filePath,
-            relativePhysicalPath: relativePhysicalPath,
-            fileKind: fileKind,
-            additionalText: additionalText,
-            cssScope: cssScope);
+        return (RazorProjectItem)Activator.CreateInstance(typeof(SourceGeneratorProjectItem),
+            /* basePath: */ basePath,
+            /* filePath: */ filePath,
+            /* relativePhysicalPath: */ relativePhysicalPath,
+            /* fileKind: */ null, // will be automatically determined from file path
+            /* additionalText: */ additionalText,
+            /* cssScope: */ cssScope)!;
     }
 
     public static string Serialize(this DocumentIntermediateNode node)
