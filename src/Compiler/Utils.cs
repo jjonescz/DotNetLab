@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-using System.Reflection;
 using System.Reflection.Emit;
 
 namespace DotNetLab;
@@ -172,7 +171,7 @@ internal static class RazorUtil
             .First();
 
         return (RazorCodeDocument)method
-            .Invoke(engine, [projectItem, ..Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
+            .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
     }
 
     public static void SetCSharpLanguageVersionSafe(this RazorProjectEngineBuilder builder, LanguageVersion languageVersion)

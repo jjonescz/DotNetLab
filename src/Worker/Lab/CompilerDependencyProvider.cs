@@ -1,9 +1,4 @@
-﻿using NuGet.Versioning;
-using ProtoBuf;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-namespace DotNetLab.Lab;
+﻿namespace DotNetLab.Lab;
 
 /// <summary>
 /// Provides compiler dependencies into the <see cref="DependencyRegistry"/>.
