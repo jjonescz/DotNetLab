@@ -14,14 +14,14 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="9.0.0.7889" />
     <PackageVersion Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0-preview.3.25172.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0-preview.3.25172.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0-preview.3.25172.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0-preview.3.25172.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0-preview.4.25252.106" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0-preview.4.25252.106" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0-preview.4.25252.106" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0-preview.4.25252.106" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0-1.25252.6" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="5.0.0-1.25252.6" />
     <PackageVersion Include="Microsoft.DotNet.Arcade.Sdk" Version="9.0.0-beta.24372.7" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.3.25171.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.4.25252.106" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.11.4" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.11.4" />
     <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25252.1" />
@@ -31,7 +31,7 @@
     <PackageVersion Include="NuGet.Protocol" Version="6.13.1" />
     <PackageVersion Include="NuGet.Versioning" Version="6.13.1" />
     <PackageVersion Include="protobuf-net" Version="3.2.46" />
-    <PackageVersion Include="System.IO.Hashing" Version="10.0.0-preview.3.25171.5" />
+    <PackageVersion Include="System.IO.Hashing" Version="10.0.0-preview.4.25252.106" />
     <PackageVersion Include="xunit.v3" Version="1.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <!-- Pinned transitive dependencies -->

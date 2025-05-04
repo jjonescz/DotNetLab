@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
-using System.Net.Http.Json;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace DotNetLab.Lab;
 
@@ -17,8 +17,28 @@ internal sealed class AssemblyDownloader
 
     private async Task<FrozenDictionary<string, string>> GetFingerprintedFileNamesAsync()
     {
-        var manifest = await client.GetFromJsonAsync<BlazorBootJson>("_framework/blazor.boot.json", LabWorkerJsonContext.Default.Options);
-        return manifest!.Resources.Assembly.Keys.ToFrozenDictionary(n => manifest.Resources.Fingerprinting[n], n => n);
+        const string bootJs = "_framework/dotnet.boot.js";
+        string manifestJs = await client.GetStringAsync(bootJs);
+
+        const string jsonStart = "/*json-start*/";
+        int startIndex = manifestJs.IndexOf(jsonStart);
+        if (startIndex < 0)
+        {
+            throw new InvalidOperationException($"Did not find {jsonStart} in {bootJs}");
+        }
+
+        const string jsonEnd = "/*json-end*/";
+        int endIndex = manifestJs.LastIndexOf(jsonEnd);
+        if (endIndex < 0)
+        {
+            throw new InvalidOperationException($"Did not find {jsonEnd} in {bootJs}");
+        }
+
+        startIndex += jsonStart.Length;
+        var manifestJson = manifestJs.AsSpan()[startIndex..endIndex];
+        var manifest = JsonSerializer.Deserialize(manifestJson, LabWorkerJsonContext.Default.BlazorBootJson)!;
+
+        return manifest.Resources.Assembly.Keys.ToFrozenDictionary(n => manifest.Resources.Fingerprinting[n], n => n);
     }
 
     public async Task<ImmutableArray<byte>> DownloadAsync(string assemblyFileNameWithoutExtension)
