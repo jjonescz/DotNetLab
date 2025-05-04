@@ -15,6 +15,7 @@ internal sealed class WorkerController : IAsyncDisposable
     private readonly Dispatcher dispatcher;
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
+    private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
     private Task<JSObject?>? worker;
     private int messageId;
 
@@ -45,33 +46,62 @@ internal sealed class WorkerController : IAsyncDisposable
            debugLogs: DebugLogs);
     }
 
-    private async Task<JSObject?> GetWorker()
+    private async Task<JSObject?> GetWorkerAsync()
     {
-        if (worker == null)
+        await workerGuard.WaitAsync();
+        try
         {
-            return await RecreateWorker();
-        }
+            if (worker == null)
+            {
+                return await RecreateWorkerNoLockAsync();
+            }
 
-        return await worker;
+            return await worker;
+        }
+        finally
+        {
+            workerGuard.Release();
+        }
     }
 
     private async Task DisposeWorkerAsync()
     {
-        if (worker != null)
+        await workerGuard.WaitAsync();
+        try
         {
-            var w = await worker;
-            if (w != null)
+            if (worker != null)
             {
-                Debug.Assert(OperatingSystem.IsBrowser());
-                WorkerControllerInterop.DisposeWorker(w);
-                w.Dispose();
-            }
+                var w = await worker;
+                if (w != null)
+                {
+                    Debug.Assert(OperatingSystem.IsBrowser());
+                    WorkerControllerInterop.DisposeWorker(w);
+                    w.Dispose();
+                }
 
-            worker = null;
+                worker = null;
+            }
+        }
+        finally
+        {
+            workerGuard.Release();
         }
     }
 
-    public async Task<JSObject?> RecreateWorker()
+    public async Task<JSObject?> RecreateWorkerAsync()
+    {
+        await workerGuard.WaitAsync();
+        try
+        {
+            return await RecreateWorkerNoLockAsync();
+        }
+        finally
+        {
+            workerGuard.Release();
+        }
+    }
+
+    private async Task<JSObject?> RecreateWorkerNoLockAsync()
     {
         if (Disabled)
         {
@@ -97,11 +127,11 @@ internal sealed class WorkerController : IAsyncDisposable
             await DisposeWorkerAsync();
         }
 
-        worker = CreateWorker();
+        worker = CreateWorkerAsync();
         return await worker;
     }
 
-    private async Task<JSObject?> CreateWorker()
+    private async Task<JSObject?> CreateWorkerAsync()
     {
         Debug.Assert(!Disabled);
 
@@ -174,7 +204,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        JSObject? worker = await GetWorker();
+        JSObject? worker = await GetWorkerAsync();
 
         if (worker is null)
         {
