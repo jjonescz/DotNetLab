@@ -83,7 +83,12 @@ internal sealed class CompilerProxy(
         {
             await foreach (var dep in dependencyRegistry.GetAssembliesAsync())
             {
-                assemblies.Add(dep.Name, dep);
+                if (assemblies.ContainsKey(dep.Name))
+                {
+                    logger.LogWarning("Assembly already loaded from another dependency: {Name}", dep.Name);
+                }
+
+                assemblies[dep.Name] = dep;
             }
         }
 
