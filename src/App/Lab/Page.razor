@@ -856,7 +856,7 @@
 
         editorInitializationStarted = true;
 
-        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
 

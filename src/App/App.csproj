@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+		<WriteImportMapToHtml>true</WriteImportMapToHtml>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>.NET Lab</title>
     <base href="/" />
-    <link href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" rel="stylesheet" />
-    <link rel="stylesheet" href="css/app.css?v=5" />
-    <link rel="icon" type="image/png" href="favicon.png?v=2" />
-    <link href="DotNetLab.App.styles.css?v=3" rel="stylesheet" />
-    <link href="manifest.webmanifest?v=2" rel="manifest" />
-    <link rel="apple-touch-icon" sizes="512x512" href="favicon.png?v=2" />
+    <link href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot#[.{fingerprint}].css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/app#[.{fingerprint}].css" />
+    <link rel="icon" type="image/png" href="favicon#[.{fingerprint}].png" />
+    <link href="DotNetLab.App.styles#[.{fingerprint}].css" rel="stylesheet" />
+    <link href="manifest#[.{fingerprint}].webmanifest" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="favicon#[.{fingerprint}].png" />
+    <script type="importmap"></script>
 </head>
 
 <body>
@@ -54,11 +55,11 @@
         <span class="dismiss">🗙</span>
     </div>
 
-    <script src="_content/BlazorMonaco/jsInterop.js"></script>
-    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
-    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
-    <script src="_framework/blazor.webassembly.js"></script>
-    <script src="js/jslib.js"></script>
+    <script src="_content/BlazorMonaco/jsInterop#[.{fingerprint}].js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader#[.{fingerprint}].js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main#[.{fingerprint}].js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="js/jslib#[.{fingerprint}].js"></script>
     <script>navigator.serviceWorker.register('service-worker.js');</script>
 </body>
 
