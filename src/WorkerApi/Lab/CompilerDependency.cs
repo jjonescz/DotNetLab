@@ -126,6 +126,7 @@ public sealed record CompilerInfo(
     public string PrListUrl => $"{RepositoryUrl}/pulls";
     public string BuildListUrl => SimpleAzDoUtil.GetBuildListUrl(BuildDefinitionId);
     public string BranchListUrl => $"{RepositoryUrl}/branches";
+    public string CommitListUrl => $"{RepositoryUrl}/commits";
 }
 
 [JsonDerivedType(typeof(BuiltIn), nameof(BuiltIn))]
@@ -133,7 +134,7 @@ public sealed record CompilerInfo(
 [JsonDerivedType(typeof(NuGetLatest), nameof(NuGetLatest))]
 [JsonDerivedType(typeof(Build), nameof(Build))]
 [JsonDerivedType(typeof(PullRequest), nameof(PullRequest))]
-[JsonDerivedType(typeof(Branch), nameof(Branch))]
+[JsonDerivedType(typeof(BranchOrCommit), nameof(BranchOrCommit))]
 public abstract record CompilerVersionSpecifier
 {
     /// <remarks>
@@ -169,7 +170,7 @@ public abstract record CompilerVersionSpecifier
             yield return new NuGet(nuGetVersion);
         }
 
-        yield return new Branch(specifier);
+        yield return new BranchOrCommit(specifier);
     }
 
     public sealed record BuiltIn : CompilerVersionSpecifier;
@@ -177,7 +178,7 @@ public abstract record CompilerVersionSpecifier
     public sealed record NuGetLatest : CompilerVersionSpecifier;
     public sealed record Build(int BuildId) : CompilerVersionSpecifier;
     public sealed record PullRequest(int PullRequestNumber) : CompilerVersionSpecifier;
-    public sealed record Branch(string BranchName) : CompilerVersionSpecifier;
+    public sealed record BranchOrCommit(string BranchNameOrCommitHash) : CompilerVersionSpecifier;
 }
 
 internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>

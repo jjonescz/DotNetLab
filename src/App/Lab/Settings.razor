@@ -228,7 +228,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 </FluentDialog>
 
 @code {
-    private static readonly string VersionPlaceholder = "version / PR / branch / build";
+    private static readonly string VersionPlaceholder = "version / PR / branch / build / commit";
 
     private static readonly string ConfigurationTip = "Release configuration is always used for the built-in compilers and versions from NuGet.";
 
@@ -237,7 +237,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         <a href="@info.NuGetVersionListUrl" target="_blank">version</a>,
         <a href="@info.PrListUrl" target="_blank">PR</a>,
         <a href="@info.BranchListUrl" target="_blank">branch</a>,
-        <a href="@info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>.
+        <a href="@info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>,
+        <a href="@info.CommitListUrl" target="_blank">commit</a>.
     </span>
     ;
 

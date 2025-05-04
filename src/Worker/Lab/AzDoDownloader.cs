@@ -24,7 +24,7 @@ internal sealed class AzDoDownloader(
         return specifier switch
         {
             CompilerVersionSpecifier.PullRequest { PullRequestNumber: { } pullRequestNumber } => fromPrNumberAsync(pullRequestNumber: pullRequestNumber),
-            CompilerVersionSpecifier.Branch { BranchName: { } branchName } => fromBranchNameAsync(branchName: branchName),
+            CompilerVersionSpecifier.BranchOrCommit { BranchNameOrCommitHash: { } branchNameOrCommitHash } => fromBranchNameOrCommitHashAsync(branchNameOrCommitHash: branchNameOrCommitHash),
             CompilerVersionSpecifier.Build { BuildId: { } buildId } => fromBuildIdAsync(buildId: buildId),
             _ => nullResult,
         };
@@ -34,9 +34,10 @@ internal sealed class AzDoDownloader(
             return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge");
         }
 
-        Task<CompilerDependency?> fromBranchNameAsync(string branchName)
+        async Task<CompilerDependency?> fromBranchNameOrCommitHashAsync(string branchNameOrCommitHash)
         {
-            return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}");
+            return await fromRawBranchNameAsync(branchName: $"refs/heads/{branchNameOrCommitHash}")
+                ?? await fromRawBranchNameAsync(branchName: branchNameOrCommitHash);
         }
 
         async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName)
@@ -45,7 +46,7 @@ internal sealed class AzDoDownloader(
                 definitionId: info.BuildDefinitionId,
                 branchName: branchName);
 
-            return fromBuild(build);
+            return build == null ? null : fromBuild(build);
         }
 
         async Task<CompilerDependency?> fromBuildIdAsync(int buildId)
@@ -187,19 +188,19 @@ internal sealed class AzDoDownloader(
         return builder.ToImmutable();
     }
 
-    private async Task<Build> GetLatestBuildAsync(int definitionId, string branchName)
+    private async Task<Build?> GetLatestBuildAsync(int definitionId, string branchName)
     {
         var builds = await GetBuildsAsync(
             definitionId: definitionId,
             branchName: branchName,
             top: 1);
 
-        if (builds is not { Count: > 0, Value: [{ } build, ..] })
+        if (builds is { Count: > 0, Value: [{ } build, ..] })
         {
-            throw new InvalidOperationException($"No builds of branch '{branchName}' found.");
+            return build;
         }
 
-        return build;
+        return null;
     }
 
     private async Task<Build> GetBuildAsync(int buildId)
