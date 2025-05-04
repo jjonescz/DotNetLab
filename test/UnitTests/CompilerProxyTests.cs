@@ -106,12 +106,12 @@ internal sealed partial class MockHttpMessageHandler : HttpMessageHandler
                 });
             }
 
-            if (fileName.Equals("blazor.boot.json", StringComparison.Ordinal))
+            if (fileName.Equals("dotnet.boot.js", StringComparison.Ordinal))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("""
-                        { "resources": { "assembly": {}, "fingerprinting": {} } }
+                        export const config = /*json-start*/{ "resources": { "assembly": {}, "fingerprinting": {} } }/*json-end*/;
                         """),
                 });
             }
