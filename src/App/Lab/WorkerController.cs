@@ -13,9 +13,9 @@ internal sealed class WorkerController
     private readonly ILogger<WorkerController> logger;
     private readonly IWebAssemblyHostEnvironment hostEnvironment;
     private readonly Dispatcher dispatcher;
-    private readonly Lazy<Task<JSObject?>> worker;
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
+    private Task<JSObject?>? worker;
     private int messageId;
 
     public WorkerController(
@@ -25,18 +25,13 @@ internal sealed class WorkerController
         this.logger = logger;
         this.hostEnvironment = hostEnvironment;
         dispatcher = Dispatcher.CreateDefault();
-#pragma warning disable CA1416 // Platform support is checked inside the lazy factory
-        worker = new(CreateWorker);
-#pragma warning restore CA1416
         workerServices = new(CreateWorkerServices);
     }
 
+    public event Action<string>? Failed;
+
     public bool DebugLogs { get; set; }
     public bool Disabled { get; set; }
-
-#pragma warning disable CA1416 // Platform support is checked inside the lazy factory
-    private Task<JSObject?> Worker => worker.Value;
-#pragma warning restore CA1416
 
     private IServiceProvider CreateWorkerServices()
     {
@@ -45,10 +40,23 @@ internal sealed class WorkerController
            debugLogs: DebugLogs);
     }
 
-    private async Task<JSObject?> CreateWorker()
+    private async Task<JSObject?> GetWorker()
+    {
+        if (worker == null)
+        {
+            return await RecreateWorker();
+        }
+
+        return await worker;
+    }
+
+    public async Task<JSObject?> RecreateWorker()
     {
         if (Disabled)
         {
+#pragma warning disable CA1416 // JSObject only supported in the browser - but we only use `null` here.
+            worker = Task.FromResult<JSObject?>(null);
+#pragma warning restore CA1416
             return null;
         }
 
@@ -57,8 +65,21 @@ internal sealed class WorkerController
             throw new InvalidOperationException("Workers are only supported in the browser.");
         }
 
+        if (worker == null)
+        {
+            // One-time initialization.
+            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js");
+        }
+
+        worker = CreateWorker();
+        return await worker;
+    }
+
+    private async Task<JSObject?> CreateWorker()
+    {
+        Debug.Assert(!Disabled);
+
         var workerReady = new TaskCompletionSource();
-        await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js");
         var worker = WorkerControllerInterop.CreateWorker(
             getWorkerUrl("../_content/DotNetLab.Worker/main.js", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
             void (string data) =>
@@ -87,6 +108,7 @@ internal sealed class WorkerController
             void (string error) =>
             {
                 logger.LogError("Worker error: {Error}", error);
+                dispatcher.InvokeAsync(() => Failed?.Invoke(error));
             });
         await workerReady.Task;
         return worker;
@@ -126,7 +148,7 @@ internal sealed class WorkerController
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        JSObject? worker = await Worker;
+        JSObject? worker = await GetWorker();
 
         if (worker is null)
         {
