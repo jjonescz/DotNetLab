@@ -19,7 +19,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
 
-        var diagnosticsText = compiled.GetGlobalOutput(CompiledAssembly.DiagnosticsOutputType)!.EagerText!;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Contains($"{version} ({commit})", diagnosticsText);
     }
@@ -43,7 +44,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                     """,
             });
 
-        var diagnosticsText = compiled.GetGlobalOutput(CompiledAssembly.DiagnosticsOutputType)!.EagerText!;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Contains($"{version} ({commit})", diagnosticsText);
         Assert.Contains("Language version: 10.0", diagnosticsText);
@@ -63,13 +65,51 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = "test" }])));
 
-        var diagnosticsText = compiled.GetGlobalOutput(CompiledAssembly.DiagnosticsOutputType)!.EagerText!;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = await compiled.GetGlobalOutput("cs")!.GetTextAsync(outputFactory: null);
+        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
+    }
+
+    [Theory]
+    [InlineData(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
+    [InlineData(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
+    [InlineData(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
+    public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy)
+    {
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+
+        string code = """
+            <div>@Param</div>
+
+            @code {
+                [Parameter] public int Param { get; set; } = 42;
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = code }]))
+            {
+                RazorToolchain = toolchain,
+                RazorStrategy = strategy,
+            });
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        output.WriteLine(cSharpText);
+        Assert.Contains("class TestComponent", cSharpText);
+
+        var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
+        output.WriteLine(htmlText);
+        Assert.Equal("<div>42</div>", htmlText);
     }
 }
 
