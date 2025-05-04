@@ -141,6 +141,14 @@ internal sealed class WorkerController : IAsyncDisposable
             await DisposeWorkerNoLockAsync();
         }
 
+        // Read all pending messages (should be none or a single broadcast message with the previous failure).
+        while (workerMessages.Reader.TryRead(out var message))
+        {
+            logger.LogDebug("Discarding message {Id} {Type}",
+                message.Id,
+                message.GetType().Name);
+        }
+
         worker = CreateWorkerAsync();
         return worker;
     }
@@ -195,7 +203,13 @@ internal sealed class WorkerController : IAsyncDisposable
                 logger.LogError("Worker error: {Error}", error);
                 pingTimer.Stop();
                 workerReady.TrySetException(new InvalidOperationException($"Worker error: {error}"));
-                dispatcher.InvokeAsync(() => Failed?.Invoke(error));
+                dispatcher.InvokeAsync(async () =>
+                {
+                    // Send a broadcast message so all pending calls are completed with a failure.
+                    await workerMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure("Worker error", error) { Id = WorkerOutputMessage.BroadcastId });
+
+                    Failed?.Invoke(error);
+                });
             });
         await workerReady.Task;
 
@@ -228,16 +242,29 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<WorkerOutputMessage> ReceiveWorkerMessageAsync(int id)
     {
-        while (!workerMessages.Reader.TryPeek(out var result) || result.Id != id)
+        while (true)
         {
+            if (workerMessages.Reader.TryPeek(out var result))
+            {
+                if (result.Id == id)
+                {
+                    // This message is just for us, read it.
+                    var again = await workerMessages.Reader.ReadAsync();
+                    Debug.Assert(again.Id == id || again.IsBroadcast);
+                    return again;
+                }
+
+                if (result.IsBroadcast)
+                {
+                    // This is a broadcast message, don't remove it so others can read it too.
+                    return result;
+                }
+            }
+
+            // No messages, wait.
             await Task.Yield();
             await workerMessages.Reader.WaitToReadAsync();
         }
-
-        var again = await workerMessages.Reader.ReadAsync();
-        Debug.Assert(again.Id == id);
-
-        return again;
     }
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)

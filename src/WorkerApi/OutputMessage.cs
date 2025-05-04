@@ -8,7 +8,11 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(Failure), nameof(Failure))]
 public abstract record WorkerOutputMessage
 {
+    public const int BroadcastId = -1;
+
     public required int Id { get; init; }
+
+    public bool IsBroadcast => Id == BroadcastId;
 
     public sealed record Ready : WorkerOutputMessage;
 
