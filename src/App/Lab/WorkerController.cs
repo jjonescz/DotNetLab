@@ -8,7 +8,7 @@ using System.Threading.Channels;
 
 namespace DotNetLab.Lab;
 
-internal sealed class WorkerController
+internal sealed class WorkerController : IAsyncDisposable
 {
     private readonly ILogger<WorkerController> logger;
     private readonly IWebAssemblyHostEnvironment hostEnvironment;
@@ -33,6 +33,11 @@ internal sealed class WorkerController
     public bool DebugLogs { get; set; }
     public bool Disabled { get; set; }
 
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeWorkerAsync();
+    }
+
     private IServiceProvider CreateWorkerServices()
     {
         return WorkerServices.Create(
@@ -48,6 +53,22 @@ internal sealed class WorkerController
         }
 
         return await worker;
+    }
+
+    private async Task DisposeWorkerAsync()
+    {
+        if (worker != null)
+        {
+            var w = await worker;
+            if (w != null)
+            {
+                Debug.Assert(OperatingSystem.IsBrowser());
+                WorkerControllerInterop.DisposeWorker(w);
+                w.Dispose();
+            }
+
+            worker = null;
+        }
     }
 
     public async Task<JSObject?> RecreateWorker()
@@ -68,7 +89,12 @@ internal sealed class WorkerController
         if (worker == null)
         {
             // One-time initialization.
-            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js");
+            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js?v=2");
+        }
+        else
+        {
+            // Dispose previous worker.
+            await DisposeWorkerAsync();
         }
 
         worker = CreateWorker();
@@ -303,4 +329,7 @@ internal static partial class WorkerControllerInterop
 
     [JSImport("postMessage", nameof(WorkerController))]
     public static partial void PostMessage(JSObject worker, string message);
+
+    [JSImport("disposeWorker", nameof(WorkerController))]
+    public static partial void DisposeWorker(JSObject worker);
 }

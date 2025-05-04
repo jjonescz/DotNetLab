@@ -13,3 +13,10 @@
 export function postMessage(worker, message) {
     worker.postMessage(message);
 }
+
+/**
+ * @param {Worker} worker
+ */
+export function disposeWorker(worker) {
+    worker.terminate();
+}
