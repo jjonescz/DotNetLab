@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Threading.Channels;
+using Timer = System.Timers.Timer;
 
 namespace DotNetLab.Lab;
 
@@ -16,7 +17,7 @@ internal sealed class WorkerController : IAsyncDisposable
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
     private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
-    private Task<JSObject?>? worker;
+    private Task<WorkerInstance?>? worker;
     private int messageId;
 
     public WorkerController(
@@ -46,7 +47,7 @@ internal sealed class WorkerController : IAsyncDisposable
            debugLogs: DebugLogs);
     }
 
-    private async Task<JSObject?> GetWorkerAsync()
+    private async Task<WorkerInstance?> GetWorkerAsync()
     {
         if (worker == null)
         {
@@ -91,8 +92,10 @@ internal sealed class WorkerController : IAsyncDisposable
                 if (w != null)
                 {
                     Debug.Assert(OperatingSystem.IsBrowser());
-                    WorkerControllerInterop.DisposeWorker(w);
-                    w.Dispose();
+                    w.PingTimer.Stop();
+                    w.PingTimer.Dispose();
+                    WorkerControllerInterop.DisposeWorker(w.Handle);
+                    w.Handle.Dispose();
                 }
             }
             catch { }
@@ -114,13 +117,11 @@ internal sealed class WorkerController : IAsyncDisposable
         }
     }
 
-    private async Task<Task<JSObject?>> RecreateWorkerNoLockAsync()
+    private async Task<Task<WorkerInstance?>> RecreateWorkerNoLockAsync()
     {
         if (Disabled)
         {
-#pragma warning disable CA1416 // JSObject only supported in the browser - but we only use `null` here.
-            worker = Task.FromResult<JSObject?>(null);
-#pragma warning restore CA1416
+            worker = Task.FromResult<WorkerInstance?>(null);
             return worker;
         }
 
@@ -144,9 +145,24 @@ internal sealed class WorkerController : IAsyncDisposable
         return worker;
     }
 
-    private async Task<JSObject?> CreateWorkerAsync()
+    private async Task<WorkerInstance?> CreateWorkerAsync()
     {
         Debug.Assert(!Disabled);
+
+        // Some errors like StackOverflow don't propagate correctly from the worker unless we ping it explicitly.
+        var pingTimer = new Timer(TimeSpan.FromSeconds(10));
+        pingTimer.Elapsed += void (sender, args) =>
+        {
+            dispatcher.InvokeAsync(async () =>
+            {
+                pingTimer.Enabled = false;
+                await PostMessageAsync(new WorkerInputMessage.Ping
+                {
+                    Id = messageId++,
+                });
+                pingTimer.Enabled = true;
+            });
+        };
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
@@ -177,11 +193,19 @@ internal sealed class WorkerController : IAsyncDisposable
             void (string error) =>
             {
                 logger.LogError("Worker error: {Error}", error);
-                workerReady.SetException(new InvalidOperationException($"Worker error: {error}"));
+                pingTimer.Stop();
+                workerReady.TrySetException(new InvalidOperationException($"Worker error: {error}"));
                 dispatcher.InvokeAsync(() => Failed?.Invoke(error));
             });
         await workerReady.Task;
-        return worker;
+
+        pingTimer.Start();
+
+        return new WorkerInstance
+        {
+            Handle = worker,
+            PingTimer = pingTimer,
+        };
 
         static string getWorkerUrl(string url, ReadOnlySpan<string> args)
         {
@@ -218,7 +242,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        JSObject? worker = await GetWorkerAsync();
+        JSObject? worker = (await GetWorkerAsync())?.Handle;
 
         if (worker is null)
         {
@@ -359,6 +383,12 @@ internal sealed class WorkerController : IAsyncDisposable
             new WorkerInputMessage.GetDiagnostics() { Id = messageId++ },
             deserializeAs: default(ImmutableArray<MarkerData>));
     }
+}
+
+internal sealed class WorkerInstance
+{
+    public required JSObject Handle { get; init; }
+    public required Timer PingTimer { get; init; }
 }
 
 internal static partial class WorkerControllerInterop

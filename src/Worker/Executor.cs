@@ -6,6 +6,11 @@ namespace DotNetLab;
 
 public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessage.IExecutor
 {
+    public Task<NoOutput> HandleAsync(WorkerInputMessage.Ping message)
+    {
+        return NoOutput.AsyncInstance;
+    }
+
     public async Task<CompiledAssembly> HandleAsync(WorkerInputMessage.Compile message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
