@@ -63,15 +63,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                         @* Razor toolchain *@
                         <FluentStack VerticalAlignment="VerticalAlignment.Center">
                             <span>Razor toolchain</span>
-                            <FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
-                            Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
+                            <FluentSelect @bind-Value="SelectedRazorToolchain" @bind-Value:after="OnSetRazorToolchainAsync"
+                            Items="Enum.GetValues<RazorToolchain>().Select(RazorToolchainText)" />
                         </FluentStack>
                         
                         @* Razor strategy *@
                         <FluentStack VerticalAlignment="VerticalAlignment.Center">
                             <span>Razor strategy</span>
-                            <FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
-                            Items="Enum.GetValues<RazorStrategy>()" />
+                            <FluentSelect @bind-Value="SelectedRazorStrategy" @bind-Value:after="OnSetRazorStrategyAsync"
+                            Items="Enum.GetValues<RazorStrategy>().Select(static s => s.ToString())" />
                         </FluentStack>
                     </FluentStack>
                 </FluentAccordionItem>
@@ -297,8 +297,20 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
     public bool AutoCompileOnStart { get; set; }
-    public RazorToolchain RazorToolchain { get; set; }
-    public RazorStrategy RazorStrategy { get; set; }
+
+    // For properties set from state we need separate string holders to work around https://github.com/microsoft/fluentui-blazor/issues/3754.
+    private string SelectedRazorToolchain
+    {
+        get => RazorToolchainText(RazorToolchain);
+        set => RazorToolchain = RazorToolchainEnum(value);
+    }
+    private RazorToolchain RazorToolchain { get; set; }
+    private string SelectedRazorStrategy
+    {
+        get => RazorStrategy.ToString();
+        set => RazorStrategy = Enum.TryParse<RazorStrategy>(value, out var result) ? result : default;
+    }
+    private RazorStrategy RazorStrategy { get; set; }
 
     private async Task OnSetDebugLogsAsync()
     {
@@ -334,7 +346,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             RazorToolchain = RazorToolchain,
         });
     }
-    
+
     private async Task OnSetRazorStrategyAsync()
     {
         Page.OnSettingsInputChanged();
@@ -353,6 +365,16 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             RazorToolchain.SourceGenerator => "Source Generator",
             RazorToolchain.InternalApi => "Internal API",
             _ => value.ToString(),
+        };
+    }
+
+    private static RazorToolchain RazorToolchainEnum(string value)
+    {
+        return value switch
+        {
+            "Source Generator" => RazorToolchain.SourceGenerator,
+            "Internal API" => RazorToolchain.InternalApi,
+            _ => RazorToolchain.SourceGeneratorOrInternalApi,
         };
     }
 
