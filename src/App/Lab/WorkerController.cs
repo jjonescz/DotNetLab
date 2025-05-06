@@ -330,7 +330,7 @@ internal sealed class WorkerController : IAsyncDisposable
             WorkerOutputMessage.Failure failure => fallback switch
             {
                 null => throw new InvalidOperationException(failure.Message),
-                _ => fallback(failure.Message),
+                _ => fallback(failure.FullString),
             },
             _ => throw new InvalidOperationException($"Unexpected message type: {incoming}"),
         };
