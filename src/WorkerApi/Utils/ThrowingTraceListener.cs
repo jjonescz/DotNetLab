@@ -7,6 +7,7 @@ namespace DotNetLab;
 /// </summary>
 public sealed class ThrowingTraceListener : TraceListener
 {
+    [SuppressMessage("Usage", "CA2255: The 'ModuleInitializer' attribute should not be used in libraries")]
     [ModuleInitializer]
     internal static void Initialize()
     {
