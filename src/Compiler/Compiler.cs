@@ -9,12 +9,17 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using ReferenceInfo = Basic.Reference.Assemblies.AspNet90.ReferenceInfo;
 
 namespace DotNetLab;
 
-public class Compiler(ILogger<Compiler> logger) : ICompiler
+public class Compiler(
+    ILogger<Compiler> logger,
+    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
 
@@ -62,6 +67,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             concurrentBuild: false);
 
         var references = Basic.Reference.Assemblies.AspNet90.References.All;
+        var referenceInfos = Basic.Reference.Assemblies.AspNet90.ReferenceInfos.All;
 
         // If we have a configuration, compile and execute it.
         if (compilationInput.Configuration is { } configuration)
@@ -74,7 +80,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
-            TestGlobalOptions =
+            GlobalOptions =
             {
                 ["build_property.RazorConfiguration"] = "Default",
                 ["build_property.RootNamespace"] = "TestNamespace",
@@ -86,12 +92,20 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
         var additionalSources = new List<InputCode>();
 
+        CSharpParseOptions? scriptOptions = null;
+
         foreach (var input in compilationInput.Inputs.Value)
         {
-            if (isCSharp(input))
+            if (isCSharp(input, out bool script))
             {
+                if (script)
+                {
+                    scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
+                }
+
                 var filePath = getFilePath(input);
-                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, parseOptions, filePath, Encoding.UTF8);
+                var currentParseOptions = script ? scriptOptions : parseOptions;
+                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
                 cSharpSources.Add((input, syntaxTree));
             }
             else
@@ -357,7 +371,11 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
 
         static string getFilePath(InputCode input) => directory + input.FileName;
 
-        static bool isCSharp(InputCode input) => ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        static bool isCSharp(InputCode input, out bool script)
+        {
+            return (script = ".csx".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase)) ||
+                ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
+        }
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
@@ -371,6 +389,17 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                 {
                     ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
                 };
+
+                // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
+                if (isRazorOrCshtml(input))
+                {
+                    string cssFileName = input.FileName + ".css";
+                    if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        optionsProvider.AdditionalTextOptions[filePath]["build_metadata.AdditionalFiles.CssScope"] =
+                            RazorUtil.GenerateScope(projectName, filePath);
+                    }
+                }
             }
 
             var initialCompilation = CSharpCompilation.Create(
@@ -412,8 +441,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
             foreach (var input in additionalSources)
             {
-                if (".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
-                    ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase))
+                if (isRazorOrCshtml(input))
                 {
                     var filePath = getFilePath(input);
                     var item = RazorAccessors.CreateSourceGeneratorProjectItem(
@@ -512,6 +540,12 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
                     b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
             }
+        }
+
+        static bool isRazorOrCshtml(InputCode input)
+        {
+            return ".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
+                ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
         }
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
@@ -625,7 +659,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
         }
 
         // Inspired by https://github.com/icsharpcode/ILSpy/pull/1040.
-        static async Task<string> getSequencePoints(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getSequencePoints(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
         {
             if (peFile is null)
             {
@@ -687,7 +721,7 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return result.ToString();
         }
 
-        static async Task<string> getCSharpAsync(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getCSharpAsync(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
         {
             if (peFile is null)
             {
@@ -698,27 +732,64 @@ public class Compiler(ILogger<Compiler> logger) : ICompiler
             return decompiler.DecompileWholeModuleAsString();
         }
 
-        static async Task<ICSharpCode.Decompiler.CSharp.CSharpDecompiler> getCSharpDecompilerAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
+        async Task<ICSharpCode.Decompiler.CSharp.CSharpDecompiler> getCSharpDecompilerAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
         {
             return new ICSharpCode.Decompiler.CSharp.CSharpDecompiler(
                 await getCSharpDecompilerTypeSystemAsync(peFile),
                 getCSharpDecompilerSettings());
         }
 
-        static async Task<ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem> getCSharpDecompilerTypeSystemAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
+        async Task<ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem> getCSharpDecompilerTypeSystemAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new ICSharpCode.Decompiler.Metadata.UniversalAssemblyResolver(
-                    mainAssemblyFileName: null,
-                    throwOnError: false,
-                    targetFramework: ".NETCoreApp,Version=9.0"));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
         }
 
         static ICSharpCode.Decompiler.DecompilerSettings getCSharpDecompilerSettings()
         {
             return new ICSharpCode.Decompiler.DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1);
         }
+    }
+}
+
+public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<ReferenceInfo> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
+{
+    public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
+    {
+        return Task.FromResult(Resolve(reference));
+    }
+
+    public ICSharpCode.Decompiler.Metadata.MetadataFile? Resolve(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
+    {
+        foreach (var r in references)
+        {
+            if (withoutExtension(r.FileName).Equals(reference.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                var peReader = new PEReader(ImmutableCollectionsMarshal.AsImmutableArray(r.ImageBytes));
+                return new ICSharpCode.Decompiler.Metadata.PEFile(r.FileName, peReader);
+            }
+        }
+
+        logger.LogError("Cannot resolve assembly '{Name}'.", reference.Name);
+        return null;
+
+        static ReadOnlySpan<char> withoutExtension(ReadOnlySpan<char> fileName)
+        {
+            int index = fileName.LastIndexOf('.');
+            return index < 0 ? fileName : fileName[..index];
+        }
+    }
+
+    public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveModuleAsync(ICSharpCode.Decompiler.Metadata.MetadataFile mainModule, string moduleName)
+    {
+        return Task.FromResult(ResolveModule(mainModule, moduleName));
+    }
+
+    public ICSharpCode.Decompiler.Metadata.MetadataFile? ResolveModule(ICSharpCode.Decompiler.Metadata.MetadataFile mainModule, string moduleName)
+    {
+        logger.LogError("Module resolving not implemented ({ModuleName}).", moduleName);
+        return null;
     }
 }
 
@@ -736,43 +807,27 @@ internal sealed class TestAdditionalText(string path, SourceText text) : Additio
 
 internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
 {
-    public override AnalyzerConfigOptions GlobalOptions => TestGlobalOptions;
-
-    public TestAnalyzerConfigOptions TestGlobalOptions { get; } = new TestAnalyzerConfigOptions();
+    public override TestAnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
 
     public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
 
     public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
 
-    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+    public override TestAnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options) ? options : new TestAnalyzerConfigOptions();
-    }
-
-    public TestAnalyzerConfigOptionsProvider Clone()
-    {
-        var provider = new TestAnalyzerConfigOptionsProvider();
-        foreach (var option in this.TestGlobalOptions.Options)
+        if (!AdditionalTextOptions.TryGetValue(textFile.Path, out var options))
         {
-            provider.TestGlobalOptions[option.Key] = option.Value;
+            options = new TestAnalyzerConfigOptions();
+            AdditionalTextOptions[textFile.Path] = options;
         }
-        foreach (var option in this.AdditionalTextOptions)
-        {
-            TestAnalyzerConfigOptions newOptions = new TestAnalyzerConfigOptions();
-            foreach (var subOption in option.Value.Options)
-            {
-                newOptions[subOption.Key] = subOption.Value;
-            }
-            provider.AdditionalTextOptions[option.Key] = newOptions;
 
-        }
-        return provider;
+        return options;
     }
 }
 
 internal sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
 {
-    public Dictionary<string, string> Options { get; } = new();
+    public Dictionary<string, string> Options { get; } = new(KeyComparer);
 
     public string this[string name]
     {

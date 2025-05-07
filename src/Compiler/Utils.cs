@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using System.Numerics;
 using System.Reflection.Emit;
+using System.Security.Cryptography;
 
 namespace DotNetLab;
 
@@ -95,6 +97,30 @@ internal static class RazorUtil
     public static void ConfigureRazorParserOptionsSafe(this RazorProjectEngineBuilder builder, Action<object> configure)
     {
         builder.Features.Add(configureRazorParserOptionsFactory.Value(configure));
+    }
+
+    public static string GenerateScope(string targetName, string relativePath)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(relativePath + targetName);
+        Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
+        int hashed = SHA256.HashData(bytes, hash);
+        Debug.Assert(hashed == hash.Length);
+        return $"b-{toBase36(hash)}";
+
+        static string toBase36(ReadOnlySpan<byte> hash)
+        {
+            const string chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+            Span<char> result = stackalloc char[10];
+            BigInteger dividend = BigInteger.Abs(new BigInteger([.. hash[..9]]));
+            for (var i = 0; i < 10; i++)
+            {
+                dividend = BigInteger.DivRem(dividend, 36, out var remainder);
+                result[i] = chars[(int)remainder];
+            }
+
+            return new string(result);
+        }
     }
 
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)

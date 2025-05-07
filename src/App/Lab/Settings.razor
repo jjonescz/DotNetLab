@@ -284,7 +284,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     [Parameter] public EventCallback<bool> WordWrapChanged { get; set; }
     [Parameter] public bool UseVim { get; set; }
     [Parameter] public EventCallback<bool> UseVimChanged { get; set; }
-    [Parameter, EditorRequired] public required StandaloneCodeEditor Editor { get; set; }
+    [Parameter, EditorRequired] public required StandaloneCodeEditor InputEditor { get; set; }
+    [Parameter, EditorRequired] public required StandaloneCodeEditor OutputEditor { get; set; }
     [CascadingParameter] public required Page Page { get; set; }
 
     private bool DebugLogs
@@ -730,7 +731,10 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await RefreshAsync();
         await WordWrapChanged.InvokeAsync(WordWrap);
         await LocalStorage.SetItemAsync(nameof(WordWrap), WordWrap);
-        await Editor.UpdateOptions(new EditorUpdateOptions { WordWrap = WordWrap ? "on" : "off" });
+
+        var updateOptions = new EditorUpdateOptions { WordWrap = WordWrap ? "on" : "off" };
+        await InputEditor.UpdateOptions(updateOptions);
+        await OutputEditor.UpdateOptions(updateOptions);
     }
 
     private async Task OnVimChanged()
@@ -754,7 +758,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             }
         }
 
-        await Editor.Layout();
+        await InputEditor.Layout();
     }
 
     private async Task SetLuminanceAsync(bool dark)
