@@ -55,7 +55,7 @@ public static class WorkerServices
         services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(static sp => sp.GetRequiredService<BuiltInCompilerProvider>());
         services.AddScoped<LanguageServices>();
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
-        services.AddScoped<Func<DotNetBootConfig?>>(static _ => DotNetBootConfig.Get);
+        services.AddScoped<Func<DotNetBootConfig?>>(static _ => DotNetBootConfig.GetFromRuntime);
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }

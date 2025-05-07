@@ -11,7 +11,4 @@ internal sealed partial class Imports
 
     [JSImport("postMessage", ModuleName)]
     public static partial void PostMessage(string message);
-
-    [JSImport("getDotNetConfig", ModuleName)]
-    public static partial string GetDotNetConfig();
 }

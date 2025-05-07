@@ -121,6 +121,12 @@ internal sealed class WorkerController : IAsyncDisposable
     {
         if (Disabled)
         {
+            if (OperatingSystem.IsBrowser())
+            {
+                // One-time initialization.
+                await JSHost.ImportAsync("worker-interop.js", "../_content/DotNetLab.Worker/interop.js");
+            }
+
             worker = Task.FromResult<WorkerInstance?>(null);
             return worker;
         }
@@ -174,7 +180,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=2", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
             void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>

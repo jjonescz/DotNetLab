@@ -48,9 +48,9 @@ internal sealed class DotNetBootConfig
 {
     public required DotNetBootConfigResources Resources { get; init; }
 
-    public static DotNetBootConfig Get()
+    public static DotNetBootConfig GetFromRuntime()
     {
-        string json = Imports.GetDotNetConfig();
+        string json = WorkerInterop.GetDotNetConfig();
         return JsonSerializer.Deserialize(json, LabWorkerJsonContext.Default.DotNetBootConfig)!;
     }
 }
