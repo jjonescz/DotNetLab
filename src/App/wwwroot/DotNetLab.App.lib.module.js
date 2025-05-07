@@ -1,5 +1,8 @@
 export async function afterStarted(blazor) {
-    const dotNetExports = await blazor.runtime.getAssemblyExports('DotNetLab.App.dll');
+    /** @type {import('./dotnet').RuntimeAPI} */
+    const runtime = blazor.runtime;
+
+    const dotNetExports = await runtime.getAssemblyExports('DotNetLab.App.dll');
 
     // When a new service worker version is activated
     // (after user clicks "Refresh" which sends 'skipWaiting' message to the worker),
