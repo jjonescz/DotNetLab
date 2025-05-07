@@ -16,7 +16,8 @@ public static class WorkerServices
             httpMessageHandler,
             configureServices: services =>
             {
-                services.Configure<CompilerProxyOptions>(options =>
+                services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () => null);
+                services.Configure<CompilerProxyOptions>(static options =>
                 {
                     options.AssembliesAreAlwaysInDllFormat = true;
                 });
@@ -51,9 +52,10 @@ public static class WorkerServices
         services.AddScoped<BuiltInCompilerProvider>();
         services.AddScoped<ICompilerDependencyResolver, NuGetDownloaderPlugin>();
         services.AddScoped<ICompilerDependencyResolver, AzDoDownloader>();
-        services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(sp => sp.GetRequiredService<BuiltInCompilerProvider>());
+        services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(static sp => sp.GetRequiredService<BuiltInCompilerProvider>());
         services.AddScoped<LanguageServices>();
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
+        services.AddScoped<Func<DotNetBootConfig?>>(static _ => DotNetBootConfig.Get);
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }

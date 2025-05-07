@@ -7,43 +7,31 @@ namespace DotNetLab.Lab;
 internal sealed class AssemblyDownloader
 {
     private readonly HttpClient client;
-    private readonly Lazy<Task<FrozenDictionary<string, string>>> fingerprintedFileNames;
+    private readonly Func<DotNetBootConfig?> bootConfigProvider;
+    private readonly Lazy<FrozenDictionary<string, string>> fingerprintedFileNames;
 
-    public AssemblyDownloader(HttpClient client)
+    public AssemblyDownloader(HttpClient client, Func<DotNetBootConfig?> bootConfigProvider)
     {
         this.client = client;
-        fingerprintedFileNames = new(GetFingerprintedFileNamesAsync);
+        this.bootConfigProvider = bootConfigProvider;
+        fingerprintedFileNames = new(GetFingerprintedFileNames);
     }
 
-    private async Task<FrozenDictionary<string, string>> GetFingerprintedFileNamesAsync()
+    private FrozenDictionary<string, string> GetFingerprintedFileNames()
     {
-        const string bootJs = "_framework/dotnet.boot.js";
-        string manifestJs = await client.GetStringAsync(bootJs);
+        var config = bootConfigProvider();
 
-        const string jsonStart = "/*json-start*/";
-        int startIndex = manifestJs.IndexOf(jsonStart);
-        if (startIndex < 0)
+        if (config == null)
         {
-            throw new InvalidOperationException($"Did not find {jsonStart} in {bootJs}");
+            return FrozenDictionary<string, string>.Empty;
         }
 
-        const string jsonEnd = "/*json-end*/";
-        int endIndex = manifestJs.LastIndexOf(jsonEnd);
-        if (endIndex < 0)
-        {
-            throw new InvalidOperationException($"Did not find {jsonEnd} in {bootJs}");
-        }
-
-        startIndex += jsonStart.Length;
-        var manifestJson = manifestJs.AsSpan()[startIndex..endIndex];
-        var manifest = JsonSerializer.Deserialize(manifestJson, LabWorkerJsonContext.Default.BlazorBootJson)!;
-
-        return manifest.Resources.Assembly.Keys.ToFrozenDictionary(n => manifest.Resources.Fingerprinting[n], n => n);
+        return config.Resources.Assembly.Keys.ToFrozenDictionary(n => config.Resources.Fingerprinting[n], n => n);
     }
 
     public async Task<ImmutableArray<byte>> DownloadAsync(string assemblyFileNameWithoutExtension)
     {
-        var fingerprintedFileNames = await this.fingerprintedFileNames.Value;
+        var fingerprintedFileNames = this.fingerprintedFileNames.Value;
 
         var fileName = $"{assemblyFileNameWithoutExtension}.wasm";
         if (fingerprintedFileNames.TryGetValue(fileName, out var fingerprintedFileName))
@@ -56,12 +44,18 @@ internal sealed class AssemblyDownloader
     }
 }
 
-internal sealed class BlazorBootJson
+internal sealed class DotNetBootConfig
 {
-    public required BlazorBootJsonResources Resources { get; init; }
+    public required DotNetBootConfigResources Resources { get; init; }
+
+    public static DotNetBootConfig Get()
+    {
+        string json = Imports.GetDotNetConfig();
+        return JsonSerializer.Deserialize(json, LabWorkerJsonContext.Default.DotNetBootConfig)!;
+    }
 }
 
-internal sealed class BlazorBootJsonResources
+internal sealed class DotNetBootConfigResources
 {
     public required IReadOnlyDictionary<string, string> Fingerprinting { get; init; }
     public required IReadOnlyDictionary<string, string> Assembly { get; init; }

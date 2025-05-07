@@ -174,7 +174,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            getWorkerUrl("../_content/DotNetLab.Worker/main.js", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=2", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
             void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>
@@ -223,18 +223,12 @@ internal sealed class WorkerController : IAsyncDisposable
 
         static string getWorkerUrl(string url, ReadOnlySpan<string> args)
         {
-            // Append args as ?arg=...&arg=...&arg=...
+            // Append args as &arg=...&arg=...&arg=...
             var sb = new StringBuilder(url);
-            sb.Append('?');
-            int i = 0;
             foreach (var arg in args)
             {
-                sb.Append("arg=");
+                sb.Append("&arg=");
                 sb.Append(Uri.EscapeDataString(arg));
-                if (++i < args.Length)
-                {
-                    sb.Append('&');
-                }
             }
             return sb.ToString();
         }

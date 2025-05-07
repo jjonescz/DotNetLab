@@ -145,16 +145,6 @@ internal sealed partial class MockHttpMessageHandler : HttpMessageHandler
                     Content = new StreamContent(File.OpenRead(assemblyPath)),
                 });
             }
-
-            if (fileName.Equals("dotnet.boot.js", StringComparison.Ordinal))
-            {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""
-                        export const config = /*json-start*/{ "resources": { "assembly": {}, "fingerprinting": {} } }/*json-end*/;
-                        """),
-                });
-            }
         }
 
         throw new NotImplementedException(request.RequestUri?.ToString());

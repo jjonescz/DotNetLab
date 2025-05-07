@@ -14,6 +14,7 @@ const instance = await dotnet
 instance.setModuleImports('worker-imports.js', {
     registerOnMessage: (handler) => self.addEventListener('message', handler),
     postMessage: (message) => self.postMessage(message),
+    getDotNetConfig: () => JSON.stringify(instance.getConfig()),
 });
 
 await instance.runMainAndExit('DotNetLab.Worker.wasm');

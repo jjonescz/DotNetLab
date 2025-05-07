@@ -4,9 +4,14 @@ namespace DotNetLab;
 
 internal sealed partial class Imports
 {
-    [JSImport("registerOnMessage", "worker-imports.js")]
+    private const string ModuleName = "worker-imports.js";
+
+    [JSImport("registerOnMessage", ModuleName)]
     public static partial void RegisterOnMessage([JSMarshalAs<JSType.Function<JSType.Object>>] Action<JSObject> handler);
 
-    [JSImport("postMessage", "worker-imports.js")]
+    [JSImport("postMessage", ModuleName)]
     public static partial void PostMessage(string message);
+
+    [JSImport("getDotNetConfig", ModuleName)]
+    public static partial string GetDotNetConfig();
 }
