@@ -133,7 +133,7 @@ internal sealed class WorkerController : IAsyncDisposable
         if (worker == null)
         {
             // One-time initialization.
-            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js?v=2");
+            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js?v=4");
         }
         else
         {
