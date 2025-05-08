@@ -1,13 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<OutputType>Exe</OutputType>
 		<RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="BlazorMonaco" />
-		<PackageReference Include="KristofferStrube.Blazor.WebWorkers" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" />
 		<PackageReference Include="Microsoft.Extensions.Logging" />
 		<PackageReference Include="Microsoft.TeamFoundationServer.Client" />
@@ -16,6 +15,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Compiler\Compiler.csproj" />
+		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
 	</ItemGroup>
+
+	<Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>

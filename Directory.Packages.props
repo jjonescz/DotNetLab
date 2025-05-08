@@ -4,35 +4,43 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <!-- We are not using package source mapping. -->
     <NoWarn>$(NoWarn);NU1507</NoWarn>
+    <NetCoreVersion>10.0.0-preview.4.25252.106</NetCoreVersion>
+    <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
+    <RoslynVersion>5.0.0-1.25252.6</RoslynVersion>
+    <FluentUIVersion>4.11.8</FluentUIVersion>
+    <NuGetVersion>6.13.1</NuGetVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="8.0.1" />
-    <PackageVersion Include="Basic.Reference.Assemblies.AspNet90" Version="1.8.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When upating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.2.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="9.0.0.7889" />
-    <PackageVersion Include="KristofferStrube.Blazor.WebWorkers" Version="0.1.0-alpha.7" />
     <PackageVersion Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0-3.25164.10" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0-3.25164.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.App.Ref" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.DotNet.Arcade.Sdk" Version="9.0.0-beta.24372.7" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.11.4" />
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.11.4" />
-    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="9.0.0-preview.25164.2" />
-    <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="4.14.0-3.25164.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(NetCoreVersion)" />
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="$(FluentUIVersion)" />
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="$(FluentUIVersion)" />
+    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25252.1" />
+    <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="Microsoft.NETCore.App.Ref" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
-    <PackageVersion Include="NuGet.Protocol" Version="6.13.1" />
+    <PackageVersion Include="NuGet.Protocol" Version="$(NuGetVersion)" />
+    <PackageVersion Include="NuGet.Versioning" Version="$(NuGetVersion)" />
     <PackageVersion Include="protobuf-net" Version="3.2.46" />
-    <PackageVersion Include="System.IO.Hashing" Version="9.0.2" />
+    <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
     <PackageVersion Include="xunit.v3" Version="1.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <!-- Pinned transitive dependencies -->
+    <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
   </ItemGroup>
 </Project>

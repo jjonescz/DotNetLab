@@ -161,6 +161,16 @@
     @* Output panel *@
     <FluentMultiSplitterPane Collapsible>
         <div style="display: flex; flex-direction: column; height: 100%">
+            @* Worker status message *@
+            @if (workerError != null)
+            {
+                <FluentMessageBar Title="Compiler worker failed." Intent="MessageIntent.Error" AllowDismiss="false">
+                    <div style="white-space-collapse: preserve">@workerError</div>
+                    <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorker"
+                    IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Re-create the worker</FluentButton>
+                </FluentMessageBar>
+            }
+
             @* Output tabs *@
             @* NOTE: @key is needed - otherwise, when AllOutputs change,
             the FluentTabs might render incorrect selected tab
@@ -227,6 +237,7 @@
     private bool wordWrap;
     private bool useVim;
     private Orientation orientation = GetAutoOrientation();
+    private string? workerError;
 
     private record EditorState(TextModel Model) : IAsyncDisposable
     {
@@ -290,6 +301,7 @@
         NavigationManager.LocationChanged += OnLocationChanged;
         UpdateInfo.UpdateStatusChanged += StateHasChanged;
         ScreenInfo.Updated += OnScreenInfoUpdated;
+        Worker.Failed += OnWorkerFailed;
 
         // Load editor theme early to avoid flash of light theme.
         loadedDarkTheme = ((IJSInProcessRuntime)JSRuntime).Invoke<bool>(
@@ -307,6 +319,7 @@
         NavigationManager.LocationChanged -= OnLocationChanged;
         UpdateInfo.UpdateStatusChanged -= StateHasChanged;
         ScreenInfo.Updated -= OnScreenInfoUpdated;
+        Worker.Failed -= OnWorkerFailed;
 
         unregisterEventListeners?.Invoke();
 
@@ -941,11 +954,17 @@
     private void OnWorkspaceChanged()
     {
         outputOutdated = true;
+
+        if (LanguageServices.Disabled)
+        {
+            return;
+        }
+
         var models = inputs
             .Select(i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = i.NewContent })
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
-        Worker.OnDidChangeWorkspace(models);
+        LanguageServices.OnDidChangeWorkspace(models);
     }
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)
@@ -969,5 +988,18 @@
     {
         outputOutdated = true;
         StateHasChanged();
+    }
+
+    private void OnWorkerFailed(string error)
+    {
+        workerError = error;
+        StateHasChanged();
+    }
+
+    private void ReloadWorker()
+    {
+        workerError = null;
+        StateHasChanged();
+        _ = Worker.RecreateWorkerAsync();
     }
 }

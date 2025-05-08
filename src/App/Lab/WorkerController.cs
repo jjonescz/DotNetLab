@@ -1,110 +1,290 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
-using KristofferStrube.Blazor.DOM;
-using KristofferStrube.Blazor.WebWorkers;
-using KristofferStrube.Blazor.Window;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.JSInterop;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Threading.Channels;
+using Timer = System.Timers.Timer;
 
 namespace DotNetLab.Lab;
 
-internal sealed class WorkerController
+internal sealed class WorkerController : IAsyncDisposable
 {
     private readonly ILogger<WorkerController> logger;
-    private readonly IJSRuntime jsRuntime;
     private readonly IWebAssemblyHostEnvironment hostEnvironment;
-    private readonly Lazy<Task<SlimWorker?>> worker;
+    private readonly Dispatcher dispatcher;
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerOutputMessage> workerMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
+    private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
+    private Task<WorkerInstance?>? worker;
     private int messageId;
 
-    public WorkerController(ILogger<WorkerController> logger, IJSRuntime jsRuntime, IWebAssemblyHostEnvironment hostEnvironment)
+    public WorkerController(
+        ILogger<WorkerController> logger,
+        IWebAssemblyHostEnvironment hostEnvironment)
     {
         this.logger = logger;
-        this.jsRuntime = jsRuntime;
         this.hostEnvironment = hostEnvironment;
-        worker = new(CreateWorker);
-        workerServices = new(() => WorkerServices.Create(
-            baseUrl: hostEnvironment.BaseAddress,
-            debugLogs: DebugLogs));
+        dispatcher = Dispatcher.CreateDefault();
+        workerServices = new(CreateWorkerServices);
     }
+
+    public event Action<string>? Failed;
 
     public bool DebugLogs { get; set; }
     public bool Disabled { get; set; }
 
-    private Task<SlimWorker?> Worker => worker.Value;
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeWorkerAsync();
+    }
 
-    private async Task<SlimWorker?> CreateWorker()
+    private IServiceProvider CreateWorkerServices()
+    {
+        return WorkerServices.Create(
+           baseUrl: hostEnvironment.BaseAddress,
+           debugLogs: DebugLogs);
+    }
+
+    private async Task<WorkerInstance?> GetWorkerAsync()
+    {
+        if (worker == null)
+        {
+            await workerGuard.WaitAsync();
+            try
+            {
+                if (worker == null)
+                {
+                    await RecreateWorkerNoLockAsync();
+                    Debug.Assert(worker != null);
+                }
+            }
+            finally
+            {
+                workerGuard.Release();
+            }
+        }
+
+        return await worker;
+    }
+
+    private async Task DisposeWorkerAsync()
+    {
+        await workerGuard.WaitAsync();
+        try
+        {
+            await DisposeWorkerNoLockAsync();
+        }
+        finally
+        {
+            workerGuard.Release();
+        }
+    }
+
+    private async Task DisposeWorkerNoLockAsync()
+    {
+        if (worker != null)
+        {
+            try
+            {
+                var w = await worker;
+                if (w != null)
+                {
+                    Debug.Assert(OperatingSystem.IsBrowser());
+                    w.PingTimer.Stop();
+                    w.PingTimer.Dispose();
+                    WorkerControllerInterop.DisposeWorker(w.Handle);
+                    w.Handle.Dispose();
+                }
+            }
+            catch { }
+
+            worker = null;
+        }
+    }
+
+    public async Task RecreateWorkerAsync()
+    {
+        await workerGuard.WaitAsync();
+        try
+        {
+            await RecreateWorkerNoLockAsync();
+        }
+        finally
+        {
+            workerGuard.Release();
+        }
+    }
+
+    private async Task<Task<WorkerInstance?>> RecreateWorkerNoLockAsync()
     {
         if (Disabled)
         {
-            return null;
+            if (OperatingSystem.IsBrowser())
+            {
+                // One-time initialization.
+                await JSHost.ImportAsync("worker-interop.js", "../_content/DotNetLab.Worker/interop.js");
+            }
+
+            worker = Task.FromResult<WorkerInstance?>(null);
+            return worker;
         }
 
-        var workerReady = new TaskCompletionSource();
-        var worker = await SlimWorker.CreateAsync(
-            jsRuntime,
-            assembly: "DotNetLab.Worker",
-            args: [hostEnvironment.BaseAddress, DebugLogs.ToString()]);
-        var listener = await EventListener<MessageEvent>.CreateAsync(jsRuntime, async e =>
+        if (!OperatingSystem.IsBrowser())
         {
-            var data = await e.Data.GetValueAsync() as string ?? string.Empty;
-            var message = JsonSerializer.Deserialize<WorkerOutputMessage>(data)!;
-            logger.LogDebug("📩 {Id}: {Type} ({Size})",
+            throw new InvalidOperationException("Workers are only supported in the browser.");
+        }
+
+        if (worker == null)
+        {
+            // One-time initialization.
+            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js?v=4");
+        }
+        else
+        {
+            // Dispose previous worker.
+            await DisposeWorkerNoLockAsync();
+        }
+
+        // Read all pending messages (should be none or a single broadcast message with the previous failure).
+        while (workerMessages.Reader.TryRead(out var message))
+        {
+            logger.LogDebug("Discarding message {Id} {Type}",
                 message.Id,
-                message.GetType().Name,
-                data.Length.SeparateThousands());
-            if (message is WorkerOutputMessage.Ready)
-            {
-                workerReady.SetResult();
-            }
-            else if (message.Id < 0)
-            {
-                logger.LogError("Unpaired message {Message}", message);
-            }
-            else
-            {
-                await workerMessages.Writer.WriteAsync(message);
-            }
-        });
-        await worker.AddOnMessageEventListenerAsync(listener);
-        await workerReady.Task;
+                message.GetType().Name);
+        }
+
+        worker = CreateWorkerAsync();
         return worker;
+    }
+
+    private async Task<WorkerInstance?> CreateWorkerAsync()
+    {
+        Debug.Assert(!Disabled);
+
+        // Some errors like StackOverflow don't propagate correctly from the worker unless we ping it explicitly.
+        var pingTimer = new Timer(TimeSpan.FromSeconds(10));
+        pingTimer.Elapsed += void (sender, args) =>
+        {
+            dispatcher.InvokeAsync(async () =>
+            {
+                pingTimer.Enabled = false;
+                await PostMessageAsync(new WorkerInputMessage.Ping
+                {
+                    Id = messageId++,
+                });
+                pingTimer.Enabled = true;
+            });
+        };
+
+        var workerReady = new TaskCompletionSource();
+        var worker = WorkerControllerInterop.CreateWorker(
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            void (string data) =>
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
+                    logger.LogDebug("📩 {Id}: {Type} ({Size})",
+                        message.Id,
+                        message.GetType().Name,
+                        data.Length.SeparateThousands());
+                    if (message is WorkerOutputMessage.Ready)
+                    {
+                        workerReady.SetResult();
+                    }
+                    else if (message.Id < 0)
+                    {
+                        logger.LogError("Unpaired message {Message}", message);
+                    }
+                    else
+                    {
+                        await workerMessages.Writer.WriteAsync(message);
+                    }
+                });
+            },
+            void (string error) =>
+            {
+                logger.LogError("Worker error: {Error}", error);
+                pingTimer.Stop();
+                workerReady.TrySetException(new InvalidOperationException($"Worker error: {error}"));
+                dispatcher.InvokeAsync(async () =>
+                {
+                    // Send a broadcast message so all pending calls are completed with a failure.
+                    await workerMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure("Worker error", error) { Id = WorkerOutputMessage.BroadcastId });
+
+                    Failed?.Invoke(error);
+                });
+            });
+        await workerReady.Task;
+
+        pingTimer.Start();
+
+        return new WorkerInstance
+        {
+            Handle = worker,
+            PingTimer = pingTimer,
+        };
+
+        static string getWorkerUrl(string url, ReadOnlySpan<string> args)
+        {
+            // Append args as &arg=...&arg=...&arg=...
+            var sb = new StringBuilder(url);
+            foreach (var arg in args)
+            {
+                sb.Append("&arg=");
+                sb.Append(Uri.EscapeDataString(arg));
+            }
+            return sb.ToString();
+        }
     }
 
     private async Task<WorkerOutputMessage> ReceiveWorkerMessageAsync(int id)
     {
-        while (!workerMessages.Reader.TryPeek(out var result) || result.Id != id)
+        while (true)
         {
+            if (workerMessages.Reader.TryPeek(out var result))
+            {
+                if (result.Id == id)
+                {
+                    // This message is just for us, read it.
+                    var again = await workerMessages.Reader.ReadAsync();
+                    Debug.Assert(again.Id == id || again.IsBroadcast);
+                    return again;
+                }
+
+                if (result.IsBroadcast)
+                {
+                    // This is a broadcast message, don't remove it so others can read it too.
+                    return result;
+                }
+            }
+
+            // No messages, wait.
             await Task.Yield();
             await workerMessages.Reader.WaitToReadAsync();
         }
-
-        var again = await workerMessages.Reader.ReadAsync();
-        Debug.Assert(again.Id == id);
-
-        return again;
     }
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        SlimWorker? worker = await Worker;
+        JSObject? worker = (await GetWorkerAsync())?.Handle;
 
         if (worker is null)
         {
-            return await message.HandleAndGetOutputAsync(workerServices.Value);
+            var workerServices = this.workerServices.Value;
+            var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
+            return await message.HandleAndGetOutputAsync(executor);
         }
 
         // TODO: Use ProtoBuf.
-        var serialized = JsonSerializer.Serialize(message);
+        var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
         logger.LogDebug("📨 {Id}: {Type} ({Size})",
             message.Id,
             message.GetType().Name,
             serialized.Length.SeparateThousands());
-        await worker.PostMessageAsync(serialized);
+        WorkerControllerInterop.PostMessage(worker, serialized);
 
         return await ReceiveWorkerMessageAsync(message.Id);
     }
@@ -150,7 +330,7 @@ internal sealed class WorkerController
             WorkerOutputMessage.Failure failure => fallback switch
             {
                 null => throw new InvalidOperationException(failure.Message),
-                _ => fallback(failure.Message),
+                _ => fallback(failure.FullString),
             },
             _ => throw new InvalidOperationException($"Unexpected message type: {incoming}"),
         };
@@ -230,4 +410,27 @@ internal sealed class WorkerController
             new WorkerInputMessage.GetDiagnostics() { Id = messageId++ },
             deserializeAs: default(ImmutableArray<MarkerData>));
     }
+}
+
+internal sealed class WorkerInstance
+{
+    public required JSObject Handle { get; init; }
+    public required Timer PingTimer { get; init; }
+}
+
+internal static partial class WorkerControllerInterop
+{
+    [JSImport("createWorker", nameof(WorkerController))]
+    public static partial JSObject CreateWorker(
+        string scriptUrl,
+        [JSMarshalAs<JSType.Function<JSType.String>>]
+        Action<string> messageHandler,
+        [JSMarshalAs<JSType.Function<JSType.String>>]
+        Action<string> errorHandler);
+
+    [JSImport("postMessage", nameof(WorkerController))]
+    public static partial void PostMessage(JSObject worker, string message);
+
+    [JSImport("disposeWorker", nameof(WorkerController))]
+    public static partial void DisposeWorker(JSObject worker);
 }

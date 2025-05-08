@@ -1,6 +1,5 @@
 {
   "sdk": {
-    "version": "9.0.201",
-    "workloadVersion": "9.0.201"
+    "version": "10.0.100-preview.4.25252.106"
   }
 }

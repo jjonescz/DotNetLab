@@ -260,27 +260,6 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     </div>
     ;
 
-    private sealed class GitHubCommitResponse
-    {
-        public required CommitData Commit { get; init; }
-
-        public sealed class CommitData
-        {
-            public required AuthorData Author { get; init; }
-            public required string Message { get; init; }
-        }
-
-        public sealed class AuthorData
-        {
-            public required DateTimeOffset Date { get; init; }
-        }
-    }
-
-    private sealed class GitHubBranchCommitsResponse
-    {
-        public ImmutableArray<string> Tags { get; init; }
-    }
-
     private sealed class CommitInfo
     {
         public required string Hash { get; init; }
@@ -319,8 +298,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
     public bool AutoCompileOnStart { get; set; }
-    public RazorToolchain RazorToolchain { get; set; }
-    public RazorStrategy RazorStrategy { get; set; }
+    private RazorToolchain RazorToolchain { get; set; }
+    private RazorStrategy RazorStrategy { get; set; }
 
     private async Task OnSetDebugLogsAsync()
     {
@@ -683,7 +662,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         try
         {
             response = await Client.GetFromJsonAsync<GitHubCommitResponse>(
-                $"https://api.github.com/repos/{VersionUtil.CurrentRepositoryOwnerAndName}/commits/{commitHash}");
+                $"https://api.github.com/repos/{VersionUtil.CurrentRepositoryOwnerAndName}/commits/{commitHash}",
+                SettingsJsonContext.Default.Options);
             if (response is null)
             {
                 return;
@@ -705,7 +685,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 $"https://github.com/{VersionUtil.CurrentRepositoryOwnerAndName}/branch_commits/{commitHash}".WithCorsProxy());
             request.Headers.Accept.Add(new("application/json"));
             var tagsResponse = await Client.SendAsync(request);
-            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync<GitHubBranchCommitsResponse>();
+            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync<GitHubBranchCommitsResponse>(SettingsJsonContext.Default.Options);
             version = tagsObj?.Tags is [{ Length: > 0 } tag] ? tag : null;
         }
         catch (Exception ex)

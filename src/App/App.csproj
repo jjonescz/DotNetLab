@@ -1,9 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
 	<PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
-		<Features>use-roslyn-tokenizer=true</Features>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -22,8 +21,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Compiler\Compiler.csproj" />
-		<ProjectReference Include="..\Shared\Shared.csproj" />
 		<ProjectReference Include="..\Worker\Worker.csproj" />
 	</ItemGroup>
 
@@ -45,7 +42,7 @@
 		<Content Include="@(NpmOutput)" />
 	</ItemGroup>
 
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
+	<Target Name="NpmBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
 		<Exec Command="npm install" WorkingDirectory="Npm" />
 		<Exec Command="npm run build" WorkingDirectory="Npm" />
 		<!--
@@ -55,5 +52,7 @@
 		-->
 		<Touch Files="@(NpmOutput)" AlwaysCreate="true" />
 	</Target>
+
+	<Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>
