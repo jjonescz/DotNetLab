@@ -102,7 +102,6 @@ internal sealed class CompilerProxy(
             CompilerAssemblyName,
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
-            "Basic.Reference.Assemblies.AspNet90",
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities",
             "Microsoft.CodeAnalysis.Razor.Test",
         ];

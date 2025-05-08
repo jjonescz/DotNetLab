@@ -21,7 +21,7 @@ internal sealed class LanguageServices
         workspace = new();
         var project = workspace
             .AddProject("TestProject", LanguageNames.CSharp)
-            .AddMetadataReferences(Basic.Reference.Assemblies.AspNet90.References.All);
+            .AddMetadataReferences(RefAssemblyMetadata.All);
         ApplyChanges(project.Solution);
         projectId = project.Id;
     }

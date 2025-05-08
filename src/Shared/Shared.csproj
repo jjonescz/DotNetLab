@@ -8,4 +8,13 @@
 
   <!-- IMPORTANT: Do not add references to Roslyn/Razor here. -->
 
+
+  <ItemGroup>
+    <PackageDownload Include="Microsoft.NETCore.App.Ref" Version="[$(NetCoreVersion)]" />
+    <PackageDownload Include="Microsoft.AspNetCore.App.Ref" Version="[$(AspNetCoreVersion)]" />
+    <_RefAssemblyToEmbed Include="$(NuGetPackageRoot)\microsoft.netcore.app.ref\$(NetCoreVersion)\ref\*\*.dll" />
+    <_RefAssemblyToEmbed Include="$(NuGetPackageRoot)\microsoft.aspnetcore.app.ref\$(AspNetCoreVersion)\ref\*\*.dll" />
+    <EmbeddedResource Include="@(_RefAssemblyToEmbed)" WithCulture="false" LogicalName="%(FileName)" Link="Ref/%(FileName)%(Extension)" />
+  </ItemGroup>
+
 </Project>

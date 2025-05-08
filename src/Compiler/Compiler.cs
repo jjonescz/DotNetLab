@@ -11,9 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using ReferenceInfo = Basic.Reference.Assemblies.AspNet90.ReferenceInfo;
 
 namespace DotNetLab;
 
@@ -66,8 +64,8 @@ public class Compiler(
             nullableContextOptions: NullableContextOptions.Enable,
             concurrentBuild: false);
 
-        var references = Basic.Reference.Assemblies.AspNet90.References.All;
-        var referenceInfos = Basic.Reference.Assemblies.AspNet90.ReferenceInfos.All;
+        var references = RefAssemblyMetadata.All;
+        var referenceInfos = RefAssemblies.All;
 
         // If we have a configuration, compile and execute it.
         if (compilationInput.Configuration is { } configuration)
@@ -753,7 +751,7 @@ public class Compiler(
     }
 }
 
-public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<ReferenceInfo> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
+public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
 {
     public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
     {
@@ -764,21 +762,15 @@ public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolve
     {
         foreach (var r in references)
         {
-            if (withoutExtension(r.FileName).Equals(reference.Name, StringComparison.OrdinalIgnoreCase))
+            if (r.Name.Equals(reference.Name, StringComparison.OrdinalIgnoreCase))
             {
-                var peReader = new PEReader(ImmutableCollectionsMarshal.AsImmutableArray(r.ImageBytes));
+                var peReader = new PEReader(r.Bytes);
                 return new ICSharpCode.Decompiler.Metadata.PEFile(r.FileName, peReader);
             }
         }
 
         logger.LogError("Cannot resolve assembly '{Name}'.", reference.Name);
         return null;
-
-        static ReadOnlySpan<char> withoutExtension(ReadOnlySpan<char> fileName)
-        {
-            int index = fileName.LastIndexOf('.');
-            return index < 0 ? fileName : fileName[..index];
-        }
     }
 
     public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveModuleAsync(ICSharpCode.Decompiler.Metadata.MetadataFile mainModule, string moduleName)

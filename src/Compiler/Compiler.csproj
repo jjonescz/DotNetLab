@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Basic.Reference.Assemblies.AspNet90" />
     <PackageReference Include="ICSharpCode.Decompiler" />
     <PackageReference Include="MetadataReferenceService.BlazorWasm" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
