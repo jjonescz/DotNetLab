@@ -16,11 +16,13 @@
     -->
     <PublishTrimmed>false</PublishTrimmed>
     <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+
+    <!-- Workaround a bug in the compiler toolset package (trying to load tasks\net472\../bincore\csc.dll). -->
+    <RoslynCompilerType Condition="'$(MSBuildRuntimeType)' == 'Full'">Framework</RoslynCompilerType>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Condition is currently needed because the toolset package has a bug with net472 build task and RoslynCompilerType. -->
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Condition="'$(MSBuildRuntimeType)' != 'Full'">
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
