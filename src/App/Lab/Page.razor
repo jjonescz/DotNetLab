@@ -633,11 +633,25 @@
     {
         foreach (var input in inputs)
         {
-            List<MarkerData> markers = compiled?.Output.Diagnostics
-                .Where(d => d.FilePath == compiled.Value.Output.BaseDirectory + input.FileName)
+            List<MarkerData> markers = compiled is { } result ? result.Output.Diagnostics
+                .Skip(result.Output.ConfigDiagnosticCount)
+                .Where(d => d.FilePath == result.Output.BaseDirectory + input.FileName)
                 .Select(d => d.ToMarkerData())
-                .ToList() ?? [];
+                .ToList() : [];
             await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, "Lab", markers);
+        }
+
+        if (configuration != null)
+        {
+            if (compiled is { } result)
+            {
+                List<MarkerData> markers = result.Output.Diagnostics
+                    .Take(result.Output.ConfigDiagnosticCount)
+                    .Where(d => d.FilePath == "Configuration.cs")
+                    .Select(d => d.ToMarkerData())
+                    .ToList();
+                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, "Lab", markers);
+            }
         }
     }
 

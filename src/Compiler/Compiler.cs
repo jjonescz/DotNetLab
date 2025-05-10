@@ -16,7 +16,6 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 public class Compiler(
-    ILogger<Compiler> logger,
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -56,6 +55,9 @@ public class Compiler(
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
+        const string projectName = "TestProject";
+        const string directory = "/";
+
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]);
@@ -65,14 +67,42 @@ public class Compiler(
 
         // If we have a configuration, compile and execute it.
         Config.Reset();
+        ImmutableArray<Diagnostic> configDiagnostics;
         if (compilationInput.Configuration is { } configuration)
         {
-            executeConfiguration(configuration);
+            if (!executeConfiguration(configuration, out configDiagnostics))
+            {
+                string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
+                ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
+                    .Select(d => d.ToDiagnosticData())
+                    .ToImmutableArray();
+                return new CompiledAssembly(
+                    Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
+                    GlobalOutputs:
+                    [
+                        new()
+                        {
+                            Type = CompiledAssembly.DiagnosticsOutputType,
+                            Label = CompiledAssembly.DiagnosticsOutputLabel,
+                            Language = "csharp",
+                            EagerText = configDiagnosticsText,
+                        },
+                    ],
+                    NumWarnings: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning),
+                    NumErrors: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Error),
+                    Diagnostics: configDiagnosticData,
+                    BaseDirectory: directory)
+                {
+                    ConfigDiagnosticCount = configDiagnosticData.Length,
+                };
+            }
+
             parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
         }
-
-        const string projectName = "TestProject";
-        const string directory = "/";
+        else
+        {
+            configDiagnostics = [];
+        }
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
@@ -143,11 +173,12 @@ public class Compiler(
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
 
-        ICSharpCode.Decompiler.Metadata.PEFile? peFile = null;
+        ICSharpCode.Decompiler.Metadata.PEFile? peFile = getPeFile(finalCompilation, out var emitDiagnostics);
 
-        IEnumerable<Diagnostic> diagnostics = getEmitDiagnostics(finalCompilation)
+        IEnumerable<Diagnostic> diagnostics = configDiagnostics
+            .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
-            .Where(d => d.Severity != DiagnosticSeverity.Hidden);
+            .Where(filterDiagnostic);
         string diagnosticsText = diagnostics.GetDiagnosticsText();
         int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
@@ -266,7 +297,6 @@ public class Compiler(
                     Language = "csharp",
                     LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
                         return new(getIl(peFile));
                     }),
                 },
@@ -274,10 +304,9 @@ public class Compiler(
                 {
                     Type = "seq",
                     Label = "Sequence points",
-                    LazyText = new(async () =>
+                    LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
-                        return await getSequencePoints(peFile);
+                        return new(getSequencePoints(peFile));
                     }),
                 },
                 new()
@@ -285,10 +314,9 @@ public class Compiler(
                     Type = "cs",
                     Label = "C#",
                     Language = "csharp",
-                    LazyText = new(async () =>
+                    LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
-                        return await getCSharpAsync(peFile);
+                        return new(getCSharpAsync(peFile));
                     }),
                 },
                 new()
@@ -312,11 +340,16 @@ public class Compiler(
                     EagerText = diagnosticsText,
                     Priority = numErrors > 0 ? 2 : 0,
                 },
-            ]);
+            ])
+        {
+            ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
+        };
 
         return result;
 
-        void executeConfiguration(string code)
+        static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
+
+        bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
@@ -337,16 +370,27 @@ public class Compiler(
                 ],
                 options: createCompilationOptions(OutputKind.ConsoleApplication));
 
-            var emitStream = getEmitStream(configCompilation)
+            var emitStream = getEmitStream(configCompilation, out diagnostics);
+
+            if (emitStream == null)
+            {
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
-                ?? getEmitStream(configCompilation.WithReferences(
-                    [
-                        ..references,
-                        ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
-                    ]))
-                ?? throw new InvalidOperationException("Cannot execute configuration due to compilation errors:" +
-                    Environment.NewLine +
-                    getEmitDiagnostics(configCompilation).JoinToString(Environment.NewLine));
+                var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
+                [
+                    ..references,
+                    ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
+                ]);
+                emitStream = getEmitStream(configCompilationWithBuiltInReferences, out var diagnosticsWithBuiltInReferences);
+                if (emitStream != null)
+                {
+                    diagnostics = diagnosticsWithBuiltInReferences;
+                }
+            }
+
+            if (emitStream == null)
+            {
+                return false;
+            }
 
             var configAssembly = alc.LoadFromStream(emitStream);
 
@@ -354,6 +398,8 @@ public class Compiler(
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
             Executor.InvokeEntryPoint(entryPoint);
+
+            return true;
         }
 
         static CSharpCompilationOptions createCompilationOptions(OutputKind outputKind)
@@ -597,17 +643,18 @@ public class Compiler(
                 : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
         }
 
-        MemoryStream? getEmitStream(CSharpCompilation compilation)
+        MemoryStream? getEmitStream(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
         {
             var stream = new MemoryStream();
             var emitResult = compilation.Emit(stream);
             if (!emitResult.Success)
             {
-                logger.LogDebug("Emit failed: {Diagnostics}", emitResult.Diagnostics);
+                diagnostics = emitResult.Diagnostics;
                 return null;
             }
 
             stream.Position = 0;
+            diagnostics = compilation.GetDiagnostics();
             return stream;
         }
 
@@ -615,11 +662,11 @@ public class Compiler(
             [NotNullWhen(returnValue: true)] out MemoryStream? emitStream,
             [NotNullWhen(returnValue: false)] out string? error)
         {
-            emitStream = getEmitStream(compilation);
+            emitStream = getEmitStream(compilation, out var diagnostics);
             if (emitStream is null)
             {
                 error = "Cannot execute due to compilation errors:" + Environment.NewLine +
-                    compilation.GetDiagnostics().JoinToString(Environment.NewLine);
+                    diagnostics.JoinToString(Environment.NewLine);
                 return false;
             }
 
@@ -627,15 +674,9 @@ public class Compiler(
             return true;
         }
 
-        static ImmutableArray<Diagnostic> getEmitDiagnostics(CSharpCompilation compilation)
+        ICSharpCode.Decompiler.Metadata.PEFile? getPeFile(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
         {
-            var emitResult = compilation.Emit(new MemoryStream());
-            return emitResult.Diagnostics;
-        }
-
-        ICSharpCode.Decompiler.Metadata.PEFile? getPeFile(CSharpCompilation compilation)
-        {
-            return getEmitStream(compilation) is { } stream
+            return getEmitStream(compilation, out diagnostics) is { } stream
                 ? new(compilation.AssemblyName ?? "", stream)
                 : null;
         }
