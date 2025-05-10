@@ -59,18 +59,16 @@ public class Compiler(
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("use-roslyn-tokenizer", "true")]);
-        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
-            allowUnsafe: true,
-            nullableContextOptions: NullableContextOptions.Enable,
-            concurrentBuild: false);
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
 
         // If we have a configuration, compile and execute it.
+        Config.Reset();
         if (compilationInput.Configuration is { } configuration)
         {
             executeConfiguration(configuration);
+            parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
         }
 
         const string projectName = "TestProject";
@@ -113,11 +111,18 @@ public class Compiler(
         }
 
         // Choose output kind EXE if there are top-level statements, otherwise DLL.
+        // Only do this if parseOptions haven't been changed
         var outputKind = cSharpSources.Any(static s => s.SyntaxTree.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
             ? OutputKind.ConsoleApplication
             : OutputKind.DynamicallyLinkedLibrary;
 
-        options = options.WithOutputKind(outputKind);
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        var options = new CSharpCompilationOptions(outputKind,
+            allowUnsafe: true,
+            nullableContextOptions: NullableContextOptions.Enable,
+            concurrentBuild: false);
+
+        options = Config.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
@@ -348,14 +353,7 @@ public class Compiler(
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            Config.Reset();
-
             Executor.InvokeEntryPoint(entryPoint);
-
-            parseOptions = Config.CurrentCSharpParseOptions;
-            options = Config.CurrentCSharpCompilationOptions;
-
-            logger.LogDebug("Using language version {LangVersion} (specified {SpecifiedLangVersion})", parseOptions.LanguageVersion, parseOptions.SpecifiedLanguageVersion);
         }
 
         static CSharpCompilationOptions createCompilationOptions(OutputKind outputKind)
