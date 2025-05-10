@@ -618,9 +618,8 @@ public class Compiler(
             emitStream = getEmitStream(compilation);
             if (emitStream is null)
             {
-                error = compilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } d
-                    ? d.GetMessage(CultureInfo.InvariantCulture)
-                    : "Cannot execute due to compilation errors.";
+                error = "Cannot execute due to compilation errors:" + Environment.NewLine +
+                    compilation.GetDiagnostics().JoinToString(Environment.NewLine);
                 return false;
             }
 
