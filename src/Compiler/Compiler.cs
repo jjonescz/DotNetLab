@@ -288,6 +288,19 @@ public class Compiler(
                 },
                 new()
                 {
+                    Type = "asm",
+                    Label = "ASM",
+                    Language = "asm",
+                    LazyText = () =>
+                    {
+                        string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
+                            ? Disassembler.Disassemble(emitStream, referenceInfos)
+                            : error;
+                        return new(output);
+                    },
+                },
+                new()
+                {
                     Type = "run",
                     Label = "Run",
                     LazyText = new(() =>

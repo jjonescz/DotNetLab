@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
@@ -8,7 +8,18 @@
 
   <!-- IMPORTANT: Do not add references to Roslyn/Razor here. -->
 
+  <!-- ILCompiler (for turing IL into ASM) -->
+  <!-- TODO: Download from runtime CI. -->
+  <PropertyGroup>
+    <AssemblySearchPaths>$(AssemblySearchPaths);C:\runtime\artifacts\bin\ILCompiler.RyuJit\x64\Debug</AssemblySearchPaths>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ILCompiler.Compiler" />
+    <Reference Include="ILCompiler.RyuJit" />
+    <Reference Include="ILCompiler.TypeSystem" />
+  </ItemGroup>
 
+  <!-- .NET and ASP.NET Core reference assemblies -->
   <ItemGroup>
     <PackageDownload Include="Microsoft.NETCore.App.Ref" Version="[$(NetCoreVersion)]" />
     <PackageDownload Include="Microsoft.AspNetCore.App.Ref" Version="[$(AspNetCoreVersion)]" />
