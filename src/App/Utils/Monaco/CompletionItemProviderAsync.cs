@@ -10,9 +10,9 @@ namespace DotNetLab;
 [SupportedOSPlatform("browser")]
 internal sealed class CompletionItemProviderAsync(ILogger<CompletionItemProviderAsync> logger)
 {
-    public delegate Task<CompletionList> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
+    public delegate Task<MonacoCompletionList> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
 
-    public delegate Task<CompletionItem> ResolveCompletionItemDelegate(CompletionItem completionItem, CancellationToken cancellationToken);
+    public delegate Task<MonacoCompletionItem> ResolveCompletionItemDelegate(MonacoCompletionItem completionItem, CancellationToken cancellationToken);
 
     public ILogger<CompletionItemProviderAsync> Logger { get; } = logger;
 
@@ -22,12 +22,12 @@ internal sealed class CompletionItemProviderAsync(ILogger<CompletionItemProvider
 
     public required ResolveCompletionItemDelegate ResolveCompletionItemFunc { get; init; }
 
-    public Task<CompletionList> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
+    public Task<MonacoCompletionList> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
     {
         return ProvideCompletionItemsFunc(modelUri, position, context, cancellationToken);
     }
 
-    public Task<CompletionItem> ResolveCompletionItemAsync(CompletionItem completionItem, CancellationToken cancellationToken)
+    public Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem completionItem, CancellationToken cancellationToken)
     {
         return ResolveCompletionItemFunc.Invoke(completionItem, cancellationToken);
     }

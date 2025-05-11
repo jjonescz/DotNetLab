@@ -86,7 +86,7 @@ internal sealed class LanguageServices(
                 return DebounceAsync(
                     ref completionDebounce,
                     (worker, modelUri, position, context),
-                    new() { Suggestions = [], Incomplete = true },
+                    new() { Suggestions = [], IsIncomplete = true },
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context),
                     cancellationToken);
             },

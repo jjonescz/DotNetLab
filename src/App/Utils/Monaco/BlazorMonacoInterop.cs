@@ -44,7 +44,7 @@ internal sealed partial class BlazorMonacoInterop
             JsonSerializer.Deserialize(context, BlazorMonacoJsonContext.Default.CompletionContext)!,
             ToCancellationToken(token));
         var sw = Stopwatch.StartNew();
-        var json = JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.CompletionList);
+        var json = JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
         completionItemProvider.Logger.LogDebug("Serialized completions in {Milliseconds} ms", sw.ElapsedMilliseconds);
         return json;
     }
@@ -56,9 +56,9 @@ internal sealed partial class BlazorMonacoInterop
         JSObject token)
     {
         var result = await ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProvider).Value.ResolveCompletionItemAsync(
-            JsonSerializer.Deserialize(item, BlazorMonacoJsonContext.Default.CompletionItem)!,
+            JsonSerializer.Deserialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem)!,
             ToCancellationToken(token));
-        return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.CompletionItem);
+        return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionItem);
     }
 
     public async Task<IDisposable> RegisterCompletionProviderAsync(
@@ -93,7 +93,7 @@ internal sealed partial class BlazorMonacoInterop
 [JsonSerializable(typeof(LanguageSelector))]
 [JsonSerializable(typeof(Position))]
 [JsonSerializable(typeof(CompletionContext))]
-[JsonSerializable(typeof(CompletionItem))]
-[JsonSerializable(typeof(CompletionList))]
+[JsonSerializable(typeof(MonacoCompletionItem))]
+[JsonSerializable(typeof(MonacoCompletionList))]
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 internal sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;

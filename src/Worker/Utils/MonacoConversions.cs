@@ -1,6 +1,4 @@
 ﻿global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
-global using MonacoCompletionItem = BlazorMonaco.Languages.CompletionItem;
-global using MonacoCompletionList = BlazorMonaco.Languages.CompletionList;
 global using MonacoRange = BlazorMonaco.Range;
 global using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.CompletionList;
@@ -25,7 +23,7 @@ public static class MonacoConversions
     {
         return new MonacoCompletionList
         {
-            Suggestions = completions.ItemsList.Select(c => c.ToCompletionItem(lines)).ToList(),
+            Suggestions = completions.ItemsList.Select(c => c.ToCompletionItem(lines)).ToImmutableArray(),
         };
     }
 
@@ -33,9 +31,9 @@ public static class MonacoConversions
     {
         return new MonacoCompletionItem
         {
-            LabelAsString = completion.DisplayText,
+            Label = completion.DisplayText,
             Kind = getKind(completion.Tags),
-            RangeAsObject = lines.GetLinePositionSpan(completion.Span).ToRange(),
+            Range = lines.GetLinePositionSpan(completion.Span).ToRange(),
             InsertText = completion.TryGetInsertionText(out var insertionText) ? insertionText : completion.DisplayText,
             FilterText = completion.FilterText,
             SortText = completion.SortText,
