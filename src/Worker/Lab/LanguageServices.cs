@@ -43,11 +43,17 @@ internal sealed class LanguageServices
             return new() { Suggestions = [] };
         }
 
+        var sw = Stopwatch.StartNew();
         var text = await document.GetTextAsync();
         int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
         var service = CompletionService.GetService(document)!;
         var completions = await service.GetCompletionsAsync(document, caretPosition);
-        return completions.ToCompletionList(text.Lines);
+        var time1 = sw.ElapsedMilliseconds;
+        sw.Restart();
+        var result = completions.ToCompletionList(text.Lines);
+        var time2 = sw.ElapsedMilliseconds;
+        logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
+        return result;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)

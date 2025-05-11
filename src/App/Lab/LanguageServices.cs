@@ -7,6 +7,7 @@ namespace DotNetLab.Lab;
 
 [SupportedOSPlatform("browser")]
 internal sealed class LanguageServices(
+    ILoggerFactory loggerFactory,
     IJSRuntime jsRuntime,
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
@@ -77,7 +78,7 @@ internal sealed class LanguageServices(
         }
 
         var cSharpLanguageSelector = new LanguageSelector("csharp");
-        completionProvider = await blazorMonacoInterop.RegisterCompletionProviderAsync(cSharpLanguageSelector, new()
+        completionProvider = await blazorMonacoInterop.RegisterCompletionProviderAsync(cSharpLanguageSelector, new(loggerFactory.CreateLogger<CompletionItemProviderAsync>())
         {
             TriggerCharacters = [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~"],
             ProvideCompletionItemsFunc = (modelUri, position, context, cancellationToken) =>

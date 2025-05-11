@@ -31,18 +31,22 @@ internal sealed partial class BlazorMonacoInterop
 
     [JSExport]
     internal static async Task<string> ProvideCompletionItemsAsync(
-        [JSMarshalAs<JSType.Any>] object completionItemProvider,
+        [JSMarshalAs<JSType.Any>] object completionItemProviderReference,
         string modelUri,
         string position,
         string context,
         JSObject token)
     {
-        var result = await ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProvider).Value.ProvideCompletionItemsAsync(
+        var completionItemProvider = ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProviderReference).Value;
+        var result = await completionItemProvider.ProvideCompletionItemsAsync(
             modelUri,
             JsonSerializer.Deserialize(position, BlazorMonacoJsonContext.Default.Position)!,
             JsonSerializer.Deserialize(context, BlazorMonacoJsonContext.Default.CompletionContext)!,
             ToCancellationToken(token));
-        return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.CompletionList);
+        var sw = Stopwatch.StartNew();
+        var json = JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.CompletionList);
+        completionItemProvider.Logger.LogDebug("Serialized completions in {Milliseconds} ms", sw.ElapsedMilliseconds);
+        return json;
     }
 
     [JSExport]
