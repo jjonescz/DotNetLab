@@ -34,11 +34,11 @@ public static class Util
         }
         finally
         {
+            stdout = stdoutWriter.ToString();
+            stderr = stderrWriter.ToString();
             Console.SetOut(originalOut);
             Console.SetError(originalError);
         }
-        stdout = stdoutWriter.ToString();
-        stderr = stderrWriter.ToString();
     }
 
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)
