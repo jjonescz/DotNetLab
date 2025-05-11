@@ -32,7 +32,6 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public event Action<string>? Failed;
 
-    public bool DebugLogs { get; set; }
     public bool Disabled { get; set; }
 
     public async ValueTask DisposeAsync()
@@ -44,7 +43,7 @@ internal sealed class WorkerController : IAsyncDisposable
     {
         return WorkerServices.Create(
            baseUrl: hostEnvironment.BaseAddress,
-           debugLogs: DebugLogs);
+           logLevel: Logging.LogLevel);
     }
 
     private async Task<WorkerInstance?> GetWorkerAsync()
@@ -180,7 +179,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, DebugLogs.ToString()]),
+            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, Logging.LogLevel.ToString()]),
             void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>

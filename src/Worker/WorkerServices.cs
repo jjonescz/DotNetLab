@@ -12,7 +12,7 @@ public static class WorkerServices
     {
         return Create(
             baseUrl: "http://localhost",
-            debugLogs: true,
+            logLevel: LogLevel.Debug,
             httpMessageHandler,
             configureServices: services =>
             {
@@ -27,18 +27,14 @@ public static class WorkerServices
 
     public static IServiceProvider Create(
         string baseUrl,
-        bool debugLogs,
+        LogLevel logLevel,
         HttpMessageHandler? httpMessageHandler = null,
         Action<ServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
-            if (debugLogs)
-            {
-                builder.AddFilter("DotNetLab.*", LogLevel.Debug);
-            }
-
+            builder.AddFilter("DotNetLab.*", logLevel);
             builder.AddProvider(new SimpleConsoleLoggerProvider());
         });
         services.AddScoped(sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler()) { BaseAddress = new Uri(baseUrl) });

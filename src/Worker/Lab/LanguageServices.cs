@@ -19,9 +19,9 @@ internal sealed class LanguageServices
     {
         this.logger = logger;
 
-        if (logger.IsEnabled(LogLevel.Debug))
+        if (logger.IsEnabled(LogLevel.Trace))
         {
-            RoslynWorkspaceAccessors.SetLogger(message => logger.LogDebug("Roslyn: {Message}", message));
+            RoslynWorkspaceAccessors.SetLogger(message => logger.LogTrace("Roslyn: {Message}", message));
         }
 
         workspace = new();
