@@ -102,8 +102,8 @@ internal sealed class CompilerProxy(
             CompilerAssemblyName,
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
-            "Microsoft.CodeAnalysis.CSharp.Test.Utilities",
-            "Microsoft.CodeAnalysis.Razor.Test",
+            "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
         ];
         foreach (var name in names)
         {
