@@ -100,6 +100,18 @@ partial class Page
             var input = InitialCode.Configuration.ToInputCode() with { Text = savedConfiguration };
             configuration = new(input.FileName, await CreateModelAsync(input));
         }
+        else
+        {
+            configuration = null;
+        }
+
+        {
+            // Unset cache info (the loaded state might not be cached).
+            if (compiled is (var input, var output, { }))
+            {
+                compiled = (input, output, null);
+            }
+        }
 
         activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
