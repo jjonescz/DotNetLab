@@ -13,7 +13,7 @@ internal sealed class LanguageServices
     private readonly AdhocWorkspace workspace;
     private readonly ProjectId projectId;
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
-    private Document? document;
+    private DocumentId? documentId;
 
     public LanguageServices(ILogger<LanguageServices> logger)
     {
@@ -36,7 +36,7 @@ internal sealed class LanguageServices
 
     public async Task<MonacoCompletionList> ProvideCompletionItemsAsync(string modelUri, Position position, MonacoCompletionContext context)
     {
-        if (document == null)
+        if (documentId == null || Project.GetDocument(documentId) is not { } document)
         {
             return new() { Suggestions = [] };
         }
@@ -53,9 +53,9 @@ internal sealed class LanguageServices
         var modelLookupByUri = models.ToDictionary(m => m.Uri);
 
         // Make sure our workspaces matches `models`.
-        foreach (Document document in Project.Documents)
+        foreach (Document doc in Project.Documents)
         {
-            if (modelUris.TryGetValue(document.Id, out string? modelUri))
+            if (modelUris.TryGetValue(doc.Id, out string? modelUri))
             {
                 // We have URI of this document, it's in our workspace.
 
@@ -63,27 +63,27 @@ internal sealed class LanguageServices
                 {
                     // The document is still present in `models`.
 
-                    if (document.Name != model.FileName)
+                    if (doc.Name != model.FileName)
                     {
                         // Document has been renamed.
-                        modelUris.Remove(document.Id);
+                        modelUris.Remove(doc.Id);
 
                         if (IsCSharp(fileName: model.FileName))
                         {
-                            modelUris.Add(document.Id, model.Uri);
-                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(document.Id, model.FileName));
+                            modelUris.Add(doc.Id, model.Uri);
+                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(doc.Id, model.FileName));
                         }
                         else
                         {
-                            ApplyChanges(Project.RemoveDocument(document.Id).Solution);
+                            ApplyChanges(Project.RemoveDocument(doc.Id).Solution);
                         }
                     }
                 }
                 else
                 {
                     // Document has been removed from `models`.
-                    modelUris.Remove(document.Id);
-                    ApplyChanges(Project.RemoveDocument(document.Id).Solution);
+                    modelUris.Remove(doc.Id);
+                    ApplyChanges(Project.RemoveDocument(doc.Id).Solution);
                 }
 
                 // Mark this model URI as processed.
@@ -100,14 +100,14 @@ internal sealed class LanguageServices
         {
             if (IsCSharp(fileName: model.FileName))
             {
-                var document = Project.AddDocument(model.FileName, model.NewContent ?? string.Empty);
-                modelUris.Add(document.Id, model.Uri);
-                ApplyChanges(document.Project.Solution);
+                var doc = Project.AddDocument(model.FileName, model.NewContent ?? string.Empty);
+                modelUris.Add(doc.Id, model.Uri);
+                ApplyChanges(doc.Project.Solution);
             }
         }
 
         // Update the current document.
-        if (document != null)
+        if (documentId != null && Project.GetDocument(documentId) is { } document)
         {
             if (modelUris.TryGetValue(document.Id, out string? modelUri))
             {
@@ -123,13 +123,12 @@ internal sealed class LanguageServices
     public void OnDidChangeModel(string modelUri)
     {
         // We are editing a different document now.
-        DocumentId? documentId = modelUris.FirstOrDefault(kvp => kvp.Value == modelUri).Key;
-        document = documentId == null ? null : Project.GetDocument(documentId);
+        documentId = modelUris.FirstOrDefault(kvp => kvp.Value == modelUri).Key;
     }
 
     public async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
     {
-        if (document == null)
+        if (documentId == null || Project.GetDocument(documentId) is not { } document)
         {
             return;
         }
@@ -142,7 +141,7 @@ internal sealed class LanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()
     {
-        if (document == null)
+        if (documentId == null || Project.GetDocument(documentId) is not { } document)
         {
             return [];
         }
