@@ -39,7 +39,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                         @* Language services check box *@
                         <FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
                         title="Completions, live diagnostics">
-                            Language services (requires restart)
+                            Language services
                             <FluentBadge>experimental</FluentBadge>
                         </FluentCheckbox>
 
@@ -308,6 +308,13 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     private async Task OnSetEnableLanguageServicesAsync()
     {
+        await UpdateLanguageServicesAsync();
+
+        if (EnableLanguageServices)
+        {
+            Page.OnWorkspaceChanged();
+        }
+
         await LocalStorage.SetItemAsync(nameof(EnableLanguageServices), EnableLanguageServices);
     }
 
@@ -335,7 +342,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             RazorToolchain = RazorToolchain,
         });
     }
-    
+
     private async Task OnSetRazorStrategyAsync()
     {
         Page.OnSettingsInputChanged();
@@ -390,14 +397,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             commitInfo = savedCommitInfo;
         }
 
-        if (EnableLanguageServices)
-        {
-            await LanguageServices.RegisterAsync();
-        }
-        else
-        {
-            LanguageServices.Disabled = true;
-        }
+        await UpdateLanguageServicesAsync();
 
         Worker.DebugLogs = DebugLogs;
         Worker.Disabled = !EnableWorker;
@@ -766,5 +766,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     {
         await Page.SaveStateToUrlAsync();
         loadUpdate();
+    }
+
+    private async Task UpdateLanguageServicesAsync()
+    {
+        await LanguageServices.EnableAsync(EnableLanguageServices);
+        if (!EnableLanguageServices)
+        {
+            // If disabled, replace live errors with compilation errors.
+            await Page.DisplaySquigglesAsync();
+        }
     }
 }

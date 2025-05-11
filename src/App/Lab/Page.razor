@@ -629,7 +629,7 @@
         _ = Cache.StoreAsync(state, output);
     }
 
-    private async Task DisplaySquigglesAsync()
+    public async Task DisplaySquigglesAsync()
     {
         foreach (var input in inputs)
         {
@@ -638,7 +638,7 @@
                 .Where(d => d.FilePath == result.Output.BaseDirectory + input.FileName)
                 .Select(d => d.ToMarkerData())
                 .ToList() : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, "Lab", markers);
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
         }
 
         if (configuration != null)
@@ -650,7 +650,7 @@
                     .Where(d => d.FilePath == "Configuration.cs")
                     .Select(d => d.ToMarkerData())
                     .ToList();
-                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, "Lab", markers);
+                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
         }
     }
@@ -965,11 +965,11 @@
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="inputs"/> change.
     /// </summary>
-    private void OnWorkspaceChanged()
+    public void OnWorkspaceChanged()
     {
         outputOutdated = true;
 
-        if (LanguageServices.Disabled)
+        if (!LanguageServices.Enabled)
         {
             return;
         }
