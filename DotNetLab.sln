@@ -41,6 +41,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "eng", "eng", "{02EA681E-C7D
 		eng\CopyDotNetDTs.targets = eng\CopyDotNetDTs.targets
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoslynWorkspaceAccess", "src\RoslynWorkspaceAccess\RoslynWorkspaceAccess.csproj", "{38AFCFD1-0219-4A85-8AD8-C513820C32CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,10 @@ Global
 		{743FF486-D9DF-44B5-92C3-6698411EA546}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{743FF486-D9DF-44B5-92C3-6698411EA546}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{743FF486-D9DF-44B5-92C3-6698411EA546}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38AFCFD1-0219-4A85-8AD8-C513820C32CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38AFCFD1-0219-4A85-8AD8-C513820C32CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38AFCFD1-0219-4A85-8AD8-C513820C32CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38AFCFD1-0219-4A85-8AD8-C513820C32CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,6 +103,7 @@ Global
 		{EAC815BD-261D-499A-BC07-CA7E98A737CC} = {CAAE4B1C-41E0-4C18-B9D3-513F5135B7A2}
 		{54CE35B1-FB3F-4300-B03C-C1D5D6531F79} = {CAAE4B1C-41E0-4C18-B9D3-513F5135B7A2}
 		{743FF486-D9DF-44B5-92C3-6698411EA546} = {CAAE4B1C-41E0-4C18-B9D3-513F5135B7A2}
+		{38AFCFD1-0219-4A85-8AD8-C513820C32CF} = {CAAE4B1C-41E0-4C18-B9D3-513F5135B7A2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AC88F4C4-40B7-4FD4-B0DF-0F911BE53F8C}

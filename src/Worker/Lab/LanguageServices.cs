@@ -18,6 +18,12 @@ internal sealed class LanguageServices
     public LanguageServices(ILogger<LanguageServices> logger)
     {
         this.logger = logger;
+
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            RoslynWorkspaceAccessors.SetLogger(message => logger.LogDebug("Roslyn: {Message}", message));
+        }
+
         workspace = new();
         var project = workspace
             .AddProject("TestProject", LanguageNames.CSharp)

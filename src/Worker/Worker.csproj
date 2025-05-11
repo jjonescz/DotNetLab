@@ -15,6 +15,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Compiler\Compiler.csproj" />
+		<ProjectReference Include="..\RoslynWorkspaceAccess\RoslynWorkspaceAccess.csproj" />
 		<ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
 	</ItemGroup>
 
