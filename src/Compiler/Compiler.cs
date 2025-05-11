@@ -368,7 +368,12 @@ public class Compiler(
                     ..references,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
-                options: createCompilationOptions(OutputKind.ConsoleApplication));
+                options: createCompilationOptions(OutputKind.ConsoleApplication)
+                    .WithSpecificDiagnosticOptions(
+                    [
+                        // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+                        KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
+                    ]));
 
             var emitStream = getEmitStream(configCompilation, out diagnostics);
 

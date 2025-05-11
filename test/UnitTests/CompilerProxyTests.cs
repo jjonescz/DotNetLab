@@ -28,7 +28,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [Theory]
     [InlineData("4.11.0-3.24352.2", "92051d4c")]
     [InlineData("4.10.0-1.24076.1", "e1c36b10")]
-    public async Task SpecifiedNuGetRoslynVersion_OlderWithConfiguration(string version, string commit)
+    [InlineData("5.0.0-1.25252.6", "b6ec1031")]
+    public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string version, string commit)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
 
@@ -47,8 +48,14 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
-        Assert.Contains($"{version} ({commit})", diagnosticsText);
-        Assert.Contains("Language version: 10.0", diagnosticsText);
+        Assert.Equal($"""
+            // /Input.cs(1,8): error CS1029: #error: 'version'
+            // #error version
+            Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
+            // /Input.cs(1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
+            // #error version
+            Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
+            """, diagnosticsText);
     }
 
     [Theory]
