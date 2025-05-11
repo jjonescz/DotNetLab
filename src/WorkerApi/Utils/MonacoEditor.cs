@@ -1,5 +1,4 @@
 ﻿using BlazorMonaco.Languages;
-using MonacoRange = BlazorMonaco.Range;
 
 namespace DotNetLab;
 
@@ -18,8 +17,8 @@ public sealed class MonacoCompletionItem
 {
     public required string Label { get; init; }
     public required CompletionItemKind Kind { get; init; }
-    public MonacoRange? Range { get; init; }
+    public BlazorMonaco.Range? Range { get; init; }
+    public string? InsertText { get; init; }
     public string? FilterText { get; init; }
     public string? SortText { get; init; }
-    public string? InsertText { get; init; }
 }

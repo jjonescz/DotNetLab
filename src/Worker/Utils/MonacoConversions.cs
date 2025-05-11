@@ -34,9 +34,11 @@ public static class MonacoConversions
             Label = completion.DisplayText,
             Kind = getKind(completion.Tags),
             Range = lines.GetLinePositionSpan(completion.Span).ToRange(),
-            InsertText = completion.TryGetInsertionText(out var insertionText) ? insertionText : completion.DisplayText,
-            FilterText = completion.FilterText,
-            SortText = completion.SortText,
+
+            // If a text is not different from DisplayText, don't include it to save bandwidth.
+            InsertText = completion.TryGetInsertionText(out var insertionText) && insertionText != completion.DisplayText ? insertionText : null,
+            FilterText = completion.FilterText != completion.DisplayText ? completion.FilterText : null,
+            SortText = completion.SortText != completion.DisplayText ? completion.SortText : null,
         };
 
         static CompletionItemKind getKind(ImmutableArray<string> tags)

@@ -95,5 +95,7 @@ internal sealed partial class BlazorMonacoInterop
 [JsonSerializable(typeof(CompletionContext))]
 [JsonSerializable(typeof(MonacoCompletionItem))]
 [JsonSerializable(typeof(MonacoCompletionList))]
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 internal sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;

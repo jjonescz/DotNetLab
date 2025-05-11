@@ -6,8 +6,17 @@ export function registerCompletionProvider(language, triggerCharacters, completi
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
-            return JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCompletionItemsAsync(
+            /** @type {monaco.languages.CompletionList} */
+            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCompletionItemsAsync(
                 completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), token));
+
+            // `insertText` is missing if it's equal to `label` to save bandwidth
+            // but monaco editor expects it to be always present.
+            for (const item of result.suggestions) {
+                item.insertText ??= item.label;
+            }
+
+            return result;
         },
         resolveCompletionItem: async (completionItem, token) => {
             return JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItem(
