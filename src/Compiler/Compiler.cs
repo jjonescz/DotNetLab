@@ -58,9 +58,7 @@ public class Compiler(
         const string projectName = "TestProject";
         const string directory = "/";
 
-        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
-            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+        var parseOptions = CreateDefaultParseOptions();
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
@@ -140,17 +138,9 @@ public class Compiler(
             }
         }
 
-        // Choose output kind EXE if there are top-level statements, otherwise DLL.
-        // Only do this if parseOptions haven't been changed
-        var outputKind = cSharpSources.Any(static s => s.SyntaxTree.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
-            ? OutputKind.ConsoleApplication
-            : OutputKind.DynamicallyLinkedLibrary;
+        var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
-        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
-        var options = new CSharpCompilationOptions(outputKind,
-            allowUnsafe: true,
-            nullableContextOptions: NullableContextOptions.Enable,
-            concurrentBuild: false);
+        var options = CreateDefaultCompilationOptions(outputKind);
 
         options = Config.ConfigureCSharpCompilationOptions(options);
 
@@ -368,7 +358,7 @@ public class Compiler(
                     ..references,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
-                options: createCompilationOptions(OutputKind.ConsoleApplication)
+                options: CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
                     .WithSpecificDiagnosticOptions(
                     [
                         // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
@@ -405,15 +395,6 @@ public class Compiler(
             Executor.InvokeEntryPoint(entryPoint);
 
             return true;
-        }
-
-        static CSharpCompilationOptions createCompilationOptions(OutputKind outputKind)
-        {
-            return new CSharpCompilationOptions(
-                outputKind,
-                allowUnsafe: true,
-                nullableContextOptions: NullableContextOptions.Enable,
-                concurrentBuild: false);
         }
 
         static string getFilePath(InputCode input) => directory + input.FileName;
@@ -791,6 +772,32 @@ public class Compiler(
         {
             return new ICSharpCode.Decompiler.DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1);
         }
+    }
+
+    public static CSharpParseOptions CreateDefaultParseOptions()
+    {
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        return new CSharpParseOptions(LanguageVersion.Preview)
+            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+    }
+
+    public static OutputKind GetDefaultOutputKind(IEnumerable<SyntaxTree> sources)
+    {
+        // Choose output kind EXE if there are top-level statements, otherwise DLL.
+        // Only do this if parseOptions haven't been changed
+        return sources.Any(static s => s.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
+            ? OutputKind.ConsoleApplication
+            : OutputKind.DynamicallyLinkedLibrary;
+    }
+
+    public static CSharpCompilationOptions CreateDefaultCompilationOptions(OutputKind outputKind)
+    {
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        return new CSharpCompilationOptions(
+            outputKind,
+            allowUnsafe: true,
+            nullableContextOptions: NullableContextOptions.Enable,
+            concurrentBuild: false);
     }
 }
 

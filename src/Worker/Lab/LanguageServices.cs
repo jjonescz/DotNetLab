@@ -27,7 +27,9 @@ internal sealed class LanguageServices
         workspace = new();
         var project = workspace
             .AddProject("TestProject", LanguageNames.CSharp)
-            .AddMetadataReferences(RefAssemblyMetadata.All);
+            .AddMetadataReferences(RefAssemblyMetadata.All)
+            .WithParseOptions(Compiler.CreateDefaultParseOptions())
+            .WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(Compiler.GetDefaultOutputKind([])));
         ApplyChanges(project.Solution);
         projectId = project.Id;
     }
@@ -48,7 +50,7 @@ internal sealed class LanguageServices
         return completions.ToCompletionList(text.Lines);
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)
     {
         var modelLookupByUri = models.ToDictionary(m => m.Uri);
 
@@ -118,6 +120,18 @@ internal sealed class LanguageServices
                 document = null;
             }
         }
+
+        await UpdateOptionsIfNecessaryAsync();
+    }
+
+    private async Task UpdateOptionsIfNecessaryAsync()
+    {
+        var sources = await Project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
+        var outputKind = Compiler.GetDefaultOutputKind(sources);
+        if (Project.CompilationOptions is { } options && outputKind != options.OutputKind)
+        {
+            ApplyChanges(Project.WithCompilationOptions(options.WithOutputKind(outputKind)).Solution);
+        }
     }
 
     public void OnDidChangeModel(string modelUri)
@@ -137,6 +151,7 @@ internal sealed class LanguageServices
         text = text.WithChanges(args.Changes.ToTextChanges());
         document = document.WithText(text);
         ApplyChanges(document.Project.Solution);
+        await UpdateOptionsIfNecessaryAsync();
     }
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()

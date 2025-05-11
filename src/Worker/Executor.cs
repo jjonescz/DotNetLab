@@ -57,11 +57,11 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context);
     }
 
-    public Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
+    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
-        languageServices.OnDidChangeWorkspace(message.Models);
-        return NoOutput.AsyncInstance;
+        await languageServices.OnDidChangeWorkspaceAsync(message.Models);
+        return NoOutput.Instance;
     }
 
     public Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModel message)
