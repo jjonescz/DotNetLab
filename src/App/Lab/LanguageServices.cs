@@ -13,23 +13,27 @@ internal sealed class LanguageServices(
 {
     private IDisposable? completionProvider;
     private string? currentModelUrl;
-    private CancellationTokenSource completionCts = new();
-    private CancellationTokenSource diagnosticsCts = new();
+    private DebounceInfo completionDebounce = new(new CancellationTokenSource());
+    private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
 
     public bool Enabled => completionProvider != null;
 
-    private static Task<TOut> DebounceAsync<TIn, TOut>(ref CancellationTokenSource cts, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
+    private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
-        cts.Cancel();
-        cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
+        info.CancellationTokenSource.Cancel();
+        info = new(CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
 
-        return debounceAsync(cts.Token, args, fallback, handler, cancellationToken);
+        return debounceAsync(wait, info.CancellationTokenSource.Token, args, fallback, handler, cancellationToken);
 
-        static async Task<TOut> debounceAsync(CancellationToken debounceToken, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken userToken)
+        static async Task<TOut> debounceAsync(TimeSpan wait, CancellationToken debounceToken, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken userToken)
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(1), debounceToken);
+                if (wait > TimeSpan.Zero)
+                {
+                    await Task.Delay(wait, debounceToken);
+                }
 
                 debounceToken.ThrowIfCancellationRequested();
 
@@ -42,9 +46,9 @@ internal sealed class LanguageServices(
         }
     }
 
-    private static void Debounce<T>(ref CancellationTokenSource cts, T args, Func<T, Task> handler)
+    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, Task> handler)
     {
-        DebounceAsync(ref cts, (args, handler), 0, static async (args, cancellationToken) =>
+        DebounceAsync(ref info, (args, handler), 0, static async (args, cancellationToken) =>
         {
             await args.handler(args.args);
             return 0;
@@ -79,7 +83,7 @@ internal sealed class LanguageServices(
             ProvideCompletionItemsFunc = (modelUri, position, context, cancellationToken) =>
             {
                 return DebounceAsync(
-                    ref completionCts,
+                    ref completionDebounce,
                     (worker, modelUri, position, context),
                     new() { Suggestions = [], Incomplete = true },
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context),
@@ -136,7 +140,7 @@ internal sealed class LanguageServices(
             return;
         }
 
-        Debounce(ref diagnosticsCts, (worker, jsRuntime, currentModelUrl), static async args =>
+        Debounce(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), static async args =>
         {
             var (worker, jsRuntime, currentModelUrl) = args;
             var markers = await worker.GetDiagnosticsAsync();
@@ -144,4 +148,10 @@ internal sealed class LanguageServices(
             await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
         });
     }
+}
+
+internal readonly struct DebounceInfo(CancellationTokenSource cts)
+{
+    public CancellationTokenSource CancellationTokenSource { get; } = cts;
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
 }
