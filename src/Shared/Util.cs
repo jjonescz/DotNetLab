@@ -101,6 +101,19 @@ public static class Util
         }
     }
 
+    public static async Task<IEnumerable<TResult>> SelectNonNullAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<TResult?>> selector)
+    {
+        var results = new List<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);
+        foreach (var item in source)
+        {
+            if (await selector(item) is TResult result)
+            {
+                results.Add(result);
+            }
+        }
+        return results;
+    }
+
     public static async Task<Dictionary<TKey, TValue>> ToDictionaryAsync<T, TKey, TValue>(
         this IAsyncEnumerable<T> source,
         Func<T, TKey> keySelector,
