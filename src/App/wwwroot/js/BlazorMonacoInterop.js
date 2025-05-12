@@ -19,7 +19,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             return result;
         },
         resolveCompletionItem: async (completionItem, token) => {
-            return JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItem(
+            return JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItemAsync(
                 completionItemProvider, JSON.stringify(completionItem), token));
         },
     });

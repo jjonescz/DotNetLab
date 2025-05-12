@@ -90,7 +90,7 @@ internal sealed class LanguageServices(
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context),
                     cancellationToken);
             },
-            ResolveCompletionItemFunc = static (completionItem, cancellationToken) => Task.FromResult(completionItem),
+            ResolveCompletionItemFunc = (completionItem, cancellationToken) => worker.ResolveCompletionItemAsync(completionItem),
         });
     }
 

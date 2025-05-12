@@ -13,6 +13,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(GetCompilerDependencyInfo), nameof(GetCompilerDependencyInfo))]
 [JsonDerivedType(typeof(GetSdkInfo), nameof(GetSdkInfo))]
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
+[JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
 [JsonDerivedType(typeof(OnDidChangeModel), nameof(OnDidChangeModel))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
@@ -99,6 +100,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<MonacoCompletionItem>
+    {
+        public override Task<MonacoCompletionItem> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
@@ -140,6 +149,7 @@ public abstract record WorkerInputMessage
         Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
         Task<MonacoCompletionList> HandleAsync(ProvideCompletionItems message);
+        Task<MonacoCompletionItem> HandleAsync(ResolveCompletionItem message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModel message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);

@@ -14,6 +14,7 @@ internal sealed class LanguageServices
     private readonly ProjectId projectId;
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private DocumentId? documentId;
+    private CompletionList? lastCompletions;
 
     public LanguageServices(ILogger<LanguageServices> logger)
     {
@@ -48,12 +49,32 @@ internal sealed class LanguageServices
         int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
         var service = CompletionService.GetService(document)!;
         var completions = await service.GetCompletionsAsync(document, caretPosition);
+        lastCompletions = completions;
         var time1 = sw.ElapsedMilliseconds;
         sw.Restart();
         var result = completions.ToCompletionList(text.Lines);
         var time2 = sw.ElapsedMilliseconds;
         logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
         return result;
+    }
+
+    public async Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem item)
+    {
+        // Try to find the corresponding Roslyn item.
+        if (documentId == null ||
+            lastCompletions == null ||
+            lastCompletions.ItemsList.TryAt(item.Index) is not { } foundItem ||
+            Project.GetDocument(documentId) is not { } document)
+        {
+            return item;
+        }
+
+        // Fill documentation.
+        var service = CompletionService.GetService(document)!;
+        var description = await service.GetDescriptionAsync(document, foundItem);
+        item.Documentation = description?.Text;
+
+        return item;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)

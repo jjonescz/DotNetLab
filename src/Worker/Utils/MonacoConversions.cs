@@ -23,14 +23,15 @@ public static class MonacoConversions
     {
         return new MonacoCompletionList
         {
-            Suggestions = completions.ItemsList.Select(c => c.ToCompletionItem(lines)).ToImmutableArray(),
+            Suggestions = completions.ItemsList.Select((c, i) => c.ToCompletionItem(i, lines)).ToImmutableArray(),
         };
     }
 
-    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, TextLineCollection lines)
+    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index, TextLineCollection lines)
     {
         return new MonacoCompletionItem
         {
+            Index = index,
             Label = completion.DisplayText,
             Kind = getKind(completion.Tags),
             Range = lines.GetLinePositionSpan(completion.Span).ToRange(),

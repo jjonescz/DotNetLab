@@ -15,10 +15,12 @@ public sealed class MonacoCompletionList
 
 public sealed class MonacoCompletionItem
 {
+    public int Index { get; init; }
     public required string Label { get; init; }
     public required CompletionItemKind Kind { get; init; }
     public BlazorMonaco.Range? Range { get; init; }
     public string? InsertText { get; init; }
     public string? FilterText { get; init; }
     public string? SortText { get; init; }
+    public string? Documentation { get; set; }
 }

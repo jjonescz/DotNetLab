@@ -385,6 +385,13 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(MonacoCompletionList));
     }
 
+    public Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem item)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.ResolveCompletionItem(item) { Id = messageId++ },
+            deserializeAs: default(MonacoCompletionItem));
+    }
+
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
     {
         PostMessage(

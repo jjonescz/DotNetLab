@@ -57,6 +57,12 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context);
     }
 
+    public Task<MonacoCompletionItem> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
+    {
+        var languageServices = services.GetRequiredService<LanguageServices>();
+        return languageServices.ResolveCompletionItemAsync(message.Item);
+    }
+
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
