@@ -7,12 +7,18 @@ namespace DotNetLab;
 /// Because <see cref="CompletionItem"/> does complex JSON serialization every time
 /// just for <see cref="CompletionItem.Label"/>.
 /// </summary>
+/// <remarks>
+/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CompletionList&lt;T&gt;"/>.
+/// </remarks>
 public sealed class MonacoCompletionList
 {
     public required ImmutableArray<MonacoCompletionItem> Suggestions { get; init; }
     public bool IsIncomplete { get; init; }
 }
 
+/// <remarks>
+/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CompletionItem"/>.
+/// </remarks>
 public sealed class MonacoCompletionItem
 {
     public int Index { get; init; }
@@ -24,4 +30,5 @@ public sealed class MonacoCompletionItem
     public string? SortText { get; init; }
     public string? Documentation { get; set; }
     public List<TextEdit>? AdditionalTextEdits { get; set; }
+    public string? Detail { get; set; }
 }

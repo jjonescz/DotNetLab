@@ -32,7 +32,7 @@ public static class MonacoConversions
         return new MonacoCompletionItem
         {
             Index = index,
-            Label = completion.DisplayText,
+            Label = completion.DisplayTextPrefix + completion.DisplayText + completion.DisplayTextSuffix,
             Kind = getKind(completion.Tags),
             Range = lines.GetLinePositionSpan(completion.Span).ToRange(),
 

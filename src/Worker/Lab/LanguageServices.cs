@@ -58,6 +58,9 @@ internal sealed class LanguageServices
         return result;
     }
 
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/Completion/CompletionResultFactory.cs#L565"/>.
+    /// </remarks>
     public async Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem item)
     {
         // Try to find the corresponding Roslyn item.
@@ -93,6 +96,12 @@ internal sealed class LanguageServices
                     Range = text.Lines.GetLinePositionSpan(change.Span).ToRange(),
                 });
             }
+        }
+
+        // Fill inline description.
+        if (!string.IsNullOrEmpty(foundItem.InlineDescription))
+        {
+            item.Detail = foundItem.InlineDescription;
         }
 
         return item;
