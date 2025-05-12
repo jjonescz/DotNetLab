@@ -74,6 +74,27 @@ internal sealed class LanguageServices
         var description = await service.GetDescriptionAsync(document, foundItem);
         item.Documentation = description?.Text;
 
+        // Fill additional edits (e.g., add `using`).
+        if (foundItem.IsComplexTextEdit)
+        {
+            item.AdditionalTextEdits = new();
+            var completionChange = await service.GetChangeAsync(document, foundItem);
+            var text = await document.GetTextAsync();
+            foreach (var change in completionChange.TextChanges)
+            {
+                if (change.NewText == foundItem.DisplayText)
+                {
+                    continue;
+                }
+
+                item.AdditionalTextEdits.Add(new()
+                {
+                    Text = change.NewText,
+                    Range = text.Lines.GetLinePositionSpan(change.Span).ToRange(),
+                });
+            }
+        }
+
         return item;
     }
 

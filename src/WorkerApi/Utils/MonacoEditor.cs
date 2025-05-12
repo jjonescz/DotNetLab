@@ -23,4 +23,5 @@ public sealed class MonacoCompletionItem
     public string? FilterText { get; init; }
     public string? SortText { get; init; }
     public string? Documentation { get; set; }
+    public List<TextEdit>? AdditionalTextEdits { get; set; }
 }
