@@ -1,10 +1,8 @@
-﻿using BlazorMonaco;
-using BlazorMonaco.Languages;
+﻿using BlazorMonaco.Languages;
 using Microsoft.JSInterop;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -38,27 +36,25 @@ internal sealed partial class BlazorMonacoInterop
         JSObject token)
     {
         var completionItemProvider = ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProviderReference).Value;
-        var result = await completionItemProvider.ProvideCompletionItemsAsync(
+        string json = await completionItemProvider.ProvideCompletionItemsAsync(
             modelUri,
             JsonSerializer.Deserialize(position, BlazorMonacoJsonContext.Default.Position)!,
             JsonSerializer.Deserialize(context, BlazorMonacoJsonContext.Default.CompletionContext)!,
             ToCancellationToken(token));
-        var sw = Stopwatch.StartNew();
-        var json = JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
-        completionItemProvider.Logger.LogDebug("Serialized completions in {Milliseconds} ms", sw.ElapsedMilliseconds);
         return json;
     }
 
     [JSExport]
-    internal static async Task<string> ResolveCompletionItemAsync(
-        [JSMarshalAs<JSType.Any>] object completionItemProvider,
+    internal static async Task<string?> ResolveCompletionItemAsync(
+        [JSMarshalAs<JSType.Any>] object completionItemProviderReference,
         string item,
         JSObject token)
     {
-        var result = await ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProvider).Value.ResolveCompletionItemAsync(
+        var completionItemProvider = ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProviderReference).Value;
+        string? json = await completionItemProvider.ResolveCompletionItemAsync(
             JsonSerializer.Deserialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem)!,
             ToCancellationToken(token));
-        return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionItem);
+        return json;
     }
 
     public async Task<IDisposable> RegisterCompletionProviderAsync(
@@ -89,13 +85,3 @@ internal sealed partial class BlazorMonacoInterop
         }
     }
 }
-
-[JsonSerializable(typeof(LanguageSelector))]
-[JsonSerializable(typeof(Position))]
-[JsonSerializable(typeof(CompletionContext))]
-[JsonSerializable(typeof(MonacoCompletionItem))]
-[JsonSerializable(typeof(MonacoCompletionList))]
-[JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-internal sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;

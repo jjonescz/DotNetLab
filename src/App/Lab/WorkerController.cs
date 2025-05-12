@@ -378,18 +378,18 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(SdkInfo));
     }
 
-    public Task<MonacoCompletionList> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context)
+    public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ProvideCompletionItems(modelUri, position, context) { Id = messageId++ },
-            deserializeAs: default(MonacoCompletionList));
+            deserializeAs: default(string));
     }
 
-    public Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem item)
+    public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ResolveCompletionItem(item) { Id = messageId++ },
-            deserializeAs: default(MonacoCompletionItem));
+            deserializeAs: default(string));
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)

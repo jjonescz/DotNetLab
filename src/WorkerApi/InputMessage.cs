@@ -92,17 +92,17 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record ProvideCompletionItems(string ModelUri, Position Position, CompletionContext Context) : WorkerInputMessage<MonacoCompletionList>
+    public sealed record ProvideCompletionItems(string ModelUri, Position Position, CompletionContext Context) : WorkerInputMessage<string>
     {
-        public override Task<MonacoCompletionList> HandleAsync(IExecutor executor)
+        public override Task<string> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
     }
 
-    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<MonacoCompletionItem>
+    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<string>
     {
-        public override Task<MonacoCompletionItem> HandleAsync(IExecutor executor)
+        public override Task<string> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -148,8 +148,8 @@ public abstract record WorkerInputMessage
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
-        Task<MonacoCompletionList> HandleAsync(ProvideCompletionItems message);
-        Task<MonacoCompletionItem> HandleAsync(ResolveCompletionItem message);
+        Task<string> HandleAsync(ProvideCompletionItems message);
+        Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModel message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);

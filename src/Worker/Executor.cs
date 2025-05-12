@@ -51,13 +51,13 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return await sdkDownloader.GetInfoAsync(message.VersionToLoad);
     }
 
-    public Task<MonacoCompletionList> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
+    public Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
         return languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context);
     }
 
-    public Task<MonacoCompletionItem> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
+    public Task<string?> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
         return languageServices.ResolveCompletionItemAsync(message.Item);

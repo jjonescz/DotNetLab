@@ -1,4 +1,6 @@
-﻿using BlazorMonaco.Languages;
+﻿using BlazorMonaco;
+using BlazorMonaco.Languages;
+using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -32,3 +34,13 @@ public sealed class MonacoCompletionItem
     public List<TextEdit>? AdditionalTextEdits { get; set; }
     public string? Detail { get; set; }
 }
+
+[JsonSerializable(typeof(LanguageSelector))]
+[JsonSerializable(typeof(Position))]
+[JsonSerializable(typeof(CompletionContext))]
+[JsonSerializable(typeof(MonacoCompletionItem))]
+[JsonSerializable(typeof(MonacoCompletionList))]
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;

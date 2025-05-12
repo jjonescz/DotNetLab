@@ -10,5 +10,4 @@ namespace DotNetLab;
 [JsonSerializable(typeof(CompilerDependencyInfo))]
 [JsonSerializable(typeof(SdkInfo))]
 [JsonSerializable(typeof(ImmutableArray<MarkerData>))]
-[JsonSerializable(typeof(MonacoCompletionList))]
 public sealed partial class WorkerJsonContext : JsonSerializerContext;

@@ -21,8 +21,9 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             return result;
         },
         resolveCompletionItem: async (completionItem, token) => {
-            return JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItemAsync(
-                completionItemProvider, JSON.stringify(completionItem), token));
+            const json = await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItemAsync(
+                completionItemProvider, JSON.stringify(completionItem), token);
+            return json ? JSON.parse(json) : completionItem;
         },
     });
 }

@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace DotNetLab.Lab;
 
@@ -37,11 +38,16 @@ internal sealed class LanguageServices
 
     private Project Project => workspace.CurrentSolution.GetProject(projectId)!;
 
-    public async Task<MonacoCompletionList> ProvideCompletionItemsAsync(string modelUri, Position position, MonacoCompletionContext context)
+    /// <returns>
+    /// JSON-serialized <see cref="MonacoCompletionList"/>.
+    /// We serialize here to avoid serializing twice unnecessarily
+    /// (first on Worker to App interface, then on App to Monaco interface).
+    /// </returns>
+    public async Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, MonacoCompletionContext context)
     {
         if (documentId == null || Project.GetDocument(documentId) is not { } document)
         {
-            return new() { Suggestions = [] };
+            return """{"suggestions":[]}""";
         }
 
         var sw = Stopwatch.StartNew();
@@ -55,13 +61,18 @@ internal sealed class LanguageServices
         var result = completions.ToCompletionList(text.Lines);
         var time2 = sw.ElapsedMilliseconds;
         logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
-        return result;
+        return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
     }
 
+    /// <returns>
+    /// JSON-serialized <see cref="MonacoCompletionItem"/>.
+    /// We serialize here to avoid serializing twice unnecessarily
+    /// (first on Worker to App interface, then on App to Monaco interface).
+    /// </returns>
     /// <remarks>
     /// For inspiration, see <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/Completion/CompletionResultFactory.cs#L565"/>.
     /// </remarks>
-    public async Task<MonacoCompletionItem> ResolveCompletionItemAsync(MonacoCompletionItem item)
+    public async Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item)
     {
         // Try to find the corresponding Roslyn item.
         if (documentId == null ||
@@ -69,7 +80,7 @@ internal sealed class LanguageServices
             lastCompletions.ItemsList.TryAt(item.Index) is not { } foundItem ||
             Project.GetDocument(documentId) is not { } document)
         {
-            return item;
+            return null;
         }
 
         // Fill documentation.
@@ -104,7 +115,7 @@ internal sealed class LanguageServices
             item.Detail = foundItem.InlineDescription;
         }
 
-        return item;
+        return JsonSerializer.Serialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem);
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)
