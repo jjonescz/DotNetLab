@@ -159,6 +159,16 @@ public static class Util
         return [.. (a ?? []), .. (b ?? [])];
     }
 
+    public static T? TryAt<T>(this IReadOnlyList<T> list, int index)
+    {
+        if (index < 0 || index >= list.Count)
+        {
+            return default;
+        }
+
+        return list[index];
+    }
+
     public static InvalidOperationException Unexpected<T>(T value, [CallerArgumentExpression(nameof(value))] string name = "")
     {
         return new($"Unexpected {name}='{value}' of type '{value?.GetType().FullName ?? "null"}'.");
