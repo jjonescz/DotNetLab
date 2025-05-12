@@ -12,8 +12,10 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
             // `insertText` is missing if it's equal to `label` to save bandwidth
             // but monaco editor expects it to be always present.
+            // Similarly, `range` is same for all suggestions.
             for (const item of result.suggestions) {
                 item.insertText ??= item.label;
+                item.range = result.range;
             }
 
             return result;

@@ -23,18 +23,18 @@ public static class MonacoConversions
     {
         return new MonacoCompletionList
         {
-            Suggestions = completions.ItemsList.Select((c, i) => c.ToCompletionItem(i, lines)).ToImmutableArray(),
+            Range = lines.GetLinePositionSpan(completions.Span).ToRange(),
+            Suggestions = completions.ItemsList.Select(static (c, i) => c.ToCompletionItem(i)).ToImmutableArray(),
         };
     }
 
-    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index, TextLineCollection lines)
+    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index)
     {
         return new MonacoCompletionItem
         {
             Index = index,
             Label = completion.DisplayTextPrefix + completion.DisplayText + completion.DisplayTextSuffix,
             Kind = getKind(completion.Tags),
-            Range = lines.GetLinePositionSpan(completion.Span).ToRange(),
 
             // If a text is not different from DisplayText, don't include it to save bandwidth.
             InsertText = completion.TryGetInsertionText(out var insertionText) && insertionText != completion.DisplayText ? insertionText : null,
