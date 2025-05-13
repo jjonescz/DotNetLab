@@ -38,10 +38,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                     <FluentStack Orientation="Orientation.Vertical">
                         @* Language services check box *@
                         <FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
-                        title="Completions, live diagnostics">
-                            Language services
-                            <FluentBadge>experimental</FluentBadge>
-                        </FluentCheckbox>
+                        title="Completions, live diagnostics (currently uses only the built-in compiler and default configuration)"
+                        Label="Language services" />
 
                         @* Debug logs check box *@
                         <FluentCheckbox @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync"
@@ -304,6 +302,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         set => Logging.LogLevel = value ? LogLevel.Trace : DebugLogs ? LogLevel.Debug : LogLevel.Information;
     }
 
+    // turning this on by default for existing users means we need new key, hence the '2'
+    private const string EnableLanguageServicesKey = $"{nameof(EnableLanguageServices)}2";
     private bool EnableLanguageServices { get; set; }
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
@@ -330,7 +330,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             Page.OnWorkspaceChanged();
         }
 
-        await LocalStorage.SetItemAsync(nameof(EnableLanguageServices), EnableLanguageServices);
+        await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
     }
 
     private async Task OnSetEnableWorkerAsync()
@@ -401,7 +401,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         }
         DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
         TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
-        EnableLanguageServices = await loadOptionAsync(nameof(EnableLanguageServices), defaultValue: false);
+        EnableLanguageServices = await loadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
         EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
         EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
         AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
