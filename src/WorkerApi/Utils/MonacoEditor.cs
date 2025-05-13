@@ -17,6 +17,7 @@ public sealed class MonacoCompletionList
     public required ImmutableArray<MonacoCompletionItem> Suggestions { get; init; }
     public BlazorMonaco.Range? Range { get; init; }
     public bool IsIncomplete { get; init; }
+    public ImmutableArray<char> CommitCharacters { get; init; }
 }
 
 /// <remarks>

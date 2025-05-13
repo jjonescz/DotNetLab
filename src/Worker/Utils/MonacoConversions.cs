@@ -19,12 +19,15 @@ public static class MonacoConversions
         return new TextSpan(change.RangeOffset, change.RangeLength);
     }
 
-    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, TextLineCollection lines)
+    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)
     {
         return new MonacoCompletionList
         {
-            Range = lines.GetLinePositionSpan(completions.Span).ToRange(),
-            Suggestions = completions.ItemsList.Select(static (c, i) => c.ToCompletionItem(i)).ToImmutableArray(),
+            Range = text.Lines.GetLinePositionSpan(completions.Span).ToRange(),
+            Suggestions = completions.ItemsList
+                .Select(static (c, i) => c.ToCompletionItem(i))
+                .ToImmutableArray(),
+            CommitCharacters = completions.Rules.DefaultCommitCharacters,
         };
     }
 
@@ -37,7 +40,12 @@ public static class MonacoConversions
             Kind = getKind(completion.Tags),
 
             // If a text is not different from DisplayText, don't include it to save bandwidth.
-            InsertText = completion.TryGetInsertionText(out var insertionText) && insertionText != completion.DisplayText ? insertionText : null,
+            InsertText = completion.IsComplexTextEdit
+                ? "" // Complex edits don't have insertion text, instead their additional edits are populated during resolution.
+                : completion.TryGetInsertionText(out var insertionText) &&
+                insertionText != completion.DisplayText
+                ? insertionText
+                : null,
             FilterText = completion.FilterText != completion.DisplayText ? completion.FilterText : null,
             SortText = completion.SortText != completion.DisplayText ? completion.SortText : null,
         };

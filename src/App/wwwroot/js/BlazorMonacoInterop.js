@@ -10,12 +10,14 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCompletionItemsAsync(
                 completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), token));
 
-            // `insertText` is missing if it's equal to `label` to save bandwidth
-            // but monaco editor expects it to be always present.
-            // Similarly, `range` is same for all suggestions.
             for (const item of result.suggestions) {
+                // `insertText` is missing if it's equal to `label` to save bandwidth
+                // but monaco editor expects it to be always present.
                 item.insertText ??= item.label;
+
+                // These are the same for all completion items.
                 item.range = result.range;
+                item.commitCharacters = result.commitCharacters;
             }
 
             return result;

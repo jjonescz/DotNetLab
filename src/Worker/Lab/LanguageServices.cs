@@ -2,6 +2,7 @@
 using BlazorMonaco.Editor;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -58,7 +59,7 @@ internal sealed class LanguageServices
         lastCompletions = completions;
         var time1 = sw.ElapsedMilliseconds;
         sw.Restart();
-        var result = completions.ToCompletionList(text.Lines);
+        var result = completions.ToCompletionList(text);
         var time2 = sw.ElapsedMilliseconds;
         logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
         return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
@@ -88,7 +89,7 @@ internal sealed class LanguageServices
         var description = await service.GetDescriptionAsync(document, foundItem);
         item.Documentation = description?.Text;
 
-        // Fill additional edits (e.g., add `using`).
+        // Fill complex edits (e.g., snippet like `prop` or a type which needs `using` added).
         if (foundItem.IsComplexTextEdit)
         {
             item.AdditionalTextEdits = new();
@@ -96,15 +97,13 @@ internal sealed class LanguageServices
             var text = await document.GetTextAsync();
             foreach (var change in completionChange.TextChanges)
             {
-                if (change.NewText == foundItem.DisplayText)
-                {
-                    continue;
-                }
-
+                // Complex edits have InsertionText="". So whatever user typed (e.g., `prop`) will be removed (replaced with the empty insertion text).
+                // If this edit is for the same span, it would get truncated, so we change the span to be before the typed text.
+                var realSpan = change.Span.Start == foundItem.Span.Start ? new TextSpan(foundItem.Span.Start, 0) : change.Span;
                 item.AdditionalTextEdits.Add(new()
                 {
                     Text = change.NewText,
-                    Range = text.Lines.GetLinePositionSpan(change.Span).ToRange(),
+                    Range = text.Lines.GetLinePositionSpan(realSpan).ToRange(),
                 });
             }
         }
