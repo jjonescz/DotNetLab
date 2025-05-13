@@ -136,7 +136,7 @@ internal sealed class LanguageServices(
 
     private void UpdateDiagnostics()
     {
-        if (currentModelUrl == null)
+        if (currentModelUrl?.IsCSharpFileName() != true)
         {
             return;
         }
