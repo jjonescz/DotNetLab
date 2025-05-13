@@ -952,7 +952,8 @@
         return await BlazorMonaco.Editor.Global.CreateModel(
             JSRuntime,
             value: inputCode.Text,
-            language: GetLanguageForFileExtension(inputCode.FileExtension));
+            language: GetLanguageForFileExtension(inputCode.FileExtension),
+            uri: inputCode.FileName);
     }
 
     private static string? GetLanguageForFileExtension(string extension) => extension switch
