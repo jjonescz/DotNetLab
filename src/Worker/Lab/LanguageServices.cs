@@ -223,7 +223,9 @@ internal sealed class LanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()
     {
-        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        if (documentId == null ||
+            Project.GetDocument(documentId) is not { } document ||
+            !document.TryGetSyntaxTree(out var tree))
         {
             return [];
         }
@@ -234,8 +236,9 @@ internal sealed class LanguageServices
             return [];
         }
 
-        var diagnostics = comp.GetDiagnostics().Where(d => d.Severity > DiagnosticSeverity.Hidden);
-        return diagnostics.Select(d => d.ToMarkerData()).ToImmutableArray();
+        var diagnostics = comp.GetDiagnostics()
+            .Where(d => d.Severity > DiagnosticSeverity.Hidden && d.Location.SourceTree == tree);
+        return diagnostics.Select(static d => d.ToMarkerData()).ToImmutableArray();
     }
 
     private void ApplyChanges(Solution solution)
