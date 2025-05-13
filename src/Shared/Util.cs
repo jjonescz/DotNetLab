@@ -70,6 +70,20 @@ public static class Util
     /// </summary>
     public static R EnsureSync() => default;
 
+    public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
+
+    public static bool IsCSharpFileName(this string fileName, out bool script)
+    {
+        return (script = fileName.EndsWith(".csx", StringComparison.OrdinalIgnoreCase)) ||
+            fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsRazorFileName(this string fileName)
+    {
+        return fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) ||
+            fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string JoinToString<T>(this IEnumerable<T> source, string separator)
     {
         return string.Join(separator, source);

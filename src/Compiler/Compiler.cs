@@ -120,7 +120,7 @@ public class Compiler(
 
         foreach (var input in compilationInput.Inputs.Value)
         {
-            if (isCSharp(input, out bool script))
+            if (input.FileName.IsCSharpFileName(out bool script))
             {
                 if (script)
                 {
@@ -399,12 +399,6 @@ public class Compiler(
 
         static string getFilePath(InputCode input) => directory + input.FileName;
 
-        static bool isCSharp(InputCode input, out bool script)
-        {
-            return (script = ".csx".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase)) ||
-                ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
-        }
-
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
             var additionalTextsBuilder = ImmutableArray.CreateBuilder<AdditionalText>();
@@ -419,7 +413,7 @@ public class Compiler(
                 };
 
                 // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
-                if (isRazorOrCshtml(input))
+                if (input.FileName.IsRazorFileName())
                 {
                     string cssFileName = input.FileName + ".css";
                     if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
@@ -469,7 +463,7 @@ public class Compiler(
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
             foreach (var input in additionalSources)
             {
-                if (isRazorOrCshtml(input))
+                if (input.FileName.IsRazorFileName())
                 {
                     var filePath = getFilePath(input);
                     var item = RazorAccessors.CreateSourceGeneratorProjectItem(
@@ -568,12 +562,6 @@ public class Compiler(
                     b.SetCSharpLanguageVersionSafe(LanguageVersion.Preview);
                 });
             }
-        }
-
-        static bool isRazorOrCshtml(InputCode input)
-        {
-            return ".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
-                ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
         }
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)

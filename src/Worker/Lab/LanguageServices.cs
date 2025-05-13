@@ -137,7 +137,7 @@ internal sealed class LanguageServices
                         // Document has been renamed.
                         modelUris.Remove(doc.Id);
 
-                        if (IsCSharp(fileName: model.FileName))
+                        if (model.FileName.IsCSharpFileName())
                         {
                             modelUris.Add(doc.Id, model.Uri);
                             ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(doc.Id, model.FileName));
@@ -167,7 +167,7 @@ internal sealed class LanguageServices
         // Add new documents.
         foreach (var model in modelLookupByUri.Values)
         {
-            if (IsCSharp(fileName: model.FileName))
+            if (model.FileName.IsCSharpFileName())
             {
                 var doc = Project.AddDocument(model.FileName, model.NewContent ?? string.Empty);
                 modelUris.Add(doc.Id, model.Uri);
@@ -247,10 +247,5 @@ internal sealed class LanguageServices
         {
             logger.LogWarning("Failed to apply changes to the workspace.");
         }
-    }
-
-    private static bool IsCSharp(string fileName)
-    {
-        return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -956,12 +956,20 @@
             uri: inputCode.FileName);
     }
 
-    private static string? GetLanguageForFileExtension(string extension) => extension switch
+    private static string? GetLanguageForFileExtension(string extension)
     {
-        ".razor" or ".cshtml" => "razor",
-        ".cs" => "csharp",
-        _ => null,
-    };
+        if (extension.IsRazorFileName())
+        {
+            return "razor";
+        }
+
+        if (extension.IsCSharpFileName())
+        {
+            return "csharp";
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="inputs"/> change.
