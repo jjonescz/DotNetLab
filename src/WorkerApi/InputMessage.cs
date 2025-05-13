@@ -100,9 +100,9 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<string>
+    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<string?>
     {
-        public override Task<string> HandleAsync(IExecutor executor)
+        public override Task<string?> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
