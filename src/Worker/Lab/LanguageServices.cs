@@ -169,7 +169,10 @@ internal sealed class LanguageServices
         {
             if (model.FileName.IsCSharpFileName())
             {
-                var doc = Project.AddDocument(model.FileName, model.NewContent ?? string.Empty);
+                var doc = Project.AddDocument(
+                    name: model.FileName,
+                    text: model.NewContent ?? string.Empty,
+                    filePath: model.FileName);
                 modelUris.Add(doc.Id, model.Uri);
                 ApplyChanges(doc.Project.Solution);
             }
