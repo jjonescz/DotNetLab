@@ -215,8 +215,17 @@ internal sealed class LanguageServices
         }
 
         var text = await document.GetTextAsync();
-        text = text.WithChanges(args.Changes.ToTextChanges());
+
+        // There might be changes that overlap, e.g., in an empty document,
+        // write `Console` which also adds `using System;` and both these changes are at span [0..0).
+        // Applying these changes sequentially solves the problem.
+        foreach (var change in args.Changes.ToTextChanges())
+        {
+            text = text.WithChanges(change);
+        }
+
         document = document.WithText(text);
+
         ApplyChanges(document.Project.Solution);
         await UpdateOptionsIfNecessaryAsync();
     }
