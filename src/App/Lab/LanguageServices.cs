@@ -12,6 +12,7 @@ internal sealed class LanguageServices(
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
 {
+    private Dictionary<string, string> modelUrlToFileName = [];
     private IDisposable? completionProvider;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
@@ -107,6 +108,7 @@ internal sealed class LanguageServices(
             return;
         }
 
+        modelUrlToFileName = models.ToDictionary(m => m.Uri, m => m.FileName);
         worker.OnDidChangeWorkspace(models);
         UpdateDiagnostics();
     }
@@ -136,7 +138,9 @@ internal sealed class LanguageServices(
 
     private void UpdateDiagnostics()
     {
-        if (currentModelUrl?.IsCSharpFileName() != true)
+        if (currentModelUrl == null ||
+            !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
+            !currentModelFileName.IsCSharpFileName())
         {
             return;
         }

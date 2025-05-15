@@ -953,7 +953,8 @@
             JSRuntime,
             value: inputCode.Text,
             language: GetLanguageForFileExtension(inputCode.FileExtension),
-            uri: inputCode.FileName);
+            // Needs to be unique otherwise renaming this model and then adding an input by the same name would crash.
+            uri: $"{Guid.CreateVersion7()}/{inputCode.FileName}");
     }
 
     private static string? GetLanguageForFileExtension(string extension)
