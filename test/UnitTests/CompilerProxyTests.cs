@@ -55,6 +55,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("9.0.0-preview.24413.5")]
     [InlineData("9.0.0-preview.25128.1")]
     [InlineData("10.0.0-preview.25252.1")]
+    [InlineData("10.0.0-preview.25264.1")]
+    [InlineData("main")] // test that we can download a branch
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -113,7 +115,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     }
 }
 
-internal sealed partial class MockHttpMessageHandler : HttpMessageHandler
+internal sealed partial class MockHttpMessageHandler : HttpClientHandler
 {
     private readonly ITestOutputHelper testOutput;
     private readonly string directory;
@@ -128,6 +130,12 @@ internal sealed partial class MockHttpMessageHandler : HttpMessageHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        if (request.RequestUri?.Host != "localhost")
+        {
+            testOutput.WriteLine($"Skipping mocking non-localhost request: {request.RequestUri}");
+            return base.SendAsync(request, cancellationToken);
+        }
+
         testOutput.WriteLine($"Mocking request: {request.RequestUri}");
 
         if (UrlRegex.Match(request.RequestUri?.ToString() ?? "") is
