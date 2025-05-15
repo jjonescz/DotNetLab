@@ -94,6 +94,21 @@ internal static class RazorUtil
         };
     }
 
+    public static bool TryCreateDefaultTypeNameFeature([NotNullWhen(returnValue: true)] out RazorEngineFeatureBase? result)
+    {
+        if (typeof(RazorEngineFeatureBase).Assembly
+            .GetType("Microsoft.AspNetCore.Razor.Language.DefaultTypeNameFeature")?
+            .GetConstructor(Type.EmptyTypes)?
+            .Invoke(null) is RazorEngineFeatureBase feature)
+        {
+            result = feature;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
     public static void ConfigureRazorParserOptionsSafe(this RazorProjectEngineBuilder builder, Action<object> configure)
     {
         builder.Features.Add(configureRazorParserOptionsFactory.Value(configure));

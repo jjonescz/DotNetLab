@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Razor;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Runtime.CompilerServices;
 
@@ -9,9 +8,6 @@ namespace DotNetLab;
 
 public static class RazorAccessors
 {
-    public static RazorEngineFeatureBase CreateDefaultTypeNameFeature()
-        => new DefaultTypeNameFeature();
-
     public static RazorProjectItem CreateSourceGeneratorProjectItem(
         string basePath,
         string filePath,

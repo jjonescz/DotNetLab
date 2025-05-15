@@ -534,7 +534,11 @@ public class Compiler(
                 {
                     b.SetRootNamespace("TestNamespace");
 
-                    b.Features.Add(RazorAccessors.CreateDefaultTypeNameFeature());
+                    if (RazorUtil.TryCreateDefaultTypeNameFeature(out var defaultTypeNameFeature))
+                    {
+                        b.Features.Add(defaultTypeNameFeature);
+                    }
+
                     b.Features.Add(new CompilationTagHelperFeature());
                     b.Features.Add(new DefaultMetadataReferenceFeature
                     {

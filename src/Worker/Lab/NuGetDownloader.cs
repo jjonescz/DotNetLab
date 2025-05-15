@@ -10,10 +10,11 @@ namespace DotNetLab.Lab;
 
 public static class NuGetUtil
 {
-    internal static ImmutableArray<LoadedAssembly> GetAssembliesFromNupkg(Stream nupkgStream, string folder)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, string folder)
     {
         const string extension = ".dll";
-        using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
+        using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: false, entryNameEncoding: null);
+        using var reader = new PackageArchiveReader(zipArchive);
         return reader.GetFiles()
             .Where(file =>
             {
@@ -173,7 +174,7 @@ internal sealed class NuGetDownloadablePackage(
 
     public async Task<ImmutableArray<LoadedAssembly>> GetAssembliesAsync()
     {
-        return NuGetUtil.GetAssembliesFromNupkg(await GetStreamAsync(), folder: folder);
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(await GetStreamAsync(), folder: folder);
     }
 }
 

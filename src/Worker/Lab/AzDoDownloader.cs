@@ -122,7 +122,7 @@ internal sealed class AzDoDownloader(
             artifactName: artifactName,
             fileId: nupkg.Id);
 
-        return NuGetUtil.GetAssembliesFromNupkg(stream, folder: packageFolder);
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, folder: packageFolder);
     }
 
     private async Task<ImmutableArray<LoadedAssembly>> GetAssembliesViaRehydrateAsync(int buildId, string artifactName, ArtifactFiles files, HashSet<string> names)
