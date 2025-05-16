@@ -34,11 +34,11 @@ public static class Util
         }
         finally
         {
+            stdout = stdoutWriter.ToString();
+            stderr = stderrWriter.ToString();
             Console.SetOut(originalOut);
             Console.SetError(originalError);
         }
-        stdout = stdoutWriter.ToString();
-        stderr = stderrWriter.ToString();
     }
 
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)
@@ -70,6 +70,20 @@ public static class Util
     /// </summary>
     public static R EnsureSync() => default;
 
+    public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
+
+    public static bool IsCSharpFileName(this string fileName, out bool script)
+    {
+        return (script = fileName.EndsWith(".csx", StringComparison.OrdinalIgnoreCase)) ||
+            fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsRazorFileName(this string fileName)
+    {
+        return fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) ||
+            fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string JoinToString<T>(this IEnumerable<T> source, string separator)
     {
         return string.Join(separator, source);
@@ -99,6 +113,19 @@ public static class Util
                 yield return result;
             }
         }
+    }
+
+    public static async Task<IEnumerable<TResult>> SelectNonNullAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<TResult?>> selector)
+    {
+        var results = new List<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);
+        foreach (var item in source)
+        {
+            if (await selector(item) is TResult result)
+            {
+                results.Add(result);
+            }
+        }
+        return results;
     }
 
     public static async Task<Dictionary<TKey, TValue>> ToDictionaryAsync<T, TKey, TValue>(
@@ -144,6 +171,16 @@ public static class Util
     public static IEnumerable<T> TryConcat<T>(this ImmutableArray<T>? a, ImmutableArray<T>? b)
     {
         return [.. (a ?? []), .. (b ?? [])];
+    }
+
+    public static T? TryAt<T>(this IReadOnlyList<T> list, int index)
+    {
+        if (index < 0 || index >= list.Count)
+        {
+            return default;
+        }
+
+        return list[index];
     }
 
     public static InvalidOperationException Unexpected<T>(T value, [CallerArgumentExpression(nameof(value))] string name = "")

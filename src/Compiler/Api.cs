@@ -1,29 +1,39 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotNetLab;
 
 public static class Config
 {
-    internal static CSharpParseOptions CurrentCSharpParseOptions { get; set; } = DefaultCSharpParseOptions;
-    internal static CSharpCompilationOptions CurrentCSharpCompilationOptions { get; set; } = DefaultCSharpCompilationOptions;
+    private static readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
+    private static readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
 
     internal static void Reset()
     {
-        CurrentCSharpParseOptions = DefaultCSharpParseOptions;
-        CurrentCSharpCompilationOptions = DefaultCSharpCompilationOptions;
+        cSharpParseOptions.Clear();
+        cSharpCompilationOptions.Clear();
     }
 
     public static void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
     {
-        CurrentCSharpParseOptions = configure(CurrentCSharpParseOptions);
+        cSharpParseOptions.Add(configure);
     }
 
     public static void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
     {
-        CurrentCSharpCompilationOptions = configure(CurrentCSharpCompilationOptions);
+        cSharpCompilationOptions.Add(configure);
     }
 
-    private static CSharpParseOptions DefaultCSharpParseOptions => Microsoft.CodeAnalysis.CSharp.CSharpParseOptions.Default;
-    private static CSharpCompilationOptions DefaultCSharpCompilationOptions => new(OutputKind.DynamicallyLinkedLibrary, concurrentBuild: false);
+    internal static CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
+
+    internal static CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
+
+    private static T Configure<T>(T options, List<Func<T, T>> configureList)
+    {
+        foreach (var configure in configureList)
+        {
+            options = configure(options);
+        }
+
+        return options;
+    }
 }

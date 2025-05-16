@@ -1,6 +1,4 @@
 ﻿global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
-global using MonacoCompletionItem = BlazorMonaco.Languages.CompletionItem;
-global using MonacoCompletionList = BlazorMonaco.Languages.CompletionList;
 global using MonacoRange = BlazorMonaco.Range;
 global using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.CompletionList;
@@ -21,24 +19,35 @@ public static class MonacoConversions
         return new TextSpan(change.RangeOffset, change.RangeLength);
     }
 
-    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, TextLineCollection lines)
+    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)
     {
         return new MonacoCompletionList
         {
-            Suggestions = completions.ItemsList.Select(c => c.ToCompletionItem(lines)).ToList(),
+            Range = text.Lines.GetLinePositionSpan(completions.Span).ToRange(),
+            Suggestions = completions.ItemsList
+                .Select(static (c, i) => c.ToCompletionItem(i))
+                .ToImmutableArray(),
+            CommitCharacters = completions.Rules.DefaultCommitCharacters,
         };
     }
 
-    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, TextLineCollection lines)
+    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index)
     {
         return new MonacoCompletionItem
         {
-            LabelAsString = completion.DisplayText,
+            Index = index,
+            Label = completion.DisplayTextPrefix + completion.DisplayText + completion.DisplayTextSuffix,
             Kind = getKind(completion.Tags),
-            RangeAsObject = lines.GetLinePositionSpan(completion.Span).ToRange(),
-            InsertText = completion.TryGetInsertionText(out var insertionText) ? insertionText : completion.DisplayText,
-            FilterText = completion.FilterText,
-            SortText = completion.SortText,
+
+            // If a text is not different from DisplayText, don't include it to save bandwidth.
+            InsertText = completion.IsComplexTextEdit
+                ? "" // Complex edits don't have insertion text, instead their additional edits are populated during resolution.
+                : completion.TryGetInsertionText(out var insertionText) &&
+                insertionText != completion.DisplayText
+                ? insertionText
+                : null,
+            FilterText = completion.FilterText != completion.DisplayText ? completion.FilterText : null,
+            SortText = completion.SortText != completion.DisplayText ? completion.SortText : null,
         };
 
         static CompletionItemKind getKind(ImmutableArray<string> tags)

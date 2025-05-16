@@ -16,7 +16,7 @@ C# and Razor compiler playground in the browser via Blazor WebAssembly. https://
 - Offline support (PWA).
 - VSCode Monaco Editor.
 - Multiple input sources (especially useful for interlinked Razor components).
-- C# Language Services (completions, live diagnostics) - experimental.
+- C# Language Services (completions, live diagnostics).
 - Configuring any C# options (e.g., LangVersion, Features, OptimizationLevel, AllowUnsafe).
 
 ## Development
@@ -32,7 +32,8 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
   It should be small (for best reloading perf). It can reference shared code
   which does not depend on Roslyn/Razor from elsewhere (e.g., `Shared.csproj`).
 - `src/RazorAccess`: `internal` access to Razor DLLs (via fake assembly name).
-- `src/RoslynAccess`: `internal` access to Roslyn DLLs (via fake assembly name).
+- `src/RoslynAccess`: `internal` access to Roslyn Compiler DLLs (via fake assembly name).
+- `src/RoslynWorkspaceAccess`: `internal` access to Roslyn Workspace DLLs (via fake assembly name).
 - `src/Server`: a Blazor Server entrypoint for easier development of the App
   (it has better tooling support for hot reload and debugging).
   - `cd src/Server; dotnet watch`

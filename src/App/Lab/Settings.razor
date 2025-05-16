@@ -38,14 +38,16 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                     <FluentStack Orientation="Orientation.Vertical">
                         @* Language services check box *@
                         <FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
-                        title="Completions, live diagnostics">
-                            Language services (requires restart)
-                            <FluentBadge>experimental</FluentBadge>
-                        </FluentCheckbox>
+                        title="Completions, live diagnostics (currently uses only the built-in compiler and default configuration)"
+                        Label="Language services" />
 
                         @* Debug logs check box *@
                         <FluentCheckbox @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync"
                         Label="Debug logs" title="Whether to display debug-level logs in the browser development console" />
+
+                        @* Trace logs check box *@
+                        <FluentCheckbox @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync"
+                        Label="Trace logs" title="Whether to display trace-level logs in the browser development console" />
 
                         @* Use a worker check box *@
                         <FluentCheckbox @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync"
@@ -290,10 +292,18 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 
     private bool DebugLogs
     {
-        get => Logging.LogLevel == LogLevel.Debug;
+        get => Logging.LogLevel <= LogLevel.Debug;
         set => Logging.LogLevel = value ? LogLevel.Debug : LogLevel.Information;
     }
 
+    private bool TraceLogs
+    {
+        get => Logging.LogLevel <= LogLevel.Trace;
+        set => Logging.LogLevel = value ? LogLevel.Trace : DebugLogs ? LogLevel.Debug : LogLevel.Information;
+    }
+
+    // turning this on by default for existing users means we need new key, hence the '2'
+    private const string EnableLanguageServicesKey = $"{nameof(EnableLanguageServices)}2";
     private bool EnableLanguageServices { get; set; }
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
@@ -306,9 +316,21 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await LocalStorage.SetItemAsync(nameof(DebugLogs), DebugLogs);
     }
 
+    private async Task OnSetTraceLogsAsync()
+    {
+        await LocalStorage.SetItemAsync(nameof(TraceLogs), TraceLogs);
+    }
+
     private async Task OnSetEnableLanguageServicesAsync()
     {
-        await LocalStorage.SetItemAsync(nameof(EnableLanguageServices), EnableLanguageServices);
+        await UpdateLanguageServicesAsync();
+
+        if (EnableLanguageServices)
+        {
+            Page.OnWorkspaceChanged();
+        }
+
+        await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
     }
 
     private async Task OnSetEnableWorkerAsync()
@@ -335,7 +357,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             RazorToolchain = RazorToolchain,
         });
     }
-    
+
     private async Task OnSetRazorStrategyAsync()
     {
         Page.OnSettingsInputChanged();
@@ -378,7 +400,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             await OnVimChanged();
         }
         DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
-        EnableLanguageServices = await loadOptionAsync(nameof(EnableLanguageServices), defaultValue: false);
+        TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
+        EnableLanguageServices = await loadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
         EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
         EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
         AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
@@ -390,16 +413,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             commitInfo = savedCommitInfo;
         }
 
-        if (EnableLanguageServices)
-        {
-            await LanguageServices.RegisterAsync();
-        }
-        else
-        {
-            LanguageServices.Disabled = true;
-        }
+        await UpdateLanguageServicesAsync();
 
-        Worker.DebugLogs = DebugLogs;
         Worker.Disabled = !EnableWorker;
 
         async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
@@ -766,5 +781,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     {
         await Page.SaveStateToUrlAsync();
         loadUpdate();
+    }
+
+    private async Task UpdateLanguageServicesAsync()
+    {
+        await LanguageServices.EnableAsync(EnableLanguageServices);
+        if (!EnableLanguageServices)
+        {
+            // If disabled, replace live errors with compilation errors.
+            await Page.DisplaySquigglesAsync();
+        }
     }
 }

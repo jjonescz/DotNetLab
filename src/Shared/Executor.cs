@@ -21,7 +21,15 @@ public static class Executor
             Util.CaptureConsoleOutput(
                 () =>
                 {
-                    exitCode = InvokeEntryPoint(entryPoint);
+                    try
+                    {
+                        exitCode = InvokeEntryPoint(entryPoint);
+                    }
+                    catch (TargetInvocationException e)
+                    {
+                        Console.Error.WriteLine($"Unhandled exception. {e.InnerException ?? e}");
+                        exitCode = unchecked((int)0xE0434352);
+                    }
                 },
                 out string stdout, out string stderr);
 

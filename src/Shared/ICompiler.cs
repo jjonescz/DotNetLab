@@ -1,5 +1,6 @@
 using ProtoBuf;
 using System.Runtime.Loader;
+using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
@@ -84,6 +85,12 @@ public sealed record CompiledAssembly(
     ImmutableArray<DiagnosticData> Diagnostics,
     string BaseDirectory)
 {
+    /// <summary>
+    /// Number of entries in <see cref="Diagnostics"/> (from the beginning) which belong to the special configuration file.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int ConfigDiagnosticCount { get; init; }
+
     public static readonly string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
 

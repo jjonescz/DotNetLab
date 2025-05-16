@@ -1,5 +1,6 @@
 ﻿using DotNetLab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Runtime.Versioning;
 using System.Text.Json;
 
@@ -13,7 +14,7 @@ if (args.Length != 2)
 
 var services = WorkerServices.Create(
     baseUrl: args[0],
-    debugLogs: args[1] == bool.TrueString);
+    logLevel: Enum.Parse<LogLevel>(args[1]));
 
 Imports.RegisterOnMessage(async e =>
 {

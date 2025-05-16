@@ -16,7 +16,6 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 public class Compiler(
-    ILogger<Compiler> logger,
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -56,25 +55,52 @@ public class Compiler(
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
-        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview)
-            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
-        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
-            allowUnsafe: true,
-            nullableContextOptions: NullableContextOptions.Enable,
-            concurrentBuild: false);
+        const string projectName = "TestProject";
+        const string directory = "/";
+
+        var parseOptions = CreateDefaultParseOptions();
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
 
         // If we have a configuration, compile and execute it.
+        Config.Reset();
+        ImmutableArray<Diagnostic> configDiagnostics;
         if (compilationInput.Configuration is { } configuration)
         {
-            executeConfiguration(configuration);
-        }
+            if (!executeConfiguration(configuration, out configDiagnostics))
+            {
+                string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
+                ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
+                    .Select(d => d.ToDiagnosticData())
+                    .ToImmutableArray();
+                return new CompiledAssembly(
+                    Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
+                    GlobalOutputs:
+                    [
+                        new()
+                        {
+                            Type = CompiledAssembly.DiagnosticsOutputType,
+                            Label = CompiledAssembly.DiagnosticsOutputLabel,
+                            Language = "csharp",
+                            EagerText = configDiagnosticsText,
+                        },
+                    ],
+                    NumWarnings: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning),
+                    NumErrors: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Error),
+                    Diagnostics: configDiagnosticData,
+                    BaseDirectory: directory)
+                {
+                    ConfigDiagnosticCount = configDiagnosticData.Length,
+                };
+            }
 
-        const string projectName = "TestProject";
-        const string directory = "/";
+            parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
+        }
+        else
+        {
+            configDiagnostics = [];
+        }
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
@@ -94,7 +120,7 @@ public class Compiler(
 
         foreach (var input in compilationInput.Inputs.Value)
         {
-            if (isCSharp(input, out bool script))
+            if (input.FileName.IsCSharpFileName(out bool script))
             {
                 if (script)
                 {
@@ -112,12 +138,11 @@ public class Compiler(
             }
         }
 
-        // Choose output kind EXE if there are top-level statements, otherwise DLL.
-        var outputKind = cSharpSources.Any(static s => s.SyntaxTree.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
-            ? OutputKind.ConsoleApplication
-            : OutputKind.DynamicallyLinkedLibrary;
+        var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
-        options = options.WithOutputKind(outputKind);
+        var options = CreateDefaultCompilationOptions(outputKind);
+
+        options = Config.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
@@ -138,11 +163,12 @@ public class Compiler(
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
 
-        ICSharpCode.Decompiler.Metadata.PEFile? peFile = null;
+        ICSharpCode.Decompiler.Metadata.PEFile? peFile = getPeFile(finalCompilation, out var emitDiagnostics);
 
-        IEnumerable<Diagnostic> diagnostics = getEmitDiagnostics(finalCompilation)
+        IEnumerable<Diagnostic> diagnostics = configDiagnostics
+            .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
-            .Where(d => d.Severity != DiagnosticSeverity.Hidden);
+            .Where(filterDiagnostic);
         string diagnosticsText = diagnostics.GetDiagnosticsText();
         int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
@@ -261,7 +287,6 @@ public class Compiler(
                     Language = "csharp",
                     LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
                         return new(getIl(peFile));
                     }),
                 },
@@ -269,10 +294,9 @@ public class Compiler(
                 {
                     Type = "seq",
                     Label = "Sequence points",
-                    LazyText = new(async () =>
+                    LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
-                        return await getSequencePoints(peFile);
+                        return new(getSequencePoints(peFile));
                     }),
                 },
                 new()
@@ -280,10 +304,9 @@ public class Compiler(
                     Type = "cs",
                     Label = "C#",
                     Language = "csharp",
-                    LazyText = new(async () =>
+                    LazyText = new(() =>
                     {
-                        peFile ??= getPeFile(finalCompilation);
-                        return await getCSharpAsync(peFile);
+                        return new(getCSharpAsync(peFile));
                     }),
                 },
                 new()
@@ -307,11 +330,16 @@ public class Compiler(
                     EagerText = diagnosticsText,
                     Priority = numErrors > 0 ? 2 : 0,
                 },
-            ]);
+            ])
+        {
+            ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
+        };
 
         return result;
 
-        void executeConfiguration(string code)
+        static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
+
+        bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
@@ -330,50 +358,46 @@ public class Compiler(
                     ..references,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
-                options: createCompilationOptions(OutputKind.ConsoleApplication));
-
-            var emitStream = getEmitStream(configCompilation)
-                // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
-                ?? getEmitStream(configCompilation.WithReferences(
+                options: CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
+                    .WithSpecificDiagnosticOptions(
                     [
-                        ..references,
-                        ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
-                    ]))
-                ?? throw new InvalidOperationException("Cannot execute configuration due to compilation errors:" +
-                    Environment.NewLine +
-                    getEmitDiagnostics(configCompilation).JoinToString(Environment.NewLine));
+                        // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+                        KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
+                    ]));
+
+            var emitStream = getEmitStream(configCompilation, out diagnostics);
+
+            if (emitStream == null)
+            {
+                // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
+                var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
+                [
+                    ..references,
+                    ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
+                ]);
+                emitStream = getEmitStream(configCompilationWithBuiltInReferences, out var diagnosticsWithBuiltInReferences);
+                if (emitStream != null)
+                {
+                    diagnostics = diagnosticsWithBuiltInReferences;
+                }
+            }
+
+            if (emitStream == null)
+            {
+                return false;
+            }
 
             var configAssembly = alc.LoadFromStream(emitStream);
 
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            Config.Reset();
-
             Executor.InvokeEntryPoint(entryPoint);
 
-            parseOptions = Config.CurrentCSharpParseOptions;
-            options = Config.CurrentCSharpCompilationOptions;
-
-            logger.LogDebug("Using language version {LangVersion} (specified {SpecifiedLangVersion})", parseOptions.LanguageVersion, parseOptions.SpecifiedLanguageVersion);
-        }
-
-        static CSharpCompilationOptions createCompilationOptions(OutputKind outputKind)
-        {
-            return new CSharpCompilationOptions(
-                outputKind,
-                allowUnsafe: true,
-                nullableContextOptions: NullableContextOptions.Enable,
-                concurrentBuild: false);
+            return true;
         }
 
         static string getFilePath(InputCode input) => directory + input.FileName;
-
-        static bool isCSharp(InputCode input, out bool script)
-        {
-            return (script = ".csx".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase)) ||
-                ".cs".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
-        }
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
@@ -389,7 +413,7 @@ public class Compiler(
                 };
 
                 // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
-                if (isRazorOrCshtml(input))
+                if (input.FileName.IsRazorFileName())
                 {
                     string cssFileName = input.FileName + ".css";
                     if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
@@ -439,7 +463,7 @@ public class Compiler(
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
             foreach (var input in additionalSources)
             {
-                if (isRazorOrCshtml(input))
+                if (input.FileName.IsRazorFileName())
                 {
                     var filePath = getFilePath(input);
                     var item = RazorAccessors.CreateSourceGeneratorProjectItem(
@@ -544,12 +568,6 @@ public class Compiler(
             }
         }
 
-        static bool isRazorOrCshtml(InputCode input)
-        {
-            return ".razor".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase) ||
-                ".cshtml".Equals(input.FileExtension, StringComparison.OrdinalIgnoreCase);
-        }
-
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
         {
             return compilationInput.RazorToolchain switch
@@ -603,17 +621,18 @@ public class Compiler(
                 : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
         }
 
-        MemoryStream? getEmitStream(CSharpCompilation compilation)
+        MemoryStream? getEmitStream(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
         {
             var stream = new MemoryStream();
             var emitResult = compilation.Emit(stream);
             if (!emitResult.Success)
             {
-                logger.LogDebug("Emit failed: {Diagnostics}", emitResult.Diagnostics);
+                diagnostics = emitResult.Diagnostics;
                 return null;
             }
 
             stream.Position = 0;
+            diagnostics = compilation.GetDiagnostics();
             return stream;
         }
 
@@ -621,12 +640,11 @@ public class Compiler(
             [NotNullWhen(returnValue: true)] out MemoryStream? emitStream,
             [NotNullWhen(returnValue: false)] out string? error)
         {
-            emitStream = getEmitStream(compilation);
+            emitStream = getEmitStream(compilation, out var diagnostics);
             if (emitStream is null)
             {
-                error = compilation.GetDiagnostics().FirstOrDefault(d => d.Id == "CS5001") is { } d
-                    ? d.GetMessage(CultureInfo.InvariantCulture)
-                    : "Cannot execute due to compilation errors.";
+                error = "Cannot execute due to compilation errors:" + Environment.NewLine +
+                    diagnostics.JoinToString(Environment.NewLine);
                 return false;
             }
 
@@ -634,15 +652,9 @@ public class Compiler(
             return true;
         }
 
-        static ImmutableArray<Diagnostic> getEmitDiagnostics(CSharpCompilation compilation)
+        ICSharpCode.Decompiler.Metadata.PEFile? getPeFile(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
         {
-            var emitResult = compilation.Emit(new MemoryStream());
-            return emitResult.Diagnostics;
-        }
-
-        ICSharpCode.Decompiler.Metadata.PEFile? getPeFile(CSharpCompilation compilation)
-        {
-            return getEmitStream(compilation) is { } stream
+            return getEmitStream(compilation, out diagnostics) is { } stream
                 ? new(compilation.AssemblyName ?? "", stream)
                 : null;
         }
@@ -752,6 +764,32 @@ public class Compiler(
         {
             return new ICSharpCode.Decompiler.DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1);
         }
+    }
+
+    public static CSharpParseOptions CreateDefaultParseOptions()
+    {
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        return new CSharpParseOptions(LanguageVersion.Preview)
+            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+    }
+
+    public static OutputKind GetDefaultOutputKind(IEnumerable<SyntaxTree> sources)
+    {
+        // Choose output kind EXE if there are top-level statements, otherwise DLL.
+        // Only do this if parseOptions haven't been changed
+        return sources.Any(static s => s.GetRoot().ChildNodes().OfType<GlobalStatementSyntax>().Any())
+            ? OutputKind.ConsoleApplication
+            : OutputKind.DynamicallyLinkedLibrary;
+    }
+
+    public static CSharpCompilationOptions CreateDefaultCompilationOptions(OutputKind outputKind)
+    {
+        // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        return new CSharpCompilationOptions(
+            outputKind,
+            allowUnsafe: true,
+            nullableContextOptions: NullableContextOptions.Enable,
+            concurrentBuild: false);
     }
 }
 

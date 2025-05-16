@@ -51,17 +51,23 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return await sdkDownloader.GetInfoAsync(message.VersionToLoad);
     }
 
-    public Task<MonacoCompletionList> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
+    public Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
         return languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context);
     }
 
-    public Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
+    public Task<string?> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();
-        languageServices.OnDidChangeWorkspace(message.Models);
-        return NoOutput.AsyncInstance;
+        return languageServices.ResolveCompletionItemAsync(message.Item);
+    }
+
+    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
+    {
+        var languageServices = services.GetRequiredService<LanguageServices>();
+        await languageServices.OnDidChangeWorkspaceAsync(message.Models);
+        return NoOutput.Instance;
     }
 
     public Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModel message)

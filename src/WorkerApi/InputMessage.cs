@@ -13,6 +13,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(GetCompilerDependencyInfo), nameof(GetCompilerDependencyInfo))]
 [JsonDerivedType(typeof(GetSdkInfo), nameof(GetSdkInfo))]
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
+[JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
 [JsonDerivedType(typeof(OnDidChangeModel), nameof(OnDidChangeModel))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
@@ -91,9 +92,17 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record ProvideCompletionItems(string ModelUri, Position Position, CompletionContext Context) : WorkerInputMessage<CompletionList>
+    public sealed record ProvideCompletionItems(string ModelUri, Position Position, CompletionContext Context) : WorkerInputMessage<string>
     {
-        public override Task<CompletionList> HandleAsync(IExecutor executor)
+        public override Task<string> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
+    public sealed record ResolveCompletionItem(MonacoCompletionItem Item) : WorkerInputMessage<string?>
+    {
+        public override Task<string?> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -139,7 +148,8 @@ public abstract record WorkerInputMessage
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
-        Task<CompletionList> HandleAsync(ProvideCompletionItems message);
+        Task<string> HandleAsync(ProvideCompletionItems message);
+        Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModel message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);

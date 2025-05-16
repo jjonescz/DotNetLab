@@ -1,42 +1,34 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Languages;
-using Microsoft.JSInterop;
+using System.Runtime.Versioning;
 
 namespace DotNetLab;
 
 /// <summary>
 /// <see href="https://github.com/serdarciplak/BlazorMonaco/issues/124"/>
 /// </summary>
-internal sealed class CompletionItemProviderAsync
+[SupportedOSPlatform("browser")]
+internal sealed class CompletionItemProviderAsync(ILogger<CompletionItemProviderAsync> logger)
 {
-    public delegate Task<CompletionList> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context);
+    public delegate Task<string> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
 
-    public delegate Task<CompletionItem> ResolveCompletionItemDelegate(CompletionItem completionItem);
+    public delegate Task<string?> ResolveCompletionItemDelegate(MonacoCompletionItem completionItem, CancellationToken cancellationToken);
 
-    public static ValueTask Register(IJSRuntime jsRuntime, LanguageSelector language, CompletionItemProviderAsync completionItemProvider)
-    {
-        return jsRuntime.InvokeVoidAsync(
-            "blazorMonaco.languages.registerCompletionItemProvider",
-            language,
-            completionItemProvider.TriggerCharacters,
-            DotNetObjectReference.Create(completionItemProvider));
-    }
+    public ILogger<CompletionItemProviderAsync> Logger { get; } = logger;
 
-    public List<string>? TriggerCharacters { get; init; }
+    public string[]? TriggerCharacters { get; init; }
 
     public required ProvideCompletionItemsDelegate ProvideCompletionItemsFunc { get; init; }
 
     public required ResolveCompletionItemDelegate ResolveCompletionItemFunc { get; init; }
 
-    [JSInvokable]
-    public Task<CompletionList> ProvideCompletionItems(string modelUri, Position position, CompletionContext context)
+    public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
     {
-        return ProvideCompletionItemsFunc(modelUri, position, context);
+        return ProvideCompletionItemsFunc(modelUri, position, context, cancellationToken);
     }
 
-    [JSInvokable]
-    public Task<CompletionItem> ResolveCompletionItem(CompletionItem completionItem)
+    public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem completionItem, CancellationToken cancellationToken)
     {
-        return ResolveCompletionItemFunc.Invoke(completionItem);
+        return ResolveCompletionItemFunc.Invoke(completionItem, cancellationToken);
     }
 }

@@ -4,6 +4,8 @@ export async function afterStarted(blazor) {
 
     const dotNetExports = await runtime.getAssemblyExports('DotNetLab.App.dll');
 
+    globalThis.DotNetLab = dotNetExports.DotNetLab;
+
     // When a new service worker version is activated
     // (after user clicks "Refresh" which sends 'skipWaiting' message to the worker),
     // reload the page so the new service worker is used to load all the assets.
