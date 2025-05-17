@@ -291,7 +291,14 @@ internal sealed class WorkerController : IAsyncDisposable
     private async void PostMessage<T>(T message)
         where T : WorkerInputMessage<NoOutput>
     {
-        await PostMessageAsync(message);
+        try
+        {
+            await PostMessageAsync(message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Message {Type} failed.", message.GetType());
+        }
     }
 
     private async Task PostMessageAsync<T>(T message)

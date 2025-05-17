@@ -8,6 +8,7 @@ namespace DotNetLab.Lab;
 [SupportedOSPlatform("browser")]
 internal sealed class LanguageServices(
     ILoggerFactory loggerFactory,
+    ILogger<LanguageServices> logger,
     IJSRuntime jsRuntime,
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
@@ -48,14 +49,21 @@ internal sealed class LanguageServices(
         }
     }
 
-    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, Task> handler)
+    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, Task> handler, Action<Exception> errorHandler)
     {
         DebounceAsync(ref info, (args, handler), 0, static async (args, cancellationToken) =>
         {
             await args.handler(args.args);
             return 0;
         },
-        CancellationToken.None);
+        CancellationToken.None)
+        .ContinueWith(t =>
+        {
+            if (t.IsFaulted)
+            {
+                errorHandler(t.Exception);
+            }
+        });
     }
 
     public Task EnableAsync(bool enable)
@@ -155,6 +163,10 @@ internal sealed class LanguageServices(
             var markers = await worker.GetDiagnosticsAsync();
             var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
             await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
+        },
+        (ex) =>
+        {
+            logger.LogError(ex, "Updating diagnostics failed");
         });
     }
 }
