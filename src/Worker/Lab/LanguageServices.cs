@@ -141,11 +141,22 @@ internal sealed class LanguageServices
                         {
                             modelUris.Add(doc.Id, model.Uri);
                             ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(doc.Id, model.FileName));
+
+                            if (model.NewContent != null)
+                            {
+                                // The caller sets the content to reset the state.
+                                ApplyChanges(doc.WithText(SourceText.From(model.NewContent)).Project.Solution);
+                            }
                         }
                         else
                         {
                             ApplyChanges(Project.RemoveDocument(doc.Id).Solution);
                         }
+                    }
+                    else if (model.NewContent != null)
+                    {
+                        // The caller sets the content to reset the state.
+                        ApplyChanges(doc.WithText(SourceText.From(model.NewContent)).Project.Solution);
                     }
                 }
                 else

@@ -101,7 +101,7 @@ internal sealed class LanguageServices(
         completionProvider = null;
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
+    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true)
     {
         if (!Enabled)
         {
@@ -110,7 +110,11 @@ internal sealed class LanguageServices(
 
         modelUrlToFileName = models.ToDictionary(m => m.Uri, m => m.FileName);
         worker.OnDidChangeWorkspace(models);
-        UpdateDiagnostics();
+
+        if (updateDiagnostics)
+        {
+            UpdateDiagnostics();
+        }
     }
 
     public void OnDidChangeModel(ModelChangedEvent args)
