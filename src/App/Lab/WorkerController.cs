@@ -310,7 +310,7 @@ internal sealed class WorkerController : IAsyncDisposable
             case WorkerOutputMessage.Empty:
                 break;
             case WorkerOutputMessage.Failure failure:
-                throw new InvalidOperationException(failure.Message);
+                throw new InvalidOperationException(failure.FullString);
             default:
                 throw new InvalidOperationException($"Unexpected non-empty message type: {incoming}");
         }
@@ -335,7 +335,7 @@ internal sealed class WorkerController : IAsyncDisposable
             },
             WorkerOutputMessage.Failure failure => fallback switch
             {
-                null => throw new InvalidOperationException(failure.Message),
+                null => throw new InvalidOperationException(failure.FullString),
                 _ => fallback(failure.FullString),
             },
             _ => throw new InvalidOperationException($"Unexpected message type: {incoming}"),
