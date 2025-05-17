@@ -5,6 +5,11 @@ namespace DotNetLab;
 
 internal static class MonacoUtil
 {
+    public static Task<string> GetTextAsync(this TextModel model)
+    {
+        return model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
+    }
+
     public static async ValueTask<MonacoEditorViewState> SaveViewStateAsync(this Editor editor, IJSObjectReference module)
     {
         var result = await module.InvokeAsync<MonacoEditorViewState>("saveMonacoEditorViewState", editor.Id);

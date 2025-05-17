@@ -324,13 +324,12 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private async Task OnSetEnableLanguageServicesAsync()
     {
         await UpdateLanguageServicesAsync();
+        await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
 
         if (EnableLanguageServices)
         {
-            Page.OnWorkspaceChanged();
+            await Page.ResetWorkspaceAsync();
         }
-
-        await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
     }
 
     private async Task OnSetEnableWorkerAsync()

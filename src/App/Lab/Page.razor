@@ -610,6 +610,10 @@
         await AutoSelectOutputAsync(
             updateTimestampMode: mode,
             storeInCacheMode: mode);
+
+        // Reset workspace state in case incremental updates were applied incorrectly.
+        // We don't want diagnostics from the workspace though, we just set the ones from compiler.
+        await ResetWorkspaceAsync(updateDiagnostics: false);
     }
 
     private void TryStoreInCache(SavedState state, CompiledAssembly output)
@@ -989,6 +993,21 @@
             .ToImmutableArray();
         inputs.ForEach(i => { i.NewContent = null; });
         LanguageServices.OnDidChangeWorkspace(models);
+    }
+
+    /// <summary>
+    /// Sends the current workspace full state to language services.
+    /// </summary>
+    public async Task ResetWorkspaceAsync(bool updateDiagnostics = true)
+    {
+        if (!LanguageServices.Enabled)
+        {
+            return;
+        }
+
+        var models = await inputs
+            .SelectAsArrayAsync(static async i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = await i.Model.GetTextAsync() });
+        LanguageServices.OnDidChangeWorkspace(models, updateDiagnostics: updateDiagnostics);
     }
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)

@@ -157,7 +157,7 @@ partial class Page
     {
         // Always save the current editor texts.
         var inputsToSave = await getInputsAsync();
-        var configurationToSave = configuration is null ? null : await getInputAsync(configuration.Model);
+        var configurationToSave = configuration is null ? null : await configuration.Model.GetTextAsync();
 
         using (Util.EnsureSync())
         {
@@ -190,15 +190,10 @@ partial class Page
             var builder = ImmutableArray.CreateBuilder<InputCode>(inputsSnapshot.Length);
             foreach (var (fileName, model) in inputsSnapshot)
             {
-                var text = await getInputAsync(model);
+                var text = await model.GetTextAsync();
                 builder.Add(new() { FileName = fileName, Text = text });
             }
             return builder.ToImmutable();
-        }
-
-        static async Task<string> getInputAsync(TextModel model)
-        {
-            return await model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
         }
     }
 }

@@ -104,6 +104,16 @@ public static class Util
         return results;
     }
 
+    public static async Task<ImmutableArray<TResult>> SelectAsArrayAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<TResult>> selector)
+    {
+        var results = ImmutableArray.CreateBuilder<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);
+        foreach (var item in source)
+        {
+            results.Add(await selector(item));
+        }
+        return results.DrainToImmutable();
+    }
+
     public static IEnumerable<TResult> SelectNonNull<T, TResult>(this IEnumerable<T> source, Func<T, TResult?> selector)
     {
         foreach (var item in source)
