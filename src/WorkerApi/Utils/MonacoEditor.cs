@@ -17,7 +17,6 @@ public sealed class MonacoCompletionList
     public required ImmutableArray<MonacoCompletionItem> Suggestions { get; init; }
     public BlazorMonaco.Range? Range { get; init; }
     public bool IsIncomplete { get; init; }
-    public ImmutableArray<char> CommitCharacters { get; init; }
 }
 
 /// <remarks>
@@ -34,6 +33,7 @@ public sealed class MonacoCompletionItem
     public string? Documentation { get; set; }
     public List<TextEdit>? AdditionalTextEdits { get; set; }
     public string? Detail { get; set; }
+    public string[]? CommitCharacters { get; set; }
 }
 
 [JsonSerializable(typeof(LanguageSelector))]

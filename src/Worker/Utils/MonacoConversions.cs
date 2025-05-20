@@ -2,11 +2,13 @@
 global using MonacoRange = BlazorMonaco.Range;
 global using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.CompletionList;
+global using RoslynCompletionRules = Microsoft.CodeAnalysis.Completion.CompletionRules;
 
 using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 
@@ -21,17 +23,44 @@ public static class MonacoConversions
 
     public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)
     {
+        // VS implements a "soft" vs "hard" suggestion mode. The "soft" suggestion mode is when the completion list is shown,
+        // but the user has to press enter to insert the completion. The "hard" suggestion mode is when the completion list is
+        // shown, and any commit character will insert the completion. Monaco does not have this concept, so we have to
+        // emulate it by removing the commit characters from the completion list if we are in "soft" suggestion mode.
+        var isSuggestMode = completions.SuggestionModeItem is not null;
+        var commitCharacterRulesCache = new Dictionary<ImmutableArray<CharacterSetModificationRule>, string[]>();
+        var commitCharactersBuilder = new HashSet<string>();
+
+        var completionItemsBuilder = ImmutableArray.CreateBuilder<MonacoCompletionItem>(completions.ItemsList.Count);
+        foreach (var completion in completions.ItemsList)
+        {
+            var commitCharacters = BuildCommitCharacters(
+                completion.Rules.CommitCharacterRules,
+                isSuggestMode,
+                commitCharacterRulesCache,
+                commitCharactersBuilder);
+
+            var item = completion.ToCompletionItem(
+                completionItemsBuilder.Count,
+                commitCharacterRulesCache,
+                commitCharactersBuilder);
+
+            if (commitCharacters is not null)
+            {
+                item.CommitCharacters = commitCharacters;
+            }
+
+            completionItemsBuilder.Add(item);
+        }
+
         return new MonacoCompletionList
         {
             Range = text.Lines.GetLinePositionSpan(completions.Span).ToRange(),
-            Suggestions = completions.ItemsList
-                .Select(static (c, i) => c.ToCompletionItem(i))
-                .ToImmutableArray(),
-            CommitCharacters = completions.Rules.DefaultCommitCharacters,
+            Suggestions = completionItemsBuilder.DrainToImmutable(),
         };
     }
 
-    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index)
+    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index, Dictionary<ImmutableArray<CharacterSetModificationRule>, string[]> commitCharacterRulesCache, HashSet<string> commitCharactersBuilder)
     {
         return new MonacoCompletionItem
         {
@@ -133,5 +162,77 @@ public static class MonacoConversions
         [NotNullWhen(returnValue: true)] out string? insertionText)
     {
         return completionItem.Properties.TryGetValue("InsertionText", out insertionText);
+    }
+
+    private static string[] DefaultCommitCharacters { get; } = [.. RoslynCompletionRules.Default.DefaultCommitCharacters.Select(c => c.ToString())];
+
+    // Borrowed from OmniSharp, licensed under the MIT license.
+    // https://github.com/OmniSharp/omnisharp-roslyn/blob/5aef90f764d30f40c32a64658cab0e2c9515bf53/src/OmniSharp.Roslyn.CSharp/Services/Completion/CompletionListBuilder.cs#L98-L161
+    private static string[]? BuildCommitCharacters(ImmutableArray<CharacterSetModificationRule> characterRules, bool isSuggestionMode, Dictionary<ImmutableArray<CharacterSetModificationRule>, string[]> commitCharacterRulesCache, HashSet<string> commitCharactersBuilder)
+    {
+        if (isSuggestionMode)
+        {
+            // To emulate soft selection we should remove all trigger characters forcing the Editor to
+            // fallback to only <tab> and <enter> for accepting the completions.
+            return null;
+        }
+
+        if (characterRules.IsEmpty)
+        {
+            // Use defaults
+            return DefaultCommitCharacters;
+        }
+
+        if (commitCharacterRulesCache.TryGetValue(characterRules, out var cachedRules))
+        {
+            return cachedRules;
+        }
+
+        addAllCharacters(RoslynCompletionRules.Default.DefaultCommitCharacters);
+
+        foreach (var modifiedRule in characterRules)
+        {
+            switch (modifiedRule.Kind)
+            {
+                case CharacterSetModificationKind.Add:
+                    addAllCharacters(modifiedRule.Characters);
+                    break;
+
+                case CharacterSetModificationKind.Remove:
+                    foreach (var @char in modifiedRule.Characters)
+                    {
+                        _ = commitCharactersBuilder.Remove(@char.ToString());
+                    }
+                    break;
+
+                case CharacterSetModificationKind.Replace:
+                    commitCharactersBuilder.Clear();
+                    addAllCharacters(modifiedRule.Characters);
+                    break;
+            }
+        }
+
+        // VS has a more complex concept of a commit mode vs suggestion mode for intellisense.
+        // LSP doesn't have this, so mock it as best we can by removing space ` ` from the list
+        // of commit characters if we're in suggestion mode.
+        if (isSuggestionMode)
+        {
+            commitCharactersBuilder.Remove(" ");
+        }
+
+        var finalCharacters = commitCharactersBuilder.ToArray();
+        commitCharactersBuilder.Clear();
+
+        commitCharacterRulesCache.Add(characterRules, finalCharacters);
+
+        return finalCharacters;
+
+        void addAllCharacters(ImmutableArray<char> characters)
+        {
+            foreach (var @char in characters)
+            {
+                _ = commitCharactersBuilder.Add(@char.ToString());
+            }
+        }
     }
 }
