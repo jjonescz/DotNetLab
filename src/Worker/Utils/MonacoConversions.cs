@@ -1,8 +1,11 @@
 ﻿global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
+global using MonacoCompletionTriggerKind = BlazorMonaco.Languages.CompletionTriggerKind;
 global using MonacoRange = BlazorMonaco.Range;
 global using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.CompletionList;
 global using RoslynCompletionRules = Microsoft.CodeAnalysis.Completion.CompletionRules;
+global using RoslynCompletionTrigger = Microsoft.CodeAnalysis.Completion.CompletionTrigger;
+global using RoslynCompletionTriggerKind = Microsoft.CodeAnalysis.Completion.CompletionTriggerKind;
 
 using BlazorMonaco;
 using BlazorMonaco.Editor;
