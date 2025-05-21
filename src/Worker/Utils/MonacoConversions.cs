@@ -43,15 +43,7 @@ public static class MonacoConversions
                 commitCharacterRulesCache,
                 commitCharactersBuilder);
 
-            var item = completion.ToCompletionItem(
-                completionItemsBuilder.Count,
-                commitCharacterRulesCache,
-                commitCharactersBuilder);
-
-            if (commitCharacters is not null)
-            {
-                item.CommitCharacters = commitCharacters;
-            }
+            var item = completion.ToCompletionItem(completionItemsBuilder.Count, commitCharacters);
 
             completionItemsBuilder.Add(item);
         }
@@ -63,7 +55,7 @@ public static class MonacoConversions
         };
     }
 
-    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index, Dictionary<ImmutableArray<CharacterSetModificationRule>, string[]> commitCharacterRulesCache, HashSet<string> commitCharactersBuilder)
+    public static MonacoCompletionItem ToCompletionItem(this RoslynCompletionItem completion, int index, string[]? commitCharacters)
     {
         return new MonacoCompletionItem
         {
@@ -80,6 +72,7 @@ public static class MonacoConversions
                 : null,
             FilterText = completion.FilterText != completion.DisplayText ? completion.FilterText : null,
             SortText = completion.SortText != completion.DisplayText ? completion.SortText : null,
+            CommitCharacters = commitCharacters,
         };
 
         static CompletionItemKind getKind(ImmutableArray<string> tags)
@@ -213,14 +206,6 @@ public static class MonacoConversions
                     addAllCharacters(modifiedRule.Characters);
                     break;
             }
-        }
-
-        // VS has a more complex concept of a commit mode vs suggestion mode for intellisense.
-        // LSP doesn't have this, so mock it as best we can by removing space ` ` from the list
-        // of commit characters if we're in suggestion mode.
-        if (isSuggestionMode)
-        {
-            commitCharactersBuilder.Remove(" ");
         }
 
         var finalCharacters = commitCharactersBuilder.ToArray();
