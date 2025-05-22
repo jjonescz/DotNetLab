@@ -55,12 +55,29 @@ internal sealed class LanguageServices
         var text = await document.GetTextAsync();
         int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
         var service = CompletionService.GetService(document)!;
-        var completions = await service.GetCompletionsAsync(document, caretPosition);
+
+        var completionTrigger = context switch
+        {
+            { TriggerKind: MonacoCompletionTriggerKind.TriggerCharacter, TriggerCharacter: [.., var c] } => RoslynCompletionTrigger.CreateInsertionTrigger(c),
+            _ => RoslynCompletionTrigger.Invoke,
+        };
+
+        bool shouldTriggerCompletion = service.ShouldTriggerCompletion(text, caretPosition, completionTrigger);
+        if (completionTrigger.Kind is RoslynCompletionTriggerKind.Insertion
+            && !shouldTriggerCompletion)
+        {
+            sw.Stop();
+            logger.LogDebug("Determined completions should not trigger in {Milliseconds} ms", sw.ElapsedMilliseconds);
+            return """{"suggestions":[]}""";
+        }
+
+        var completions = await service.GetCompletionsAsync(document, caretPosition, trigger: completionTrigger);
         lastCompletions = completions;
         var time1 = sw.ElapsedMilliseconds;
         sw.Restart();
         var result = completions.ToCompletionList(text);
         var time2 = sw.ElapsedMilliseconds;
+        sw.Stop();
         logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
         return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
     }
