@@ -14,7 +14,6 @@ on:
 
 permissions:
   contents: write
-  deployments: write
   pull-requests: read
 
 jobs:
@@ -22,27 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
+    if: >
+      inputs.simulate_fork_pr ||
+      github.event.pull_request.head.repo.full_name != github.repository
+
     concurrency:
       group: deploy-${{ github.event.inputs.simulate_fork_pr || github.event.number }}
-
-    environment:
-      name: deploy-${{ inputs.simulate_fork_pr || github.event.number }}
-      url: ${{ steps.get-url.outputs.url }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Push to internal branch
-        if: >
-          inputs.simulate_fork_pr ||
-          github.event.pull_request.head.repo.full_name != github.repository
         run: |
           git fetch origin ${{ github.sha }}
           git push "https://user:${{ secrets.PUSH_GITHUB_TOKEN }}@github.com/${{ github.repository }}" ${{ github.sha }}:refs/heads/deploy/${{ inputs.simulate_fork_pr || github.event.number }}
-
-      - name: Get deploy URL
-        id: get-url
-        run: |
-          echo "url=https://${BRANCH_NAME//[\/.]/-}.dotnetinternals.pages.dev/" > "$GITHUB_OUTPUT"
-        env:
-          BRANCH_NAME: ${{ github.head_ref || format('deploy/{0}', inputs.simulate_fork_pr || github.event.number) }}
