@@ -63,6 +63,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("9.0.0-preview.25128.1")]
     [InlineData("10.0.0-preview.25252.1")]
     [InlineData("10.0.0-preview.25264.1")]
+    [InlineData("10.0.0-preview.25311.107")]
     [InlineData("main")] // test that we can download a branch
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
@@ -82,6 +83,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
+
+        var syntaxText = await compiled.Files.First().Value.GetOutput("syntax")!.GetTextAsync(outputFactory: null);
+        output.WriteLine(syntaxText);
+        Assert.Contains("RazorDocument", syntaxText);
     }
 
     [Theory]
