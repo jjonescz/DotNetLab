@@ -13,7 +13,8 @@
 <FluentHeader Class="lab-header" Height="null">
     <div style="flex-grow: 1; justify-content: start">
         @* Logo *@
-        <a href="/" style="text-decoration: none">@*
+        @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
+        <a href="/#csharp" style="text-decoration: none" @onclick="@(() => OnLocationChanged("csharp"))">@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
@@ -343,6 +344,12 @@
         }
 
         dotNetObjectReference?.Dispose();
+    }
+
+    private async Task OnLocationChanged(string targetSlug)
+    {
+        currentSlug = targetSlug;
+        await LoadStateFromUrlAsync();
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
