@@ -101,6 +101,23 @@ internal sealed class LanguageServices(
             },
             ResolveCompletionItemFunc = (completionItem, cancellationToken) => worker.ResolveCompletionItemAsync(completionItem),
         });
+
+        blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new SemanticTokensProvider
+        {
+            Legend = new SemanticTokensLegend()
+            {
+
+            },
+            ProvideSemanticTokens = (modelUri, rangeJson, cancellationToken) =>
+            {
+                return DebounceAsync(
+                    ref diagnosticsDebounce,
+                    (worker, jsRuntime, modelUri, rangeJson),
+                    null,
+                    static (args, cancellationToken) => args.worker.ProvideSemanticTokensAsync(args.jsRuntime, args.modelUri, args.rangeJson),
+                    cancellationToken);
+            }
+        });
     }
 
     private void Unregister()

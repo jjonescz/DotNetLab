@@ -30,6 +30,32 @@ export function registerCompletionProvider(language, triggerCharacters, completi
     });
 }
 
+export function registerSemanticTokensProvider(language, legend, provider) {
+    const disposables = new DisposableList();
+    const languageParsed = JSON.parse(language);
+    const legendParsed = JSON.parse(legend);
+    disposables.add(monaco.languages.registerDocumentSemanticTokensProvider(languageParsed, {
+        getLegend: () => legendParsed,
+        provideDocumentSemanticTokens: (model, lastResultId, token) => {
+            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
+                provider, decodeURI(model.uri.toString()), null, token));
+            return result;
+        },
+        releaseDocumentSemanticTokens: (resultId) => {
+
+        },
+    }));
+    disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
+        getLegend: () => legendParsed,
+        provideDocumentRangeSemanticTokens: (model, range, token) => {
+            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
+                provider, decodeURI(model.uri.toString()), JSON.stringify(range), token));
+            return result;
+        },
+    }));
+    return disposables;
+}
+
 /**
  * @param {monaco.IDisposable} disposable
  */
@@ -43,4 +69,19 @@ export function dispose(disposable) {
  */
 export function onCancellationRequested(token, callback) {
     token.onCancellationRequested(callback);
+}
+
+class DisposableList {
+    constructor() {
+        this.disposables = [];
+    }
+    add(disposable) {
+        this.disposables.push(disposable);
+    }
+    dispose() {
+        for (const disposable of this.disposables) {
+            disposable.dispose();
+        }
+        this.disposables = [];
+    }
 }
