@@ -138,6 +138,19 @@ internal static class RazorUtil
         }
     }
 
+    public static RazorCSharpDocument GetCSharpDocumentSafe(this RazorCodeDocument document)
+    {
+        // GetCSharpDocument extension method has been turned into an instance method in https://github.com/dotnet/razor/pull/11939.
+        if (document.GetType().GetMethod("GetCSharpDocument", BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
+        {
+            return (RazorCSharpDocument)method.Invoke(document, [])!;
+        }
+
+        return (RazorCSharpDocument)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
+            .GetMethod("GetCSharpDocument", BindingFlags.Static | BindingFlags.Public)!
+            .Invoke(null, [document])!;
+    }
+
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)
     {
         // Different razor versions return IReadOnlyList vs ImmutableArray,
@@ -160,6 +173,19 @@ internal static class RazorUtil
         }
 
         return (string)documentType.GetProperty("GeneratedCode")!.GetValue(document)!;
+    }
+
+    public static RazorSyntaxTree GetSyntaxTreeSafe(this RazorCodeDocument document)
+    {
+        // GetSyntaxTree extension method has been turned into an instance method in https://github.com/dotnet/razor/pull/11939.
+        if (document.GetType().GetMethod("GetSyntaxTree", BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
+        {
+            return (RazorSyntaxTree)method.Invoke(document, [])!;
+        }
+
+        return (RazorSyntaxTree)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
+            .GetMethod("GetSyntaxTree", BindingFlags.Static | BindingFlags.Public)!
+            .Invoke(null, [document])!;
     }
 
     public static IEnumerable<RazorProjectItem> EnumerateItemsSafe(this RazorProjectFileSystem fileSystem, string basePath)

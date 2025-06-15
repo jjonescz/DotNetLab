@@ -64,6 +64,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("10.0.0-preview.25252.1")]
     [InlineData("10.0.0-preview.25264.1")]
     [InlineData("10.0.0-preview.25311.107")]
+    [InlineData("10.0.0-preview.25314.101")]
     [InlineData("main")] // test that we can download a branch
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
