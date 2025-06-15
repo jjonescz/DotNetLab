@@ -196,14 +196,14 @@ public class Compiler(
                     return KeyValuePair.Create(input.FileName, new CompiledFile([]));
                 }
 
-                string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocument().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
+                string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocumentSafe().GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
 
                 var compiledFile = new CompiledFile([
                     new()
                     {
                         Type = "syntax",
                         Label = "Syntax",
-                        EagerText = codeDocument.Map(d => d?.GetSyntaxTree().Serialize() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d?.GetSyntaxTreeSafe().Serialize() ?? "").Serialize(),
                     },
                     new()
                     {
@@ -227,7 +227,7 @@ public class Compiler(
                         Type = "gcs",
                         Label = "C#",
                         Language = "csharp",
-                        EagerText = codeDocument.Map(d => d ?.GetCSharpDocument().GetGeneratedCode() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
                     new()
@@ -487,7 +487,7 @@ public class Compiler(
                     .. fileSystem.Inner.EnumerateItemsSafe("/").Select((item) =>
                     {
                         RazorCodeDocument declarationCodeDocument = declarationProjectEngine.ProcessDeclarationOnlySafe(item);
-                        string declarationCSharp = declarationCodeDocument.GetCSharpDocument().GetGeneratedCode();
+                        string declarationCSharp = declarationCodeDocument.GetCSharpDocumentSafe().GetGeneratedCode();
                         return CSharpSyntaxTree.ParseText(declarationCSharp, parseOptions, encoding: Encoding.UTF8);
                     }),
                     .. cSharpSyntaxTrees,
@@ -509,7 +509,7 @@ public class Compiler(
                         RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
                         RazorCodeDocument designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
 
-                        allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocument().GetDiagnostics().Select(RazorUtil.ToDiagnostic));
+                        allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocumentSafe().GetDiagnostics().Select(RazorUtil.ToDiagnostic));
 
                         return (codeDocument, designTimeDocument);
                     });
@@ -518,7 +518,7 @@ public class Compiler(
                 [
                     .. razorMap.Values.Select((docs) =>
                     {
-                        var cSharpText = docs.Runtime.GetCSharpDocument().GetGeneratedCode();
+                        var cSharpText = docs.Runtime.GetCSharpDocumentSafe().GetGeneratedCode();
                         return CSharpSyntaxTree.ParseText(cSharpText, parseOptions, encoding: Encoding.UTF8);
                     }),
                     .. cSharpSyntaxTrees,
