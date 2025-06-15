@@ -435,6 +435,13 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(string));
     }
 
+    public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.ProvideSemanticTokens(modelUri, rangeJson) { Id = messageId++ },
+            deserializeAs: default(string));
+    }
+
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
     {
         PostMessage(

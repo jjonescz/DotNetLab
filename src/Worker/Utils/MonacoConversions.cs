@@ -19,6 +19,11 @@ namespace DotNetLab;
 
 public static class MonacoConversions
 {
+    extension(SourceText text)
+    {
+        public TextSpan FullRange => new TextSpan(0, text.Length);
+    }
+
     public static TextSpan GetTextSpan(this ModelContentChange change)
     {
         return new TextSpan(change.RangeOffset, change.RangeLength);
@@ -127,6 +132,13 @@ public static class MonacoConversions
         return new LinePosition(position.LineNumber - 1, position.Column - 1);
     }
 
+    public static LinePositionSpan ToLinePositionSpan(this MonacoRange range)
+    {
+        return new LinePositionSpan(
+            new LinePosition(range.StartLineNumber - 1, range.StartColumn - 1),
+            new LinePosition(range.EndLineNumber - 1, range.EndColumn - 1));
+    }
+
     public static MarkerData ToMarkerData(this Diagnostic d)
     {
         return SimpleMonacoConversions.ToMarkerData(d.ToDiagnosticData());
@@ -141,6 +153,11 @@ public static class MonacoConversions
             EndLineNumber = span.End.Line + 1,
             EndColumn = span.End.Character + 1,
         };
+    }
+
+    public static TextSpan ToSpan(this MonacoRange range, TextLineCollection lines)
+    {
+        return lines.GetTextSpan(range.ToLinePositionSpan());
     }
 
     public static IEnumerable<TextChange> ToTextChanges(this IEnumerable<ModelContentChange> changes)

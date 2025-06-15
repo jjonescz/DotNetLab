@@ -14,7 +14,7 @@ internal sealed class LanguageServices(
     BlazorMonacoInterop blazorMonacoInterop)
 {
     private Dictionary<string, string> modelUrlToFileName = [];
-    private IDisposable? completionProvider;
+    private IDisposable? completionProvider, semanticTokensProvider;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
@@ -101,12 +101,32 @@ internal sealed class LanguageServices(
             },
             ResolveCompletionItemFunc = (completionItem, cancellationToken) => worker.ResolveCompletionItemAsync(completionItem),
         });
+
+        semanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new SemanticTokensProvider
+        {
+            Legend = new SemanticTokensLegend
+            {
+                TokenTypes = SemanticTokensUtil.LspToIndexMap.Keys,
+                TokenModifiers = SemanticTokensUtil.LspModifierToIndexMap.Keys,
+            },
+            ProvideSemanticTokens = (modelUri, rangeJson, cancellationToken) =>
+            {
+                return DebounceAsync(
+                    ref diagnosticsDebounce,
+                    (worker, modelUri, rangeJson),
+                    "",
+                    static (args, cancellationToken) => args.worker.ProvideSemanticTokensAsync(args.modelUri, args.rangeJson),
+                    cancellationToken);
+            },
+        });
     }
 
     private void Unregister()
     {
         completionProvider?.Dispose();
         completionProvider = null;
+        semanticTokensProvider?.Dispose();
+        semanticTokensProvider = null;
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true)

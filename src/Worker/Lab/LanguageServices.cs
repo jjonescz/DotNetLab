@@ -1,10 +1,12 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace DotNetLab.Lab;
@@ -132,6 +134,71 @@ internal sealed class LanguageServices
         }
 
         return JsonSerializer.Serialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem);
+    }
+
+    /// <returns>
+    /// Base64-encoded data (int32 array), see <see href="https://code.visualstudio.com/api/references/vscode-api#SemanticTokens"/>.
+    /// </returns>
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/semanticTokensProvider.ts#L161"/>
+    /// and <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/SemanticTokens/SemanticTokensHelpers.cs#L22"/>.
+    /// </remarks>
+    public async Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken = default)
+    {
+        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        {
+            return string.Empty;
+        }
+
+        var text = await document.GetTextAsync(cancellationToken);
+        var lines = text.Lines;
+        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
+        var span = range is null ? text.FullRange : range.ToSpan(lines);
+        var classifiedSpans = await Classifier.GetClassifiedSpansAsync(document, span, cancellationToken);
+
+        // Convert to the data format documented at https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider.provideDocumentSemanticTokens.
+        var data = new List<int>(classifiedSpans.Count() * 5);
+
+        int lastLineNumber = 0;
+        int lastStartCharacter = 0;
+        foreach (var classifiedSpan in classifiedSpans)
+        {
+            if (!SemanticTokensUtil.RoslynToLspMap.TryGetValue(classifiedSpan.ClassificationType, out var lspType))
+            {
+                continue;
+            }
+
+            var originalTextSpan = classifiedSpan.TextSpan;
+            var linePosition = lines.GetLinePosition(originalTextSpan.Start);
+
+            var lineNumber = linePosition.Line;
+            var deltaLine = lineNumber - lastLineNumber;
+            lastLineNumber = lineNumber;
+
+            var startCharacter = linePosition.Character;
+            var deltaStartCharacter = startCharacter;
+            if (deltaLine == 0)
+            {
+                deltaStartCharacter -= lastStartCharacter;
+            }
+            lastStartCharacter = startCharacter;
+
+            var tokenType = SemanticTokensUtil.LspToIndexMap[lspType];
+
+            int tokenModifiers = 0;
+            if (SemanticTokensUtil.RoslynToLspModifierMap.TryGetValue(classifiedSpan.ClassificationType, out var lspModifiers))
+            {
+                tokenModifiers = SemanticTokensUtil.LspModifierToIndexMap[lspModifiers];
+            }
+
+            data.Add(deltaLine);
+            data.Add(deltaStartCharacter);
+            data.Add(originalTextSpan.Length);
+            data.Add(tokenType);
+            data.Add(tokenModifiers);
+        }
+
+        return Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)

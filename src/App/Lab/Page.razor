@@ -6,6 +6,7 @@
 @inject LanguageServices LanguageServices
 @inject InputOutputCache Cache
 @inject TemplateCache TemplateCache
+@inject BlazorMonacoInterop BlazorMonacoInterop
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -887,6 +888,7 @@
 
         editorInitializationStarted = true;
 
+        await BlazorMonacoInterop.EnableSemanticHighlightingAsync(inputEditor.Id);
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);

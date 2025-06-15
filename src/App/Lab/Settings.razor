@@ -738,7 +738,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         {
             if (vimDisposable is null)
             {
-                vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", "input-editor", "vim-status");
+                vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", InputEditor.Id, "vim-status");
             }
         }
         else
