@@ -21,6 +21,15 @@ internal sealed partial class BlazorMonacoInterop
         string[]? triggerCharacters,
         [JSMarshalAs<JSType.Any>] object completionItemProvider);
 
+    [JSImport("enableSemanticHighlighting", moduleName)]
+    private static partial void EnableSemanticHighlighting(string editorId);
+
+    [JSImport("registerSemanticTokensProvider", moduleName)]
+    private static partial JSObject RegisterSemanticTokensProvider(
+        string language,
+        string legend,
+        [JSMarshalAs<JSType.Any>] object provider);
+
     [JSImport("dispose", moduleName)]
     private static partial void DisposeDisposable(JSObject disposable);
 
@@ -57,6 +66,19 @@ internal sealed partial class BlazorMonacoInterop
         return json;
     }
 
+    [JSExport]
+    internal static async Task<string?> ProvideSemanticTokensAsync(
+        [JSMarshalAs<JSType.Any>] object providerReference,
+        string modelUri,
+        string? rangeJson,
+        bool debug,
+        JSObject token)
+    {
+        var provider = ((DotNetObjectReference<SemanticTokensProvider>)providerReference).Value;
+        string? json = await provider.ProvideSemanticTokensAsync(modelUri, rangeJson, debug, ToCancellationToken(token));
+        return json;
+    }
+
     public async Task<IDisposable> RegisterCompletionProviderAsync(
         LanguageSelector language,
         CompletionItemProviderAsync completionItemProvider)
@@ -66,6 +88,24 @@ internal sealed partial class BlazorMonacoInterop
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             completionItemProvider.TriggerCharacters,
             DotNetObjectReference.Create(completionItemProvider));
+        return new Disposable(disposable);
+    }
+
+    public async Task EnableSemanticHighlightingAsync(string editorId)
+    {
+        await EnsureInitializedAsync();
+        EnableSemanticHighlighting(editorId);
+    }
+
+    public async Task<IDisposable> RegisterSemanticTokensProviderAsync(
+        LanguageSelector language,
+        SemanticTokensProvider provider)
+    {
+        await EnsureInitializedAsync();
+        JSObject disposable = RegisterSemanticTokensProvider(
+            JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
+            JsonSerializer.Serialize(provider.Legend, BlazorMonacoJsonContext.Default.SemanticTokensLegend),
+            DotNetObjectReference.Create(provider));
         return new Disposable(disposable);
     }
 

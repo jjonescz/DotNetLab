@@ -1,10 +1,12 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace DotNetLab.Lab;
@@ -132,6 +134,113 @@ internal sealed class LanguageServices
         }
 
         return JsonSerializer.Serialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem);
+    }
+
+    /// <returns>
+    /// Base64-encoded data (int32 array), see <see href="https://code.visualstudio.com/api/references/vscode-api#SemanticTokens"/>.
+    /// </returns>
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/semanticTokensProvider.ts#L161"/>
+    /// and <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/SemanticTokens/SemanticTokensHelpers.cs#L22"/>.
+    /// </remarks>
+    public async Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken = default)
+    {
+        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        {
+            return string.Empty;
+        }
+
+        var sw = Stopwatch.StartNew();
+        var text = await document.GetTextAsync(cancellationToken);
+        var lines = text.Lines;
+        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
+        var span = range is null ? text.FullRange : range.ToSpan(lines);
+        var classifiedSpansMutable = (await Classifier.GetClassifiedSpansAsync(document, span, cancellationToken)).AsList();
+
+        classifiedSpansMutable.Sort(ClassifiedSpanComparer.Instance);
+
+        var classifiedSpans = (IReadOnlyList<ClassifiedSpan>)classifiedSpansMutable;
+
+        // Monaco Editor doesn't support multiline and overlapping spans.
+        classifiedSpans = Classifier.ConvertMultiLineToSingleLineSpans(text, classifiedSpans);
+
+        List<string>? converted = null;
+        if (debug)
+        {
+            logger.LogDebug("Classified spans: {Spans}", classifiedSpans
+                .Select(s => $"{s.ClassificationType}[{text.ToString(s.TextSpan)}]")
+                .JoinToString(", "));
+            converted = new(classifiedSpans.Count);
+        }
+
+        // Convert to the data format documented at https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider.provideDocumentSemanticTokens.
+        var data = new List<int>(classifiedSpans.Count * 5);
+
+        int lastLineNumber = 0;
+        int lastStartCharacter = 0;
+
+        for (var currentClassifiedSpanIndex = 0; currentClassifiedSpanIndex < classifiedSpans.Count;)
+        {
+            var classifiedSpan = classifiedSpans[currentClassifiedSpanIndex];
+
+            var originalTextSpan = classifiedSpan.TextSpan;
+            var linePosition = lines.GetLinePosition(originalTextSpan.Start);
+
+            var lineNumber = linePosition.Line;
+            var deltaLine = lineNumber - lastLineNumber;
+            lastLineNumber = lineNumber;
+
+            var startCharacter = linePosition.Character;
+            var deltaStartCharacter = startCharacter;
+            if (deltaLine == 0)
+            {
+                deltaStartCharacter -= lastStartCharacter;
+            }
+            lastStartCharacter = startCharacter;
+
+            var tokenType = -1;
+            var tokenModifiers = 0;
+
+            // Classified spans with the same text span should be combined into one token.
+            do
+            {
+                if (SemanticTokensUtil.TokenModifiers.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var m))
+                {
+                    tokenModifiers |= m;
+                }
+                else if (SemanticTokensUtil.TokenTypes.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var t))
+                {
+                    tokenType = t;
+                }
+            }
+            while (++currentClassifiedSpanIndex < classifiedSpans.Count &&
+                (classifiedSpan = classifiedSpans[currentClassifiedSpanIndex]).TextSpan == originalTextSpan);
+
+            if (tokenType < 0)
+            {
+                continue;
+            }
+
+            converted?.Add($"{SemanticTokensUtil.TokenTypes.LspValues[tokenType]}[{text.ToString(originalTextSpan)}]");
+
+            data.Add(deltaLine);
+            data.Add(deltaStartCharacter);
+            data.Add(originalTextSpan.Length);
+            data.Add(tokenType);
+            data.Add(tokenModifiers);
+        }
+
+        if (converted != null)
+        {
+            logger.LogDebug("Converted semantic tokens: {Tokens}", converted.JoinToString(", "));
+        }
+
+        string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
+
+        sw.Stop();
+        logger.LogDebug("Found {Count} semantic tokens for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds);
+
+        return result;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)

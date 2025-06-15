@@ -63,6 +63,12 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return languageServices.ResolveCompletionItemAsync(message.Item);
     }
 
+    public Task<string?> HandleAsync(WorkerInputMessage.ProvideSemanticTokens message)
+    {
+        var languageServices = services.GetRequiredService<LanguageServices>();
+        return languageServices.ProvideSemanticTokensAsync(message.ModelUri, message.RangeJson, message.Debug);
+    }
+
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
         var languageServices = services.GetRequiredService<LanguageServices>();

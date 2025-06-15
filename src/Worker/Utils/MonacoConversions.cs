@@ -11,6 +11,7 @@ using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
@@ -19,6 +20,125 @@ namespace DotNetLab;
 
 public static class MonacoConversions
 {
+    extension(SourceText text)
+    {
+        public TextSpan FullRange => new TextSpan(0, text.Length);
+
+        public void GetLineAndOffset(int position, out int lineNumber, out int offset)
+        {
+            var line = text.Lines.GetLineFromPosition(position);
+
+            lineNumber = line.LineNumber;
+            offset = position - line.Start;
+        }
+
+        public void GetLinesAndOffsets(
+            TextSpan textSpan,
+            out int startLineNumber,
+            out int startOffset,
+            out int endLineNumber,
+            out int endOffset)
+        {
+            text.GetLineAndOffset(textSpan.Start, out startLineNumber, out startOffset);
+            text.GetLineAndOffset(textSpan.End, out endLineNumber, out endOffset);
+        }
+    }
+
+    extension(Classifier)
+    {
+        /// <summary>
+        /// <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/SemanticTokens/SemanticTokensHelpers.cs#L136"/>
+        /// </summary>
+        public static IReadOnlyList<ClassifiedSpan> ConvertMultiLineToSingleLineSpans(SourceText text, IReadOnlyList<ClassifiedSpan> classifiedSpans)
+        {
+            var updatedClassifiedSpans = new List<ClassifiedSpan>(classifiedSpans.Count);
+
+            for (var spanIndex = 0; spanIndex < classifiedSpans.Count; spanIndex++)
+            {
+                var span = classifiedSpans[spanIndex];
+                text.GetLinesAndOffsets(span.TextSpan, out var startLine, out var startOffset, out var endLine, out var endOffSet);
+
+                // If the start and end of the classified span are not on the same line, we're dealing with a multi-line span.
+                // Since VS doesn't support multi-line spans/tokens, we need to break the span up into single-line spans.
+                if (startLine != endLine)
+                {
+                    ConvertToSingleLineSpan(
+                        text, classifiedSpans, updatedClassifiedSpans, ref spanIndex, span.ClassificationType,
+                        startLine, startOffset, endLine, endOffSet);
+                }
+                else
+                {
+                    // This is already a single-line span, so no modification is necessary.
+                    updatedClassifiedSpans.Add(span);
+                }
+            }
+
+            return updatedClassifiedSpans;
+
+            static void ConvertToSingleLineSpan(
+                SourceText text,
+                IReadOnlyList<ClassifiedSpan> originalClassifiedSpans,
+                List<ClassifiedSpan> updatedClassifiedSpans,
+                ref int spanIndex,
+                string classificationType,
+                int startLine,
+                int startOffset,
+                int endLine,
+                int endOffSet)
+            {
+                var numLinesInSpan = endLine - startLine + 1;
+                Debug.Assert(numLinesInSpan >= 1);
+
+                for (var currentLine = 0; currentLine < numLinesInSpan; currentLine++)
+                {
+                    TextSpan textSpan;
+                    var line = text.Lines[startLine + currentLine];
+
+                    // Case 1: First line of span
+                    if (currentLine == 0)
+                    {
+                        var absoluteStart = line.Start + startOffset;
+
+                        // This start could be past the regular end of the line if it's within the newline character if we have a CRLF newline. In that case, just skip emitting a span for the LF.
+                        // One example where this could happen is an embedded regular expression that we're classifying; regular expression comments contained within a multi-line string
+                        // contain the carriage return but not the linefeed, so the linefeed could be the start of the next classification.
+                        textSpan = TextSpan.FromBounds(Math.Min(absoluteStart, line.End), line.End);
+                    }
+                    // Case 2: Any of the span's middle lines
+                    else if (currentLine != numLinesInSpan - 1)
+                    {
+                        textSpan = line.Span;
+                    }
+                    // Case 3: Last line of span
+                    else
+                    {
+                        textSpan = new TextSpan(line.Start, endOffSet);
+                    }
+
+                    // Omit 0-length spans created in this fashion.
+                    if (textSpan.Length > 0)
+                    {
+                        var updatedClassifiedSpan = new ClassifiedSpan(textSpan, classificationType);
+                        updatedClassifiedSpans.Add(updatedClassifiedSpan);
+                    }
+
+                    // Since spans are expected to be ordered, when breaking up a multi-line span, we may have to insert
+                    // other spans in-between. For example, we may encounter this case when breaking up a multi-line verbatim
+                    // string literal containing escape characters:
+                    //     var x = @"one ""
+                    //               two";
+                    // The check below ensures we correctly return the spans in the correct order, i.e. 'one', '""', 'two'.
+                    while (spanIndex + 1 < originalClassifiedSpans.Count &&
+                        textSpan.Contains(originalClassifiedSpans[spanIndex + 1].TextSpan))
+                    {
+                        updatedClassifiedSpans.Add(originalClassifiedSpans[spanIndex + 1]);
+                        spanIndex++;
+                    }
+                }
+            }
+        }
+    }
+
     public static TextSpan GetTextSpan(this ModelContentChange change)
     {
         return new TextSpan(change.RangeOffset, change.RangeLength);
@@ -127,6 +247,13 @@ public static class MonacoConversions
         return new LinePosition(position.LineNumber - 1, position.Column - 1);
     }
 
+    public static LinePositionSpan ToLinePositionSpan(this MonacoRange range)
+    {
+        return new LinePositionSpan(
+            new LinePosition(range.StartLineNumber - 1, range.StartColumn - 1),
+            new LinePosition(range.EndLineNumber - 1, range.EndColumn - 1));
+    }
+
     public static MarkerData ToMarkerData(this Diagnostic d)
     {
         return SimpleMonacoConversions.ToMarkerData(d.ToDiagnosticData());
@@ -141,6 +268,11 @@ public static class MonacoConversions
             EndLineNumber = span.End.Line + 1,
             EndColumn = span.End.Character + 1,
         };
+    }
+
+    public static TextSpan ToSpan(this MonacoRange range, TextLineCollection lines)
+    {
+        return lines.GetTextSpan(range.ToLinePositionSpan());
     }
 
     public static IEnumerable<TextChange> ToTextChanges(this IEnumerable<ModelContentChange> changes)
@@ -223,4 +355,11 @@ public static class MonacoConversions
             }
         }
     }
+}
+
+internal sealed class ClassifiedSpanComparer : IComparer<ClassifiedSpan>
+{
+    public static readonly ClassifiedSpanComparer Instance = new();
+
+    public int Compare(ClassifiedSpan x, ClassifiedSpan y) => x.TextSpan.CompareTo(y.TextSpan);
 }

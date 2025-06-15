@@ -36,11 +36,21 @@ public sealed class MonacoCompletionItem
     public string[]? CommitCharacters { get; set; }
 }
 
+/// <remarks>
+/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#SemanticTokensLegend"/>.
+/// </remarks>
+public sealed class SemanticTokensLegend
+{
+    public ImmutableArray<string> TokenTypes { get; init; }
+    public ImmutableArray<string> TokenModifiers { get; init; }
+}
+
 [JsonSerializable(typeof(LanguageSelector))]
 [JsonSerializable(typeof(Position))]
 [JsonSerializable(typeof(CompletionContext))]
 [JsonSerializable(typeof(MonacoCompletionItem))]
 [JsonSerializable(typeof(MonacoCompletionList))]
+[JsonSerializable(typeof(SemanticTokensLegend))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

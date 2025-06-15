@@ -1,9 +1,38 @@
+using System.Collections;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
 
 public static class Util
 {
+    extension<T>(IEnumerable<T> collection)
+    {
+        public IList<T> AsList()
+        {
+            return collection is IList<T> list ? list : [.. collection];
+        }
+
+        public IReadOnlyList<T> AsReadOnlyList()
+        {
+            return collection is IReadOnlyList<T> list ? list : [.. collection];
+        }
+    }
+
+    extension<T>(IList<T> list)
+    {
+        public void Sort(IComparer<T> comparer)
+        {
+            if (list is List<T> concreteList)
+            {
+                concreteList.Sort(comparer);
+            }
+            else
+            {
+                ArrayList.Adapter((IList)list).Sort((IComparer)comparer);
+            }
+        }
+    }
+
     public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)
     {
         foreach (var item in items)
