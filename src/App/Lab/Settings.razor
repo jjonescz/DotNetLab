@@ -290,6 +290,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     [Parameter, EditorRequired] public required StandaloneCodeEditor OutputEditor { get; set; }
     [CascadingParameter] public required Page Page { get; set; }
 
+    public DesignThemeModes Theme => theme;
+
     private bool DebugLogs
     {
         get => Logging.LogLevel <= LogLevel.Debug;
@@ -738,7 +740,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         {
             if (vimDisposable is null)
             {
-                vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", "input-editor", "vim-status");
+                vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", InputEditor.Id, "vim-status");
             }
         }
         else

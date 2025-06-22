@@ -6,6 +6,7 @@
 @inject LanguageServices LanguageServices
 @inject InputOutputCache Cache
 @inject TemplateCache TemplateCache
+@inject BlazorMonacoInterop BlazorMonacoInterop
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -219,6 +220,7 @@
     private readonly List<Input> inputs = new();
     private readonly Dictionary<string, EditorState> outputStates = new();
     private bool editorInitializationStarted;
+    private bool monacoThemeDefined;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
     private IJSObjectReference module = null!;
@@ -390,9 +392,28 @@
         };
     }
 
-    public static string GetMonacoTheme(bool dark)
+    public string GetMonacoTheme(bool dark)
     {
-        return dark ? "vs-dark" : "vs";
+        if (monacoThemeDefined)
+        {
+            return dark ? CustomMonacoTheme.Dark : CustomMonacoTheme.Light;
+        }
+
+        return dark ? BuiltInMonacoTheme.Dark : BuiltInMonacoTheme.Light;
+    }
+
+    private async Task DefineMonacoThemeAsync()
+    {
+        Debug.Assert(!monacoThemeDefined);
+        await CustomMonacoTheme.DefineAsync(JSRuntime);
+        monacoThemeDefined = true;
+        bool dark = settings.Theme switch 
+        {
+            DesignThemeModes.Dark => true,
+            DesignThemeModes.Light => false,
+            _ => loadedDarkTheme,
+        };
+        await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, GetMonacoTheme(dark: dark));
     }
 
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
@@ -894,6 +915,8 @@
 
         editorInitializationStarted = true;
 
+        await BlazorMonacoInterop.EnableSemanticHighlightingAsync(inputEditor.Id);
+        await DefineMonacoThemeAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
