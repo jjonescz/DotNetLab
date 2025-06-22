@@ -48,7 +48,7 @@ internal sealed class LanguageServices
     /// </returns>
     public async Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, MonacoCompletionContext context)
     {
-        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        if (!TryGetDocument(modelUri, out var document))
         {
             return """{"suggestions":[]}""";
         }
@@ -145,7 +145,7 @@ internal sealed class LanguageServices
     /// </remarks>
     public async Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken = default)
     {
-        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        if (!TryGetDocument(modelUri, out var document))
         {
             return string.Empty;
         }
@@ -396,5 +396,29 @@ internal sealed class LanguageServices
         {
             logger.LogWarning("Failed to apply changes to the workspace.");
         }
+    }
+
+    private bool TryGetDocument(string modelUri, [NotNullWhen(returnValue: true)] out Document? document)
+    {
+        // Try the current document first.
+        if (documentId != null &&
+            modelUris.TryGetValue(documentId, out var uri) &&
+            uri == modelUri)
+        {
+            document = Project.GetDocument(documentId);
+            return document != null;
+        }
+
+        var id = Project.DocumentIds.FirstOrDefault(id =>
+            modelUris.TryGetValue(id, out var uri) &&
+            uri == modelUri);
+        if (id != null)
+        {
+            document = Project.GetDocument(id);
+            return document != null;
+        }
+
+        document = null;
+        return false;
     }
 }
