@@ -4,19 +4,19 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <!-- We are not using package source mapping. -->
     <NoWarn>$(NoWarn);NU1507</NoWarn>
-    <NetCoreVersion>10.0.0-preview.4.25258.110</NetCoreVersion>
+    <NetCoreVersion>10.0.0-preview.5.25277.114</NetCoreVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
-    <RoslynVersion>5.0.0-1.25252.6</RoslynVersion>
-    <FluentUIVersion>4.11.8</FluentUIVersion>
-    <NuGetVersion>6.13.1</NuGetVersion>
+    <RoslynVersion>5.0.0-1.25321.102</RoslynVersion>
+    <FluentUIVersion>4.12.0</FluentUIVersion>
+    <NuGetVersion>6.14.0</NuGetVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AwesomeAssertions" Version="8.0.1" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.0.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When upating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.2.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="ICSharpCode.Decompiler" Version="9.0.0.7889" />
+    <PackageVersion Include="ICSharpCode.Decompiler" Version="9.1.0.7988" />
     <PackageVersion Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
     <PackageVersion Include="Microsoft.AspNetCore.App.Ref" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
@@ -29,17 +29,17 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="$(FluentUIVersion)" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="$(FluentUIVersion)" />
-    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25252.1" />
+    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25321.102" />
     <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="$(RoslynVersion)" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.NETCore.App.Ref" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
     <PackageVersion Include="NuGet.Protocol" Version="$(NuGetVersion)" />
     <PackageVersion Include="NuGet.Versioning" Version="$(NuGetVersion)" />
-    <PackageVersion Include="protobuf-net" Version="3.2.46" />
+    <PackageVersion Include="protobuf-net" Version="3.2.52" />
     <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
-    <PackageVersion Include="xunit.v3" Version="1.1.0" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <PackageVersion Include="xunit.v3" Version="2.0.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
     <!-- Pinned transitive dependencies -->
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
   </ItemGroup>
