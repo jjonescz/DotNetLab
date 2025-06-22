@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/eng/">
+    <File Path="eng/build.sh" />
+    <File Path="eng/CopyDotNetDTs.targets" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/App/App.csproj" />
+    <Project Path="src/Compiler/Compiler.csproj" />
+    <Project Path="src/RazorAccess/RazorAccess.csproj" />
+    <Project Path="src/RoslynAccess/RoslynAccess.csproj" />
+    <Project Path="src/RoslynWorkspaceAccess/RoslynWorkspaceAccess.csproj" />
+    <Project Path="src/Server/Server.csproj" />
+    <Project Path="src/Shared/Shared.csproj" />
+    <Project Path="src/Worker/Worker.csproj" />
+    <Project Path="src/WorkerApi/WorkerApi.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/UnitTests/UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/_/">
+    <File Path=".gitignore" />
+    <File Path=".globalconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+  </Folder>
+</Solution>
