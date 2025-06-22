@@ -772,7 +772,11 @@
         {
             if (!outputStates.TryGetValue(outputType, out var state))
             {
-                state = new(await BlazorMonaco.Editor.Global.CreateModel(JSRuntime, value: text, language: language));
+                state = new(await BlazorMonaco.Editor.Global.CreateModel(
+                    JSRuntime,
+                    value: text,
+                    language: language,
+                    uri: $"out/{Guid.CreateVersion7()}/{outputType}"));
                 outputStates[outputType] = state;
             }
             else
