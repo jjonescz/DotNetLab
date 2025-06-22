@@ -324,7 +324,7 @@ internal sealed class LanguageServices
             }
             else
             {
-                document = null;
+                documentId = null;
             }
         }
 
