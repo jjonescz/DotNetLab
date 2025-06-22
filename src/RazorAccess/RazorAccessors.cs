@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Razor.Language;
-using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Runtime.CompilerServices;
@@ -37,13 +36,6 @@ public static class RazorAccessors
     private static object GetFileKindFromPath(string filePath)
     {
         return FileKinds.GetFileKindFromPath(filePath);
-    }
-
-    public static string Serialize(this DocumentIntermediateNode node)
-    {
-        var formatter = new DebuggerDisplayFormatter();
-        formatter.FormatTree(node);
-        return formatter.ToString();
     }
 
     public static string Serialize(this RazorSyntaxTree tree)

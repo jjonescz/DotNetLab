@@ -1,5 +1,5 @@
-﻿using DotNetLab.Lab;
-using FluentAssertions;
+﻿using AwesomeAssertions;
+using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 

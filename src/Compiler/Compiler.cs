@@ -210,7 +210,7 @@ public class Compiler(
                         Type = "ir",
                         Label = "IR",
                         Language = "csharp",
-                        EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNode().Serialize() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNodeSafe().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
                         ? ImmutableArray<CompiledFileOutput>.Empty
@@ -237,7 +237,7 @@ public class Compiler(
                         Language = "html",
                         LazyText = new(() =>
                         {
-                            var document = codeDocument.Unwrap()?.GetDocumentIntermediateNode()
+                            var document = codeDocument.Unwrap()?.GetDocumentIntermediateNodeSafe()
                                 ?? throw new InvalidOperationException("No IR available.");
 
                             if (document.DocumentKind.StartsWith("mvc"))

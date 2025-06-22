@@ -1,0 +1,2 @@
+﻿# CA2025: Do not pass 'IDisposable' instances into unawaited tasks
+dotnet_diagnostic.CA2025.severity = suggestion

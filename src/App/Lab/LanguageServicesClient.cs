@@ -6,9 +6,9 @@ using System.Runtime.Versioning;
 namespace DotNetLab.Lab;
 
 [SupportedOSPlatform("browser")]
-internal sealed class LanguageServices(
+internal sealed class LanguageServicesClient(
     ILoggerFactory loggerFactory,
-    ILogger<LanguageServices> logger,
+    ILogger<LanguageServicesClient> logger,
     IJSRuntime jsRuntime,
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
