@@ -78,16 +78,35 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
         Assert.NotNull(diagnosticsText);
+        output.WriteLine("Diagnostics:");
         output.WriteLine(diagnosticsText);
+        output.WriteLine(string.Empty);
         Assert.Empty(diagnosticsText);
 
         var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        output.WriteLine("C#:");
         output.WriteLine(cSharpText);
+        output.WriteLine(string.Empty);
         Assert.Contains("class TestComponent", cSharpText);
 
         var syntaxText = await compiled.Files.First().Value.GetOutput("syntax")!.GetTextAsync(outputFactory: null);
+        output.WriteLine("Syntax:");
         output.WriteLine(syntaxText);
+        output.WriteLine(string.Empty);
         Assert.Contains("RazorDocument", syntaxText);
+
+        var irText = await compiled.Files.First().Value.GetOutput("ir")!.GetTextAsync(outputFactory: null);
+        output.WriteLine("IR:");
+        output.WriteLine(irText);
+        output.WriteLine(string.Empty);
+        Assert.Contains("""component.1.0""", irText);
+        Assert.Contains("TestComponent", irText);
+
+        var htmlText = await compiled.Files.First().Value.GetOutput("html")!.GetTextAsync(outputFactory: null);
+        output.WriteLine("HTML:");
+        output.WriteLine(htmlText);
+        output.WriteLine(string.Empty);
+        Assert.Contains("test", htmlText);
     }
 
     [Theory]

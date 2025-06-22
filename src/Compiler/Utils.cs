@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Razor.Language;
+using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -140,15 +141,7 @@ internal static class RazorUtil
 
     public static RazorCSharpDocument GetCSharpDocumentSafe(this RazorCodeDocument document)
     {
-        // GetCSharpDocument extension method has been turned into an instance method in https://github.com/dotnet/razor/pull/11939.
-        if (document.GetType().GetMethod("GetCSharpDocument", BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
-        {
-            return (RazorCSharpDocument)method.Invoke(document, [])!;
-        }
-
-        return (RazorCSharpDocument)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
-            .GetMethod("GetCSharpDocument", BindingFlags.Static | BindingFlags.Public)!
-            .Invoke(null, [document])!;
+        return document.GetDocumentDataSafe<RazorCSharpDocument>("GetCSharpDocument");
     }
 
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)
@@ -158,6 +151,24 @@ internal static class RazorUtil
         return (IReadOnlyList<RazorDiagnostic>)document.GetType()
             .GetProperty(nameof(document.Diagnostics))!
             .GetValue(document)!;
+    }
+
+    private static T GetDocumentDataSafe<T>(this RazorCodeDocument document, string methodName, string? instanceMethodName = null)
+    {
+        // GetCSharpDocument and similar extension methods have been turned into instance methods in https://github.com/dotnet/razor/pull/11939.
+        if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
+        {
+            return (T)method.Invoke(document, [])!;
+        }
+
+        return (T)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
+            .GetMethod(methodName, BindingFlags.Static | BindingFlags.Public)!
+            .Invoke(null, [document])!;
+    }
+
+    public static DocumentIntermediateNode GetDocumentIntermediateNodeSafe(this RazorCodeDocument document)
+    {
+        return document.GetDocumentDataSafe<DocumentIntermediateNode>("GetDocumentIntermediateNode", "GetDocumentNode");
     }
 
     public static string GetGeneratedCode(this RazorCSharpDocument document)
@@ -177,15 +188,7 @@ internal static class RazorUtil
 
     public static RazorSyntaxTree GetSyntaxTreeSafe(this RazorCodeDocument document)
     {
-        // GetSyntaxTree extension method has been turned into an instance method in https://github.com/dotnet/razor/pull/11939.
-        if (document.GetType().GetMethod("GetSyntaxTree", BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
-        {
-            return (RazorSyntaxTree)method.Invoke(document, [])!;
-        }
-
-        return (RazorSyntaxTree)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
-            .GetMethod("GetSyntaxTree", BindingFlags.Static | BindingFlags.Public)!
-            .Invoke(null, [document])!;
+        return document.GetDocumentDataSafe<RazorSyntaxTree>("GetSyntaxTree");
     }
 
     public static IEnumerable<RazorProjectItem> EnumerateItemsSafe(this RazorProjectFileSystem fileSystem, string basePath)
@@ -239,6 +242,29 @@ internal static class RazorUtil
 
         return (RazorCodeDocument)method
             .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
+    }
+
+    public static string Serialize(this IntermediateNode node)
+    {
+        // DebuggerDisplayFormatter merged to IntermediateNodeFormatter in https://github.com/dotnet/razor/pull/11931.
+
+        var assembly = typeof(IntermediateNode).Assembly;
+        if (assembly.GetType("Microsoft.AspNetCore.Razor.Language.Intermediate.DebuggerDisplayFormatter") is { } debuggerDisplayFormatter)
+        {
+            var formatter = Activator.CreateInstance(debuggerDisplayFormatter)!;
+            debuggerDisplayFormatter.GetMethod("FormatTree", BindingFlags.Instance | BindingFlags.Public)!
+                .Invoke(formatter, [node]);
+            return formatter.ToString()!;
+        }
+        else
+        {
+            var type = assembly.GetType("Microsoft.AspNetCore.Razor.Language.Intermediate.IntermediateNodeFormatter")!;
+            var sb = new StringBuilder();
+            var formatter = type.GetConstructors().Single().Invoke([sb, 0, false])!;
+            type.GetMethod("FormatTree", BindingFlags.Instance | BindingFlags.Public)!
+                .Invoke(formatter, [node]);
+            return sb.ToString();
+        }
     }
 
     public static void SetCSharpLanguageVersionSafe(this RazorProjectEngineBuilder builder, LanguageVersion languageVersion)
