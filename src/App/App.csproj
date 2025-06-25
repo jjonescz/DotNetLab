@@ -1,58 +1,58 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
-	<PropertyGroup>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
-	</PropertyGroup>
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Blazored.LocalStorage" />
-		<PackageReference Include="BlazorMonaco" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
-		<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
-		<PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset">
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
-		<PackageReference Include="protobuf-net" />
-		<PackageReference Include="System.IO.Hashing" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Blazored.LocalStorage" />
+    <PackageReference Include="BlazorMonaco" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
+    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="protobuf-net" />
+    <PackageReference Include="System.IO.Hashing" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Worker\Worker.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Worker\Worker.csproj" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<Using Include="Microsoft.AspNetCore.Components" />
-	</ItemGroup>
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Components" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
-	</ItemGroup>
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<NpmInput Include="Npm\**" Exclude="Npm\node_modules\**;Npm\package-lock.json" />
-		<NpmOutput Include="wwwroot\js\jslib.js" />
+  <ItemGroup>
+    <NpmInput Include="Npm\**" Exclude="Npm\node_modules\**;Npm\package-lock.json" />
+    <NpmOutput Include="wwwroot\js\jslib.js" />
 
-		<!-- Mark as Content so it's included in `service-worker-assets.js`. -->
-		<None Remove="@(NpmOutput)" />
-		<Content Remove="@(NpmOutput)" />
-		<Content Include="@(NpmOutput)" />
-	</ItemGroup>
+    <!-- Mark as Content so it's included in `service-worker-assets.js`. -->
+    <None Remove="@(NpmOutput)" />
+    <Content Remove="@(NpmOutput)" />
+    <Content Include="@(NpmOutput)" />
+  </ItemGroup>
 
-	<Target Name="NpmBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
-		<Exec Command="npm install" WorkingDirectory="Npm" />
-		<Exec Command="npm run build" WorkingDirectory="Npm" />
-		<!--
-			Ensure the outputs are modified (even if Webpack did not touch them
-			because the input changes were irrelevant to build output)
-			so this target does not re-run unnecessarily.
-		-->
-		<Touch Files="@(NpmOutput)" AlwaysCreate="true" />
-	</Target>
+  <Target Name="NpmBuild" BeforeTargets="PreBuildEvent" Inputs="@(NpmInput)" Outputs="@(NpmOutput)">
+    <Exec Command="npm install" WorkingDirectory="Npm" />
+    <Exec Command="npm run build" WorkingDirectory="Npm" />
+    <!--
+      Ensure the outputs are modified (even if Webpack did not touch them
+      because the input changes were irrelevant to build output)
+      so this target does not re-run unnecessarily.
+    -->
+    <Touch Files="@(NpmOutput)" AlwaysCreate="true" />
+  </Target>
 
-	<Import Project="..\..\eng\CopyDotNetDTs.targets" />
+  <Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>
