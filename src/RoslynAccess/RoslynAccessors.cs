@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Diagnostics.CSharp;
 using Microsoft.CodeAnalysis.Test.Utilities;
 
 namespace DotNetLab;
@@ -78,6 +80,11 @@ public static class RoslynAccessors
         {
             return s.ReplaceLineEndings("⏎");
         }
+    }
+
+    public static DiagnosticAnalyzer GetCSharpCompilerDiagnosticAnalyzer()
+    {
+        return new CSharpCompilerDiagnosticAnalyzer();
     }
 
     public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual)

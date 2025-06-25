@@ -99,6 +99,33 @@ export function registerSemanticTokensProvider(language, legend, provider) {
     }
 }
 
+export function registerCodeActionProvider(language, codeActionProvider) {
+    return monaco.languages.registerCodeActionProvider(JSON.parse(language), {
+        provideCodeActions: async (model, range, context, token) => {
+            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCodeActionsAsync(
+                codeActionProvider, decodeURI(model.uri.toString()), JSON.stringify(range), token));
+
+            if (result === null) {
+                // If null result is returned, it means the request should be ignored, so we need to throw
+                // (as opposed to returning no code actions).
+                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                throw new Error('busy');
+            }
+
+            for (const action of result) {
+                for (const edit of action.edit?.edits ?? []) {
+                    edit.resource = monaco.Uri.parse(edit.resource);
+                }
+            }
+
+            return {
+                actions: result,
+                dispose: () => { }, // Currently not used.
+            };
+        },
+    });
+}
+
 /**
  * @param {monaco.IDisposable} disposable
  */

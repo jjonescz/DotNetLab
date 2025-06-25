@@ -1,8 +1,12 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
+using BlazorMonaco.Languages;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
+using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.Completion;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
@@ -18,7 +22,7 @@ internal sealed class LanguageServices
     private readonly ProjectId projectId;
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private DocumentId? documentId;
-    private CompletionList? lastCompletions;
+    private RoslynCompletionList? lastCompletions;
 
     public LanguageServices(ILogger<LanguageServices> logger)
     {
@@ -29,14 +33,35 @@ internal sealed class LanguageServices
             RoslynWorkspaceAccessors.SetLogger(message => logger.LogTrace("Roslyn: {Message}", message));
         }
 
-        workspace = new();
+        workspace = new(MefHostServices.Create(
+            [
+                .. MefHostServices.DefaultAssemblies,
+                typeof(RoslynWorkspaceAccessors).Assembly,
+            ]));
         var project = workspace
             .AddProject("TestProject", LanguageNames.CSharp)
             .AddMetadataReferences(RefAssemblyMetadata.All)
+            .WithAnalyzerReferences(
+            [
+                // CompilerDiagnosticAnalyzer for CodeFixService (which only works on analyzer diagnostics).
+                new AnalyzerImageReference([RoslynAccessors.GetCSharpCompilerDiagnosticAnalyzer()]).RegisterAnalyzer(),
+                findRoslynAnalyzers(),
+            ])
             .WithParseOptions(Compiler.CreateDefaultParseOptions())
             .WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(Compiler.GetDefaultOutputKind([])));
         ApplyChanges(project.Solution);
         projectId = project.Id;
+
+        static AnalyzerReference findRoslynAnalyzers()
+        {
+            var analyzers = RoslynCodeStyleAccessors.GetRoslynCodeStyleAssembly().GetTypes()
+                .Where(static t =>
+                    t.GetCustomAttributesData().Any(static a => a.AttributeType.FullName == "Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzerAttribute") &&
+                    t.IsSubclassOf(typeof(DiagnosticAnalyzer)))
+                .Select(static t => (DiagnosticAnalyzer)Activator.CreateInstance(t)!)
+                .ToImmutableArray();
+            return new AnalyzerImageReference(analyzers).RegisterAnalyzer();
+        }
     }
 
     private Project Project => workspace.CurrentSolution.GetProject(projectId)!;
@@ -122,7 +147,7 @@ internal sealed class LanguageServices
                 item.AdditionalTextEdits.Add(new()
                 {
                     Text = change.NewText,
-                    Range = text.Lines.GetLinePositionSpan(realSpan).ToRange(),
+                    Range = realSpan.ToRange(text.Lines),
                 });
             }
         }
@@ -238,9 +263,146 @@ internal sealed class LanguageServices
         string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
 
         sw.Stop();
-        logger.LogDebug("Found {Count} semantic tokens for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds);
+        logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds);
 
         return result;
+    }
+
+    /// <returns>
+    /// JSON-serialized list of <see cref="MonacoCodeAction"/>s.
+    /// We serialize here to avoid serializing twice unnecessarily
+    /// (first on Worker to App interface, then on App to Monaco interface).
+    /// </returns>
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/codeActionProvider.ts"/>
+    /// and <see href="https://github.com/dotnet/roslyn/blob/ad14335550de1134f0b5a59b6cd040001d0d8c8d/src/LanguageServer/Protocol/Handler/CodeActions/CodeActionHelpers.cs"/>
+    /// </remarks>
+    internal async Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken = default)
+    {
+        if (!TryGetDocument(modelUri, out var document))
+        {
+            return null;
+        }
+
+        var sw = Stopwatch.StartNew();
+        var text = await document.GetTextAsync(cancellationToken);
+        var lines = text.Lines;
+        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
+        var span = range is null ? text.FullRange : range.ToSpan(lines);
+
+        var result = (await document.GetCodeActionsAsync(span, cancellationToken)).ToImmutableArray();
+        var time1 = sw.ElapsedMilliseconds;
+        sw.Restart();
+
+        var converted = await ToCodeActionsAsync(result, document, cancellationToken);
+
+        var json = JsonSerializer.Serialize(converted, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
+
+        sw.Stop();
+        var time2 = sw.ElapsedMilliseconds;
+        logger.LogDebug("Got code actions ({Count}) for {Range} in {Time1} + {Time2} ms", converted.Length, span, time1, time2);
+
+        return json;
+    }
+
+    private async Task<ImmutableArray<MonacoCodeAction>> ToCodeActionsAsync(ImmutableArray<RoslynCodeAction> codeActions, Document sourceDocument, CancellationToken cancellationToken)
+    {
+        var solution = sourceDocument.Project.Solution;
+        var textDiffService = solution.Services.GetDocumentTextDifferencingService();
+
+        var result = ImmutableArray.CreateBuilder<MonacoCodeAction>();
+
+        foreach (var (prefix, codeAction) in flatten(null, codeActions))
+        {
+            var operations = await codeAction.GetOperationsAsync(solution, NullProgress<CodeAnalysisProgress>.Instance, cancellationToken);
+
+            var edits = ImmutableArray.CreateBuilder<WorkspaceTextEdit>();
+
+            foreach (var operation in operations)
+            {
+                if (operation is not ApplyChangesOperation applyChangesOperation)
+                {
+                    continue;
+                }
+
+                var changes = applyChangesOperation.ChangedSolution.GetChanges(solution);
+                var newSolution = await applyChangesOperation.ChangedSolution.WithMergedLinkedFileChangesAsync(solution, changes, cancellationToken);
+                changes = newSolution.GetChanges(solution);
+
+                var projectChanges = changes.GetProjectChanges();
+
+                foreach (var documentId in projectChanges.SelectMany(pc => pc.GetChangedDocuments()))
+                {
+                    var newDocument = newSolution.GetDocument(documentId);
+                    var oldDocument = solution.GetDocument(documentId);
+
+                    if (oldDocument is null || newDocument is null ||
+                        !modelUris.TryGetValue(newDocument.Id, out var newUri))
+                    {
+                        continue;
+                    }
+
+                    var textChanges = await textDiffService.GetTextChangesAsync(oldDocument, newDocument, cancellationToken);
+
+                    var oldText = await oldDocument.GetTextAsync(cancellationToken);
+
+                    foreach (var textChange in textChanges)
+                    {
+                        edits.Add(new WorkspaceTextEdit
+                        {
+                            ResourceUri = newUri,
+                            TextEdit = new()
+                            {
+                                Text = textChange.NewText ?? string.Empty,
+                                Range = textChange.Span.ToRange(oldText.Lines),
+                            },
+                        });
+                    }
+                }
+            }
+
+            if (edits.Count != 0)
+            {
+                result.Add(new()
+                {
+                    Title = addPrefix(prefix, codeAction.Title),
+                    Edit = new()
+                    {
+                        Edits = edits.DrainToImmutable(),
+                    },
+                });
+            }
+        }
+
+        return result.DrainToImmutable();
+
+        static IEnumerable<(string? Prefix, RoslynCodeAction Action)> flatten(string? prefix, ImmutableArray<RoslynCodeAction> codeActions)
+        {
+            foreach (var codeAction in codeActions)
+            {
+                if (codeAction.NestedActions.IsDefaultOrEmpty)
+                {
+                    yield return (prefix, codeAction);
+                    continue;
+                }
+
+                var nestedPrefix = addPrefix(prefix, codeAction.Title);
+                foreach (var nestedCodeAction in flatten(nestedPrefix, codeAction.NestedActions))
+                {
+                    yield return nestedCodeAction;
+                }
+            }
+        }
+
+        static string addPrefix(string? prefix, string nested)
+        {
+            if (string.IsNullOrEmpty(prefix))
+            {
+                return nested;
+            }
+
+            return $"{prefix}: {nested}";
+        }
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)

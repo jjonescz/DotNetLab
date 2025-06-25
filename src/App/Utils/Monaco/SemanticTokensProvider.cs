@@ -16,13 +16,4 @@ internal sealed class SemanticTokensProvider
         CancellationToken cancellationToken);
 
     public required ProvideSemanticTokensDelegate ProvideSemanticTokens { get; init; }
-
-    public Task<string?> ProvideSemanticTokensAsync(
-        string modelUri,
-        string? rangeJson,
-        bool debug,
-        CancellationToken cancellationToken)
-    {
-        return ProvideSemanticTokens(modelUri, rangeJson, debug, cancellationToken);
-    }
 }

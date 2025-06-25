@@ -30,6 +30,11 @@ internal sealed partial class BlazorMonacoInterop
         string legend,
         [JSMarshalAs<JSType.Any>] object provider);
 
+    [JSImport("registerCodeActionProvider", moduleName)]
+    private static partial JSObject RegisterCodeActionProvider(
+        string language,
+        [JSMarshalAs<JSType.Any>] object provider);
+
     [JSImport("dispose", moduleName)]
     private static partial void DisposeDisposable(JSObject disposable);
 
@@ -75,7 +80,19 @@ internal sealed partial class BlazorMonacoInterop
         JSObject token)
     {
         var provider = ((DotNetObjectReference<SemanticTokensProvider>)providerReference).Value;
-        string? json = await provider.ProvideSemanticTokensAsync(modelUri, rangeJson, debug, ToCancellationToken(token));
+        string? json = await provider.ProvideSemanticTokens(modelUri, rangeJson, debug, ToCancellationToken(token));
+        return json;
+    }
+
+    [JSExport]
+    internal static async Task<string?> ProvideCodeActionsAsync(
+        [JSMarshalAs<JSType.Any>] object providerReference,
+        string modelUri,
+        string? rangeJson,
+        JSObject token)
+    {
+        var provider = ((DotNetObjectReference<CodeActionProviderAsync>)providerReference).Value;
+        string? json = await provider.ProvideCodeActions(modelUri, rangeJson, ToCancellationToken(token));
         return json;
     }
 
@@ -105,6 +122,17 @@ internal sealed partial class BlazorMonacoInterop
         JSObject disposable = RegisterSemanticTokensProvider(
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             JsonSerializer.Serialize(provider.Legend, BlazorMonacoJsonContext.Default.SemanticTokensLegend),
+            DotNetObjectReference.Create(provider));
+        return new Disposable(disposable);
+    }
+
+    public async Task<IDisposable> RegisterCodeActionProviderAsync(
+        LanguageSelector language,
+        CodeActionProviderAsync provider)
+    {
+        await EnsureInitializedAsync();
+        JSObject disposable = RegisterCodeActionProvider(
+            JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             DotNetObjectReference.Create(provider));
         return new Disposable(disposable);
     }

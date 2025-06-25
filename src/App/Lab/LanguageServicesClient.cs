@@ -14,10 +14,12 @@ internal sealed class LanguageServicesClient(
     BlazorMonacoInterop blazorMonacoInterop)
 {
     private Dictionary<string, string> modelUrlToFileName = [];
-    private IDisposable? completionProvider, semanticTokensProvider;
+    private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
+    private DebounceInfo semanticTokensDebounce = new(new CancellationTokenSource());
+    private DebounceInfo codeActionDebounce = new(new CancellationTokenSource());
 
     public bool Enabled => completionProvider != null;
 
@@ -102,7 +104,7 @@ internal sealed class LanguageServicesClient(
             ResolveCompletionItemFunc = (completionItem, cancellationToken) => worker.ResolveCompletionItemAsync(completionItem),
         });
 
-        semanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new SemanticTokensProvider
+        semanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new()
         {
             Legend = new SemanticTokensLegend
             {
@@ -112,12 +114,27 @@ internal sealed class LanguageServicesClient(
             ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) =>
             {
                 return DebounceAsync(
-                    ref diagnosticsDebounce,
+                    ref semanticTokensDebounce,
                     (worker, modelUri, debug, rangeJson),
                     // Fallback value when cancelled is `null` which causes an exception to be thrown
                     // instead of returning empty tokens which would cause the semantic colorization to disappear.
                     null,
                     static (args, cancellationToken) => args.worker.ProvideSemanticTokensAsync(args.modelUri, args.rangeJson, args.debug),
+                    cancellationToken);
+            },
+        });
+
+        codeActionProvider = await blazorMonacoInterop.RegisterCodeActionProviderAsync(cSharpLanguageSelector, new()
+        {
+            ProvideCodeActions = (modelUri, rangeJson, cancellationToken) =>
+            {
+                return DebounceAsync(
+                    ref codeActionDebounce,
+                    (worker, modelUri, rangeJson),
+                    // Fallback value when cancelled is `null` which causes an exception to be thrown
+                    // instead of returning no code actions.
+                    null,
+                    static (args, cancellationToken) => args.worker.ProvideCodeActionsAsync(args.modelUri, args.rangeJson),
                     cancellationToken);
             },
         });
@@ -129,6 +146,8 @@ internal sealed class LanguageServicesClient(
         completionProvider = null;
         semanticTokensProvider?.Dispose();
         semanticTokensProvider = null;
+        codeActionProvider?.Dispose();
+        codeActionProvider = null;
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true)
