@@ -95,7 +95,7 @@ public static class Util
     }
 
     /// <summary>
-    /// Use in a <see langword="using"/> block to ensure it doesn't contain any <see cref="await"/>s.
+    /// Use in a <see langword="using"/> block to ensure it doesn't contain any <see langword="await"/>s.
     /// </summary>
     public static R EnsureSync() => default;
 

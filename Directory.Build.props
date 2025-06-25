@@ -11,6 +11,12 @@
     <LangVersion>preview</LangVersion>
 
     <!--
+        Needed to get diagnostics inside XML doc comments.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1573;1591;0419</NoWarn>
+
+    <!--
       Cannot trim because we dynamically execute programs
       which might depend on methods unreferenced at compile time.
     -->
