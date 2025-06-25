@@ -43,5 +43,6 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
     <!-- Pinned transitive dependencies -->
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="$(NetCoreVersion)" />
   </ItemGroup>
 </Project>
