@@ -19,6 +19,7 @@
     <Project Path="test/UnitTests/UnitTests.csproj" />
   </Folder>
   <Folder Name="/_/">
+    <File Path=".editorconfig" />
     <File Path=".gitignore" />
     <File Path=".globalconfig" />
     <File Path="Directory.Build.props" />
