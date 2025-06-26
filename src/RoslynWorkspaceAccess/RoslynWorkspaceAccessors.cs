@@ -2,9 +2,13 @@
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.GenerateType;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Internal.Log;
+using Microsoft.CodeAnalysis.LanguageService;
+using Microsoft.CodeAnalysis.Notification;
+using Microsoft.CodeAnalysis.ProjectManagement;
 using Microsoft.CodeAnalysis.Serialization;
 using Microsoft.CodeAnalysis.Storage;
 using Microsoft.CodeAnalysis.Text;
@@ -95,4 +99,15 @@ public sealed class NoOpPersistentStorageConfiguration() : IPersistentStorageCon
     public bool ThrowOnFailure => false;
 
     string? IPersistentStorageConfiguration.TryGetStorageLocation(SolutionKey solutionKey) => null;
+}
+
+[ExportWorkspaceService(typeof(IGenerateTypeOptionsService), ServiceLayer.Test), Shared]
+[method: ImportingConstructor]
+[method: Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
+public sealed class NoOpGenerateTypeOptionsService() : IGenerateTypeOptionsService
+{
+    GenerateTypeOptionsResult IGenerateTypeOptionsService.GetGenerateTypeOptions(string className, GenerateTypeDialogOptions generateTypeDialogOptions, Document document, INotificationService? notificationService, IProjectManagementService? projectManagementService, ISyntaxFactsService syntaxFactsService)
+    {
+        return GenerateTypeOptionsResult.Cancelled;
+    }
 }
