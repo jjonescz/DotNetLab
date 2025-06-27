@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 namespace DotNetLab;
 
 [JsonDerivedType(typeof(Ping), nameof(Ping))]
+[JsonDerivedType(typeof(Cancel), nameof(Cancel))]
 [JsonDerivedType(typeof(Compile), nameof(Compile))]
 [JsonDerivedType(typeof(GetOutput), nameof(GetOutput))]
 [JsonDerivedType(typeof(UseCompilerVersion), nameof(UseCompilerVersion))]
@@ -47,6 +48,14 @@ public abstract record WorkerInputMessage
     }
 
     public sealed record Ping : WorkerInputMessage<NoOutput>
+    {
+        public override Task<NoOutput> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
+    public sealed record Cancel(int MessageIdToCancel) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
         {
@@ -161,6 +170,7 @@ public abstract record WorkerInputMessage
     public interface IExecutor
     {
         Task<NoOutput> HandleAsync(Ping message);
+        Task<NoOutput> HandleAsync(Cancel message);
         Task<CompiledAssembly> HandleAsync(Compile message);
         Task<string> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);

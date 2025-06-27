@@ -355,9 +355,18 @@ internal sealed class WorkerController : IAsyncDisposable
     private async Task<TIn> PostAndReceiveMessageAsync<TOut, TIn>(
         TOut message,
         Func<string, TIn>? fallback = null,
-        TIn? deserializeAs = default)
+        TIn? deserializeAs = default,
+        CancellationToken cancellationToken = default)
         where TOut : WorkerInputMessage<TIn>
     {
+        if (cancellationToken.CanBeCanceled)
+        {
+            cancellationToken.Register(() =>
+            {
+                PostMessage(new WorkerInputMessage.Cancel(MessageIdToCancel: message.Id) { Id = messageId++ });
+            });
+        }
+
         var incoming = await PostMessageUnsafeAsync(message);
         return incoming switch
         {
@@ -421,32 +430,36 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(SdkInfo));
     }
 
-    public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context)
+    public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ProvideCompletionItems(modelUri, position, context) { Id = messageId++ },
-            deserializeAs: default(string));
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
     }
 
-    public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item)
+    public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ResolveCompletionItem(item) { Id = messageId++ },
-            deserializeAs: default(string));
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
     }
 
-    public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug)
+    public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ProvideSemanticTokens(modelUri, rangeJson, debug) { Id = messageId++ },
-            deserializeAs: default(string));
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
     }
 
-    public Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson)
+    public Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.ProvideCodeActions(modelUri, rangeJson) { Id = messageId++ },
-            deserializeAs: default(string));
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)

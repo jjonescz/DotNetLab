@@ -1,5 +1,6 @@
 ﻿using BlazorMonaco.Languages;
 using Microsoft.JSInterop;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Text.Json;
@@ -54,7 +55,7 @@ internal sealed partial class BlazorMonacoInterop
             modelUri,
             JsonSerializer.Deserialize(position, BlazorMonacoJsonContext.Default.Position)!,
             JsonSerializer.Deserialize(context, BlazorMonacoJsonContext.Default.CompletionContext)!,
-            ToCancellationToken(token));
+            ToCancellationToken(token, completionItemProvider.Logger));
         return json;
     }
 
@@ -67,7 +68,7 @@ internal sealed partial class BlazorMonacoInterop
         var completionItemProvider = ((DotNetObjectReference<CompletionItemProviderAsync>)completionItemProviderReference).Value;
         string? json = await completionItemProvider.ResolveCompletionItemAsync(
             JsonSerializer.Deserialize(item, BlazorMonacoJsonContext.Default.MonacoCompletionItem)!,
-            ToCancellationToken(token));
+            ToCancellationToken(token, completionItemProvider.Logger));
         return json;
     }
 
@@ -80,7 +81,7 @@ internal sealed partial class BlazorMonacoInterop
         JSObject token)
     {
         var provider = ((DotNetObjectReference<SemanticTokensProvider>)providerReference).Value;
-        string? json = await provider.ProvideSemanticTokens(modelUri, rangeJson, debug, ToCancellationToken(token));
+        string? json = await provider.ProvideSemanticTokens(modelUri, rangeJson, debug, ToCancellationToken(token, provider.Logger));
         return json;
     }
 
@@ -92,7 +93,7 @@ internal sealed partial class BlazorMonacoInterop
         JSObject token)
     {
         var provider = ((DotNetObjectReference<CodeActionProviderAsync>)providerReference).Value;
-        string? json = await provider.ProvideCodeActions(modelUri, rangeJson, ToCancellationToken(token));
+        string? json = await provider.ProvideCodeActions(modelUri, rangeJson, ToCancellationToken(token, provider.Logger));
         return json;
     }
 
@@ -137,10 +138,11 @@ internal sealed partial class BlazorMonacoInterop
         return new Disposable(disposable);
     }
 
-    public static CancellationToken ToCancellationToken(JSObject token)
+    public static CancellationToken ToCancellationToken(JSObject token, ILogger logger, [CallerMemberName] string memberName = "")
     {
         // No need to initialize, we already must have called other APIs.
         var cts = new CancellationTokenSource();
+        cts.Token.Register(() => logger.LogDebug("Cancelling '{Member}'.", memberName));
         OnCancellationRequested(token, cts.Cancel);
         return cts.Token;
     }
