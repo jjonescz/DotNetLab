@@ -147,12 +147,12 @@ public static class MonacoConversions
 
     public static string Stringify(this Position? position)
     {
-        return position is null ? "null" : $"{position.LineNumber}:{position.Column}";
+        return position is null ? "?:?" : $"{position.LineNumber}:{position.Column}";
     }
 
     public static string Stringify(this MonacoRange? range)
     {
-        return range is null ? "null" : $"[{range.StartLineNumber}:{range.StartColumn}..{range.EndLineNumber}:{range.EndColumn})";
+        return range is null ? "[..)" : $"[{range.StartLineNumber}:{range.StartColumn}..{range.EndLineNumber}:{range.EndColumn})";
     }
 
     public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)

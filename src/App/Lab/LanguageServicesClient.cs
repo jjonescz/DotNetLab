@@ -18,6 +18,7 @@ internal sealed class LanguageServicesClient(
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
+    private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
 
     public bool Enabled => completionProvider != null;
 
@@ -114,7 +115,18 @@ internal sealed class LanguageServicesClient(
 
         codeActionProvider = await blazorMonacoInterop.RegisterCodeActionProviderAsync(cSharpLanguageSelector, new(loggerFactory)
         {
-            ProvideCodeActions = worker.ProvideCodeActionsAsync,
+            ProvideCodeActions = (modelUri, rangeJson, cancellationToken) =>
+            {
+                if (lastCodeActions is { } cached &&
+                    cached.ModelUri == modelUri && cached.RangeJson == rangeJson)
+                {
+                    return cached.Result;
+                }
+
+                var result = worker.ProvideCodeActionsAsync(modelUri, rangeJson, cancellationToken);
+                lastCodeActions = (modelUri, rangeJson, result);
+                return result;
+            },
         });
     }
 
@@ -126,6 +138,12 @@ internal sealed class LanguageServicesClient(
         semanticTokensProvider = null;
         codeActionProvider?.Dispose();
         codeActionProvider = null;
+        InvalidateCaches();
+    }
+
+    private void InvalidateCaches()
+    {
+        lastCodeActions = null;
     }
 
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true)
@@ -135,6 +153,7 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
+        InvalidateCaches();
         modelUrlToFileName = models.ToDictionary(m => m.Uri, m => m.FileName);
         worker.OnDidChangeWorkspace(models);
 
@@ -163,6 +182,7 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
+        InvalidateCaches();
         worker.OnDidChangeModelContent(args);
         UpdateDiagnostics();
     }

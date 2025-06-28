@@ -105,7 +105,7 @@ internal sealed class LanguageServices
             sw.Restart();
             var result = completions.ToCompletionList(text);
             var time2 = sw.ElapsedMilliseconds;
-            logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1.SeparateThousands(), time2.SeparateThousands());
+            logger.LogDebug("Got completions ({Count}) for {Position} in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, position.Stringify(), time1.SeparateThousands(), time2.SeparateThousands());
             return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
         }
         catch (OperationCanceledException)
@@ -277,7 +277,7 @@ internal sealed class LanguageServices
 
             string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
 
-            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             return result;
         }
@@ -323,7 +323,7 @@ internal sealed class LanguageServices
             var json = JsonSerializer.Serialize(converted, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
 
             var time2 = sw.ElapsedMilliseconds;
-            logger.LogDebug("Got code actions ({Count}) for {Range} in {Time1} + {Time2} ms", converted.Length, span, time1.SeparateThousands(), time2.SeparateThousands());
+            logger.LogDebug("Got code actions ({Count}) for {Range} in {Time1} + {Time2} ms", converted.Length, range.Stringify(), time1.SeparateThousands(), time2.SeparateThousands());
 
             return json;
         }
@@ -403,6 +403,7 @@ internal sealed class LanguageServices
                 result.Add(new()
                 {
                     Title = addPrefix(prefix, codeAction.Title),
+                    Kind = MonacoCodeActionKind.QuickFix,
                     Edit = new()
                     {
                         Edits = edits.DrainToImmutable(),
