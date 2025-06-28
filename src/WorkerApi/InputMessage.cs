@@ -34,16 +34,16 @@ public abstract record WorkerInputMessage
             var outgoing = await HandleNonGenericAsync(executor);
             if (ReferenceEquals(outgoing, NoOutput.Instance))
             {
-                return new WorkerOutputMessage.Empty { Id = Id };
+                return new WorkerOutputMessage.Empty { Id = Id, InputType = GetType().Name };
             }
             else
             {
-                return new WorkerOutputMessage.Success(outgoing) { Id = Id };
+                return new WorkerOutputMessage.Success(outgoing) { Id = Id, InputType = GetType().Name };
             }
         }
         catch (Exception ex)
         {
-            return new WorkerOutputMessage.Failure(ex) { Id = Id };
+            return new WorkerOutputMessage.Failure(ex) { Id = Id, InputType = GetType().Name };
         }
     }
 

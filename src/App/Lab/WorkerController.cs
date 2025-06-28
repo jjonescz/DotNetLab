@@ -152,8 +152,9 @@ internal sealed class WorkerController : IAsyncDisposable
         // Read all pending messages (should be none or a single broadcast message with the previous failure).
         while (workerOutputMessages.Reader.TryRead(out var message))
         {
-            logger.LogDebug("Discarding message {Id} {Type}",
+            logger.LogDebug("Discarding message {Id} {InputType} → {OutputType}",
                 message.Id,
+                message.InputType,
                 message.GetType().Name);
         }
 
@@ -188,8 +189,11 @@ internal sealed class WorkerController : IAsyncDisposable
                 dispatcher.InvokeAsync(async () =>
                 {
                     var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
-                    logger.LogDebug("📩 {Id}: {Type} ({Size})",
+                    logger.Log(
+                        message.InputType == nameof(WorkerInputMessage.Ping) ? LogLevel.Trace : LogLevel.Debug,
+                        "📩 {Id}: {InputType} → {OutputType} ({Size})",
                         message.Id,
+                        message.InputType,
                         message.GetType().Name,
                         data.Length.SeparateThousands());
                     if (message is WorkerOutputMessage.Ready)
@@ -214,7 +218,8 @@ internal sealed class WorkerController : IAsyncDisposable
                 dispatcher.InvokeAsync(async () =>
                 {
                     // Send a broadcast message so all pending calls are completed with a failure.
-                    await workerOutputMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure("Worker error", error) { Id = WorkerOutputMessage.BroadcastId });
+                    await workerOutputMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure("Worker error", error)
+                    { Id = WorkerOutputMessage.BroadcastId, InputType = WorkerOutputMessage.BroadcastInputType });
 
                     Failed?.Invoke(error);
                 });
@@ -288,7 +293,9 @@ internal sealed class WorkerController : IAsyncDisposable
 
                     // TODO: Use ProtoBuf.
                     var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
-                    logger.LogDebug("📨 {Id}: {Type} ({Size})",
+                    logger.Log(
+                        message is WorkerInputMessage.Ping ? LogLevel.Trace : LogLevel.Debug,
+                        "📨 {Id}: {Type} ({Size})",
                         message.Id,
                         message.GetType().Name,
                         serialized.Length.SeparateThousands());
