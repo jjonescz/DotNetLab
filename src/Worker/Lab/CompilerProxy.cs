@@ -41,6 +41,7 @@ internal sealed class CompilerProxy(
 
                 if (dependencyRegistry.Iteration == previousIteration)
                 {
+                    loaded?.Dispose();
                     loaded = currentlyLoaded;
                     iteration = dependencyRegistry.Iteration;
                 }
@@ -59,11 +60,15 @@ internal sealed class CompilerProxy(
                 loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
             }
 
-            using var _ = loaded.LoadContext.EnterContextualReflection();
-            var result = loaded.Compiler.Compile(input, loaded.DllAssemblies, loaded.BuiltInDllAssemblies, loaded.LoadContext);
+            LiveCompilationResult result;
+            using (loaded.LoadContext.EnterContextualReflection())
+            {
+                result = loaded.Compiler.Compile(input, loaded.DllAssemblies, loaded.BuiltInDllAssemblies, loaded.LoadContext);
+            }
 
             if (loaded.LoadContext is CompilerLoader { LastFailure: { } failure })
             {
+                loaded?.Dispose();
                 loaded = null;
                 CompilerAssemblies = null;
                 throw new InvalidOperationException(
@@ -170,7 +175,7 @@ internal sealed class CompilerProxy(
         return new() { LoadContext = alc, Compiler = compiler, Assemblies = assemblies };
     }
 
-    private sealed class LoadedCompiler
+    private sealed class LoadedCompiler : IDisposable
     {
         public required AssemblyLoadContext LoadContext { get; init; }
         public required ICompiler Compiler { get; init; }
@@ -195,6 +200,14 @@ internal sealed class CompilerProxy(
         /// we just try these built-in ones when compilation with <see cref="DllAssemblies"/> fails.
         /// </summary>
         public ImmutableDictionary<string, ImmutableArray<byte>>? BuiltInDllAssemblies { get; set; }
+
+        public void Dispose()
+        {
+            if (LoadContext.IsCollectible)
+            {
+                LoadContext.Unload();
+            }
+        }
     }
 }
 
@@ -211,7 +224,7 @@ internal sealed class CompilerLoader(
     CompilerLoaderServices services,
     IReadOnlyDictionary<string, LoadedAssembly> knownAssemblies,
     int iteration)
-    : AssemblyLoadContext(nameof(CompilerLoader) + iteration)
+    : AssemblyLoadContext(nameof(CompilerLoader) + iteration, isCollectible: true)
 {
     private readonly Dictionary<string, Assembly> loadedAssemblies = new();
 
