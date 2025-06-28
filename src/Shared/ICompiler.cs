@@ -76,6 +76,16 @@ public sealed class LiveCompilationResult
 {
     public required CompiledAssembly CompiledAssembly { get; init; }
     public required CompilerAssembliesUsed CompilerAssembliesUsed { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options should be used.
+    /// </summary>
+    public required object? CSharpParseOptions { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options should be used.
+    /// </summary>
+    public required object? CSharpCompilationOptions { get; init; }
 }
 
 public enum CompilerAssembliesUsed

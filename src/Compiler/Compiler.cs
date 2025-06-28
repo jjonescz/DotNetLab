@@ -66,6 +66,7 @@ public sealed class Compiler(
         const string directory = "/";
 
         var parseOptions = CreateDefaultParseOptions();
+        CSharpCompilationOptions? options = null;
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
@@ -101,11 +102,7 @@ public sealed class Compiler(
                 {
                     ConfigDiagnosticCount = configDiagnosticData.Length,
                 };
-                return new LiveCompilationResult
-                {
-                    CompiledAssembly = configResult,
-                    CompilerAssembliesUsed = compilerAssembliesUsed,
-                };
+                return getResult(configResult);
             }
 
             parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
@@ -153,7 +150,7 @@ public sealed class Compiler(
 
         var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
-        var options = CreateDefaultCompilationOptions(outputKind);
+        options = CreateDefaultCompilationOptions(outputKind);
 
         options = Config.ConfigureCSharpCompilationOptions(options);
 
@@ -348,11 +345,18 @@ public sealed class Compiler(
             ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
         };
 
-        return new LiveCompilationResult
+        return getResult(result);
+
+        LiveCompilationResult getResult(CompiledAssembly result)
         {
-            CompiledAssembly = result,
-            CompilerAssembliesUsed = compilerAssembliesUsed,
-        };
+            return new LiveCompilationResult
+            {
+                CompiledAssembly = result,
+                CompilerAssembliesUsed = compilerAssembliesUsed,
+                CSharpParseOptions = compilerAssembliesUsed != CompilerAssembliesUsed.None ? parseOptions : null,
+                CSharpCompilationOptions = compilerAssembliesUsed != CompilerAssembliesUsed.None ? options : null,
+            };
+        }
 
         static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
 

@@ -32,6 +32,7 @@ internal sealed class LanguageServices
     private DocumentId? documentId;
     private RoslynCompletionList? lastCompletions;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
+    private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
         ILogger<LanguageServices> logger,
@@ -66,7 +67,7 @@ internal sealed class LanguageServices
             string name = configuration ? "ConfigurationProject" : "TestProject";
             var compilationOptions = configuration
                 ? Compiler.CreateConfigurationCompilationOptions()
-                : Compiler.CreateDefaultCompilationOptions(Compiler.GetDefaultOutputKind([]));
+                : Compiler.CreateDefaultCompilationOptions(defaultOutputKind);
             var project = workspace
                 .AddProject(name, LanguageNames.CSharp)
                 .AddMetadataReferences(RefAssemblyMetadata.All)
@@ -478,29 +479,57 @@ internal sealed class LanguageServices
         {
             using var _ = await workspaceLock.LockAsync();
 
-            var project = GetProject(configuration: true);
-
-            if (!additionalConfigurationReferences.IsDefault)
+            // Modify the configuration project.
             {
-                foreach (var reference in additionalConfigurationReferences)
+                var project = GetProject(configuration: true);
+
+                if (!additionalConfigurationReferences.IsDefault)
                 {
-                    project = project.RemoveMetadataReference(reference);
+                    foreach (var reference in additionalConfigurationReferences)
+                    {
+                        project = project.RemoveMetadataReference(reference);
+                    }
                 }
+
+                if (compilerProxy.CompilerAssemblies is not { } compilerAssemblies)
+                {
+                    additionalConfigurationReferences = default;
+                }
+                else
+                {
+                    additionalConfigurationReferences = compilerAssemblies.Values
+                        .Select(MetadataReference (b) => MetadataReference.CreateFromImage(b))
+                        .ToImmutableArray();
+                    project = project.AddMetadataReferences(additionalConfigurationReferences);
+                }
+
+                ApplyChanges(project.Solution);
             }
 
-            if (compilerProxy.CompilerAssemblies is not { } compilerAssemblies)
+            // Modify the main project.
             {
-                additionalConfigurationReferences = default;
-            }
-            else
-            {
-                additionalConfigurationReferences = compilerAssemblies.Values
-                    .Select(MetadataReference (b) => MetadataReference.CreateFromImage(b))
-                    .ToImmutableArray();
-                project = project.AddMetadataReferences(additionalConfigurationReferences);
-            }
+                var project = GetProject(configuration: false);
 
-            ApplyChanges(project.Solution);
+                if (compilerProxy.CSharpParseOptions is { } parseOptions)
+                {
+                    project = project.WithParseOptions(parseOptions);
+                }
+                else
+                {
+                    project = project.WithParseOptions(Compiler.CreateDefaultParseOptions());
+                }
+
+                if (compilerProxy.CSharpCompilationOptions is { } options)
+                {
+                    project = project.WithCompilationOptions(options);
+                }
+                else
+                {
+                    project = project.WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(defaultOutputKind));
+                }
+
+                ApplyChanges(project.Solution);
+            }
         }
         catch (Exception ex)
         {
@@ -604,10 +633,10 @@ internal sealed class LanguageServices
     {
         var project = GetProject(configuration: false);
         var sources = await project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
-        var outputKind = Compiler.GetDefaultOutputKind(sources);
-        if (project.CompilationOptions is { } options && outputKind != options.OutputKind)
+        defaultOutputKind = Compiler.GetDefaultOutputKind(sources);
+        if (project.CompilationOptions is { } options && options.OutputKind != defaultOutputKind)
         {
-            ApplyChanges(project.WithCompilationOptions(options.WithOutputKind(outputKind)).Solution);
+            ApplyChanges(project.WithCompilationOptions(options.WithOutputKind(defaultOutputKind)).Solution);
         }
     }
 

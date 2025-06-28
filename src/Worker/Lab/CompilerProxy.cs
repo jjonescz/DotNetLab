@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Runtime.InteropServices;
@@ -29,6 +30,16 @@ internal sealed class CompilerProxy(
     private int iteration;
     
     public ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; private set; }
+
+    /// <summary>
+    /// See <see cref="LiveCompilationResult.CSharpParseOptions"/>.
+    /// </summary>
+    public CSharpParseOptions? CSharpParseOptions { get; private set; }
+
+    /// <summary>
+    /// See <see cref="LiveCompilationResult.CSharpCompilationOptions"/>.
+    /// </summary>
+    public CSharpCompilationOptions? CSharpCompilationOptions { get; private set; }
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
@@ -71,6 +82,8 @@ internal sealed class CompilerProxy(
                 loaded?.Dispose();
                 loaded = null;
                 CompilerAssemblies = null;
+                CSharpParseOptions = null;
+                CSharpCompilationOptions = null;
                 throw new InvalidOperationException(
                     $"Failed to load '{failure.AssemblyName}'.", failure.Exception);
             }
@@ -81,6 +94,9 @@ internal sealed class CompilerProxy(
                 CompilerAssembliesUsed.BuiltIn => loaded.BuiltInDllAssemblies,
                 _ => null,
             };
+
+            CSharpParseOptions = result.CSharpParseOptions as CSharpParseOptions;
+            CSharpCompilationOptions = result.CSharpCompilationOptions as CSharpCompilationOptions;
 
             return result.CompiledAssembly;
         }
