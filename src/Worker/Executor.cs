@@ -44,7 +44,15 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
     public async Task<CompiledAssembly> HandleAsync(WorkerInputMessage.Compile message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
-        return await compiler.CompileAsync(message.Input);
+        var result = await compiler.CompileAsync(message.Input);
+
+        if (message.LanguageServicesEnabled)
+        {
+            var languageServices = services.GetRequiredService<LanguageServices>();
+            languageServices.OnCompilationFinished();
+        }
+
+        return result;
     }
 
     public async Task<string> HandleAsync(WorkerInputMessage.GetOutput message)

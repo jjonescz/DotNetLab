@@ -15,7 +15,7 @@ using System.Runtime.Loader;
 
 namespace DotNetLab;
 
-public class Compiler(
+public sealed class Compiler(
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -23,14 +23,21 @@ public class Compiler(
         You can try selecting different Razor toolchain in Settings / Advanced.
         """;
 
-    private (CompilationInput Input, CompiledAssembly Output)? lastResult;
+    public static readonly string ConfigurationGlobalUsings = """
+        global using DotNetLab;
+        global using Microsoft.CodeAnalysis;
+        global using Microsoft.CodeAnalysis.CSharp;
+        global using System;
+        """;
+
+    private (CompilationInput Input, LiveCompilationResult Output)? lastResult;
 
     /// <summary>
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
 
-    public CompiledAssembly Compile(
+    public LiveCompilationResult Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -49,7 +56,7 @@ public class Compiler(
         return result;
     }
 
-    private CompiledAssembly CompileNoCache(
+    private LiveCompilationResult CompileNoCache(
         CompilationInput compilationInput,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -66,6 +73,7 @@ public class Compiler(
         // If we have a configuration, compile and execute it.
         Config.Reset();
         ImmutableArray<Diagnostic> configDiagnostics;
+        var compilerAssembliesUsed = CompilerAssembliesUsed.None;
         if (compilationInput.Configuration is { } configuration)
         {
             if (!executeConfiguration(configuration, out configDiagnostics))
@@ -74,7 +82,7 @@ public class Compiler(
                 ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
                     .Select(d => d.ToDiagnosticData())
                     .ToImmutableArray();
-                return new CompiledAssembly(
+                var configResult = new CompiledAssembly(
                     Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
                     GlobalOutputs:
                     [
@@ -92,6 +100,11 @@ public class Compiler(
                     BaseDirectory: directory)
                 {
                     ConfigDiagnosticCount = configDiagnosticData.Length,
+                };
+                return new LiveCompilationResult
+                {
+                    CompiledAssembly = configResult,
+                    CompilerAssembliesUsed = compilerAssembliesUsed,
                 };
             }
 
@@ -335,7 +348,11 @@ public class Compiler(
             ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
         };
 
-        return result;
+        return new LiveCompilationResult
+        {
+            CompiledAssembly = result,
+            CompilerAssembliesUsed = compilerAssembliesUsed,
+        };
 
         static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
 
@@ -346,28 +363,22 @@ public class Compiler(
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText("""
-                        global using DotNetLab;
-                        global using Microsoft.CodeAnalysis;
-                        global using Microsoft.CodeAnalysis.CSharp;
-                        global using System;
-                        """, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references:
                 [
                     ..references,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
-                options: CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
-                    .WithSpecificDiagnosticOptions(
-                    [
-                        // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
-                        KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
-                    ]));
+                options: CreateConfigurationCompilationOptions());
 
             var emitStream = getEmitStream(configCompilation, out diagnostics);
 
-            if (emitStream == null)
+            if (emitStream != null)
+            {
+                compilerAssembliesUsed = CompilerAssembliesUsed.Normal;
+            }
+            else
             {
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
                 var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
@@ -379,6 +390,7 @@ public class Compiler(
                 if (emitStream != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
+                    compilerAssembliesUsed = CompilerAssembliesUsed.BuiltIn;
                 }
             }
 
@@ -790,6 +802,16 @@ public class Compiler(
             allowUnsafe: true,
             nullableContextOptions: NullableContextOptions.Enable,
             concurrentBuild: false);
+    }
+
+    public static CSharpCompilationOptions CreateConfigurationCompilationOptions()
+    {
+        return CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
+            .WithSpecificDiagnosticOptions(
+            [
+                // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+                KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
+            ]);
     }
 }
 

@@ -98,7 +98,7 @@ partial class Page
         if (savedState.Configuration is { } savedConfiguration)
         {
             var input = InitialCode.Configuration.ToInputCode() with { Text = savedConfiguration };
-            configuration = new(input.FileName, await CreateModelAsync(input));
+            configuration = new(input.FileName, await CreateModelAsync(input)) { NewContent = input.Text };
         }
         else
         {

@@ -27,6 +27,8 @@ internal sealed class CompilerProxy(
     private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
+    
+    public ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; private set; }
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
@@ -63,11 +65,19 @@ internal sealed class CompilerProxy(
             if (loaded.LoadContext is CompilerLoader { LastFailure: { } failure })
             {
                 loaded = null;
+                CompilerAssemblies = null;
                 throw new InvalidOperationException(
                     $"Failed to load '{failure.AssemblyName}'.", failure.Exception);
             }
 
-            return result;
+            CompilerAssemblies = result.CompilerAssembliesUsed switch
+            {
+                CompilerAssembliesUsed.Normal => loaded.DllAssemblies,
+                CompilerAssembliesUsed.BuiltIn => loaded.BuiltInDllAssemblies,
+                _ => null,
+            };
+
+            return result.CompiledAssembly;
         }
         catch (Exception ex)
         {

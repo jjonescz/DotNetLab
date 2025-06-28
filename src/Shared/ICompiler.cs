@@ -6,7 +6,7 @@ namespace DotNetLab;
 
 public interface ICompiler
 {
-    CompiledAssembly Compile(
+    LiveCompilationResult Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -68,6 +68,22 @@ public sealed record DiagnosticData(
     int EndLineNumber,
     int EndColumn
 );
+
+/// <summary>
+/// Additional data on top of <see cref="CompiledAssembly"/> that are never cached.
+/// </summary>
+public sealed class LiveCompilationResult
+{
+    public required CompiledAssembly CompiledAssembly { get; init; }
+    public required CompilerAssembliesUsed CompilerAssembliesUsed { get; init; }
+}
+
+public enum CompilerAssembliesUsed
+{
+    None,
+    Normal,
+    BuiltIn,
+}
 
 /// <remarks>
 /// <para>

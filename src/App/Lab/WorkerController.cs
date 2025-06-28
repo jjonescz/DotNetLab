@@ -394,10 +394,10 @@ internal sealed class WorkerController : IAsyncDisposable
         };
     }
 
-    public Task<CompiledAssembly> CompileAsync(CompilationInput input)
+    public Task<CompiledAssembly> CompileAsync(CompilationInput input, bool languageServicesEnabled)
     {
         return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.Compile(input) { Id = messageId++ },
+            new WorkerInputMessage.Compile(input, languageServicesEnabled) { Id = messageId++ },
             fallback: CompiledAssembly.Fail);
     }
 

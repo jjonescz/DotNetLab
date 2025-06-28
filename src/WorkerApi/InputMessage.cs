@@ -63,7 +63,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record Compile(CompilationInput Input) : WorkerInputMessage<CompiledAssembly>
+    public sealed record Compile(CompilationInput Input, bool LanguageServicesEnabled) : WorkerInputMessage<CompiledAssembly>
     {
         public override Task<CompiledAssembly> HandleAsync(IExecutor executor)
         {
@@ -209,4 +209,9 @@ public sealed record NoOutput
 public sealed record ModelInfo(string Uri, string FileName)
 {
     public string? NewContent { get; set; }
+
+    /// <summary>
+    /// Whether this corresponds to <see cref="CompilationInput.Configuration"/>.
+    /// </summary>
+    public bool IsConfiguration { get; init; }
 }

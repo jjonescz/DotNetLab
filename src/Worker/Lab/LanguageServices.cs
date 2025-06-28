@@ -18,15 +18,27 @@ namespace DotNetLab.Lab;
 internal sealed class LanguageServices
 {
     private readonly ILogger<LanguageServices> logger;
+    private readonly CompilerProxy compilerProxy;
+    private readonly AsyncLock workspaceLock = new();
     private readonly AdhocWorkspace workspace;
     private readonly ProjectId projectId;
+
+    /// <summary>
+    /// Project containing the <see cref="CompilationInput.Configuration"/>.
+    /// </summary>
+    private readonly ProjectId configurationProjectId;
+
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private DocumentId? documentId;
     private RoslynCompletionList? lastCompletions;
+    private ImmutableArray<MetadataReference> additionalConfigurationReferences;
 
-    public LanguageServices(ILogger<LanguageServices> logger)
+    public LanguageServices(
+        ILogger<LanguageServices> logger,
+        CompilerProxy compilerProxy)
     {
         this.logger = logger;
+        this.compilerProxy = compilerProxy;
 
         if (logger.IsEnabled(LogLevel.Trace))
         {
@@ -38,19 +50,38 @@ internal sealed class LanguageServices
                 .. MefHostServices.DefaultAssemblies,
                 typeof(RoslynWorkspaceAccessors).Assembly,
             ]));
-        var project = workspace
-            .AddProject("TestProject", LanguageNames.CSharp)
-            .AddMetadataReferences(RefAssemblyMetadata.All)
-            .WithAnalyzerReferences(
-            [
-                // CompilerDiagnosticAnalyzer for CodeFixService (which only works on analyzer diagnostics).
-                new AnalyzerImageReference([RoslynAccessors.GetCSharpCompilerDiagnosticAnalyzer()]).RegisterAnalyzer(),
-                findRoslynAnalyzers(),
-            ])
-            .WithParseOptions(Compiler.CreateDefaultParseOptions())
-            .WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(Compiler.GetDefaultOutputKind([])));
-        ApplyChanges(project.Solution);
-        projectId = project.Id;
+
+        IEnumerable<AnalyzerReference> analyzerReferences =
+        [
+            // CompilerDiagnosticAnalyzer for CodeFixService (which only works on analyzer diagnostics).
+            new AnalyzerImageReference([RoslynAccessors.GetCSharpCompilerDiagnosticAnalyzer()]).RegisterAnalyzer(),
+            findRoslynAnalyzers(),
+        ];
+
+        projectId = createProject(configuration: false);
+        configurationProjectId = createProject(configuration: true);
+
+        ProjectId createProject(bool configuration)
+        {
+            string name = configuration ? "ConfigurationProject" : "TestProject";
+            var compilationOptions = configuration
+                ? Compiler.CreateConfigurationCompilationOptions()
+                : Compiler.CreateDefaultCompilationOptions(Compiler.GetDefaultOutputKind([]));
+            var project = workspace
+                .AddProject(name, LanguageNames.CSharp)
+                .AddMetadataReferences(RefAssemblyMetadata.All)
+                .WithAnalyzerReferences(analyzerReferences)
+                .WithParseOptions(Compiler.CreateDefaultParseOptions())
+                .WithCompilationOptions(compilationOptions);
+
+            if (configuration)
+            {
+                project = project.AddDocument("GlobalUsings.cs", Compiler.ConfigurationGlobalUsings).Project;
+            }
+
+            ApplyChanges(project.Solution);
+            return project.Id;
+        }
 
         static AnalyzerReference findRoslynAnalyzers()
         {
@@ -63,8 +94,6 @@ internal sealed class LanguageServices
             return new AnalyzerImageReference(analyzers).RegisterAnalyzer();
         }
     }
-
-    private Project Project => workspace.CurrentSolution.GetProject(projectId)!;
 
     /// <returns>
     /// JSON-serialized <see cref="MonacoCompletionList"/>.
@@ -129,7 +158,7 @@ internal sealed class LanguageServices
         if (documentId == null ||
             lastCompletions == null ||
             lastCompletions.ItemsList.TryAt(item.Index) is not { } foundItem ||
-            Project.GetDocument(documentId) is not { } document)
+            GetDocument(documentId) is not { } document)
         {
             return null;
         }
@@ -443,17 +472,56 @@ internal sealed class LanguageServices
         }
     }
 
+    public async void OnCompilationFinished()
+    {
+        try
+        {
+            using var _ = await workspaceLock.LockAsync();
+
+            var project = GetProject(configuration: true);
+
+            if (!additionalConfigurationReferences.IsDefault)
+            {
+                foreach (var reference in additionalConfigurationReferences)
+                {
+                    project = project.RemoveMetadataReference(reference);
+                }
+            }
+
+            if (compilerProxy.CompilerAssemblies is not { } compilerAssemblies)
+            {
+                additionalConfigurationReferences = default;
+            }
+            else
+            {
+                additionalConfigurationReferences = compilerAssemblies.Values
+                    .Select(MetadataReference (b) => MetadataReference.CreateFromImage(b))
+                    .ToImmutableArray();
+                project = project.AddMetadataReferences(additionalConfigurationReferences);
+            }
+
+            ApplyChanges(project.Solution);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to handle finished compilation.");
+        }
+    }
+
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)
     {
+        using var _ = await workspaceLock.LockAsync();
+
         var modelLookupByUri = models.ToDictionary(m => m.Uri);
 
         // Make sure our workspaces matches `models`.
-        foreach (Document doc in Project.Documents)
+        foreach (DocumentId docId in GetDocumentIds())
         {
-            if (modelUris.TryGetValue(doc.Id, out string? modelUri))
+            if (modelUris.TryGetValue(docId, out string? modelUri))
             {
                 // We have URI of this document, it's in our workspace.
 
+                var doc = GetDocument(docId)!;
                 if (modelLookupByUri.TryGetValue(modelUri, out ModelInfo? model))
                 {
                     // The document is still present in `models`.
@@ -461,22 +529,23 @@ internal sealed class LanguageServices
                     if (doc.Name != model.FileName)
                     {
                         // Document has been renamed.
-                        modelUris.Remove(doc.Id);
+                        modelUris.Remove(docId);
 
                         if (model.FileName.IsCSharpFileName())
                         {
-                            modelUris.Add(doc.Id, model.Uri);
-                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(doc.Id, model.FileName));
+                            modelUris.Add(docId, model.Uri);
+                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(docId, model.FileName));
 
                             if (model.NewContent != null)
                             {
                                 // The caller sets the content to reset the state.
+                                doc = GetDocument(docId)!;
                                 ApplyChanges(doc.WithText(SourceText.From(model.NewContent)).Project.Solution);
                             }
                         }
                         else
                         {
-                            ApplyChanges(Project.RemoveDocument(doc.Id).Solution);
+                            ApplyChanges(doc.Project.RemoveDocument(docId).Solution);
                         }
                     }
                     else if (model.NewContent != null)
@@ -488,8 +557,8 @@ internal sealed class LanguageServices
                 else
                 {
                     // Document has been removed from `models`.
-                    modelUris.Remove(doc.Id);
-                    ApplyChanges(Project.RemoveDocument(doc.Id).Solution);
+                    modelUris.Remove(docId);
+                    ApplyChanges(doc.Project.RemoveDocument(docId).Solution);
                 }
 
                 // Mark this model URI as processed.
@@ -506,7 +575,7 @@ internal sealed class LanguageServices
         {
             if (model.FileName.IsCSharpFileName())
             {
-                var doc = Project.AddDocument(
+                var doc = GetProject(configuration: model.IsConfiguration).AddDocument(
                     name: model.FileName,
                     text: model.NewContent ?? string.Empty,
                     filePath: model.FileName);
@@ -516,7 +585,7 @@ internal sealed class LanguageServices
         }
 
         // Update the current document.
-        if (documentId != null && Project.GetDocument(documentId) is { } document)
+        if (documentId != null && GetDocument(documentId) is { } document)
         {
             if (modelUris.TryGetValue(document.Id, out string? modelUri))
             {
@@ -533,11 +602,12 @@ internal sealed class LanguageServices
 
     private async Task UpdateOptionsIfNecessaryAsync()
     {
-        var sources = await Project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
+        var project = GetProject(configuration: false);
+        var sources = await project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
         var outputKind = Compiler.GetDefaultOutputKind(sources);
-        if (Project.CompilationOptions is { } options && outputKind != options.OutputKind)
+        if (project.CompilationOptions is { } options && outputKind != options.OutputKind)
         {
-            ApplyChanges(Project.WithCompilationOptions(options.WithOutputKind(outputKind)).Solution);
+            ApplyChanges(project.WithCompilationOptions(options.WithOutputKind(outputKind)).Solution);
         }
     }
 
@@ -549,10 +619,13 @@ internal sealed class LanguageServices
 
     public async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
     {
-        if (documentId == null || Project.GetDocument(documentId) is not { } document)
+        if (documentId == null || GetDocument(documentId) is not { } document)
         {
+            logger.LogWarning("No current document to change content of.");
             return;
         }
+
+        using var _ = await workspaceLock.LockAsync();
 
         var text = await document.GetTextAsync();
 
@@ -573,7 +646,7 @@ internal sealed class LanguageServices
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()
     {
         if (documentId == null ||
-            Project.GetDocument(documentId) is not { } document ||
+            GetDocument(documentId) is not { } document ||
             !document.TryGetSyntaxTree(out var tree))
         {
             return [];
@@ -590,11 +663,15 @@ internal sealed class LanguageServices
         return diagnostics.Select(static d => d.ToMarkerData()).ToImmutableArray();
     }
 
-    private void ApplyChanges(Solution solution)
+    private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)
     {
         if (!workspace.TryApplyChanges(solution))
         {
-            logger.LogWarning("Failed to apply changes to the workspace.");
+            logger.LogWarning("Failed to apply changes to the workspace from '{Member}:{Line}'.", memberName, lineNumber);
+        }
+        else
+        {
+            logger.LogTrace("Successfully applied changes to the workspace from '{Member}:{Line}'.", memberName, lineNumber);
         }
     }
 
@@ -605,20 +682,37 @@ internal sealed class LanguageServices
             modelUris.TryGetValue(documentId, out var uri) &&
             uri == modelUri)
         {
-            document = Project.GetDocument(documentId);
+            document = GetDocument(documentId);
             return document != null;
         }
 
-        var id = Project.DocumentIds.FirstOrDefault(id =>
+        var id = GetDocumentIds().FirstOrDefault(id =>
             modelUris.TryGetValue(id, out var uri) &&
             uri == modelUri);
         if (id != null)
         {
-            document = Project.GetDocument(id);
+            document = GetDocument(id);
             return document != null;
         }
 
         document = null;
         return false;
+    }
+
+    private Document? GetDocument(DocumentId id)
+    {
+        return workspace.CurrentSolution.Projects
+            .SelectNonNull(p => p.GetDocument(id))
+            .FirstOrDefault();
+    }
+
+    private IEnumerable<DocumentId> GetDocumentIds()
+    {
+        return workspace.CurrentSolution.Projects.SelectMany(p => p.DocumentIds);
+    }
+
+    private Project GetProject(bool configuration)
+    {
+        return workspace.CurrentSolution.GetProject(configuration ? configurationProjectId : projectId)!;
     }
 }
