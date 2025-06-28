@@ -24,6 +24,7 @@ internal sealed class CompilerProxy(
 {
     public static readonly string CompilerAssemblyName = "DotNetLab.Compiler";
 
+    private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
 
@@ -50,10 +51,10 @@ internal sealed class CompilerProxy(
             if (input.Configuration is not null && loaded.DllAssemblies is null)
             {
                 var assemblies = loaded.Assemblies ?? await LoadAssembliesAsync();
-                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.GetDataAsDll());
+                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
 
-                var builtInAssemblies = await LoadAssembliesAsync(builtIn: true);
-                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.GetDataAsDll());
+                var builtInAssemblies = await LoadAssembliesAsync(builtInOnly: true);
+                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
             }
 
             using var _ = loaded.LoadContext.EnterContextualReflection();
@@ -75,11 +76,11 @@ internal sealed class CompilerProxy(
         }
     }
 
-    private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtIn = false)
+    private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
     {
         var assemblies = ImmutableDictionary.CreateBuilder<string, LoadedAssembly>();
 
-        if (!builtIn)
+        if (!builtInOnly)
         {
             await foreach (var dep in dependencyRegistry.GetAssembliesAsync())
             {
@@ -109,7 +110,12 @@ internal sealed class CompilerProxy(
         {
             if (!assemblies.ContainsKey(name))
             {
-                var assembly = await LoadAssemblyAsync(name);
+                if (!builtInAssemblyCache.TryGetValue(name, out var assembly))
+                {
+                    assembly = await LoadAssemblyAsync(name);
+                    builtInAssemblyCache.Add(name, assembly);
+                }
+
                 assemblies.Add(name, assembly);
             }
         }
@@ -143,7 +149,7 @@ internal sealed class CompilerProxy(
         }
         else
         {
-            assemblies ??= await LoadAssembliesAsync();
+            assemblies = await LoadAssembliesAsync();
             alc = new CompilerLoader(loaderServices, assemblies, dependencyRegistry.Iteration);
         }
 
@@ -158,8 +164,26 @@ internal sealed class CompilerProxy(
     {
         public required AssemblyLoadContext LoadContext { get; init; }
         public required ICompiler Compiler { get; init; }
+
+        /// <summary>
+        /// If a custom (not the built-in) compiler version is required, its assemblies will be loaded here.
+        /// </summary>
         public required ImmutableDictionary<string, LoadedAssembly>? Assemblies { get; init; }
+
+        /// <summary>
+        /// If Configuration is provided, the compiler needs Roslyn DLLs to compile the Configuration against.
+        /// This property is used to cache the loaded DLL bytes.
+        /// It is computed from <see cref="Assemblies"/> (if a custom compiler is used)
+        /// or from <see cref="LoadAssembliesAsync"/> (if the built-in compiler is used).
+        /// </summary>
         public ImmutableDictionary<string, ImmutableArray<byte>>? DllAssemblies { get; set; }
+
+        /// <summary>
+        /// Similar to <see cref="DllAssemblies"/>, but always contains the built-in Roslyn DLLs.
+        /// These are used if the user specifies a custom compiler version that is older than the built-in one
+        /// (in which case using the custom DLLs would fail). Currently, we don't check the compiler version,
+        /// we just try these built-in ones when compilation with <see cref="DllAssemblies"/> fails.
+        /// </summary>
         public ImmutableDictionary<string, ImmutableArray<byte>>? BuiltInDllAssemblies { get; set; }
     }
 }
