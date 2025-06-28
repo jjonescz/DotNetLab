@@ -99,6 +99,16 @@ public static class Util
     /// </summary>
     public static R EnsureSync() => default;
 
+    public static string GetFirstLine(this string text)
+    {
+        foreach (var line in text.AsSpan().EnumerateLines())
+        {
+            return line.ToString();
+        }
+
+        return text;
+    }
+
     public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
 
     public static bool IsCSharpFileName(this string fileName, out bool script)
@@ -165,6 +175,11 @@ public static class Util
             }
         }
         return results;
+    }
+
+    public static string SeparateThousands<T>(this T number) where T : IFormattable
+    {
+        return number.ToString(format: "N0", formatProvider: null);
     }
 
     public static async Task<Dictionary<TKey, TValue>> ToDictionaryAsync<T, TKey, TValue>(

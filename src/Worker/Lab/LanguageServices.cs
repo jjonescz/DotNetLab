@@ -95,7 +95,7 @@ internal sealed class LanguageServices
             if (completionTrigger.Kind is RoslynCompletionTriggerKind.Insertion
                 && !shouldTriggerCompletion)
             {
-                logger.LogDebug("Determined completions should not trigger in {Milliseconds} ms", sw.ElapsedMilliseconds);
+                logger.LogDebug("Determined completions should not trigger in {Milliseconds} ms", sw.ElapsedMilliseconds.SeparateThousands());
                 return """{"suggestions":[]}""";
             }
 
@@ -105,12 +105,12 @@ internal sealed class LanguageServices
             sw.Restart();
             var result = completions.ToCompletionList(text);
             var time2 = sw.ElapsedMilliseconds;
-            logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1, time2);
+            logger.LogDebug("Got completions ({Count}) in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, time1.SeparateThousands(), time2.SeparateThousands());
             return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled completions for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds);
+            logger.LogDebug("Canceled completions for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
             return """{"suggestions":[],"isIncomplete":true}""";
         }
     }
@@ -277,13 +277,13 @@ internal sealed class LanguageServices
 
             string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
 
-            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds);
+            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, span, sw.ElapsedMilliseconds.SeparateThousands());
 
             return result;
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled completions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds);
+            logger.LogDebug("Canceled completions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             // `null` will be transformed into an exception at the front end.
             return null;
@@ -323,13 +323,13 @@ internal sealed class LanguageServices
             var json = JsonSerializer.Serialize(converted, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
 
             var time2 = sw.ElapsedMilliseconds;
-            logger.LogDebug("Got code actions ({Count}) for {Range} in {Time1} + {Time2} ms", converted.Length, span, time1, time2);
+            logger.LogDebug("Got code actions ({Count}) for {Range} in {Time1} + {Time2} ms", converted.Length, span, time1.SeparateThousands(), time2.SeparateThousands());
 
             return json;
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled code actions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds);
+            logger.LogDebug("Canceled code actions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             // `null` will be transformed into an exception at the front end.
             return null;
