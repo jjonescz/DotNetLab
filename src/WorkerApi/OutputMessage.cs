@@ -9,8 +9,16 @@ namespace DotNetLab;
 public abstract record WorkerOutputMessage
 {
     public const int BroadcastId = -1;
+    public const string BroadcastInputType = "Broadcast";
+    public const string UnknownInputType = "Unknown";
+    public const string NoInputType = "None";
 
     public required int Id { get; init; }
+
+    /// <summary>
+    /// Used for logging only.
+    /// </summary>
+    public required string InputType { get; init; }
 
     public bool IsBroadcast => Id == BroadcastId;
 

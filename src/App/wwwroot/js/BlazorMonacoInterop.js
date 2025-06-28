@@ -3,6 +3,7 @@
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
@@ -51,6 +52,8 @@ export function registerSemanticTokensProvider(language, legend, provider) {
     const disposables = new DisposableList();
     const languageParsed = JSON.parse(language);
     const legendParsed = JSON.parse(legend);
+
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentSemanticTokensProvider.html
     disposables.add(monaco.languages.registerDocumentSemanticTokensProvider(languageParsed, {
         getLegend: () => legendParsed,
         provideDocumentSemanticTokens: async (model, lastResultId, token) => {
@@ -62,6 +65,8 @@ export function registerSemanticTokensProvider(language, legend, provider) {
             // Not implemented.
         },
     }));
+
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
     disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
         getLegend: () => legendParsed,
         provideDocumentRangeSemanticTokens: async (model, range, token) => {
@@ -97,6 +102,36 @@ export function registerSemanticTokensProvider(language, legend, provider) {
             resultId: null, // Currently not used.
         };
     }
+}
+
+export function registerCodeActionProvider(language, codeActionProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCodeActionProvider.html
+    return monaco.languages.registerCodeActionProvider(JSON.parse(language), {
+        provideCodeActions: async (model, range, context, token) => {
+            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCodeActionsAsync(
+                codeActionProvider, decodeURI(model.uri.toString()), JSON.stringify(range), token));
+
+            if (result === null) {
+                // If null result is returned, it means the request should be ignored, so we need to throw
+                // (as opposed to returning no code actions).
+                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                throw new Error('busy');
+            }
+
+            for (const action of result) {
+                for (const edit of action.edit?.edits ?? []) {
+                    edit.resource = monaco.Uri.parse(edit.resource);
+                }
+            }
+
+            return {
+                actions: result,
+                dispose: () => { }, // Currently not used.
+            };
+        },
+    }, {
+        providedCodeActionKinds: ['quickfix'],
+    });
 }
 
 /**

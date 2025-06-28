@@ -138,8 +138,8 @@ public abstract record CompilerVersionSpecifier
 {
     /// <remarks>
     /// Order matters here. Only the first specifier
-    /// which is successfully resolved by a <see cref="ICompilerDependencyResolver"/>
-    /// will be used by the <see cref="CompilerDependencyProvider"/> and <see cref="DependencyRegistry"/>.
+    /// which is successfully resolved by a <c>ICompilerDependencyResolver</c>
+    /// will be used by the <c>CompilerDependencyProvider</c> and <c>DependencyRegistry</c>.
     /// </remarks>
     public static IEnumerable<CompilerVersionSpecifier> Parse(string? specifier)
     {

@@ -8,13 +8,13 @@ namespace DotNetLab;
 /// <see href="https://github.com/serdarciplak/BlazorMonaco/issues/124"/>
 /// </summary>
 [SupportedOSPlatform("browser")]
-internal sealed class CompletionItemProviderAsync(ILogger<CompletionItemProviderAsync> logger)
+internal sealed class CompletionItemProviderAsync(ILoggerFactory loggerFactory)
 {
     public delegate Task<string> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
 
     public delegate Task<string?> ResolveCompletionItemDelegate(MonacoCompletionItem completionItem, CancellationToken cancellationToken);
 
-    public ILogger<CompletionItemProviderAsync> Logger { get; } = logger;
+    public ILogger<CompletionItemProviderAsync> Logger { get; } = loggerFactory.CreateLogger<CompletionItemProviderAsync>();
 
     public string[]? TriggerCharacters { get; init; }
 

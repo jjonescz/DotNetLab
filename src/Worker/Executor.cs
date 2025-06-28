@@ -6,8 +6,38 @@ namespace DotNetLab;
 
 public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessage.IExecutor
 {
+    private readonly Dictionary<int, CancellationTokenSource> cancellationTokenSources = [];
+
+    private CancellationTokenSourceScope GetCancellationToken(WorkerInputMessage message, out CancellationToken cancellationToken)
+    {
+        var cts = new CancellationTokenSource();
+        cancellationTokenSources.Add(message.Id, cts);
+        cancellationToken = cts.Token;
+        return new CancellationTokenSourceScope(this, message.Id);
+    }
+
+    private readonly struct CancellationTokenSourceScope(WorkerExecutor executor, int messageId) : IDisposable
+    {
+        public void Dispose()
+        {
+            executor.cancellationTokenSources.Remove(messageId);
+        }
+    }
+
     public Task<NoOutput> HandleAsync(WorkerInputMessage.Ping message)
     {
+        return NoOutput.AsyncInstance;
+    }
+
+    public Task<NoOutput> HandleAsync(WorkerInputMessage.Cancel message)
+    {
+        // It's possible the cancellation token has been already removed from the dictionary
+        // if the cancellation request arrives after the message-to-be-cancelled has been already processed.
+        if (cancellationTokenSources.TryGetValue(message.MessageIdToCancel, out var cts))
+        {
+            cts.Cancel();
+        }
+
         return NoOutput.AsyncInstance;
     }
 
@@ -51,22 +81,32 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
         return await sdkDownloader.GetInfoAsync(message.VersionToLoad);
     }
 
-    public Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
+    public async Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
     {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
         var languageServices = services.GetRequiredService<LanguageServices>();
-        return languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context);
+        return await languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context, cancellationToken);
     }
 
-    public Task<string?> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
+    public async Task<string?> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
     {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
         var languageServices = services.GetRequiredService<LanguageServices>();
-        return languageServices.ResolveCompletionItemAsync(message.Item);
+        return await languageServices.ResolveCompletionItemAsync(message.Item, cancellationToken);
     }
 
-    public Task<string?> HandleAsync(WorkerInputMessage.ProvideSemanticTokens message)
+    public async Task<string?> HandleAsync(WorkerInputMessage.ProvideSemanticTokens message)
     {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
         var languageServices = services.GetRequiredService<LanguageServices>();
-        return languageServices.ProvideSemanticTokensAsync(message.ModelUri, message.RangeJson, message.Debug);
+        return await languageServices.ProvideSemanticTokensAsync(message.ModelUri, message.RangeJson, message.Debug, cancellationToken);
+    }
+
+    public async Task<string?> HandleAsync(WorkerInputMessage.ProvideCodeActions message)
+    {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
+        var languageServices = services.GetRequiredService<LanguageServices>();
+        return await languageServices.ProvideCodeActionsAsync(message.ModelUri, message.RangeJson, cancellationToken);
     }
 
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)

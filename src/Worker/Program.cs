@@ -27,11 +27,11 @@ Imports.RegisterOnMessage(async e =>
     }
     catch (Exception ex)
     {
-        PostMessage(new WorkerOutputMessage.Failure(ex) { Id = -1 });
+        PostMessage(new WorkerOutputMessage.Failure(ex) { Id = -1, InputType = WorkerOutputMessage.UnknownInputType });
     }
 });
 
-PostMessage(new WorkerOutputMessage.Ready { Id = -1 });
+PostMessage(new WorkerOutputMessage.Ready { Id = -1, InputType = WorkerOutputMessage.NoInputType });
 
 // Keep running.
 while (true)

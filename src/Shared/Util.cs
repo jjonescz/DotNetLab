@@ -95,9 +95,19 @@ public static class Util
     }
 
     /// <summary>
-    /// Use in a <see langword="using"/> block to ensure it doesn't contain any <see cref="await"/>s.
+    /// Use in a <see langword="using"/> block to ensure it doesn't contain any <see langword="await"/>s.
     /// </summary>
     public static R EnsureSync() => default;
+
+    public static string GetFirstLine(this string text)
+    {
+        foreach (var line in text.AsSpan().EnumerateLines())
+        {
+            return line.ToString();
+        }
+
+        return text;
+    }
 
     public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
 
@@ -165,6 +175,11 @@ public static class Util
             }
         }
         return results;
+    }
+
+    public static string SeparateThousands<T>(this T number) where T : IFormattable
+    {
+        return number.ToString(format: "N0", formatProvider: null);
     }
 
     public static async Task<Dictionary<TKey, TValue>> ToDictionaryAsync<T, TKey, TValue>(

@@ -1,6 +1,7 @@
 ﻿global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
 global using MonacoCompletionTriggerKind = BlazorMonaco.Languages.CompletionTriggerKind;
 global using MonacoRange = BlazorMonaco.Range;
+global using RoslynCodeAction = Microsoft.CodeAnalysis.CodeActions.CodeAction;
 global using RoslynCompletionItem = Microsoft.CodeAnalysis.Completion.CompletionItem;
 global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.CompletionList;
 global using RoslynCompletionRules = Microsoft.CodeAnalysis.Completion.CompletionRules;
@@ -144,6 +145,16 @@ public static class MonacoConversions
         return new TextSpan(change.RangeOffset, change.RangeLength);
     }
 
+    public static string Stringify(this Position? position)
+    {
+        return position is null ? "?:?" : $"{position.LineNumber}:{position.Column}";
+    }
+
+    public static string Stringify(this MonacoRange? range)
+    {
+        return range is null ? "[..)" : $"[{range.StartLineNumber}:{range.StartColumn}..{range.EndLineNumber}:{range.EndColumn})";
+    }
+
     public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)
     {
         // VS implements a "soft" vs "hard" suggestion mode. The "soft" suggestion mode is when the completion list is shown,
@@ -170,7 +181,7 @@ public static class MonacoConversions
 
         return new MonacoCompletionList
         {
-            Range = text.Lines.GetLinePositionSpan(completions.Span).ToRange(),
+            Range = completions.Span.ToRange(text.Lines),
             Suggestions = completionItemsBuilder.DrainToImmutable(),
         };
     }
@@ -268,6 +279,11 @@ public static class MonacoConversions
             EndLineNumber = span.End.Line + 1,
             EndColumn = span.End.Character + 1,
         };
+    }
+
+    public static MonacoRange ToRange(this TextSpan span, TextLineCollection lines)
+    {
+        return lines.GetLinePositionSpan(span).ToRange();
     }
 
     public static TextSpan ToSpan(this MonacoRange range, TextLineCollection lines)

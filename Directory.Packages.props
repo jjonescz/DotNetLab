@@ -24,6 +24,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.DotNet.Arcade.Sdk" Version="9.0.0-beta.24372.7" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(NetCoreVersion)" />
@@ -42,5 +43,6 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
     <!-- Pinned transitive dependencies -->
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="$(NetCoreVersion)" />
   </ItemGroup>
 </Project>

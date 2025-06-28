@@ -8,6 +8,7 @@
     <Project Path="src/Compiler/Compiler.csproj" />
     <Project Path="src/RazorAccess/RazorAccess.csproj" />
     <Project Path="src/RoslynAccess/RoslynAccess.csproj" />
+    <Project Path="src/RoslynCodeStyleAccess/RoslynCodeStyleAccess.csproj" />
     <Project Path="src/RoslynWorkspaceAccess/RoslynWorkspaceAccess.csproj" />
     <Project Path="src/Server/Server.csproj" />
     <Project Path="src/Shared/Shared.csproj" />
@@ -18,6 +19,7 @@
     <Project Path="test/UnitTests/UnitTests.csproj" />
   </Folder>
   <Folder Name="/_/">
+    <File Path=".editorconfig" />
     <File Path=".gitignore" />
     <File Path=".globalconfig" />
     <File Path="Directory.Build.props" />

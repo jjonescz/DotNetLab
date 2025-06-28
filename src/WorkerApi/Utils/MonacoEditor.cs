@@ -37,6 +37,31 @@ public sealed class MonacoCompletionItem
 }
 
 /// <remarks>
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.CodeAction.html"/>.
+/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CodeAction"/>.
+/// </remarks>
+public sealed class MonacoCodeAction
+{
+    public required string Title { get; init; }
+    public string? Kind { get; init; }
+    public MonacoWorkspaceEdit? Edit { get; init; }
+}
+
+/// <remarks>
+/// See <see href="https://github.com/microsoft/vscode/blob/9bf5ea55e67933ea755ebb6750176b2f56af7d42/src/vs/editor/contrib/codeAction/common/types.ts#L13"/>.
+/// </remarks>
+public static class MonacoCodeActionKind
+{
+    public const string QuickFix = "quickfix";
+    public const string Refactor = "refactor";
+}
+
+public sealed class MonacoWorkspaceEdit
+{
+    public required ImmutableArray<WorkspaceTextEdit> Edits { get; init; }
+}
+
+/// <remarks>
 /// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#SemanticTokensLegend"/>.
 /// </remarks>
 public sealed class SemanticTokensLegend
@@ -50,6 +75,7 @@ public sealed class SemanticTokensLegend
 [JsonSerializable(typeof(CompletionContext))]
 [JsonSerializable(typeof(MonacoCompletionItem))]
 [JsonSerializable(typeof(MonacoCompletionList))]
+[JsonSerializable(typeof(ImmutableArray<MonacoCodeAction>))]
 [JsonSerializable(typeof(SemanticTokensLegend))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

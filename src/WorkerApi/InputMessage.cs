@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 namespace DotNetLab;
 
 [JsonDerivedType(typeof(Ping), nameof(Ping))]
+[JsonDerivedType(typeof(Cancel), nameof(Cancel))]
 [JsonDerivedType(typeof(Compile), nameof(Compile))]
 [JsonDerivedType(typeof(GetOutput), nameof(GetOutput))]
 [JsonDerivedType(typeof(UseCompilerVersion), nameof(UseCompilerVersion))]
@@ -15,6 +16,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
 [JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(ProvideSemanticTokens), nameof(ProvideSemanticTokens))]
+[JsonDerivedType(typeof(ProvideCodeActions), nameof(ProvideCodeActions))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
 [JsonDerivedType(typeof(OnDidChangeModel), nameof(OnDidChangeModel))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
@@ -32,20 +34,28 @@ public abstract record WorkerInputMessage
             var outgoing = await HandleNonGenericAsync(executor);
             if (ReferenceEquals(outgoing, NoOutput.Instance))
             {
-                return new WorkerOutputMessage.Empty { Id = Id };
+                return new WorkerOutputMessage.Empty { Id = Id, InputType = GetType().Name };
             }
             else
             {
-                return new WorkerOutputMessage.Success(outgoing) { Id = Id };
+                return new WorkerOutputMessage.Success(outgoing) { Id = Id, InputType = GetType().Name };
             }
         }
         catch (Exception ex)
         {
-            return new WorkerOutputMessage.Failure(ex) { Id = Id };
+            return new WorkerOutputMessage.Failure(ex) { Id = Id, InputType = GetType().Name };
         }
     }
 
     public sealed record Ping : WorkerInputMessage<NoOutput>
+    {
+        public override Task<NoOutput> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
+    public sealed record Cancel(int MessageIdToCancel) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
         {
@@ -117,6 +127,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record ProvideCodeActions(string ModelUri, string? RangeJson) : WorkerInputMessage<string?>
+    {
+        public override Task<string?> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
@@ -152,6 +170,7 @@ public abstract record WorkerInputMessage
     public interface IExecutor
     {
         Task<NoOutput> HandleAsync(Ping message);
+        Task<NoOutput> HandleAsync(Cancel message);
         Task<CompiledAssembly> HandleAsync(Compile message);
         Task<string> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);
@@ -160,6 +179,7 @@ public abstract record WorkerInputMessage
         Task<string> HandleAsync(ProvideCompletionItems message);
         Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<string?> HandleAsync(ProvideSemanticTokens message);
+        Task<string?> HandleAsync(ProvideCodeActions message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModel message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);

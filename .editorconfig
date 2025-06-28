@@ -1,0 +1,11 @@
+root = true
+
+[*]
+indent_style = space
+
+[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj,props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
+indent_size = 2
+
+[*.{cs,csx,vb,vbx}]
+indent_size = 4
+insert_final_newline = true
