@@ -2,6 +2,8 @@
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.ExtractClass;
+using Microsoft.CodeAnalysis.ExtractInterface;
 using Microsoft.CodeAnalysis.GenerateType;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Host.Mef;
@@ -23,7 +25,20 @@ public static class RoslynWorkspaceAccessors
         var codeFixService = document.Project.Solution.Services.ExportProvider.GetExports<ICodeFixService>().Single().Value;
         var fixes = await codeFixService.GetFixesAsync(document, span, cancellationToken);
         return fixes.Where(static c => c.Fixes.Length != 0)
-            .SelectMany(static c => c.Fixes.Select(static f => f.Action));
+            .SelectMany(static c => c.Fixes.Select(static f => f.Action))
+            .Where(isSupportedCodeAction);
+
+        // https://github.com/dotnet/roslyn/blob/8aa0e2e2ccb66c8b0fe0e002d80a92e870304665/src/LanguageServer/Protocol/Handler/CodeActions/CodeActionHelpers.cs#L96
+        static bool isSupportedCodeAction(CodeAction codeAction)
+        {
+            if ((codeAction is CodeActionWithOptions and not ExtractInterfaceCodeAction and not ExtractClassWithDialogCodeAction) ||
+                codeAction.Tags.Contains(CodeAction.RequiresNonDocumentChange))
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 
     public static DocumentTextDifferencingService GetDocumentTextDifferencingService(this SolutionServices services)
