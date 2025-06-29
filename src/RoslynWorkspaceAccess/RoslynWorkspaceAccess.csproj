@@ -4,6 +4,11 @@
     <AssemblyName>Microsoft.CodeAnalysis.Workspaces.UnitTests</AssemblyName>
     <KeyOriginatorFile>$(PkgMicrosoft_DotNet_Arcade_Sdk)\tools\snk\35MSSharedLib1024.snk</KeyOriginatorFile>
     <PublicSign>true</PublicSign>
+
+    <!--
+      warning CS8002: Referenced assembly 'DotNetLab.Shared' does not have a strong name.
+    -->
+    <NoWarn>$(NoWarn);CS8002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
