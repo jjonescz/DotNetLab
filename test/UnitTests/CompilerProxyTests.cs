@@ -25,6 +25,23 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Contains($"{version} ({commit})", diagnosticsText);
     }
 
+    [Fact]
+    public async Task SpecifiedNuGetRoslynVersion_Branch()
+    {
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+
+        await services.GetRequiredService<CompilerDependencyProvider>()
+            .UseAsync(CompilerKind.Roslyn, "main", BuildConfiguration.Release);
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Contains("-ci (<developer build>)", diagnosticsText);
+    }
+
     [Theory]
     [InlineData("4.11.0-3.24352.2", "92051d4c")]
     [InlineData("4.10.0-1.24076.1", "e1c36b10")]

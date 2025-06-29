@@ -97,7 +97,8 @@ internal sealed class AzDoDownloader(
                 buildId: buildId,
                 artifactName: artifact.Name,
                 files: files,
-                names: info.AssemblyNames.ToHashSet());
+                names: info.AssemblyNames.ToHashSet(),
+                rehydratePathContains: info.RehydratePathContains);
         }
     }
 
@@ -125,7 +126,12 @@ internal sealed class AzDoDownloader(
         return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, folder: packageFolder);
     }
 
-    private async Task<ImmutableArray<LoadedAssembly>> GetAssembliesViaRehydrateAsync(int buildId, string artifactName, ArtifactFiles files, HashSet<string> names)
+    private async Task<ImmutableArray<LoadedAssembly>> GetAssembliesViaRehydrateAsync(
+        int buildId,
+        string artifactName,
+        ArtifactFiles files,
+        HashSet<string> names,
+        string? rehydratePathContains)
     {
         var lookup = names.GetAlternateLookup<ReadOnlySpan<char>>();
 
@@ -135,7 +141,8 @@ internal sealed class AzDoDownloader(
 
         foreach (var rehydrate in rehydrates)
         {
-            if (rehydrate.Blob is null)
+            if (rehydrate.Blob is null ||
+                (rehydratePathContains != null && !rehydrate.Path.Contains(rehydratePathContains, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }

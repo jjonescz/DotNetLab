@@ -91,7 +91,8 @@ public sealed record CompilerInfo(
     int BuildDefinitionId,
     string ArtifactNameFormat,
     ImmutableArray<string> AssemblyNames,
-    string? NupkgArtifactPath = null)
+    string? NupkgArtifactPath = null,
+    string? RehydratePathContains = null)
 {
     public static readonly CompilerInfo Roslyn = new(
         CompilerKind: CompilerKind.Roslyn,
@@ -100,7 +101,9 @@ public sealed record CompilerInfo(
         PackageFolder: "tasks/netcore/bincore",
         BuildDefinitionId: 95, // roslyn-CI
         ArtifactNameFormat: "Transport_Artifacts_Windows_{0}",
-        AssemblyNames: ["Microsoft.CodeAnalysis.CSharp", "Microsoft.CodeAnalysis"]);
+        AssemblyNames: ["Microsoft.CodeAnalysis.CSharp", "Microsoft.CodeAnalysis"],
+        // We don't want to use Roslyn assemblies from Analyzer unit tests for example, because they reference an old Roslyn.
+        RehydratePathContains: "Microsoft.CodeAnalysis.CSharp");
 
     public static readonly CompilerInfo Razor = new(
         CompilerKind: CompilerKind.Razor,
