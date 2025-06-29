@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
@@ -468,6 +469,50 @@ internal sealed class LanguageServices : ILanguageServices
             }
 
             return $"{prefix}: {nested}";
+        }
+    }
+
+    /// <returns>
+    /// Markdown or <see langword="null"/> if cancelled.
+    /// </returns>
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/roslyn/blob/ad14335550de1134f0b5a59b6cd040001d0d8c8d/src/LanguageServer/Protocol/Handler/Hover/HoverHandler.cs#L26"/>.
+    /// </remarks>
+    public async Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken)
+    {
+        if (!TryGetDocument(modelUri, out var document))
+        {
+            return "";
+        }
+
+        var sw = Stopwatch.StartNew();
+        var position = JsonSerializer.Deserialize(positionJson, BlazorMonacoJsonContext.Default.Position)!;
+        try
+        {
+            var text = await document.GetTextAsync(cancellationToken);
+            int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
+            var quickInfoService = document.Project.Services.GetRequiredService<QuickInfoService>();
+            var quickInfo = await quickInfoService.GetQuickInfoAsync(document, caretPosition, cancellationToken);
+            if (quickInfo == null)
+            {
+                return "";
+            }
+
+            // Insert line breaks in between sections to ensure we get double spacing between sections.
+            var tags = quickInfo.Sections.SelectMany(static s =>
+                s.TaggedParts.Add(new TaggedText(TextTags.LineBreak, Environment.NewLine)));
+
+            var markdown = MonacoConversions.GetMarkdown(tags, document.Project.Language);
+
+            logger.LogDebug("Got hover ({Length}) for {Position} in {Time} ms", markdown.Length, position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+
+            return markdown;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogDebug("Canceled hover for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+
+            return null;
         }
     }
 

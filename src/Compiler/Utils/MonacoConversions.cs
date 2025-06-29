@@ -7,6 +7,7 @@ global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.Completion
 global using RoslynCompletionRules = Microsoft.CodeAnalysis.Completion.CompletionRules;
 global using RoslynCompletionTrigger = Microsoft.CodeAnalysis.Completion.CompletionTrigger;
 global using RoslynCompletionTriggerKind = Microsoft.CodeAnalysis.Completion.CompletionTriggerKind;
+global using Environment = System.Environment;
 
 using BlazorMonaco;
 using BlazorMonaco.Editor;
@@ -137,6 +138,131 @@ public static class MonacoConversions
                     }
                 }
             }
+        }
+    }
+
+    private const string CSharpMarkdownLanguageName = "csharp";
+    private const string VisualBasicMarkdownLanguageName = "vb";
+    private const string BlockCodeFence = "```";
+    private const string InlineCodeFence = "`";
+
+    /// <remarks>
+    /// Inspired by <see href="https://github.com/dotnet/roslyn/blob/2d9f760104a89143ee0c4c72285eb496485dabc5/src/LanguageServer/Protocol/Extensions/ProtocolConversions.cs#L880"/>.
+    /// </remarks>
+    public static string GetMarkdown(IEnumerable<TaggedText> tags, string language)
+    {
+        var markdownBuilder = new MarkdownContentBuilder();
+        string? codeFence = null;
+        foreach (var taggedText in tags)
+        {
+            switch (taggedText.Tag)
+            {
+                case TextTagsInternal.CodeBlockStart:
+                    if (markdownBuilder.IsLineEmpty())
+                    {
+                        // If the current line is empty, we can append a code block.
+                        codeFence = BlockCodeFence;
+                        var codeBlockLanguageName = GetCodeBlockLanguageName(language);
+                        markdownBuilder.AppendLine($"{codeFence}{codeBlockLanguageName}");
+                        markdownBuilder.AppendLine(taggedText.Text);
+                    }
+                    else
+                    {
+                        // There is text on the line already - we should append an in-line code block.
+                        codeFence = InlineCodeFence;
+                        markdownBuilder.Append(codeFence + taggedText.Text);
+                    }
+
+                    break;
+                case TextTagsInternal.CodeBlockEnd:
+                    if (codeFence == BlockCodeFence)
+                    {
+                        markdownBuilder.AppendLine(codeFence);
+                        markdownBuilder.AppendLine(taggedText.Text);
+                    }
+                    else if (codeFence == InlineCodeFence)
+                    {
+                        markdownBuilder.Append(codeFence + taggedText.Text);
+                    }
+                    else
+                    {
+                        throw Util.Unexpected(codeFence);
+                    }
+
+                    codeFence = null;
+
+                    break;
+                case TextTags.Text when taggedText.Style == (TaggedTextStylePublic.Code | TaggedTextStylePublic.PreserveWhitespace):
+                    // This represents a block of code (`<code></code>`) in doc comments.
+                    // Since code elements optionally support a `lang` attribute and we do not have access to the
+                    // language which was specified at this point, we tell the client to render it as plain text.
+
+                    if (!markdownBuilder.IsLineEmpty())
+                        AppendLineBreak(markdownBuilder);
+
+                    // The current line is empty, we can append a code block.
+                    markdownBuilder.AppendLine($"{BlockCodeFence}text");
+                    markdownBuilder.AppendLine(taggedText.Text);
+                    markdownBuilder.AppendLine(BlockCodeFence);
+
+                    break;
+                case TextTags.LineBreak:
+                    AppendLineBreak(markdownBuilder);
+                    break;
+                default:
+                    var styledText = GetStyledText(taggedText, codeFence != null);
+                    markdownBuilder.Append(styledText);
+                    break;
+            }
+        }
+
+        var content = markdownBuilder.Build(Environment.NewLine);
+
+        return content;
+
+        static void AppendLineBreak(MarkdownContentBuilder markdownBuilder)
+        {
+            // A line ending with double space and a new line indicates to markdown
+            // to render a single-spaced line break.
+            markdownBuilder.Append("  ");
+            markdownBuilder.AppendLine();
+        }
+
+        static string GetCodeBlockLanguageName(string language)
+        {
+            return language switch
+            {
+                (LanguageNames.CSharp) => CSharpMarkdownLanguageName,
+                (LanguageNames.VisualBasic) => VisualBasicMarkdownLanguageName,
+                _ => throw new InvalidOperationException($"{language} is not supported"),
+            };
+        }
+
+        static string GetStyledText(TaggedText taggedText, bool isInCodeBlock)
+        {
+            var isCode = isInCodeBlock || taggedText.Style is TaggedTextStylePublic.Code;
+            var text = isCode ? taggedText.Text : MonacoPatterns.MarkdownEscapeRegex.Replace(taggedText.Text, @"\$1");
+
+            // For non-cref links, the URI is present in both the hint and target.
+            if (!string.IsNullOrEmpty(taggedText.NavigationHint) && taggedText.NavigationHint == taggedText.NavigationTarget)
+                return $"[{text}]({taggedText.NavigationHint})";
+
+            // Markdown ignores spaces at the start of lines outside of code blocks,
+            // so we replace regular spaces with non-breaking spaces to ensure structural space is retained.
+            // We want to use regular spaces everywhere else to allow the client to wrap long text.
+            if (!isCode && taggedText.Tag is TextTags.Space or TextTagsInternal.ContainerStart)
+                text = text.Replace(" ", "&nbsp;");
+
+            return taggedText.Style switch
+            {
+                TaggedTextStylePublic.None => text,
+                TaggedTextStylePublic.Strong => $"**{text}**",
+                TaggedTextStylePublic.Emphasis => $"_{text}_",
+                TaggedTextStylePublic.Underline => $"<u>{text}</u>",
+                // Use double backticks to escape code which contains a backtick.
+                TaggedTextStylePublic.Code => text.Contains('`') ? $"``{text}``" : $"`{text}`",
+                _ => text,
+            };
         }
     }
 
@@ -378,4 +504,55 @@ internal sealed class ClassifiedSpanComparer : IComparer<ClassifiedSpan>
     public static readonly ClassifiedSpanComparer Instance = new();
 
     public int Compare(ClassifiedSpan x, ClassifiedSpan y) => x.TextSpan.CompareTo(y.TextSpan);
+}
+
+internal static partial class MonacoPatterns
+{
+    [GeneratedRegex(@"([\\`\*_\{\}\[\]\(\)#+\-\.!<>])")]
+    public static partial Regex MarkdownEscapeRegex { get; }
+}
+
+internal readonly ref struct MarkdownContentBuilder
+{
+    private readonly ImmutableArray<string>.Builder linesBuilder;
+
+    public MarkdownContentBuilder()
+    {
+        linesBuilder = ImmutableArray.CreateBuilder<string>();
+    }
+
+    public void Append(string text)
+    {
+        if (linesBuilder.Count == 0)
+        {
+            linesBuilder.Add(text);
+        }
+        else
+        {
+            linesBuilder[^1] = linesBuilder[^1] + text;
+        }
+    }
+
+    public void AppendLine(string text = "")
+    {
+        linesBuilder.Add(text);
+    }
+
+    public bool IsLineEmpty()
+    {
+        return linesBuilder is [] or [.., ""];
+    }
+
+    public string Build(string newLine)
+    {
+        return string.Join(newLine, linesBuilder);
+    }
+}
+
+internal static class TextTagsInternal
+{
+    public const string ContainerStart = nameof(ContainerStart);
+    public const string ContainerEnd = nameof(ContainerEnd);
+    public const string CodeBlockStart = nameof(CodeBlockStart);
+    public const string CodeBlockEnd = nameof(CodeBlockEnd);
 }

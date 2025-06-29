@@ -469,6 +469,14 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
+    public Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.ProvideHover(modelUri, positionJson) { Id = messageId++ },
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
+    }
+
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
     {
         PostMessage(

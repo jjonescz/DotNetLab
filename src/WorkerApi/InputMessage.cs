@@ -17,6 +17,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(ProvideSemanticTokens), nameof(ProvideSemanticTokens))]
 [JsonDerivedType(typeof(ProvideCodeActions), nameof(ProvideCodeActions))]
+[JsonDerivedType(typeof(ProvideHover), nameof(ProvideHover))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
 [JsonDerivedType(typeof(GetDiagnostics), nameof(GetDiagnostics))]
@@ -134,6 +135,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record ProvideHover(string ModelUri, string PositionJson) : WorkerInputMessage<string?>
+    {
+        public override Task<string?> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
@@ -171,6 +180,7 @@ public abstract record WorkerInputMessage
         Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<string?> HandleAsync(ProvideSemanticTokens message);
         Task<string?> HandleAsync(ProvideCodeActions message);
+        Task<string?> HandleAsync(ProvideHover message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);
         Task<ImmutableArray<MarkerData>> HandleAsync(GetDiagnostics message);

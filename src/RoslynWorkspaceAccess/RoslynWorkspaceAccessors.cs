@@ -20,6 +20,13 @@ namespace DotNetLab;
 
 public static class RoslynWorkspaceAccessors
 {
+    extension(TaggedText taggedText)
+    {
+        public TaggedTextStylePublic Style => (TaggedTextStylePublic)taggedText.Style;
+        public string? NavigationHint => taggedText.NavigationHint;
+        public string? NavigationTarget => taggedText.NavigationTarget;
+    }
+
     public static async Task<IEnumerable<CodeAction>> GetCodeActionsAsync(this Document document, TextSpan span, CancellationToken cancellationToken)
     {
         var codeFixService = document.Project.Solution.Services.ExportProvider.GetExports<ICodeFixService>().Single().Value;
@@ -125,4 +132,15 @@ public sealed class NoOpGenerateTypeOptionsService() : IGenerateTypeOptionsServi
     {
         return GenerateTypeOptionsResult.Cancelled;
     }
+}
+
+[Flags]
+public enum TaggedTextStylePublic
+{
+    None = 0,
+    Strong = 1 << 0,
+    Emphasis = 1 << 1,
+    Underline = 1 << 2,
+    Code = 1 << 3,
+    PreserveWhitespace = 1 << 4,
 }
