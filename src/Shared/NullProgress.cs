@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class NullProgress<T> : IProgress<T>
+public sealed class NullProgress<T> : IProgress<T>
 {
     public static readonly IProgress<T> Instance = new NullProgress<T>();
 

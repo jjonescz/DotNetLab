@@ -26,6 +26,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="$(RoslynVersion)" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.DotNet.Arcade.Sdk" Version="9.0.0-beta.24372.7" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="$(FluentUIVersion)" />

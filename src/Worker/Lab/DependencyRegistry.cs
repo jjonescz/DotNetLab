@@ -61,13 +61,22 @@ internal sealed class LoadedAssembly
     public required ImmutableArray<byte> Data { get; init; }
     public required AssemblyDataFormat Format { get; init; }
 
-    public ImmutableArray<byte> GetDataAsDll()
+    public ImmutableArray<byte> DataAsDll
     {
-        return Format switch
+        get
         {
-            AssemblyDataFormat.Dll => Data,
-            AssemblyDataFormat.Webcil => WebcilUtil.WebcilToDll(Data),
-            _ => throw new InvalidOperationException($"Unknown assembly format: {Format}"),
-        };
+            if (field.IsDefault)
+            {
+                field = Format switch
+                {
+                    AssemblyDataFormat.Dll => Data,
+                    AssemblyDataFormat.Webcil => WebcilUtil.WebcilToDll(Data),
+                    _ => throw new InvalidOperationException($"Unknown assembly format: {Format}"),
+                };
+                Debug.Assert(!field.IsDefault);
+            }
+
+            return field;
+        }
     }
 }

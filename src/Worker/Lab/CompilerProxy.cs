@@ -24,43 +24,55 @@ internal sealed class CompilerProxy(
 {
     public static readonly string CompilerAssemblyName = "DotNetLab.Compiler";
 
+    private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
+
+    private async Task EnsureLoadedAsync()
+    {
+        if (loaded is null || dependencyRegistry.Iteration != iteration)
+        {
+            var previousIteration = dependencyRegistry.Iteration;
+            var currentlyLoaded = await LoadCompilerAsync();
+
+            if (dependencyRegistry.Iteration == previousIteration)
+            {
+                loaded?.Dispose();
+                loaded = currentlyLoaded;
+                iteration = dependencyRegistry.Iteration;
+            }
+            else
+            {
+                Debug.Assert(loaded is not null);
+            }
+        }
+    }
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
         try
         {
-            if (loaded is null || dependencyRegistry.Iteration != iteration)
-            {
-                var previousIteration = dependencyRegistry.Iteration;
-                var currentlyLoaded = await LoadCompilerAsync();
-
-                if (dependencyRegistry.Iteration == previousIteration)
-                {
-                    loaded = currentlyLoaded;
-                    iteration = dependencyRegistry.Iteration;
-                }
-                else
-                {
-                    Debug.Assert(loaded is not null);
-                }
-            }
+            await EnsureLoadedAsync();
+            Debug.Assert(loaded is not null);
 
             if (input.Configuration is not null && loaded.DllAssemblies is null)
             {
                 var assemblies = loaded.Assemblies ?? await LoadAssembliesAsync();
-                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.GetDataAsDll());
+                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
 
-                var builtInAssemblies = await LoadAssembliesAsync(builtIn: true);
-                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.GetDataAsDll());
+                var builtInAssemblies = await LoadAssembliesAsync(builtInOnly: true);
+                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
             }
 
-            using var _ = loaded.LoadContext.EnterContextualReflection();
-            var result = loaded.Compiler.Compile(input, loaded.DllAssemblies, loaded.BuiltInDllAssemblies, loaded.LoadContext);
+            CompiledAssembly result;
+            using (loaded.LoadContext.EnterContextualReflection())
+            {
+                result = loaded.Compiler.Compile(input, loaded.DllAssemblies, loaded.BuiltInDllAssemblies, loaded.LoadContext);
+            }
 
             if (loaded.LoadContext is CompilerLoader { LastFailure: { } failure })
             {
+                loaded?.Dispose();
                 loaded = null;
                 throw new InvalidOperationException(
                     $"Failed to load '{failure.AssemblyName}'.", failure.Exception);
@@ -75,11 +87,18 @@ internal sealed class CompilerProxy(
         }
     }
 
-    private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtIn = false)
+    public async Task<ILanguageServices> GetLanguageServicesAsync()
+    {
+        await EnsureLoadedAsync();
+        Debug.Assert(loaded is not null);
+        return loaded.LanguageServices.Value;
+    }
+
+    private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
     {
         var assemblies = ImmutableDictionary.CreateBuilder<string, LoadedAssembly>();
 
-        if (!builtIn)
+        if (!builtInOnly)
         {
             await foreach (var dep in dependencyRegistry.GetAssembliesAsync())
             {
@@ -102,14 +121,30 @@ internal sealed class CompilerProxy(
             CompilerAssemblyName,
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
+            "Microsoft.CodeAnalysis.VisualBasic",
+            "Microsoft.CodeAnalysis.Workspaces",
+            "Microsoft.CodeAnalysis.CSharp.Workspaces",
+            "Microsoft.CodeAnalysis.VisualBasic.Workspaces",
+            "Microsoft.CodeAnalysis.Features",
+            "Microsoft.CodeAnalysis.CSharp.Features",
+            "Microsoft.CodeAnalysis.VisualBasic.Features",
+            "Microsoft.CodeAnalysis.CodeStyle",
+            "Microsoft.CodeAnalysis.CSharp.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
             "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
+            "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Workspaces.Test.Utilities", // RoslynWorkspaceAccess project produces this assembly
         ];
         foreach (var name in names)
         {
             if (!assemblies.ContainsKey(name))
             {
-                var assembly = await LoadAssemblyAsync(name);
+                if (!builtInAssemblyCache.TryGetValue(name, out var assembly))
+                {
+                    assembly = await LoadAssemblyAsync(name);
+                    assembly = builtInAssemblyCache.GetOrAdd(name, assembly);
+                }
+
                 assemblies.Add(name, assembly);
             }
         }
@@ -143,24 +178,56 @@ internal sealed class CompilerProxy(
         }
         else
         {
-            assemblies ??= await LoadAssembliesAsync();
+            assemblies = await LoadAssembliesAsync();
             alc = new CompilerLoader(loaderServices, assemblies, dependencyRegistry.Iteration);
         }
 
         using var _ = alc.EnterContextualReflection();
         Assembly compilerAssembly = alc.LoadFromAssemblyName(new(CompilerAssemblyName));
-        Type compilerType = compilerAssembly.GetType(CompilerAssemblyName)!;
+        Type compilerType = compilerAssembly.GetType("DotNetLab.Compiler")!;
         var compiler = (ICompiler)ActivatorUtilities.CreateInstance(serviceProvider, compilerType)!;
-        return new() { LoadContext = alc, Compiler = compiler, Assemblies = assemblies };
+        var languageServices = new Lazy<ILanguageServices>(() =>
+        {
+            var languageServicesType = compilerAssembly.GetType("DotNetLab.LanguageServices")!;
+            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler])!;
+        });
+        return new() { LoadContext = alc, Compiler = compiler, LanguageServices = languageServices, Assemblies = assemblies };
     }
 
-    private sealed class LoadedCompiler
+    private sealed class LoadedCompiler : IDisposable
     {
         public required AssemblyLoadContext LoadContext { get; init; }
         public required ICompiler Compiler { get; init; }
+        public required Lazy<ILanguageServices> LanguageServices { get; init; }
+
+        /// <summary>
+        /// If a custom (not the built-in) compiler version is required, its assemblies will be loaded here.
+        /// </summary>
         public required ImmutableDictionary<string, LoadedAssembly>? Assemblies { get; init; }
+
+        /// <summary>
+        /// If Configuration is provided, the compiler needs Roslyn DLLs to compile the Configuration against.
+        /// This property is used to cache the loaded DLL bytes.
+        /// It is computed from <see cref="Assemblies"/> (if a custom compiler is used)
+        /// or from <see cref="LoadAssembliesAsync"/> (if the built-in compiler is used).
+        /// </summary>
         public ImmutableDictionary<string, ImmutableArray<byte>>? DllAssemblies { get; set; }
+
+        /// <summary>
+        /// Similar to <see cref="DllAssemblies"/>, but always contains the built-in Roslyn DLLs.
+        /// These are used if the user specifies a custom compiler version that is older than the built-in one
+        /// (in which case using the custom DLLs would fail). Currently, we don't check the compiler version,
+        /// we just try these built-in ones when compilation with <see cref="DllAssemblies"/> fails.
+        /// </summary>
         public ImmutableDictionary<string, ImmutableArray<byte>>? BuiltInDllAssemblies { get; set; }
+
+        public void Dispose()
+        {
+            if (LoadContext.IsCollectible)
+            {
+                LoadContext.Unload();
+            }
+        }
     }
 }
 
@@ -177,7 +244,7 @@ internal sealed class CompilerLoader(
     CompilerLoaderServices services,
     IReadOnlyDictionary<string, LoadedAssembly> knownAssemblies,
     int iteration)
-    : AssemblyLoadContext(nameof(CompilerLoader) + iteration)
+    : AssemblyLoadContext(nameof(CompilerLoader) + iteration, isCollectible: true)
 {
     private readonly Dictionary<string, Assembly> loadedAssemblies = new();
 

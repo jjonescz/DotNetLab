@@ -256,7 +256,7 @@
     private sealed record Input(string FileName, TextModel Model) : EditorState(Model)
     {
         public string FileName { get; set; } = FileName;
-        public string? NewContent { get; set; }
+        public required string? NewContent { get; set; }
     }
 
     private readonly record struct CacheInfo(DateTimeOffset? Timestamp);
@@ -285,6 +285,22 @@
             }
 
             return inputs[i];
+        }
+    }
+
+    private IEnumerable<(Input Input, bool IsConfiguration)> InputsAndConfiguration
+    {
+        get
+        {
+            foreach (var input in inputs)
+            {
+                yield return (input, false);
+            }
+
+            if (configuration is { } config)
+            {
+                yield return (config, true);
+            }
         }
     }
 
@@ -545,9 +561,10 @@
         {
             await SaveStateToUrlAsync();
 
-            configuration = new(
-                InitialCode.Configuration.SuggestedFileName,
-                await CreateModelAsync(InitialCode.Configuration.ToInputCode()));
+            var fileName = InitialCode.Configuration.SuggestedFileName;
+            var inputCode = InitialCode.Configuration.ToInputCode();
+            var model = await CreateModelAsync(inputCode);
+            configuration = new(fileName, model) { NewContent = inputCode.Text };
             OnWorkspaceChanged();
 
             await SaveStateToUrlAsync();
@@ -624,7 +641,7 @@
 
         // Compile.
         var input = state.ToCompilationInput();
-        var output = await Worker.CompileAsync(input);
+        var output = await Worker.CompileAsync(input, languageServicesEnabled: LanguageServices.Enabled);
         compiled = (input, output, null);
         outputOutdated = false;
 
@@ -1011,7 +1028,7 @@
     }
 
     /// <summary>
-    /// Should be called before SetModel of Monaco editor whenever (after) <see cref="inputs"/> change.
+    /// Should be called before SetModel of Monaco editor whenever (after) <see cref="InputsAndConfiguration"/> change.
     /// </summary>
     public void OnWorkspaceChanged()
     {
@@ -1022,10 +1039,14 @@
             return;
         }
 
-        var models = inputs
-            .Select(i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = i.NewContent })
+        var models = InputsAndConfiguration
+            .Select(t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName) 
+            {
+                NewContent = t.Input.NewContent,
+                IsConfiguration = t.IsConfiguration,
+            })
             .ToImmutableArray();
-        inputs.ForEach(i => { i.NewContent = null; });
+        InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
         LanguageServices.OnDidChangeWorkspace(models);
     }
 
@@ -1039,8 +1060,12 @@
             return;
         }
 
-        var models = await inputs
-            .SelectAsArrayAsync(static async i => new ModelInfo(Uri: i.Model.Uri, FileName: i.FileName) { NewContent = await i.Model.GetTextAsync() });
+        var models = await InputsAndConfiguration
+            .SelectAsArrayAsync(static async t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName)
+            {
+                NewContent = await t.Input.Model.GetTextAsync(),
+                IsConfiguration = t.IsConfiguration,
+            });
         LanguageServices.OnDidChangeWorkspace(models, updateDiagnostics: updateDiagnostics);
     }
 

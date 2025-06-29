@@ -15,7 +15,7 @@ using System.Runtime.Loader;
 
 namespace DotNetLab;
 
-public class Compiler(
+public sealed class Compiler(
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -23,12 +23,19 @@ public class Compiler(
         You can try selecting different Razor toolchain in Settings / Advanced.
         """;
 
-    private (CompilationInput Input, CompiledAssembly Output)? lastResult;
+    public static readonly string ConfigurationGlobalUsings = """
+        global using DotNetLab;
+        global using Microsoft.CodeAnalysis;
+        global using Microsoft.CodeAnalysis.CSharp;
+        global using System;
+        """;
 
     /// <summary>
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
+
+    internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
 
     public CompiledAssembly Compile(
         CompilationInput input,
@@ -36,20 +43,20 @@ public class Compiler(
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
-        if (lastResult is { } cached)
+        if (LastResult is { } cached)
         {
             if (input.Equals(cached.Input))
             {
-                return cached.Output;
+                return cached.Output.CompiledAssembly;
             }
         }
 
         var result = CompileNoCache(input, assemblies, builtInAssemblies, alc);
-        lastResult = (input, result);
-        return result;
+        LastResult = (input, result);
+        return result.CompiledAssembly;
     }
 
-    private CompiledAssembly CompileNoCache(
+    private LiveCompilationResult CompileNoCache(
         CompilationInput compilationInput,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -59,6 +66,7 @@ public class Compiler(
         const string directory = "/";
 
         var parseOptions = CreateDefaultParseOptions();
+        CSharpCompilationOptions? options = null;
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
@@ -66,6 +74,7 @@ public class Compiler(
         // If we have a configuration, compile and execute it.
         Config.Reset();
         ImmutableArray<Diagnostic> configDiagnostics;
+        ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
         if (compilationInput.Configuration is { } configuration)
         {
             if (!executeConfiguration(configuration, out configDiagnostics))
@@ -74,7 +83,7 @@ public class Compiler(
                 ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
                     .Select(d => d.ToDiagnosticData())
                     .ToImmutableArray();
-                return new CompiledAssembly(
+                var configResult = new CompiledAssembly(
                     Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
                     GlobalOutputs:
                     [
@@ -93,6 +102,7 @@ public class Compiler(
                 {
                     ConfigDiagnosticCount = configDiagnosticData.Length,
                 };
+                return getResult(configResult);
             }
 
             parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
@@ -140,7 +150,7 @@ public class Compiler(
 
         var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
-        var options = CreateDefaultCompilationOptions(outputKind);
+        options = CreateDefaultCompilationOptions(outputKind);
 
         options = Config.ConfigureCSharpCompilationOptions(options);
 
@@ -335,7 +345,18 @@ public class Compiler(
             ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
         };
 
-        return result;
+        return getResult(result);
+
+        LiveCompilationResult getResult(CompiledAssembly result)
+        {
+            return new LiveCompilationResult
+            {
+                CompiledAssembly = result,
+                CompilerAssemblies = compilerAssembliesUsed,
+                CSharpParseOptions = compilerAssembliesUsed != null ? parseOptions : null,
+                CSharpCompilationOptions = compilerAssembliesUsed != null ? options : null,
+            };
+        }
 
         static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
 
@@ -346,28 +367,22 @@ public class Compiler(
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText("""
-                        global using DotNetLab;
-                        global using Microsoft.CodeAnalysis;
-                        global using Microsoft.CodeAnalysis.CSharp;
-                        global using System;
-                        """, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references:
                 [
                     ..references,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
-                options: CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
-                    .WithSpecificDiagnosticOptions(
-                    [
-                        // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
-                        KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
-                    ]));
+                options: CreateConfigurationCompilationOptions());
 
             var emitStream = getEmitStream(configCompilation, out diagnostics);
 
-            if (emitStream == null)
+            if (emitStream != null)
+            {
+                compilerAssembliesUsed = assemblies;
+            }
+            else
             {
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
                 var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
@@ -379,6 +394,7 @@ public class Compiler(
                 if (emitStream != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
+                    compilerAssembliesUsed = builtInAssemblies;
                 }
             }
 
@@ -791,6 +807,16 @@ public class Compiler(
             nullableContextOptions: NullableContextOptions.Enable,
             concurrentBuild: false);
     }
+
+    public static CSharpCompilationOptions CreateConfigurationCompilationOptions()
+    {
+        return CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
+            .WithSpecificDiagnosticOptions(
+            [
+                // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+                KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
+            ]);
+    }
 }
 
 public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
@@ -953,4 +979,27 @@ internal readonly struct Result<T>
             ? new Result<R>(exception)
             : new Result<R>(() => mapper(value!));
     }
+}
+
+/// <summary>
+/// Additional data on top of <see cref="CompiledAssembly"/> that are never cached.
+/// </summary>
+internal sealed class LiveCompilationResult
+{
+    public required CompiledAssembly CompiledAssembly { get; init; }
+
+    /// <summary>
+    /// Assemblies used to compile <see cref="CompilationInput.Configuration"/>.
+    /// </summary>
+    public required ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options were used.
+    /// </summary>
+    public required CSharpParseOptions? CSharpParseOptions { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options were used.
+    /// </summary>
+    public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
 }

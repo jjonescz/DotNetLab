@@ -1,10 +1,14 @@
 ﻿using BlazorMonaco.Editor;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
 
-public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessage.IExecutor
+public sealed class WorkerExecutor(
+    IServiceProvider services,
+    ILogger<WorkerExecutor> logger)
+    : WorkerInputMessage.IExecutor
 {
     private readonly Dictionary<int, CancellationTokenSource> cancellationTokenSources = [];
 
@@ -44,7 +48,27 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
     public async Task<CompiledAssembly> HandleAsync(WorkerInputMessage.Compile message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
-        return await compiler.CompileAsync(message.Input);
+        var result = await compiler.CompileAsync(message.Input);
+
+        if (message.LanguageServicesEnabled)
+        {
+            notifyLanguageServices(compiler);
+        }
+
+        return result;
+
+        async void notifyLanguageServices(CompilerProxy compiler)
+        {
+            try
+            {
+                var languageServices = await compiler.GetLanguageServicesAsync();
+                languageServices.OnCompilationFinished();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error notifying language services after compilation.");
+            }
+        }
     }
 
     public async Task<string> HandleAsync(WorkerInputMessage.GetOutput message)
@@ -84,55 +108,55 @@ public sealed class WorkerExecutor(IServiceProvider services) : WorkerInputMessa
     public async Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         return await languageServices.ProvideCompletionItemsAsync(message.ModelUri, message.Position, message.Context, cancellationToken);
     }
 
     public async Task<string?> HandleAsync(WorkerInputMessage.ResolveCompletionItem message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         return await languageServices.ResolveCompletionItemAsync(message.Item, cancellationToken);
     }
 
     public async Task<string?> HandleAsync(WorkerInputMessage.ProvideSemanticTokens message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         return await languageServices.ProvideSemanticTokensAsync(message.ModelUri, message.RangeJson, message.Debug, cancellationToken);
     }
 
     public async Task<string?> HandleAsync(WorkerInputMessage.ProvideCodeActions message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         return await languageServices.ProvideCodeActionsAsync(message.ModelUri, message.RangeJson, cancellationToken);
     }
 
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync(message.Models);
         return NoOutput.Instance;
     }
 
-    public Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModel message)
-    {
-        var languageServices = services.GetRequiredService<LanguageServices>();
-        languageServices.OnDidChangeModel(modelUri: message.ModelUri);
-        return NoOutput.AsyncInstance;
-    }
-
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModelContent message)
     {
-        var languageServices = services.GetRequiredService<LanguageServices>();
-        await languageServices.OnDidChangeModelContentAsync(message.Args);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeModelContentAsync(message.ModelUri, message.Args);
         return NoOutput.Instance;
     }
 
-    public Task<ImmutableArray<MarkerData>> HandleAsync(WorkerInputMessage.GetDiagnostics message)
+    public async Task<ImmutableArray<MarkerData>> HandleAsync(WorkerInputMessage.GetDiagnostics message)
     {
-        var languageServices = services.GetRequiredService<LanguageServices>();
-        return languageServices.GetDiagnosticsAsync();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        return await languageServices.GetDiagnosticsAsync(message.ModelUri);
     }
 }

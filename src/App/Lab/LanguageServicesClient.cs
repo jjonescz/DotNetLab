@@ -171,7 +171,6 @@ internal sealed class LanguageServicesClient(
         }
 
         currentModelUrl = args.NewModelUrl;
-        worker.OnDidChangeModel(modelUri: currentModelUrl);
         UpdateDiagnostics();
     }
 
@@ -183,7 +182,14 @@ internal sealed class LanguageServicesClient(
         }
 
         InvalidateCaches();
-        worker.OnDidChangeModelContent(args);
+
+        if (currentModelUrl is null)
+        {
+            logger.LogWarning("No current document to change content of.");
+            return;
+        }
+
+        worker.OnDidChangeModelContent(modelUri: currentModelUrl, args);
         UpdateDiagnostics();
     }
 
@@ -199,7 +205,7 @@ internal sealed class LanguageServicesClient(
         Debounce(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), static async args =>
         {
             var (worker, jsRuntime, currentModelUrl) = args;
-            var markers = await worker.GetDiagnosticsAsync();
+            var markers = await worker.GetDiagnosticsAsync(currentModelUrl);
             var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
             await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
         },

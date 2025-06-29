@@ -394,10 +394,10 @@ internal sealed class WorkerController : IAsyncDisposable
         };
     }
 
-    public Task<CompiledAssembly> CompileAsync(CompilationInput input)
+    public Task<CompiledAssembly> CompileAsync(CompilationInput input, bool languageServicesEnabled)
     {
         return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.Compile(input) { Id = messageId++ },
+            new WorkerInputMessage.Compile(input, languageServicesEnabled) { Id = messageId++ },
             fallback: CompiledAssembly.Fail);
     }
 
@@ -475,22 +475,16 @@ internal sealed class WorkerController : IAsyncDisposable
             new WorkerInputMessage.OnDidChangeWorkspace(models) { Id = messageId++ });
     }
 
-    public void OnDidChangeModel(string modelUri)
+    public void OnDidChangeModelContent(string modelUri, ModelContentChangedEvent args)
     {
         PostMessage(
-            new WorkerInputMessage.OnDidChangeModel(ModelUri: modelUri) { Id = messageId++ });
+            new WorkerInputMessage.OnDidChangeModelContent(modelUri, args) { Id = messageId++ });
     }
 
-    public void OnDidChangeModelContent(ModelContentChangedEvent args)
-    {
-        PostMessage(
-            new WorkerInputMessage.OnDidChangeModelContent(args) { Id = messageId++ });
-    }
-
-    public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()
+    public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
         return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetDiagnostics() { Id = messageId++ },
+            new WorkerInputMessage.GetDiagnostics(modelUri) { Id = messageId++ },
             deserializeAs: default(ImmutableArray<MarkerData>));
     }
 }

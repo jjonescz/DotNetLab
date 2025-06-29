@@ -9,7 +9,7 @@ public static class Executor
 {
     public static string Execute(MemoryStream emitStream)
     {
-        var alc = new AssemblyLoadContext(nameof(Executor));
+        var alc = new AssemblyLoadContext(nameof(Executor), isCollectible: true);
         try
         {
             var assembly = alc.LoadFromStream(emitStream);
@@ -39,6 +39,10 @@ public static class Executor
         {
             return ex.ToString();
         }
+        finally
+        {
+            alc.Unload();
+        }
     }
 
     public static int InvokeEntryPoint(MethodInfo entryPoint)
@@ -51,21 +55,28 @@ public static class Executor
 
     public static async Task<string> RenderComponentToHtmlAsync(MemoryStream emitStream, string componentTypeName)
     {
-        var alc = new AssemblyLoadContext(nameof(RenderComponentToHtmlAsync));
-        var assembly = alc.LoadFromStream(emitStream);
-        var componentType = assembly.GetType(componentTypeName)
-            ?? throw new InvalidOperationException($"Cannot find component '{componentTypeName}' in the assembly.");
-
-        var services = new ServiceCollection();
-        services.AddLogging();
-        var serviceProvider = services.BuildServiceProvider();
-        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-        var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
-        var html = await renderer.Dispatcher.InvokeAsync(async () =>
+        var alc = new AssemblyLoadContext(nameof(RenderComponentToHtmlAsync), isCollectible: true);
+        try
         {
-            var output = await renderer.RenderComponentAsync(componentType);
-            return output.ToHtmlString();
-        });
-        return html;
+            var assembly = alc.LoadFromStream(emitStream);
+            var componentType = assembly.GetType(componentTypeName)
+                ?? throw new InvalidOperationException($"Cannot find component '{componentTypeName}' in the assembly.");
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+            var serviceProvider = services.BuildServiceProvider();
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+            var html = await renderer.Dispatcher.InvokeAsync(async () =>
+            {
+                var output = await renderer.RenderComponentAsync(componentType);
+                return output.ToHtmlString();
+            });
+            return html;
+        }
+        finally
+        {
+            alc.Unload();
+        }
     }
 }

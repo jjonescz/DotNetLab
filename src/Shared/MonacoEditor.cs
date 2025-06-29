@@ -1,4 +1,5 @@
 ﻿using BlazorMonaco;
+using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using System.Text.Json.Serialization;
 
@@ -81,3 +82,29 @@ public sealed class SemanticTokensLegend
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;
+
+public static class SimpleMonacoConversions
+{
+    public static MarkerData ToMarkerData(this DiagnosticData d)
+    {
+        return new MarkerData
+        {
+            CodeAsObject = new()
+            {
+                Value = d.Id,
+                TargetUri = d.HelpLinkUri,
+            },
+            Message = d.Message,
+            StartLineNumber = d.StartLineNumber,
+            StartColumn = d.StartColumn,
+            EndLineNumber = d.EndLineNumber,
+            EndColumn = d.EndColumn,
+            Severity = d.Severity switch
+            {
+                DiagnosticDataSeverity.Error => MarkerSeverity.Error,
+                DiagnosticDataSeverity.Warning => MarkerSeverity.Warning,
+                _ => MarkerSeverity.Info,
+            },
+        };
+    }
+}

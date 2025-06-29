@@ -99,6 +99,14 @@ public static class Util
     /// </summary>
     public static R EnsureSync() => default;
 
+    public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
+    {
+        foreach (var item in source)
+        {
+            action(item);
+        }
+    }
+
     public static string GetFirstLine(this string text)
     {
         foreach (var line in text.AsSpan().EnumerateLines())
@@ -107,6 +115,21 @@ public static class Util
         }
 
         return text;
+    }
+
+    public static TValue GetOrAdd<TKey, TValue>(
+        this IDictionary<TKey, TValue> dictionary,
+        TKey key,
+        TValue value)
+        where TKey : notnull
+    {
+        if (dictionary.TryGetValue(key, out var existingValue))
+        {
+            return existingValue;
+        }
+
+        dictionary.Add(key, value);
+        return value;
     }
 
     public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
