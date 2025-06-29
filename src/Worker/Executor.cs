@@ -145,19 +145,11 @@ public sealed class WorkerExecutor(
         return NoOutput.Instance;
     }
 
-    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModel message)
-    {
-        var compiler = services.GetRequiredService<CompilerProxy>();
-        var languageServices = await compiler.GetLanguageServicesAsync();
-        languageServices.OnDidChangeModel(modelUri: message.ModelUri);
-        return NoOutput.Instance;
-    }
-
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeModelContent message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
-        await languageServices.OnDidChangeModelContentAsync(message.Args);
+        await languageServices.OnDidChangeModelContentAsync(message.ModelUri, message.Args);
         return NoOutput.Instance;
     }
 
@@ -165,6 +157,6 @@ public sealed class WorkerExecutor(
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
-        return await languageServices.GetDiagnosticsAsync();
+        return await languageServices.GetDiagnosticsAsync(message.ModelUri);
     }
 }

@@ -17,9 +17,8 @@ public sealed class LanguageServiceTests(ITestOutputHelper output)
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("test.cs", "test.cs") { NewContent = code }]);
-        languageServices.OnDidChangeModel("test.cs");
 
-        var markers = await languageServices.GetDiagnosticsAsync();
+        var markers = await languageServices.GetDiagnosticsAsync("test.cs");
         markers.Should().NotBeEmpty();
         output.WriteLine($"Diagnostics:\n{markers.Select(m => $"{m.Message} ({m.Code})").JoinToString("\n")}");
 

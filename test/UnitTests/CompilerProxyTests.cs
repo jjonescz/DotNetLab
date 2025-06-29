@@ -27,9 +27,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         // Language services should also pick up the custom compiler version.
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
-        languageServices.OnDidChangeModel("Input.cs");
 
-        var markers = await languageServices.GetDiagnosticsAsync();
+        var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
         markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
 
         var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);

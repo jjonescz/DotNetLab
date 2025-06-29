@@ -29,8 +29,7 @@ internal sealed class LanguageServices : ILanguageServices
     private readonly ProjectId configurationProjectId;
 
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
-    private DocumentId? documentId;
-    private RoslynCompletionList? lastCompletions;
+    private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
@@ -130,7 +129,7 @@ internal sealed class LanguageServices : ILanguageServices
             }
 
             var completions = await service.GetCompletionsAsync(document, caretPosition, trigger: completionTrigger, cancellationToken: cancellationToken);
-            lastCompletions = completions;
+            lastCompletions = (document.Id, completions);
             var time1 = sw.ElapsedMilliseconds;
             sw.Restart();
             var result = completions.ToCompletionList(text);
@@ -156,10 +155,9 @@ internal sealed class LanguageServices : ILanguageServices
     public async Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item, CancellationToken cancellationToken)
     {
         // Try to find the corresponding Roslyn item.
-        if (documentId == null ||
-            lastCompletions == null ||
-            lastCompletions.ItemsList.TryAt(item.Index) is not { } foundItem ||
-            GetDocument(documentId) is not { } document)
+        if (lastCompletions is not (var docId, var lastCompletionList) ||
+            lastCompletionList.ItemsList.TryAt(item.Index) is not { } foundItem ||
+            GetDocument(docId) is not { } document)
         {
             return null;
         }
@@ -613,19 +611,6 @@ internal sealed class LanguageServices : ILanguageServices
             }
         }
 
-        // Update the current document.
-        if (documentId != null && GetDocument(documentId) is { } document)
-        {
-            if (modelUris.TryGetValue(document.Id, out string? modelUri))
-            {
-                OnDidChangeModel(modelUri: modelUri);
-            }
-            else
-            {
-                documentId = null;
-            }
-        }
-
         await UpdateOptionsIfNecessaryAsync();
     }
 
@@ -640,17 +625,11 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public void OnDidChangeModel(string modelUri)
+    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
-        // We are editing a different document now.
-        documentId = modelUris.FirstOrDefault(kvp => kvp.Value == modelUri).Key;
-    }
-
-    public async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
-    {
-        if (documentId == null || GetDocument(documentId) is not { } document)
+        if (!TryGetDocument(modelUri, out var document))
         {
-            logger.LogWarning("No current document to change content of.");
+            logger.LogWarning("Document to change content of not found: {ModelUri}", modelUri);
             return;
         }
 
@@ -672,10 +651,9 @@ internal sealed class LanguageServices : ILanguageServices
         await UpdateOptionsIfNecessaryAsync();
     }
 
-    public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync()
+    public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        if (documentId == null ||
-            GetDocument(documentId) is not { } document ||
+        if (!TryGetDocument(modelUri, out var document) ||
             !document.TryGetSyntaxTree(out var tree))
         {
             return [];
@@ -706,15 +684,6 @@ internal sealed class LanguageServices : ILanguageServices
 
     private bool TryGetDocument(string modelUri, [NotNullWhen(returnValue: true)] out Document? document)
     {
-        // Try the current document first.
-        if (documentId != null &&
-            modelUris.TryGetValue(documentId, out var uri) &&
-            uri == modelUri)
-        {
-            document = GetDocument(documentId);
-            return document != null;
-        }
-
         var id = GetDocumentIds().FirstOrDefault(id =>
             modelUris.TryGetValue(id, out var uri) &&
             uri == modelUri);

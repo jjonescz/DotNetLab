@@ -5,10 +5,9 @@ namespace DotNetLab;
 
 public interface ILanguageServices
 {
-    Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync();
+    Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri);
     void OnCompilationFinished();
-    void OnDidChangeModel(string modelUri);
-    Task OnDidChangeModelContentAsync(ModelContentChangedEvent args);
+    Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);
     Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models);
     Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken);
     Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, BlazorMonaco.Languages.CompletionContext context, CancellationToken cancellationToken);

@@ -18,7 +18,6 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(ProvideSemanticTokens), nameof(ProvideSemanticTokens))]
 [JsonDerivedType(typeof(ProvideCodeActions), nameof(ProvideCodeActions))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
-[JsonDerivedType(typeof(OnDidChangeModel), nameof(OnDidChangeModel))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
 [JsonDerivedType(typeof(GetDiagnostics), nameof(GetDiagnostics))]
 public abstract record WorkerInputMessage
@@ -143,7 +142,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record OnDidChangeModel(string ModelUri) : WorkerInputMessage<NoOutput>
+    public sealed record OnDidChangeModelContent(string ModelUri, ModelContentChangedEvent Args) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
         {
@@ -151,15 +150,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record OnDidChangeModelContent(ModelContentChangedEvent Args) : WorkerInputMessage<NoOutput>
-    {
-        public override Task<NoOutput> HandleAsync(IExecutor executor)
-        {
-            return executor.HandleAsync(this);
-        }
-    }
-
-    public sealed record GetDiagnostics() : WorkerInputMessage<ImmutableArray<MarkerData>>
+    public sealed record GetDiagnostics(string ModelUri) : WorkerInputMessage<ImmutableArray<MarkerData>>
     {
         public override Task<ImmutableArray<MarkerData>> HandleAsync(IExecutor executor)
         {
@@ -181,7 +172,6 @@ public abstract record WorkerInputMessage
         Task<string?> HandleAsync(ProvideSemanticTokens message);
         Task<string?> HandleAsync(ProvideCodeActions message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
-        Task<NoOutput> HandleAsync(OnDidChangeModel message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);
         Task<ImmutableArray<MarkerData>> HandleAsync(GetDiagnostics message);
     }
