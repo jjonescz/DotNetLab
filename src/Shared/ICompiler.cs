@@ -6,7 +6,7 @@ namespace DotNetLab;
 
 public interface ICompiler
 {
-    LiveCompilationResult Compile(
+    CompiledAssembly Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -68,32 +68,6 @@ public sealed record DiagnosticData(
     int EndLineNumber,
     int EndColumn
 );
-
-/// <summary>
-/// Additional data on top of <see cref="CompiledAssembly"/> that are never cached.
-/// </summary>
-public sealed class LiveCompilationResult
-{
-    public required CompiledAssembly CompiledAssembly { get; init; }
-    public required CompilerAssembliesUsed CompilerAssembliesUsed { get; init; }
-
-    /// <summary>
-    /// Set to <see langword="null"/> if the default options should be used.
-    /// </summary>
-    public required object? CSharpParseOptions { get; init; }
-
-    /// <summary>
-    /// Set to <see langword="null"/> if the default options should be used.
-    /// </summary>
-    public required object? CSharpCompilationOptions { get; init; }
-}
-
-public enum CompilerAssembliesUsed
-{
-    None,
-    Normal,
-    BuiltIn,
-}
 
 /// <remarks>
 /// <para>

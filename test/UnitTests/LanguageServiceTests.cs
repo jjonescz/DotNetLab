@@ -14,7 +14,8 @@ public sealed class LanguageServiceTests(ITestOutputHelper output)
     public async Task CodeActions(string code, string expectedErrorCode, string expectedCodeActionTitle)
     {
         var services = WorkerServices.CreateTest();
-        var languageServices = services.GetRequiredService<LanguageServices>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("test.cs", "test.cs") { NewContent = code }]);
         languageServices.OnDidChangeModel("test.cs");
 

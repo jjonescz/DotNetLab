@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Runtime.InteropServices;
@@ -28,39 +27,33 @@ internal sealed class CompilerProxy(
     private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
-    
-    public ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; private set; }
 
-    /// <summary>
-    /// See <see cref="LiveCompilationResult.CSharpParseOptions"/>.
-    /// </summary>
-    public CSharpParseOptions? CSharpParseOptions { get; private set; }
+    private async Task EnsureLoadedAsync()
+    {
+        if (loaded is null || dependencyRegistry.Iteration != iteration)
+        {
+            var previousIteration = dependencyRegistry.Iteration;
+            var currentlyLoaded = await LoadCompilerAsync();
 
-    /// <summary>
-    /// See <see cref="LiveCompilationResult.CSharpCompilationOptions"/>.
-    /// </summary>
-    public CSharpCompilationOptions? CSharpCompilationOptions { get; private set; }
+            if (dependencyRegistry.Iteration == previousIteration)
+            {
+                loaded?.Dispose();
+                loaded = currentlyLoaded;
+                iteration = dependencyRegistry.Iteration;
+            }
+            else
+            {
+                Debug.Assert(loaded is not null);
+            }
+        }
+    }
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
         try
         {
-            if (loaded is null || dependencyRegistry.Iteration != iteration)
-            {
-                var previousIteration = dependencyRegistry.Iteration;
-                var currentlyLoaded = await LoadCompilerAsync();
-
-                if (dependencyRegistry.Iteration == previousIteration)
-                {
-                    loaded?.Dispose();
-                    loaded = currentlyLoaded;
-                    iteration = dependencyRegistry.Iteration;
-                }
-                else
-                {
-                    Debug.Assert(loaded is not null);
-                }
-            }
+            await EnsureLoadedAsync();
+            Debug.Assert(loaded is not null);
 
             if (input.Configuration is not null && loaded.DllAssemblies is null)
             {
@@ -71,7 +64,7 @@ internal sealed class CompilerProxy(
                 loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
             }
 
-            LiveCompilationResult result;
+            CompiledAssembly result;
             using (loaded.LoadContext.EnterContextualReflection())
             {
                 result = loaded.Compiler.Compile(input, loaded.DllAssemblies, loaded.BuiltInDllAssemblies, loaded.LoadContext);
@@ -81,30 +74,24 @@ internal sealed class CompilerProxy(
             {
                 loaded?.Dispose();
                 loaded = null;
-                CompilerAssemblies = null;
-                CSharpParseOptions = null;
-                CSharpCompilationOptions = null;
                 throw new InvalidOperationException(
                     $"Failed to load '{failure.AssemblyName}'.", failure.Exception);
             }
 
-            CompilerAssemblies = result.CompilerAssembliesUsed switch
-            {
-                CompilerAssembliesUsed.Normal => loaded.DllAssemblies,
-                CompilerAssembliesUsed.BuiltIn => loaded.BuiltInDllAssemblies,
-                _ => null,
-            };
-
-            CSharpParseOptions = result.CSharpParseOptions as CSharpParseOptions;
-            CSharpCompilationOptions = result.CSharpCompilationOptions as CSharpCompilationOptions;
-
-            return result.CompiledAssembly;
+            return result;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to compile.");
             return CompiledAssembly.Fail(ex.ToString());
         }
+    }
+
+    public async Task<ILanguageServices> GetLanguageServicesAsync()
+    {
+        await EnsureLoadedAsync();
+        Debug.Assert(loaded is not null);
+        return loaded.LanguageServices.Value;
     }
 
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
@@ -134,8 +121,19 @@ internal sealed class CompilerProxy(
             CompilerAssemblyName,
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
+            "Microsoft.CodeAnalysis.VisualBasic",
+            "Microsoft.CodeAnalysis.Workspaces",
+            "Microsoft.CodeAnalysis.CSharp.Workspaces",
+            "Microsoft.CodeAnalysis.VisualBasic.Workspaces",
+            "Microsoft.CodeAnalysis.Features",
+            "Microsoft.CodeAnalysis.CSharp.Features",
+            "Microsoft.CodeAnalysis.VisualBasic.Features",
+            "Microsoft.CodeAnalysis.CodeStyle",
+            "Microsoft.CodeAnalysis.CSharp.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
             "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
+            "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Workspaces.Test.Utilities", // RoslynWorkspaceAccess project produces this assembly
         ];
         foreach (var name in names)
         {
@@ -144,7 +142,7 @@ internal sealed class CompilerProxy(
                 if (!builtInAssemblyCache.TryGetValue(name, out var assembly))
                 {
                     assembly = await LoadAssemblyAsync(name);
-                    builtInAssemblyCache.Add(name, assembly);
+                    assembly = builtInAssemblyCache.GetOrAdd(name, assembly);
                 }
 
                 assemblies.Add(name, assembly);
@@ -186,15 +184,21 @@ internal sealed class CompilerProxy(
 
         using var _ = alc.EnterContextualReflection();
         Assembly compilerAssembly = alc.LoadFromAssemblyName(new(CompilerAssemblyName));
-        Type compilerType = compilerAssembly.GetType(CompilerAssemblyName)!;
+        Type compilerType = compilerAssembly.GetType("DotNetLab.Compiler")!;
         var compiler = (ICompiler)ActivatorUtilities.CreateInstance(serviceProvider, compilerType)!;
-        return new() { LoadContext = alc, Compiler = compiler, Assemblies = assemblies };
+        var languageServices = new Lazy<ILanguageServices>(() =>
+        {
+            var languageServicesType = compilerAssembly.GetType("DotNetLab.LanguageServices")!;
+            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler])!;
+        });
+        return new() { LoadContext = alc, Compiler = compiler, LanguageServices = languageServices, Assemblies = assemblies };
     }
 
     private sealed class LoadedCompiler : IDisposable
     {
         public required AssemblyLoadContext LoadContext { get; init; }
         public required ICompiler Compiler { get; init; }
+        public required Lazy<ILanguageServices> LanguageServices { get; init; }
 
         /// <summary>
         /// If a custom (not the built-in) compiler version is required, its assemblies will be loaded here.

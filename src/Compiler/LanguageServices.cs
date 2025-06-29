@@ -13,12 +13,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace DotNetLab.Lab;
+namespace DotNetLab;
 
-internal sealed class LanguageServices
+internal sealed class LanguageServices : ILanguageServices
 {
     private readonly ILogger<LanguageServices> logger;
-    private readonly CompilerProxy compilerProxy;
+    private readonly Compiler compiler;
     private readonly AsyncLock workspaceLock = new();
     private readonly AdhocWorkspace workspace;
     private readonly ProjectId projectId;
@@ -36,10 +36,10 @@ internal sealed class LanguageServices
 
     public LanguageServices(
         ILogger<LanguageServices> logger,
-        CompilerProxy compilerProxy)
+        Compiler compiler)
     {
         this.logger = logger;
-        this.compilerProxy = compilerProxy;
+        this.compiler = compiler;
 
         if (logger.IsEnabled(LogLevel.Trace))
         {
@@ -329,7 +329,7 @@ internal sealed class LanguageServices
     /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/codeActionProvider.ts"/>
     /// and <see href="https://github.com/dotnet/roslyn/blob/ad14335550de1134f0b5a59b6cd040001d0d8c8d/src/LanguageServer/Protocol/Handler/CodeActions/CodeActionHelpers.cs"/>
     /// </remarks>
-    internal async Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken)
+    public async Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken)
     {
         if (!TryGetDocument(modelUri, out var document))
         {
@@ -491,7 +491,7 @@ internal sealed class LanguageServices
                     }
                 }
 
-                if (compilerProxy.CompilerAssemblies is not { } compilerAssemblies)
+                if (compiler.LastResult?.Output.CompilerAssemblies is not { } compilerAssemblies)
                 {
                     additionalConfigurationReferences = default;
                 }
@@ -510,7 +510,7 @@ internal sealed class LanguageServices
             {
                 var project = GetProject(configuration: false);
 
-                if (compilerProxy.CSharpParseOptions is { } parseOptions)
+                if (compiler.LastResult?.Output.CSharpParseOptions is { } parseOptions)
                 {
                     project = project.WithParseOptions(parseOptions);
                 }
@@ -519,7 +519,7 @@ internal sealed class LanguageServices
                     project = project.WithParseOptions(Compiler.CreateDefaultParseOptions());
                 }
 
-                if (compilerProxy.CSharpCompilationOptions is { } options)
+                if (compiler.LastResult?.Output.CSharpCompilationOptions is { } options)
                 {
                     project = project.WithCompilationOptions(options);
                 }

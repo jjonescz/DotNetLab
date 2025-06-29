@@ -205,13 +205,3 @@ public sealed record NoOutput
     public static NoOutput Instance { get; } = new();
     public static Task<NoOutput> AsyncInstance { get; } = Task.FromResult(Instance);
 }
-
-public sealed record ModelInfo(string Uri, string FileName)
-{
-    public string? NewContent { get; set; }
-
-    /// <summary>
-    /// Whether this corresponds to <see cref="CompilationInput.Configuration"/>.
-    /// </summary>
-    public bool IsConfiguration { get; init; }
-}

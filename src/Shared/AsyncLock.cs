@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class AsyncLock : IDisposable
+public sealed class AsyncLock : IDisposable
 {
     private readonly SemaphoreSlim semaphore = new(1, 1);
 

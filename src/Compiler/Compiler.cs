@@ -30,30 +30,30 @@ public sealed class Compiler(
         global using System;
         """;
 
-    private (CompilationInput Input, LiveCompilationResult Output)? lastResult;
-
     /// <summary>
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
 
-    public LiveCompilationResult Compile(
+    internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
+
+    public CompiledAssembly Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
-        if (lastResult is { } cached)
+        if (LastResult is { } cached)
         {
             if (input.Equals(cached.Input))
             {
-                return cached.Output;
+                return cached.Output.CompiledAssembly;
             }
         }
 
         var result = CompileNoCache(input, assemblies, builtInAssemblies, alc);
-        lastResult = (input, result);
-        return result;
+        LastResult = (input, result);
+        return result.CompiledAssembly;
     }
 
     private LiveCompilationResult CompileNoCache(
@@ -74,7 +74,7 @@ public sealed class Compiler(
         // If we have a configuration, compile and execute it.
         Config.Reset();
         ImmutableArray<Diagnostic> configDiagnostics;
-        var compilerAssembliesUsed = CompilerAssembliesUsed.None;
+        ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
         if (compilationInput.Configuration is { } configuration)
         {
             if (!executeConfiguration(configuration, out configDiagnostics))
@@ -352,9 +352,9 @@ public sealed class Compiler(
             return new LiveCompilationResult
             {
                 CompiledAssembly = result,
-                CompilerAssembliesUsed = compilerAssembliesUsed,
-                CSharpParseOptions = compilerAssembliesUsed != CompilerAssembliesUsed.None ? parseOptions : null,
-                CSharpCompilationOptions = compilerAssembliesUsed != CompilerAssembliesUsed.None ? options : null,
+                CompilerAssemblies = compilerAssembliesUsed,
+                CSharpParseOptions = compilerAssembliesUsed != null ? parseOptions : null,
+                CSharpCompilationOptions = compilerAssembliesUsed != null ? options : null,
             };
         }
 
@@ -380,7 +380,7 @@ public sealed class Compiler(
 
             if (emitStream != null)
             {
-                compilerAssembliesUsed = CompilerAssembliesUsed.Normal;
+                compilerAssembliesUsed = assemblies;
             }
             else
             {
@@ -394,7 +394,7 @@ public sealed class Compiler(
                 if (emitStream != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
-                    compilerAssembliesUsed = CompilerAssembliesUsed.BuiltIn;
+                    compilerAssembliesUsed = builtInAssemblies;
                 }
             }
 
@@ -979,4 +979,27 @@ internal readonly struct Result<T>
             ? new Result<R>(exception)
             : new Result<R>(() => mapper(value!));
     }
+}
+
+/// <summary>
+/// Additional data on top of <see cref="CompiledAssembly"/> that are never cached.
+/// </summary>
+internal sealed class LiveCompilationResult
+{
+    public required CompiledAssembly CompiledAssembly { get; init; }
+
+    /// <summary>
+    /// Assemblies used to compile <see cref="CompilationInput.Configuration"/>.
+    /// </summary>
+    public required ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options were used.
+    /// </summary>
+    public required CSharpParseOptions? CSharpParseOptions { get; init; }
+
+    /// <summary>
+    /// Set to <see langword="null"/> if the default options were used.
+    /// </summary>
+    public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
 }

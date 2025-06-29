@@ -1,3 +1,4 @@
+using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -5,41 +6,34 @@ namespace DotNetLab;
 
 public sealed class CompilerProxyTests(ITestOutputHelper output)
 {
-    [Fact]
-    public async Task SpecifiedNuGetRoslynVersion()
+    [Theory]
+    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")]
+    [InlineData("main", "-ci (<developer build>)")]
+    public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
-
-        var version = "4.12.0-2.24409.2";
-        var commit = "2158b591";
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
-        var compiled = await services.GetRequiredService<CompilerProxy>()
-            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
-        Assert.Contains($"{version} ({commit})", diagnosticsText);
-    }
+        Assert.Contains(expectedDiagnostic, diagnosticsText);
 
-    [Fact]
-    public async Task SpecifiedNuGetRoslynVersion_Branch()
-    {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        // Language services should also pick up the custom compiler version.
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
+        languageServices.OnDidChangeModel("Input.cs");
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, "main", BuildConfiguration.Release);
+        var markers = await languageServices.GetDiagnosticsAsync();
+        markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
 
-        var compiled = await services.GetRequiredService<CompilerProxy>()
-            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
-
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Contains("-ci (<developer build>)", diagnosticsText);
+        var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
+        codeActionsJson.Should().NotBeNull();
     }
 
     [Theory]

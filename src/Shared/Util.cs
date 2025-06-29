@@ -117,6 +117,21 @@ public static class Util
         return text;
     }
 
+    public static TValue GetOrAdd<TKey, TValue>(
+        this IDictionary<TKey, TValue> dictionary,
+        TKey key,
+        TValue value)
+        where TKey : notnull
+    {
+        if (dictionary.TryGetValue(key, out var existingValue))
+        {
+            return existingValue;
+        }
+
+        dictionary.Add(key, value);
+        return value;
+    }
+
     public static bool IsCSharpFileName(this string fileName) => fileName.IsCSharpFileName(out _);
 
     public static bool IsCSharpFileName(this string fileName, out bool script)
