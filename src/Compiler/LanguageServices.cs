@@ -516,6 +516,43 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    /// <returns>
+    /// JSON-serialized <see cref="SignatureHelp"/>.
+    /// We serialize here to avoid serializing twice unnecessarily
+    /// (first on Worker to App interface, then on App to Monaco interface).
+    /// </returns>
+    /// <remarks>
+    /// For inspiration, see <see href="https://github.com/dotnet/roslyn/blob/ad14335550de1134f0b5a59b6cd040001d0d8c8d/src/LanguageServer/Protocol/Handler/SignatureHelp/SignatureHelpHandler.cs#L25"/>.
+    /// </remarks>
+    public async Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken)
+    {
+        if (!TryGetDocument(modelUri, out var document))
+        {
+            return "";
+        }
+
+        var sw = Stopwatch.StartNew();
+        var position = JsonSerializer.Deserialize(positionJson, BlazorMonacoJsonContext.Default.Position)!;
+        try
+        {
+            var text = await document.GetTextAsync(cancellationToken);
+            int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
+            var context = JsonSerializer.Deserialize(contextJson, BlazorMonacoJsonContext.Default.SignatureHelpContext)!;
+            var signatureHelp = await document.GetSignatureHelpAsync(caretPosition, context.ToReason(), context.TriggerCharacter, cancellationToken);
+            var signatureHelpJson = JsonSerializer.Serialize(signatureHelp, BlazorMonacoJsonContext.Default.SignatureHelp);
+
+            logger.LogDebug("Got signature help ({Length}) for {Position} in {Time} ms", signatureHelpJson.Length, position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+
+            return signatureHelpJson;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogDebug("Canceled signature help for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+
+            return null;
+        }
+    }
+
     public async void OnCompilationFinished()
     {
         try

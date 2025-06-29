@@ -412,6 +412,22 @@ public static class MonacoConversions
         return lines.GetLinePositionSpan(span).ToRange();
     }
 
+    public static SignatureHelpTriggerReasonPublic ToReason(this SignatureHelpContext context)
+    {
+        if (context.IsRetrigger)
+        {
+            return SignatureHelpTriggerReasonPublic.RetriggerCommand;
+        }
+
+        if (context.TriggerKind is SignatureHelpTriggerKind.TriggerCharacter
+            or SignatureHelpTriggerKind.ContentChange)
+        {
+            return SignatureHelpTriggerReasonPublic.TypeCharCommand;
+        }
+
+        return SignatureHelpTriggerReasonPublic.InvokeSignatureHelpCommand;
+    }
+
     public static TextSpan ToSpan(this MonacoRange range, TextLineCollection lines)
     {
         return lines.GetTextSpan(range.ToLinePositionSpan());

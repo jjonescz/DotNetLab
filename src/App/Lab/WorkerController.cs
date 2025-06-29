@@ -477,6 +477,14 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
+    public Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.ProvideSignatureHelp(modelUri, positionJson, contextJson) { Id = messageId++ },
+            deserializeAs: default(string),
+            cancellationToken: cancellationToken);
+    }
+
     public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
     {
         PostMessage(

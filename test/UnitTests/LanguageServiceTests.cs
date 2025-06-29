@@ -1,4 +1,5 @@
 ﻿using AwesomeAssertions;
+using BlazorMonaco;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
@@ -30,5 +31,27 @@ public sealed class LanguageServiceTests(ITestOutputHelper output)
 
         markers.Select(m => m.Code.ToString()).Should().ContainMatch($"*{expectedErrorCode}*");
         codeActions.Select(c => c.Title).Should().Contain(expectedCodeActionTitle);
+    }
+
+    [Fact]
+    public async Task SignatureHelp()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var code = """
+            C.M();
+            class C { public static void M(int x) { } }
+            """;
+        var file = "test.cs";
+        await languageServices.OnDidChangeWorkspaceAsync([new(file, file) { NewContent = code }]);
+
+        var positionJson = JsonSerializer.Serialize(new Position { LineNumber = 1, Column = 5 }, BlazorMonacoJsonContext.Default.Position);
+        var contextJson = JsonSerializer.Serialize(new SignatureHelpContext { TriggerKind = SignatureHelpTriggerKind.Invoke, IsRetrigger = false }, BlazorMonacoJsonContext.Default.SignatureHelpContext);
+        var signatureHelpJson = await languageServices.ProvideSignatureHelpAsync(file, positionJson, contextJson, TestContext.Current.CancellationToken);
+        var signatureHelp = JsonSerializer.Deserialize(signatureHelpJson!, BlazorMonacoJsonContext.Default.SignatureHelp);
+
+        signatureHelp!.Signatures.Should().ContainSingle()
+            .Which.Label.Should().Be("void C.M(int x)");
     }
 }

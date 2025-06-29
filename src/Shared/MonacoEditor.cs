@@ -71,6 +71,42 @@ public sealed class SemanticTokensLegend
     public ImmutableArray<string> TokenModifiers { get; init; }
 }
 
+/// <remarks>
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.SignatureHelp.html"/>.
+/// </remarks>
+public sealed class SignatureHelp
+{
+    public required int ActiveParameter { get; init; }
+    public required int ActiveSignature { get; init; }
+    public required ImmutableArray<SignatureInformation> Signatures { get; init; }
+}
+
+public readonly struct SignatureInformation
+{
+    public required string Label { get; init; }
+    public int? ActiveParameter { get; init; }
+    public required ImmutableArray<ParameterInformation> Parameters { get; init; }
+}
+
+public readonly struct ParameterInformation
+{
+    public required string Label { get; init; }
+}
+
+public sealed class SignatureHelpContext
+{
+    public bool IsRetrigger { get; init; }
+    public char? TriggerCharacter { get; init; }
+    public SignatureHelpTriggerKind TriggerKind { get; init; }
+}
+
+public enum SignatureHelpTriggerKind
+{
+    Invoke = 1,
+    TriggerCharacter = 2,
+    ContentChange = 3,
+}
+
 [JsonSerializable(typeof(LanguageSelector))]
 [JsonSerializable(typeof(Position))]
 [JsonSerializable(typeof(CompletionContext))]
@@ -78,6 +114,8 @@ public sealed class SemanticTokensLegend
 [JsonSerializable(typeof(MonacoCompletionList))]
 [JsonSerializable(typeof(ImmutableArray<MonacoCodeAction>))]
 [JsonSerializable(typeof(SemanticTokensLegend))]
+[JsonSerializable(typeof(SignatureHelp))]
+[JsonSerializable(typeof(SignatureHelpContext))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

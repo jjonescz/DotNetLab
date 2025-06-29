@@ -10,6 +10,7 @@ public interface ILanguageServices
     Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken);
     Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken);
     Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken);
+    Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken);
     void OnCompilationFinished();
     Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models);
     Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);

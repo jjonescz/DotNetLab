@@ -14,7 +14,7 @@ internal sealed class LanguageServicesClient(
     BlazorMonacoInterop blazorMonacoInterop)
 {
     private Dictionary<string, string> modelUrlToFileName = [];
-    private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider;
+    private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
@@ -133,6 +133,11 @@ internal sealed class LanguageServicesClient(
         {
             ProvideHover = worker.ProvideHoverAsync, 
         });
+
+        signatureHelpProvider = await blazorMonacoInterop.RegisterSignatureHelpProviderAsync(cSharpLanguageSelector, new(loggerFactory)
+        {
+            ProvideSignatureHelp = worker.ProvideSignatureHelpAsync,
+        });
     }
 
     private void Unregister()
@@ -145,6 +150,8 @@ internal sealed class LanguageServicesClient(
         codeActionProvider = null;
         hoverProvider?.Dispose();
         hoverProvider = null;
+        signatureHelpProvider?.Dispose();
+        signatureHelpProvider = null;
         InvalidateCaches();
     }
 

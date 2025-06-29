@@ -41,6 +41,11 @@ internal sealed partial class BlazorMonacoInterop
         string language,
         [JSMarshalAs<JSType.Any>] object provider);
 
+    [JSImport("registerSignatureHelpProvider", moduleName)]
+    private static partial JSObject RegisterSignatureHelpProvider(
+        string language,
+        [JSMarshalAs<JSType.Any>] object provider);
+
     [JSImport("dispose", moduleName)]
     private static partial void DisposeDisposable(JSObject disposable);
 
@@ -114,6 +119,19 @@ internal sealed partial class BlazorMonacoInterop
         return json;
     }
 
+    [JSExport]
+    internal static async Task<string?> ProvideSignatureHelpAsync(
+        [JSMarshalAs<JSType.Any>] object providerReference,
+        string modelUri,
+        string positionJson,
+        string contextJson,
+        JSObject token)
+    {
+        var provider = ((DotNetObjectReference<SignatureHelpProvider>)providerReference).Value;
+        string? json = await provider.ProvideSignatureHelp(modelUri, positionJson, contextJson, ToCancellationToken(token, provider.Logger));
+        return json;
+    }
+
     public async Task<IDisposable> RegisterCompletionProviderAsync(
         LanguageSelector language,
         CompletionItemProviderAsync completionItemProvider)
@@ -161,6 +179,17 @@ internal sealed partial class BlazorMonacoInterop
     {
         await EnsureInitializedAsync();
         JSObject disposable = RegisterHoverProvider(
+            JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
+            DotNetObjectReference.Create(provider));
+        return new Disposable(disposable);
+    }
+
+    public async Task<IDisposable> RegisterSignatureHelpProviderAsync(
+        LanguageSelector language,
+        SignatureHelpProvider provider)
+    {
+        await EnsureInitializedAsync();
+        JSObject disposable = RegisterSignatureHelpProvider(
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             DotNetObjectReference.Create(provider));
         return new Disposable(disposable);
