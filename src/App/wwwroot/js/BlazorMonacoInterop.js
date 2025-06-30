@@ -174,11 +174,12 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
                 throw new Error('busy');
             }
 
-            if (result === '') {
+            const parsed = JSON.parse(result);
+
+            if (parsed === null) {
                 return null;
             }
 
-            const parsed = JSON.parse(result);
             return {
                 value: parsed,
                 dispose: () => { }, // Currently not used.

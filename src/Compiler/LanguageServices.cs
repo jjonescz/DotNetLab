@@ -528,7 +528,7 @@ internal sealed class LanguageServices : ILanguageServices
     {
         if (!TryGetDocument(modelUri, out var document))
         {
-            return "";
+            return "null";
         }
 
         var sw = Stopwatch.StartNew();
