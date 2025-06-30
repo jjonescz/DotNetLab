@@ -245,7 +245,7 @@ public sealed class Compiler(
                         Type = "html",
                         Label = "HTML",
                         Language = "html",
-                        LazyText = new(() =>
+                        LazyText = () =>
                         {
                             var document = codeDocument.Unwrap()?.GetDocumentIntermediateNodeSafe()
                                 ?? throw new InvalidOperationException("No IR available.");
@@ -279,7 +279,7 @@ public sealed class Compiler(
                                 ? new(Executor.RenderComponentToHtmlAsync(emitStream, componentTypeName))
                                 : new(error);
                             return result;
-                        }),
+                        },
                     },
                 ]);
 
@@ -295,41 +295,41 @@ public sealed class Compiler(
                     Type = "il",
                     Label = "IL",
                     Language = "csharp",
-                    LazyText = new(() =>
+                    LazyText = () =>
                     {
                         return new(getIl(peFile));
-                    }),
+                    },
                 },
                 new()
                 {
                     Type = "seq",
                     Label = "Sequence points",
-                    LazyText = new(() =>
+                    LazyText = () =>
                     {
                         return new(getSequencePoints(peFile));
-                    }),
+                    },
                 },
                 new()
                 {
                     Type = "cs",
                     Label = "C#",
                     Language = "csharp",
-                    LazyText = new(() =>
+                    LazyText = () =>
                     {
                         return new(getCSharpAsync(peFile));
-                    }),
+                    },
                 },
                 new()
                 {
                     Type = "run",
                     Label = "Run",
-                    LazyText = new(() =>
+                    LazyText = () =>
                     {
                         string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
                             ? Executor.Execute(emitStream)
                             : error;
                         return new(output);
-                    }),
+                    },
                     Priority = 1,
                 },
                 new()
