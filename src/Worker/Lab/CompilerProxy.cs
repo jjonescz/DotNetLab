@@ -133,7 +133,7 @@ internal sealed class CompilerProxy(
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
             "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
             "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
-            "Microsoft.CodeAnalysis.Workspaces.Test.Utilities", // RoslynWorkspaceAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Workspaces.UnitTests", // RoslynWorkspaceAccess project produces this assembly
         ];
         foreach (var name in names)
         {

@@ -166,6 +166,16 @@ public static class Util
         return results;
     }
 
+    public static ImmutableArray<TResult> SelectAsArray<T, TResult>(this IEnumerable<T> source, Func<T, TResult> selector)
+    {
+        var results = ImmutableArray.CreateBuilder<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);
+        foreach (var item in source)
+        {
+            results.Add(selector(item));
+        }
+        return results.DrainToImmutable();
+    }
+
     public static async Task<ImmutableArray<TResult>> SelectAsArrayAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<TResult>> selector)
     {
         var results = ImmutableArray.CreateBuilder<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);

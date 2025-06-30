@@ -103,9 +103,10 @@
 </CascadingValue>
 
 @* Input / output panels *@
+@* Panels have `overflow: hidden` by default, which would cause Monaco Editor popups to get cropped, hence we reset it to `overflow: initial`. *@
 <FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1; overflow: hidden">
     @* Input panel *@
-    <FluentMultiSplitterPane Collapsible>
+    <FluentMultiSplitterPane Collapsible Style="overflow: initial">
         <div style="display: flex; flex-direction: column; height: 100%">
             @* Input tabs *@
             <FluentTabs @bind-ActiveTabId="activeInputTabId" @bind-ActiveTabId:after="OnActiveInputTabIdChangedAsync"
@@ -161,7 +162,7 @@
     </FluentMultiSplitterPane>
 
     @* Output panel *@
-    <FluentMultiSplitterPane Collapsible>
+    <FluentMultiSplitterPane Collapsible Style="overflow: initial">
         <div style="display: flex; flex-direction: column; height: 100%">
             @* Worker status message *@
             @if (workerError != null)

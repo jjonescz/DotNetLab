@@ -137,6 +137,22 @@ public sealed class WorkerExecutor(
         return await languageServices.ProvideCodeActionsAsync(message.ModelUri, message.RangeJson, cancellationToken);
     }
 
+    public async Task<string?> HandleAsync(WorkerInputMessage.ProvideHover message)
+    {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        return await languageServices.ProvideHoverAsync(message.ModelUri, message.PositionJson, cancellationToken);
+    }
+
+    public async Task<string?> HandleAsync(WorkerInputMessage.ProvideSignatureHelp message)
+    {
+        using var _ = GetCancellationToken(message, out var cancellationToken);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        return await languageServices.ProvideSignatureHelpAsync(message.ModelUri, message.PositionJson, message.ContextJson, cancellationToken);
+    }
+
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();

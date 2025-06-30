@@ -134,6 +134,60 @@ export function registerCodeActionProvider(language, codeActionProvider) {
     });
 }
 
+export function registerHoverProvider(language, hoverProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
+    return monaco.languages.registerHoverProvider(JSON.parse(language), {
+        provideHover: async (model, position, token, context) => {
+            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideHoverAsync(
+                hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), token);
+
+            if (result === null) {
+                // If null result is returned, it means the request should be ignored, so we need to throw
+                // (as opposed to returning no code actions).
+                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                throw new Error('busy');
+            }
+
+            return { contents: [{ value: result }] };
+        },
+    });
+}
+
+export function registerSignatureHelpProvider(language, hoverProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerSignatureHelpProvider.html
+    return monaco.languages.registerSignatureHelpProvider(JSON.parse(language), {
+        signatureHelpTriggerCharacters: ['(', ','],
+        provideSignatureHelp: async (model, position, token, context) => {
+            const contextLight = {
+                ...context,
+                // Avoid sending currently unused data.
+                activeSignatureHelp: undefined,
+            };
+
+            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSignatureHelpAsync(
+                hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(contextLight), token);
+
+            if (result === null) {
+                // If null result is returned, it means the request should be ignored, so we need to throw
+                // (as opposed to returning no code actions).
+                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                throw new Error('busy');
+            }
+
+            const parsed = JSON.parse(result);
+
+            if (parsed === null) {
+                return null;
+            }
+
+            return {
+                value: parsed,
+                dispose: () => { }, // Currently not used.
+            };
+        },
+    });
+}
+
 /**
  * @param {monaco.IDisposable} disposable
  */
