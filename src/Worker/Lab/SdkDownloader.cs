@@ -150,9 +150,9 @@ internal sealed class SourceManifest
 
     public sealed class Repo
     {
-        public required string PackageVersion { get; init; }
+        public string? PackageVersion { get; init; }
         public int? BarId { get; init; }
-        public required string Path { get; init; }
+        public string? Path { get; init; }
         public required string RemoteUri { get; init; }
         public required string CommitSha { get; init; }
 
