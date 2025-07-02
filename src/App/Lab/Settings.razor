@@ -578,7 +578,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         {
             Logger.LogError(ex, $"Failed to load {compilerKind} info.");
 
-            return (null, ex.Message);
+            return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
         }
     }
 
