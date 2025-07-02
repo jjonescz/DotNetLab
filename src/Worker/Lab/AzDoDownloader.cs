@@ -31,21 +31,29 @@ internal sealed class AzDoDownloader(
 
         Task<CompilerDependency?> fromPrNumberAsync(int pullRequestNumber)
         {
-            return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge");
+            return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge", new()
+            {
+                Text = $"#{pullRequestNumber}",
+                Url = $"{info.RepositoryUrl}/pull/{pullRequestNumber}",
+            });
         }
 
         Task<CompilerDependency?> fromBranchNameAsync(string branchName)
         {
-            return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}");
+            return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}", new()
+            {
+                Text = branchName,
+                Url = $"{info.RepositoryUrl}/tree/{branchName}",
+            });
         }
 
-        async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName)
+        async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName, DisplayLink additionalLink)
         {
             var build = await GetLatestBuildAsync(
                 definitionId: info.BuildDefinitionId,
                 branchName: branchName);
 
-            return fromBuild(build);
+            return fromBuild(build, additionalLink);
         }
 
         async Task<CompilerDependency?> fromBuildIdAsync(int buildId)
@@ -55,7 +63,7 @@ internal sealed class AzDoDownloader(
             return fromBuild(build);
         }
 
-        CompilerDependency fromBuild(Build build)
+        CompilerDependency fromBuild(Build build, DisplayLink? additionalLink = null)
         {
             return new()
             {
@@ -64,6 +72,7 @@ internal sealed class AzDoDownloader(
                     commitHash: build.SourceVersion,
                     repoUrl: info.RepositoryUrl)
                 {
+                    AdditionalLink = additionalLink,
                     VersionLink = SimpleAzDoUtil.GetBuildUrl(build.Id),
                     VersionSpecifier = specifier,
                     Configuration = configuration,
