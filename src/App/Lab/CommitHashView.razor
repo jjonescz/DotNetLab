@@ -153,7 +153,7 @@ title="@GetTitle()">@Commit.ShortHash</a>
                 $"https://github.com/{ownerAndName}/branch_commits/{Commit.Hash}".WithCorsProxy());
             request.Headers.Accept.Add(new("application/json"));
             var tagsResponse = await Client.SendAsync(request);
-            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync<GitHubBranchCommitsResponse>(SettingsJsonContext.Default.Options);
+            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync(SettingsJsonContext.Default.GitHubBranchCommitsResponse);
             version = tagsObj?.Tags is [{ Length: > 0 } tag] ? tag : null;
         }
         catch (HttpRequestException) { }

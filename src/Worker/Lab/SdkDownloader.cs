@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Xml.Serialization;
 
 namespace DotNetLab.Lab;
@@ -34,7 +33,7 @@ internal sealed class SdkDownloader(
             var url = $"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json";
             using var response = await client.GetAsync(url.WithCorsProxy());
             response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<ProductCommit>(LabWorkerJsonContext.Default.Options);
+            var result = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.ProductCommit);
             return new() { Hash = result?.Sdk.Commit ?? "", RepoUrl = sdkRepoUrl };
         }
 
@@ -99,7 +98,7 @@ internal sealed class SdkDownloader(
 
         response.EnsureSuccessStatusCode();
         using var stream = await response.Content.ReadAsStreamAsync();
-        return await response.Content.ReadFromJsonAsync<SourceManifest>(LabWorkerJsonContext.Default.Options);
+        return await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.SourceManifest);
     }
 
     private Task<HttpResponseMessage> SendGitHubRequestAsync(string url)

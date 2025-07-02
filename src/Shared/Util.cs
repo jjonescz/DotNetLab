@@ -1,5 +1,8 @@
 using System.Collections;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
@@ -255,11 +258,6 @@ public static class Util
         return builder.ToImmutable();
     }
 
-    public static IEnumerable<T> TryConcat<T>(this ImmutableArray<T>? a, ImmutableArray<T>? b)
-    {
-        return [.. (a ?? []), .. (b ?? [])];
-    }
-
     public static T? TryAt<T>(this IReadOnlyList<T> list, int index)
     {
         if (index < 0 || index >= list.Count)
@@ -268,6 +266,23 @@ public static class Util
         }
 
         return list[index];
+    }
+
+    public static IEnumerable<T> TryConcat<T>(this ImmutableArray<T>? a, ImmutableArray<T>? b)
+    {
+        return [.. (a ?? []), .. (b ?? [])];
+    }
+
+    public static async Task<T?> TryReadFromJsonAsync<T>(this HttpContent content, JsonTypeInfo<T> jsonTypeInfo, CancellationToken cancellationToken = default) where T : class
+    {
+        try
+        {
+            return await content.ReadFromJsonAsync(jsonTypeInfo, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     public static InvalidOperationException Unexpected<T>(T value, [CallerArgumentExpression(nameof(value))] string name = "")
