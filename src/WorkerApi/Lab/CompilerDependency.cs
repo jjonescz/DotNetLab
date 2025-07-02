@@ -208,7 +208,7 @@ internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>
 public sealed record SdkInfo
 {
     public required string SdkVersion { get; init; }
-    public required CommitLink Commit { get; init; }
+    public required ImmutableArray<CommitLink> Commits { get; init; }
     public required string RoslynVersion { get; init; }
     public required string RazorVersion { get; init; }
 }

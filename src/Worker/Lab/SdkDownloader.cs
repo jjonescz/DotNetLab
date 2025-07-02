@@ -51,7 +51,7 @@ internal sealed class SdkDownloader(
             return new()
             {
                 SdkVersion = version,
-                Commit = commit,
+                Commits = [commit],
                 RoslynVersion = roslynVersion,
                 RazorVersion = razorVersion,
             };
@@ -67,10 +67,15 @@ internal sealed class SdkDownloader(
 
             var roslynVersion = manifest.GetRepo(roslynRepoUrl)?.PackageVersion ?? "";
             var razorVersion = manifest.GetRepo(razorRepoUrl)?.PackageVersion ?? "";
+            var sdkCommit = manifest.GetRepo(sdkRepoUrl)?.GetCommitLink();
             return new()
             {
                 SdkVersion = version,
-                Commit = commit.WithRepoUrl(monoRepoUrl),
+                Commits =
+                [
+                    .. sdkCommit is null ? default(ReadOnlySpan<CommitLink>) : [sdkCommit],
+                    commit.WithRepoUrl(monoRepoUrl),
+                ],
                 RoslynVersion = roslynVersion,
                 RazorVersion = razorVersion,
             };
@@ -144,5 +149,14 @@ internal sealed class SourceManifest
         public required string Path { get; init; }
         public required string RemoteUri { get; init; }
         public required string CommitSha { get; init; }
+
+        public CommitLink GetCommitLink()
+        {
+            return new()
+            {
+                RepoUrl = RemoteUri,
+                Hash = CommitSha,
+            };
+        }
     }
 }
