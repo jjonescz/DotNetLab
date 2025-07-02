@@ -11,9 +11,12 @@ public static class WorkerServices
         Action<ServiceCollection>? configureServices = null)
     {
         return Create(
-            baseUrl: "http://localhost",
             logLevel: LogLevel.Debug,
-            httpMessageHandler,
+            httpClientFactory: sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler())
+            {
+                BaseAddress = new Uri("http://localhost"),
+                DefaultRequestHeaders = { { "User-Agent", "DotNetLab Tests" } },
+            },
             configureServices: services =>
             {
                 services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () => null);
@@ -28,7 +31,16 @@ public static class WorkerServices
     public static IServiceProvider Create(
         string baseUrl,
         LogLevel logLevel,
-        HttpMessageHandler? httpMessageHandler = null,
+        HttpMessageHandler? httpMessageHandler = null)
+    {
+        return Create(
+            logLevel,
+            sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler()) { BaseAddress = new Uri(baseUrl) });
+    }
+
+    private static IServiceProvider Create(
+        LogLevel logLevel,
+        Func<IServiceProvider, HttpClient> httpClientFactory,
         Action<ServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
@@ -37,7 +49,7 @@ public static class WorkerServices
             builder.AddFilter("DotNetLab.*", logLevel);
             builder.AddProvider(new SimpleConsoleLoggerProvider());
         });
-        services.AddScoped(sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler()) { BaseAddress = new Uri(baseUrl) });
+        services.AddScoped(httpClientFactory);
         services.AddScoped<CompilerLoaderServices>();
         services.AddScoped<AssemblyDownloader>();
         services.AddScoped<CompilerProxy>();

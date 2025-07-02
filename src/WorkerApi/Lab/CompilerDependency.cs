@@ -68,6 +68,15 @@ public sealed record CommitLink
     public required string Hash { get; init; }
     public string ShortHash => VersionUtil.GetShortCommitHash(Hash);
     public string Url => string.IsNullOrEmpty(Hash) ? "" : VersionUtil.GetCommitUrl(RepoUrl, Hash);
+
+    public CommitLink WithRepoUrl(string repoUrl)
+    {
+        return new CommitLink
+        {
+            RepoUrl = repoUrl,
+            Hash = Hash,
+        };
+    }
 }
 
 public enum CompilerKind
