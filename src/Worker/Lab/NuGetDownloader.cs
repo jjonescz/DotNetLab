@@ -162,11 +162,14 @@ internal sealed class NuGetDownloadablePackage(
     {
         using var reader = await GetReaderAsync();
         var metadata = reader.NuspecReader.GetRepositoryMetadata();
+        var identity = reader.GetIdentity();
+        var version = identity.Version.ToString();
         return new(
-            version: reader.GetIdentity().Version.ToString(),
+            version: version,
             commitHash: metadata.Commit,
             repoUrl: metadata.Url)
         {
+            VersionLink = SimpleNuGetUtil.GetPackageDetailUrl(packageId: identity.Id, version: version),
             VersionSpecifier = specifier,
             Configuration = BuildConfiguration.Release,
         };

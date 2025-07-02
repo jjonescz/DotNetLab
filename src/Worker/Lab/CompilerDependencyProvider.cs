@@ -132,7 +132,8 @@ internal sealed class BuiltInCompilerProvider : ICompilerDependencyResolver
             var info = CompilerInfo.For(compilerKind);
             return new()
             {
-                Info = () => Task.FromResult(new CompilerDependencyInfo(assemblyName: info.AssemblyNames[0])
+                Info = () => Task.FromResult(new CompilerDependencyInfo(assemblyName: info.AssemblyNames[0],
+                    versionLink: (d) => SimpleNuGetUtil.GetPackageDetailUrl(packageId: info.PackageId, version: d.Version))
                 {
                     VersionSpecifier = specifier,
                     Configuration = BuildConfiguration.Release,

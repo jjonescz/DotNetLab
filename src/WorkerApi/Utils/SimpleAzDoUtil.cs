@@ -8,4 +8,9 @@ public static class SimpleAzDoUtil
     {
         return $"{BaseAddress}/_build?definitionId={definitionId}";
     }
+
+    public static string GetBuildUrl(int buildId)
+    {
+        return $"{BaseAddress}/_build/results?buildId={buildId}";
+    }
 }

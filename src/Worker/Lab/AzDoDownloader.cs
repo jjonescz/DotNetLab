@@ -64,6 +64,7 @@ internal sealed class AzDoDownloader(
                     commitHash: build.SourceVersion,
                     repoUrl: info.RepositoryUrl)
                 {
+                    VersionLink = SimpleAzDoUtil.GetBuildUrl(build.Id),
                     VersionSpecifier = specifier,
                     Configuration = configuration,
                     CanChangeBuildConfiguration = true,

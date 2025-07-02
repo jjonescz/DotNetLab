@@ -15,7 +15,7 @@ public sealed record CompilerDependencyInfo
     }
 
     private CompilerDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
-        : this(arg.Version, new() { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
+        : this(arg.Version, new CommitLink { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
     {
     }
 
@@ -24,13 +24,15 @@ public sealed record CompilerDependencyInfo
     {
     }
 
-    public CompilerDependencyInfo(string assemblyName)
+    public CompilerDependencyInfo(string assemblyName, Func<CompilerDependencyInfo, string?>? versionLink = null)
         : this(FromAssembly(assemblyName))
     {
+        VersionLink = versionLink?.Invoke(this);
     }
 
     public required CompilerVersionSpecifier VersionSpecifier { get; init; }
     public string Version { get; }
+    public string? VersionLink { get; init; }
     public CommitLink Commit { get; }
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }

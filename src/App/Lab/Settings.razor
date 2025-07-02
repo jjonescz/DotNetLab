@@ -246,7 +246,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         @if (arg.Info != null)
         {
             <FluentLabel>
-                Using @(arg.Info.Version)
+                Using
+                @if (arg.Info.VersionLink != null)
+                {
+                    <a href="@arg.Info.VersionLink" target="_blank">@(arg.Info.Version)</a>
+                }
+                else
+                {
+                    @(arg.Info.Version)
+                }
                 (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit" SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)" />),
                 <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.
             </FluentLabel>
