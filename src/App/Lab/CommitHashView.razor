@@ -1,0 +1,208 @@
+@inject ILocalStorageService LocalStorage
+@inject WorkerController Worker
+@inject HttpClient Client
+
+@if (alternativeCommit is { } alt)
+{
+    <CommitHashView Enabled="Enabled" Commit="alt.Result" SaveKey="@("Alternative" + SaveKey)" />
+    @(" / ")
+}
+
+<a href="@Commit.Url" target="_blank"
+title="@GetTitle()">@Commit.ShortHash</a>
+@if (TopLevelDateAndVersion && commitInfo != null)
+{
+    @(" ")
+
+    <span title="@commitInfo.Message">(@commitInfo.Date.ToString(dateFormat))</span>
+    @if (commitInfo.Version != null)
+    {
+        @(", ")
+
+        <a title="Click to see release notes"
+        href="@Commit.ReleasesUrl"
+        target="_blank">@commitInfo.Version</a>
+    }
+}
+
+@code {
+    private const string dateFormat = "MMM d, yyyy, HH:mm";
+    private readonly AsyncLock loading = new();
+    private CommitInfo? commitInfo;
+    private (CommitLink Result, CommitLink For)? alternativeCommit;
+
+    [Parameter, EditorRequired]
+    public bool Enabled { get; init; }
+
+    [Parameter, EditorRequired]
+    public CommitLink Commit { get; init; }
+
+    [Parameter, EditorRequired]
+    public string SaveKey { get; init; }
+
+    [Parameter]
+    public string? AlternativeRepoUrl { get; init; }
+
+    [Parameter]
+    public bool TopLevelDateAndVersion { get; init; }
+
+    public string? GetTitle()
+    {
+        if (commitInfo is null || TopLevelDateAndVersion)
+        {
+            return commitInfo?.Message;
+        }
+
+        string versionSuffix = commitInfo.Version != null ? $", {commitInfo.Version}" : string.Empty;
+
+        return $"{commitInfo.Message} ({commitInfo.Date.ToString(dateFormat)}{versionSuffix})";
+    }
+
+    private sealed class CommitInfo
+    {
+        public required string RepoUrl { get; init; }
+        public required string Hash { get; init; }
+        public required DateTimeOffset Date { get; init; }
+        public required string Message { get; init; }
+        public required string? Version { get; init; }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        using var _ = await loading.LockAsync();
+
+        var tasks = new List<Task>();
+
+        // Load commit info from storage (cached) or the web unless already loaded.
+        if (!Matches(Commit, commitInfo))
+        {
+            if (await tryLoadCachedAsync() is { } cached &&
+                Matches(Commit, cached))
+            {
+                commitInfo = cached;
+            }
+            else
+            {
+                tasks.Add(LoadCommitInfoAsync());
+            }
+        }
+
+        // Load alternative commit info.
+        tasks.Add(LoadAlternativeInfoAsync());
+
+        await Task.WhenAll(tasks);
+
+        async Task<CommitInfo?> tryLoadCachedAsync()
+        {
+            try
+            {
+                return await LocalStorage.GetItemAsync<CommitInfo>(SaveKey);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+    }
+
+    private async Task LoadCommitInfoAsync()
+    {
+        commitInfo = await GetCommitInfoAsync();
+        StateHasChanged();
+        if (commitInfo != null)
+        {
+            await LocalStorage.SetItemAsync(SaveKey, commitInfo);
+        }
+    }
+
+    private async Task<CommitInfo?> GetCommitInfoAsync()
+    {
+        if (Commit.OwnerAndName is not { } ownerAndName)
+        {
+            return null;
+        }
+
+        GitHubCommitResponse? response;
+        try
+        {
+            response = await Client.GetFromJsonAsync<GitHubCommitResponse>(
+                $"https://api.github.com/repos/{ownerAndName}/commits/{Commit.Hash}",
+                SettingsJsonContext.Default.Options);
+            if (response is null)
+            {
+                return null;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+
+        // Find version tag corresponding to the commit.
+        // Inspired by https://stackoverflow.com/a/69590375.
+        string? version = null;
+        try
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"https://github.com/{ownerAndName}/branch_commits/{Commit.Hash}".WithCorsProxy());
+            request.Headers.Accept.Add(new("application/json"));
+            var tagsResponse = await Client.SendAsync(request);
+            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync<GitHubBranchCommitsResponse>(SettingsJsonContext.Default.Options);
+            version = tagsObj?.Tags is [{ Length: > 0 } tag] ? tag : null;
+        }
+        catch (HttpRequestException) { }
+        catch (JsonException) { }
+
+        return new CommitInfo
+        {
+            RepoUrl = Commit.RepoUrl,
+            Hash = Commit.Hash,
+            Date = response.Commit.Author.Date,
+            Message = response.Commit.Message.GetFirstLine(),
+            Version = version,
+        };
+    }
+
+    private async Task LoadAlternativeInfoAsync()
+    {
+        if (AlternativeRepoUrl is null || AlternativeRepoUrl == Commit.RepoUrl)
+        {
+            alternativeCommit = null;
+        }
+        else if (alternativeCommit is { } alt &&
+            alt.Result.RepoUrl == AlternativeRepoUrl &&
+            Matches(alt.For, commitInfo))
+        {
+            // Already loaded.
+            return;
+        }
+        else if (await Worker.TryGetSubRepoCommitHashAsync(Commit.Hash, AlternativeRepoUrl) is not { } subRepoCommitHash)
+        {
+            alternativeCommit = null;
+        }
+        else
+        {
+            alternativeCommit = (Result: new CommitLink
+                {
+                    RepoUrl = AlternativeRepoUrl,
+                    Hash = subRepoCommitHash,
+                },
+            For: Commit);
+        }
+
+        StateHasChanged();
+    }
+
+    private static bool Matches(CommitLink commit, CommitInfo? info)
+    {
+        return info != null &&
+            info.Hash == commit.Hash &&
+            info.RepoUrl == commit.RepoUrl;
+    }
+}

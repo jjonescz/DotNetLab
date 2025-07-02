@@ -437,6 +437,13 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(SdkInfo));
     }
 
+    public Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.TryGetSubRepoCommitHash(monoRepoCommitHash, subRepoUrl) { Id = messageId++ },
+            deserializeAs: default(string?));
+    }
+
     public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(

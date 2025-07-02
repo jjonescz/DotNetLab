@@ -68,6 +68,8 @@ public sealed record CommitLink
     public required string Hash { get; init; }
     public string ShortHash => VersionUtil.GetShortCommitHash(Hash);
     public string Url => string.IsNullOrEmpty(Hash) ? "" : VersionUtil.GetCommitUrl(RepoUrl, Hash);
+    public string ReleasesUrl => $"{RepoUrl}/releases";
+    public string? OwnerAndName => VersionUtil.TryGetGitHubRepoOwnerAndName(RepoUrl);
 
     public CommitLink WithRepoUrl(string repoUrl)
     {
@@ -138,6 +140,7 @@ public sealed record CompilerInfo(
     public string PrListUrl => $"{RepositoryUrl}/pulls";
     public string BuildListUrl => SimpleAzDoUtil.GetBuildListUrl(BuildDefinitionId);
     public string BranchListUrl => $"{RepositoryUrl}/branches";
+    public string CommitInfoSaveKey = $"{CompilerKind}CommitInfo";
 }
 
 [JsonDerivedType(typeof(BuiltIn), nameof(BuiltIn))]

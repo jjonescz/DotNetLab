@@ -13,6 +13,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(UseCompilerVersion), nameof(UseCompilerVersion))]
 [JsonDerivedType(typeof(GetCompilerDependencyInfo), nameof(GetCompilerDependencyInfo))]
 [JsonDerivedType(typeof(GetSdkInfo), nameof(GetSdkInfo))]
+[JsonDerivedType(typeof(TryGetSubRepoCommitHash), nameof(TryGetSubRepoCommitHash))]
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
 [JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(ProvideSemanticTokens), nameof(ProvideSemanticTokens))]
@@ -104,6 +105,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record TryGetSubRepoCommitHash(string MonoRepoCommitHash, string SubRepoUrl) : WorkerInputMessage<string?>
+    {
+        public override Task<string?> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record ProvideCompletionItems(string ModelUri, Position Position, CompletionContext Context) : WorkerInputMessage<string>
     {
         public override Task<string> HandleAsync(IExecutor executor)
@@ -185,6 +194,7 @@ public abstract record WorkerInputMessage
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
+        Task<string?> HandleAsync(TryGetSubRepoCommitHash message);
         Task<string> HandleAsync(ProvideCompletionItems message);
         Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<string?> HandleAsync(ProvideSemanticTokens message);

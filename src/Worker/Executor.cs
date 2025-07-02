@@ -105,6 +105,12 @@ public sealed class WorkerExecutor(
         return await sdkDownloader.GetInfoAsync(message.VersionToLoad);
     }
 
+    public async Task<string?> HandleAsync(WorkerInputMessage.TryGetSubRepoCommitHash message)
+    {
+        var sdkDownloader = services.GetRequiredService<SdkDownloader>();
+        return await sdkDownloader.TryGetSubRepoCommitHashAsync(message.MonoRepoCommitHash, message.SubRepoUrl);
+    }
+
     public async Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);

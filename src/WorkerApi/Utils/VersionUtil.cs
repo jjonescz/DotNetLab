@@ -1,20 +1,47 @@
+using DotNetLab.Lab;
+
 namespace DotNetLab;
 
-public static class VersionUtil
+public static partial class VersionUtil
 {
     private static readonly Lazy<string?> _currentCommitHash = new(GetCurrentCommitHash);
 
-    public static readonly string CurrentRepositoryOwnerAndName = "jjonescz/DotNetLab";
-    public static readonly string CurrentRepositoryUrl = $"https://github.com/{CurrentRepositoryOwnerAndName}";
-    public static readonly string CurrentRepositoryReleasesUrl = $"{CurrentRepositoryUrl}/releases";
-    public static string? CurrentCommitHash => _currentCommitHash.Value;
-    public static string? CurrentShortCommitHash
-        => CurrentCommitHash == null ? null : GetShortCommitHash(CurrentCommitHash);
-    public static string? CurrentCommitUrl
-        => CurrentCommitHash == null ? null : GetCommitUrl(CurrentRepositoryUrl, CurrentCommitHash);
+    [GeneratedRegex(@"^(https?://)?(www\.)?github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)(/|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex GitHubUrlPattern { get; }
+
+    public static CommitLink CurrentCommit => field ??= new()
+    {
+        RepoUrl = "https://github.com/jjonescz/DotNetLab",
+        Hash = GetCurrentCommitHash() ?? string.Empty,
+    };
 
     public static string GetCommitUrl(string repoUrl, string commitHash)
         => $"{repoUrl}/commit/{commitHash}";
+
+    public static bool TryExtractGitHubRepoOwnerAndName(
+        string repoUrl,
+        [NotNullWhen(returnValue: true)] out string? owner,
+        [NotNullWhen(returnValue: true)] out string? name)
+    {
+        var match = GitHubUrlPattern.Match(repoUrl);
+        if (match.Success)
+        {
+            owner = match.Groups["owner"].Value;
+            name = match.Groups["repo"].Value;
+            return true;
+        }
+
+        owner = null;
+        name = null;
+        return false;
+    }
+
+    public static string? TryGetGitHubRepoOwnerAndName(string repoUrl)
+    {
+        return TryExtractGitHubRepoOwnerAndName(repoUrl, out var owner, out var name)
+            ? $"{owner}/{name}"
+            : null;
+    }
 
     private static string? GetCurrentCommitHash()
     {

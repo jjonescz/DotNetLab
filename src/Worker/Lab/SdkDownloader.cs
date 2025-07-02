@@ -82,7 +82,13 @@ internal sealed class SdkDownloader(
         }
     }
 
-    public async Task<SourceManifest?> TryGetMonoRepoSourceManifest(string monoRepoCommitHash)
+    public async Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
+    {
+        var manifest = await TryGetMonoRepoSourceManifest(monoRepoCommitHash);
+        return manifest?.GetRepo(subRepoUrl)?.CommitSha;
+    }
+
+    private async Task<SourceManifest?> TryGetMonoRepoSourceManifest(string monoRepoCommitHash)
     {
         using var response = await SendGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
 
