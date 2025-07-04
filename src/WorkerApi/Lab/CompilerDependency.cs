@@ -35,6 +35,7 @@ public sealed record CompilerDependencyInfo
     public string? VersionLink { get; init; }
     public CommitLink Commit { get; }
     public DisplayLink? AdditionalLink { get; init; }
+    public string? AdditionalCommitHash { get; init; }
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }
 
@@ -88,6 +89,7 @@ public sealed record DisplayLink
 {
     public required string Text { get; init; }
     public required string Url { get; init; }
+    public string? Description { get; set; }
 }
 
 public enum CompilerKind

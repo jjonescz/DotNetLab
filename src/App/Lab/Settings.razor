@@ -255,11 +255,14 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 {
                     @(arg.Info.Version)
                 }
-                (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit" SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)" />
+                (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit"
+                SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)"
+                AlternativeCommitHash="@(arg.Info.AdditionalCommitHash)" />
                 @if (arg.Info.AdditionalLink != null)
                 {
                     @(", ")
-                    <a href="@arg.Info.AdditionalLink.Url" target="_blank">@arg.Info.AdditionalLink.Text</a>
+                    <a href="@arg.Info.AdditionalLink.Url" title="@arg.Info.AdditionalLink.Description"
+                    target="_blank">@arg.Info.AdditionalLink.Text</a>
                 }
                 @("),")
                 <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.

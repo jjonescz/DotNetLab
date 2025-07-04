@@ -7,4 +7,5 @@ namespace DotNetLab.Lab;
 [JsonSerializable(typeof(DotNetBootConfig))]
 [JsonSerializable(typeof(ProductCommit))]
 [JsonSerializable(typeof(SourceManifest))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 internal sealed partial class LabWorkerJsonContext : JsonSerializerContext;

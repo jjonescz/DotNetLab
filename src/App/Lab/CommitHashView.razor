@@ -41,6 +41,9 @@ title="@GetTitle()">@Commit.ShortHash</a>
     public string SaveKey { get; init; }
 
     [Parameter]
+    public string? AlternativeCommitHash { get; init; }
+
+    [Parameter]
     public string? AlternativeRepoUrl { get; init; }
 
     [Parameter]
@@ -130,9 +133,9 @@ title="@GetTitle()">@Commit.ShortHash</a>
         GitHubCommitResponse? response;
         try
         {
-            response = await Client.GetFromJsonAsync<GitHubCommitResponse>(
+            response = await Client.GetFromJsonAsync(
                 $"https://api.github.com/repos/{ownerAndName}/commits/{Commit.Hash}",
-                SettingsJsonContext.Default.Options);
+                SettingsJsonContext.Default.GitHubCommitResponse);
             if (response is null)
             {
                 return null;
@@ -171,18 +174,20 @@ title="@GetTitle()">@Commit.ShortHash</a>
 
     private async Task LoadAlternativeInfoAsync()
     {
-        if (AlternativeRepoUrl is null || AlternativeRepoUrl == Commit.RepoUrl)
+        if ((AlternativeRepoUrl is null && AlternativeCommitHash is null) ||
+            (AlternativeRepoUrl == Commit.RepoUrl && AlternativeCommitHash == Commit.Hash))
         {
             alternativeCommit = null;
         }
         else if (alternativeCommit is { } alt &&
             alt.Result.RepoUrl == AlternativeRepoUrl &&
+            alt.Result.Hash == AlternativeCommitHash &&
             Matches(alt.For, commitInfo))
         {
             // Already loaded.
             return;
         }
-        else if (await Worker.TryGetSubRepoCommitHashAsync(Commit.Hash, AlternativeRepoUrl) is not { } subRepoCommitHash)
+        else if ((AlternativeCommitHash ?? await Worker.TryGetSubRepoCommitHashAsync(Commit.Hash, AlternativeRepoUrl!)) is not { } altCommitHash)
         {
             alternativeCommit = null;
         }
@@ -190,8 +195,8 @@ title="@GetTitle()">@Commit.ShortHash</a>
         {
             alternativeCommit = (Result: new CommitLink
                 {
-                    RepoUrl = AlternativeRepoUrl,
-                    Hash = subRepoCommitHash,
+                    RepoUrl = AlternativeRepoUrl ?? Commit.RepoUrl,
+                    Hash = altCommitHash,
                 },
             For: Commit);
         }
