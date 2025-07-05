@@ -87,22 +87,34 @@ public sealed class WorkerExecutor(
         }
     }
 
-    public async Task<bool> HandleAsync(WorkerInputMessage.UseCompilerVersion message)
+    public Task<bool> HandleAsync(WorkerInputMessage.UseCompilerVersion message)
     {
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
-        return await compilerDependencyProvider.UseAsync(message.CompilerKind, message.Version, message.Configuration);
+        return compilerDependencyProvider.UseAsync(message.CompilerKind, message.Version, message.Configuration);
     }
 
-    public async Task<CompilerDependencyInfo> HandleAsync(WorkerInputMessage.GetCompilerDependencyInfo message)
+    public Task<CompilerDependencyInfo> HandleAsync(WorkerInputMessage.GetCompilerDependencyInfo message)
     {
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
-        return await compilerDependencyProvider.GetLoadedInfoAsync(message.CompilerKind);
+        return compilerDependencyProvider.GetLoadedInfoAsync(message.CompilerKind);
     }
 
-    public async Task<SdkInfo> HandleAsync(WorkerInputMessage.GetSdkInfo message)
+    public Task<List<SdkVersionInfo>> HandleAsync(WorkerInputMessage.GetSdkVersions message)
     {
         var sdkDownloader = services.GetRequiredService<SdkDownloader>();
-        return await sdkDownloader.GetInfoAsync(message.VersionToLoad);
+        return sdkDownloader.GetListAsync();
+    }
+
+    public Task<SdkInfo> HandleAsync(WorkerInputMessage.GetSdkInfo message)
+    {
+        var sdkDownloader = services.GetRequiredService<SdkDownloader>();
+        return sdkDownloader.GetInfoAsync(message.VersionToLoad);
+    }
+
+    public Task<string?> HandleAsync(WorkerInputMessage.TryGetSubRepoCommitHash message)
+    {
+        var sdkDownloader = services.GetRequiredService<SdkDownloader>();
+        return sdkDownloader.TryGetSubRepoCommitHashAsync(message.MonoRepoCommitHash, message.SubRepoUrl);
     }
 
     public async Task<string> HandleAsync(WorkerInputMessage.ProvideCompletionItems message)

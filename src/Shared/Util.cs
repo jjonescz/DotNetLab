@@ -1,10 +1,21 @@
 using System.Collections;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
 public static class Util
 {
+    extension(AsyncEnumerable)
+    {
+        public static IAsyncEnumerable<T> Create<T>(T item)
+        {
+            return AsyncEnumerable.Repeat(item, 1);
+        }
+    }
+
     extension<T>(IEnumerable<T> collection)
     {
         public IList<T> AsList()
@@ -99,6 +110,42 @@ public static class Util
     /// </summary>
     public static R EnsureSync() => default;
 
+    public static async Task<T?> FirstOrNullAsync<T>(this IAsyncEnumerable<T> source) where T : struct
+    {
+        await foreach (var item in source)
+        {
+            return item;
+        }
+
+        return null;
+    }
+
+    public static async Task<T?> FirstOrNullAsync<T>(this IAsyncEnumerable<T> source, Func<T, bool> predicate) where T : struct
+    {
+        await foreach (var item in source)
+        {
+            if (predicate(item))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public static async Task<T?> FirstOrNullAsync<T>(this IAsyncEnumerable<T> source, Func<T, Task<bool>> predicate) where T : struct
+    {
+        await foreach (var item in source)
+        {
+            if (await predicate(item))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
     public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
     {
         foreach (var item in source)
@@ -156,6 +203,14 @@ public static class Util
         return string.Join(separator, source.Select(x => $"{quote}{x}{quote}"));
     }
 
+    public static async IAsyncEnumerable<TResult> SelectAsync<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)
+    {
+        await foreach (var item in source)
+        {
+            yield return await selector(item);
+        }
+    }
+
     public static async Task<IEnumerable<TResult>> SelectAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<TResult>> selector)
     {
         var results = new List<TResult>(source.TryGetNonEnumeratedCount(out var count) ? count : 0);
@@ -184,6 +239,40 @@ public static class Util
             results.Add(await selector(item));
         }
         return results.DrainToImmutable();
+    }
+
+    public static async IAsyncEnumerable<TResult> SelectManyAsync<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
+    {
+        await foreach (var item in source)
+        {
+            foreach (var subitem in await selector(item))
+            {
+                yield return resultSelector(item, subitem);
+            }
+        }
+    }
+
+    public static async Task<IEnumerable<TResult>> SelectManyAsync<T, TResult>(this IEnumerable<T> source, Func<T, Task<IEnumerable<TResult>>> selector)
+    {
+        var results = new List<TResult>();
+        foreach (var item in source)
+        {
+            results.AddRange(await selector(item));
+        }
+        return results;
+    }
+
+    public static async Task<IEnumerable<TResult>> SelectManyAsync<T, TCollection, TResult>(this IEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
+    {
+        var results = new List<TResult>();
+        foreach (var item in source)
+        {
+            foreach (var subitem in await selector(item))
+            {
+                results.AddRange(resultSelector(item, subitem));
+            }
+        }
+        return results;
     }
 
     public static IEnumerable<TResult> SelectNonNull<T, TResult>(this IEnumerable<T> source, Func<T, TResult?> selector)
@@ -255,11 +344,6 @@ public static class Util
         return builder.ToImmutable();
     }
 
-    public static IEnumerable<T> TryConcat<T>(this ImmutableArray<T>? a, ImmutableArray<T>? b)
-    {
-        return [.. (a ?? []), .. (b ?? [])];
-    }
-
     public static T? TryAt<T>(this IReadOnlyList<T> list, int index)
     {
         if (index < 0 || index >= list.Count)
@@ -268,6 +352,23 @@ public static class Util
         }
 
         return list[index];
+    }
+
+    public static IEnumerable<T> TryConcat<T>(this ImmutableArray<T>? a, ImmutableArray<T>? b)
+    {
+        return [.. (a ?? []), .. (b ?? [])];
+    }
+
+    public static async Task<T?> TryReadFromJsonAsync<T>(this HttpContent content, JsonTypeInfo<T> jsonTypeInfo, CancellationToken cancellationToken = default) where T : class
+    {
+        try
+        {
+            return await content.ReadFromJsonAsync(jsonTypeInfo, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     public static InvalidOperationException Unexpected<T>(T value, [CallerArgumentExpression(nameof(value))] string name = "")

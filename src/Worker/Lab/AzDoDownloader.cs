@@ -13,7 +13,6 @@ internal sealed class AzDoDownloader(
     HttpClient client)
     : ICompilerDependencyResolver
 {
-    private static readonly JsonSerializerOptions options = AzDoJsonContext.Default.Options;
     private static readonly Task<CompilerDependency?> nullResult = Task.FromResult<CompilerDependency?>(null);
 
     public Task<CompilerDependency?> TryResolveCompilerAsync(
@@ -31,21 +30,42 @@ internal sealed class AzDoDownloader(
 
         Task<CompilerDependency?> fromPrNumberAsync(int pullRequestNumber)
         {
-            return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge");
+            return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge", new()
+            {
+                Text = $"#{pullRequestNumber}",
+                Url = $"{info.RepositoryUrl}/pull/{pullRequestNumber}",
+            });
         }
 
         Task<CompilerDependency?> fromBranchNameAsync(string branchName)
         {
-            return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}");
+            return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}", new()
+            {
+                Text = branchName,
+                Url = $"{info.RepositoryUrl}/tree/{branchName}",
+            });
         }
 
-        async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName)
+        async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName, DisplayLink additionalLink)
         {
             var build = await GetLatestBuildAsync(
                 definitionId: info.BuildDefinitionId,
                 branchName: branchName);
 
-            return fromBuild(build);
+            string? additionalCommitHash = null;
+            if (build.TriggerInfo.TryGetValue("pr.number", out var prNumber) &&
+                build.TriggerInfo.TryGetValue("pr.sender.name", out var prAuthorName) &&
+                build.TriggerInfo.TryGetValue("pr.sourceSha", out var prSourceCommitHash) &&
+                build.TriggerInfo.TryGetValue("pr.sourceBranch", out var prSourceBranch) &&
+                build.TriggerInfo.TryGetValue("pr.title", out var prTitle) &&
+                JsonSerializer.Deserialize(build.Parameters, LabWorkerJsonContext.Default.DictionaryStringString)?
+                    .TryGetValue("system.pullRequest.targetBranchName", out var prTargetBranch) == true)
+            {
+                additionalLink.Description = $"PR #{prNumber} by @{prAuthorName} ({prSourceBranch} → {prTargetBranch}): {prTitle}";
+                additionalCommitHash = prSourceCommitHash;
+            }
+
+            return fromBuild(build, additionalLink, additionalCommitHash: additionalCommitHash);
         }
 
         async Task<CompilerDependency?> fromBuildIdAsync(int buildId)
@@ -55,7 +75,7 @@ internal sealed class AzDoDownloader(
             return fromBuild(build);
         }
 
-        CompilerDependency fromBuild(Build build)
+        CompilerDependency fromBuild(Build build, DisplayLink? additionalLink = null, string? additionalCommitHash = null)
         {
             return new()
             {
@@ -64,6 +84,9 @@ internal sealed class AzDoDownloader(
                     commitHash: build.SourceVersion,
                     repoUrl: info.RepositoryUrl)
                 {
+                    AdditionalLink = additionalLink,
+                    AdditionalCommitHash = additionalCommitHash,
+                    VersionLink = SimpleAzDoUtil.GetBuildUrl(build.Id),
                     VersionSpecifier = specifier,
                     Configuration = configuration,
                     CanChangeBuildConfiguration = true,
@@ -209,16 +232,16 @@ internal sealed class AzDoDownloader(
         return build;
     }
 
-    private async Task<Build> GetBuildAsync(int buildId)
+    private async Task<ImprovedBuild> GetBuildAsync(int buildId)
     {
         var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString());
         uri.AppendQuery("api-version", "7.1");
-        return await client.GetFromJsonAsync<Build>(uri.ToString(), options)
+        return await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.ImprovedBuild)
             .ThrowOn404($"Build {buildId} was not found.");
     }
 
-    private async Task<AzDoCollection<Build>?> GetBuildsAsync(int definitionId, string branchName, int top)
+    private async Task<AzDoCollection<ImprovedBuild>?> GetBuildsAsync(int definitionId, string branchName, int top)
     {
         var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds");
@@ -227,7 +250,7 @@ internal sealed class AzDoDownloader(
         uri.AppendQuery("$top", top.ToString());
         uri.AppendQuery("api-version", "7.1");
 
-        return await client.GetFromJsonAsync<AzDoCollection<Build>>(uri.ToString(), options);
+        return await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.AzDoCollectionImprovedBuild);
     }
 
     private async Task<BuildArtifact> GetArtifactAsync(int buildId, string artifactName)
@@ -237,7 +260,7 @@ internal sealed class AzDoDownloader(
         uri.AppendQuery("artifactName", artifactName);
         uri.AppendQuery("api-version", "7.1");
 
-        return await client.GetFromJsonAsync<BuildArtifact>(uri.ToString(), options)
+        return await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.BuildArtifact)
             .ThrowOn404($"No artifact '{artifactName}' found in build {buildId}.");
     }
 
@@ -256,7 +279,7 @@ internal sealed class AzDoDownloader(
             artifactName: artifactName,
             fileId: fileId);
 
-        return await client.GetFromJsonAsync<ArtifactFiles>(uri, options)
+        return await client.GetFromJsonAsync(uri, AzDoJsonContext.Default.ArtifactFiles)
             .ThrowOn404($"No files found in artifact '{artifactName}' of build {buildId}.");
     }
 
@@ -398,8 +421,19 @@ internal sealed class ArtifactFileBlob
         typeof(JsonStringEnumConverter<ProjectVisibility>),
         typeof(JsonStringEnumConverter<QueuePriority>),
     ])]
-[JsonSerializable(typeof(Build))]
-[JsonSerializable(typeof(AzDoCollection<Build>))]
+[JsonSerializable(typeof(AzDoCollection<ImprovedBuild>))]
 [JsonSerializable(typeof(BuildArtifact))]
 [JsonSerializable(typeof(ArtifactFiles))]
 internal sealed partial class AzDoJsonContext : JsonSerializerContext;
+
+internal sealed class ImprovedBuild : Build
+{
+    /// <summary>
+    /// The equivalent of this in the base class cannot be JSON-deserialized because it does not have a public setter.
+    /// </summary>
+    public new IDictionary<string, string> TriggerInfo
+    {
+        get => base.TriggerInfo;
+        set => base.TriggerInfo.AddRange(value);
+    }
+}

@@ -45,7 +45,7 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
                 return null;
             }
 
-            if (await response.Content.ReadFromJsonAsync<CompiledAssembly>(WorkerJsonContext.Default.Options) is not { } output)
+            if (await response.Content.ReadFromJsonAsync(WorkerJsonContext.Default.CompiledAssembly) is not { } output)
             {
                 logger.LogError("No output.");
                 return null;

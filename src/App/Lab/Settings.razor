@@ -4,7 +4,6 @@
 @inject ILocalStorageService LocalStorage
 @inject WorkerController Worker
 @inject LanguageServicesClient LanguageServices
-@inject HttpClient Client
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
 OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
@@ -82,11 +81,23 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             <h5 style="margin: 0.75rem 0 0 0">Compilers</h5>
 
             @* SDK version select *@
-            <FluentTextField @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
-            Placeholder="version" Style="width: 100%">
+            <FluentComboboxEx @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
+            Autocomplete="ComboboxAutocomplete.Both" Placeholder="version" Style="width: 100%">
                 <FluentLabel slot="start">SDK</FluentLabel>
+                @foreach (var info in sdkVersions ?? [])
+                {
+                    <FluentOption TOption="string" Value="@info.Version">
+                        @info.Version
+                        @*
+                            For some reason, we cannot customize the text displayed in the closed combo box after selection
+                            and we don't want it to contain the additional info, so we use this as a workaround.
+                            `option-badge` is a CSS class which puts the `data-text` into `content` of `::after` pseudo-element.
+                        *@
+                        <span class="option-badge" data-text="@info.ReleaseDate"></span>
+                    </FluentOption>
+                }
                 <FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkInfo" Width="1em" />
-            </FluentTextField>
+            </FluentComboboxEx>
             <FluentLabel Style="opacity: 80%">
                 Enter a .NET SDK version above to automatically get
                 the corresponding Roslyn and Razor version numbers below.
@@ -95,8 +106,19 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             {
                 <FluentLabel>
                     SDK @(sdkInfo.SdkVersion)
-                    (<a href="@sdkInfo.Commit.Url"
-                    target="_blank">@sdkInfo.Commit.ShortHash</a>)
+                    @if (!sdkInfo.Commits.IsDefaultOrEmpty)
+                    {
+                        @(" (")
+                        foreach (var (index, commit) in sdkInfo.Commits.Index())
+                        {
+                            if (index != 0)
+                            {
+                                @(" / ")
+                            }
+                            <CommitHashView Enabled="!modalHidden" Commit="commit" SaveKey="SdkCommitInfo" />
+                        }
+                        @(") ")
+                    }
                     has roslyn @(sdkInfo.RoslynVersion)
                     and razor @(sdkInfo.RazorVersion).
                 </FluentLabel>
@@ -138,7 +160,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 }
                 @(".")
             </FluentLabel>
-            @Info((roslynInfo, roslynError))
+            @Info((this, CompilerInfo.Roslyn, roslynInfo, roslynError))
 
             @* Razor version select *@
             <FluentStack>
@@ -170,25 +192,14 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 }
                 @(".")
             </FluentLabel>
-            @Info((razorInfo, razorError))
+            @Info((this, CompilerInfo.Razor, razorInfo, razorError))
 
             @* About section *@
             <h5 style="margin: 0.75rem 0 0 0">About</h5>
             <p style="margin: 0">
-                <a href="@VersionUtil.CurrentRepositoryUrl" target="_blank">GitHub</a>,
+                <a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>,
                 commit
-                <a href="@VersionUtil.CurrentCommitUrl" target="_blank"
-                title="@commitInfo?.Message">@VersionUtil.CurrentShortCommitHash</a>
-                @if (commitInfo != null)
-                {
-                    @(" ")<span title="@commitInfo.Message">(@commitInfo.Date.ToString("MMM d, yyyy, HH:mm"))</span>
-                    @if (commitInfo.Version != null)
-                    {
-                        @(", ")<a title="Click to see release notes"
-                        href="@VersionUtil.CurrentRepositoryReleasesUrl"
-                        target="_blank">@commitInfo.Version</a>
-                    }
-                }
+                <CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
             </p>
 
             @* Check for updates *@
@@ -201,7 +212,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                     <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
                         <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
                         IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
-                        <FluentAnchor Href="@VersionUtil.CurrentRepositoryReleasesUrl" Target="_blank" Style="width: 100%"
+                        <FluentAnchor Href="@VersionUtil.CurrentCommit.ReleasesUrl" Target="_blank" Style="width: 100%"
                         IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
                     </FluentStack>
                 </FluentMessageBar>
@@ -243,13 +254,29 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     </span>
     ;
 
-    private static readonly RenderFragment<(CompilerDependencyInfo? Info, string? Error)> Info = (arg) =>@<div>
+    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, CompilerDependencyInfo? Info, string? Error)> Info = (arg) =>@<div>
         @if (arg.Info != null)
         {
             <FluentLabel>
-                Using @(arg.Info.Version)
-                (<a href="@arg.Info.Commit.Url"
-                target="_blank">@arg.Info.Commit.ShortHash</a>),
+                Using
+                @if (arg.Info.VersionLink != null)
+                {
+                    <a href="@arg.Info.VersionLink" target="_blank">@(arg.Info.Version)</a>
+                }
+                else
+                {
+                    @(arg.Info.Version)
+                }
+                (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit"
+                SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)"
+                AlternativeCommitHash="@(arg.Info.AdditionalCommitHash)" />
+                @if (arg.Info.AdditionalLink != null)
+                {
+                    @(", ")
+                    <a href="@arg.Info.AdditionalLink.Url" title="@arg.Info.AdditionalLink.Description"
+                    target="_blank">@arg.Info.AdditionalLink.Text</a>
+                }
+                @("),")
                 <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.
             </FluentLabel>
         }
@@ -262,23 +289,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     </div>
     ;
 
-    private sealed class CommitInfo
-    {
-        public required string Hash { get; init; }
-        public required DateTimeOffset Date { get; init; }
-        public required string Message { get; init; }
-        public required string? Version { get; init; }
-    }
-
     private bool modalHidden = true;
     private DesignThemeModes theme;
     private IJSObjectReference? vimDisposable;
     private string? sdkVersion, roslynVersion, razorVersion;
     private BuildConfiguration roslynConfiguration, razorConfiguration;
     private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
+    private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
     private CompilerDependencyInfo? roslynInfo, razorInfo;
-    private CommitInfo? commitInfo;
     private string? sdkError, roslynError, razorError;
     private bool checkedForUpdates;
 
@@ -408,12 +427,6 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
 
-        var savedCommitInfo = await loadOptionAsync<CommitInfo>(nameof(commitInfo));
-        if (savedCommitInfo?.Hash == VersionUtil.CurrentCommitHash)
-        {
-            commitInfo = savedCommitInfo;
-        }
-
         await UpdateLanguageServicesAsync();
 
         Worker.Disabled = !EnableWorker;
@@ -439,11 +452,17 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         }
 
         modalHidden = false;
+        StateHasChanged();
 
+        Task sdkVersionsTask = Task.CompletedTask;
         Task sdkTask = Task.CompletedTask;
         Task roslynTask = Task.CompletedTask;
         Task razorTask = Task.CompletedTask;
-        Task commitTask = Task.CompletedTask;
+
+        if (sdkVersions is null)
+        {
+            sdkVersionsTask = LoadSdkVersionsAsync();
+        }
 
         if (sdkInfo is null)
         {
@@ -460,12 +479,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             razorTask = LoadRazorInfoAsync(saveState: false);
         }
 
-        if (commitInfo is null)
-        {
-            commitTask = LoadCommitInfoAsync();
-        }
-
-        return Task.WhenAll(sdkTask, roslynTask, razorTask, commitTask);
+        return Task.WhenAll(sdkVersionsTask, sdkTask, roslynTask, razorTask);
     }
 
     public void CloseModal()
@@ -508,6 +522,12 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         return Task.WhenAll(sdkTask, roslynTask, razorTask);
     }
 
+    private async Task LoadSdkVersionsAsync()
+    {
+        sdkVersions = await Worker.GetSdkVersionsAsync();
+        await RefreshAsync();
+    }
+
     private async Task LoadSdkInfoAsync(bool saveState = true)
     {
         var versionToLoad = sdkVersion;
@@ -545,7 +565,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load SDK info.");
-            error = ex.Message;
+            error = ex is WorkerException w ? w.Failure.Message : ex.Message;
             info = null;
         }
 
@@ -592,7 +612,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         {
             Logger.LogError(ex, $"Failed to load {compilerKind} info.");
 
-            return (null, ex.Message);
+            return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
         }
     }
 
@@ -664,60 +684,6 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         razorVersion = version;
         razorConfiguration = BuildConfiguration.Release;
         await LoadRazorInfoAsync();
-    }
-
-    private async Task LoadCommitInfoAsync()
-    {
-        var commitHash = VersionUtil.CurrentCommitHash;
-        if (commitHash is null || commitInfo?.Hash == commitHash)
-        {
-            return;
-        }
-
-        GitHubCommitResponse? response;
-        try
-        {
-            response = await Client.GetFromJsonAsync<GitHubCommitResponse>(
-                $"https://api.github.com/repos/{VersionUtil.CurrentRepositoryOwnerAndName}/commits/{commitHash}",
-                SettingsJsonContext.Default.Options);
-            if (response is null)
-            {
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to load commit info.");
-            return;
-        }
-
-        // Find version tag corresponding to the commit.
-        // Inspired by https://stackoverflow.com/a/69590375.
-        string? version = null;
-        try
-        {
-            var request = new HttpRequestMessage(
-                HttpMethod.Get,
-                $"https://github.com/{VersionUtil.CurrentRepositoryOwnerAndName}/branch_commits/{commitHash}".WithCorsProxy());
-            request.Headers.Accept.Add(new("application/json"));
-            var tagsResponse = await Client.SendAsync(request);
-            var tagsObj = await tagsResponse.Content.ReadFromJsonAsync<GitHubBranchCommitsResponse>(SettingsJsonContext.Default.Options);
-            version = tagsObj?.Tags is [{ Length: > 0 } tag] ? tag : null;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to load version info.");
-        }
-
-        commitInfo = new CommitInfo
-            {
-                Hash = commitHash,
-                Date = response.Commit.Author.Date,
-                Message = response.Commit.Message.GetFirstLine(),
-                Version = version,
-            };
-        StateHasChanged();
-        await LocalStorage.SetItemAsync(nameof(commitInfo), commitInfo);
     }
 
     private async Task OnWordWrapChanged()

@@ -353,7 +353,7 @@ internal sealed class WorkerController : IAsyncDisposable
             case WorkerOutputMessage.Empty:
                 break;
             case WorkerOutputMessage.Failure failure:
-                throw new InvalidOperationException(failure.FullString);
+                throw new WorkerException(failure);
             default:
                 throw new InvalidOperationException($"Unexpected non-empty message type: {incoming}");
         }
@@ -387,7 +387,7 @@ internal sealed class WorkerController : IAsyncDisposable
             },
             WorkerOutputMessage.Failure failure => fallback switch
             {
-                null => throw new InvalidOperationException(failure.FullString),
+                null => throw new WorkerException(failure),
                 _ => fallback(failure.FullString),
             },
             _ => throw new InvalidOperationException($"Unexpected message type: {incoming}"),
@@ -430,11 +430,25 @@ internal sealed class WorkerController : IAsyncDisposable
             deserializeAs: default(CompilerDependencyInfo));
     }
 
+    public Task<List<SdkVersionInfo>> GetSdkVersionsAsync()
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.GetSdkVersions() { Id = messageId++ },
+            deserializeAs: default(List<SdkVersionInfo>));
+    }
+
     public Task<SdkInfo> GetSdkInfoAsync(string versionToLoad)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.GetSdkInfo(versionToLoad) { Id = messageId++ },
             deserializeAs: default(SdkInfo));
+    }
+
+    public Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.TryGetSubRepoCommitHash(monoRepoCommitHash, subRepoUrl) { Id = messageId++ },
+            deserializeAs: default(string?));
     }
 
     public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
@@ -526,4 +540,10 @@ internal static partial class WorkerControllerInterop
 
     [JSImport("disposeWorker", nameof(WorkerController))]
     public static partial void DisposeWorker(JSObject worker);
+}
+
+internal sealed class WorkerException(WorkerOutputMessage.Failure failure)
+    : Exception(failure.FullString)
+{
+    public WorkerOutputMessage.Failure Failure { get; } = failure;
 }

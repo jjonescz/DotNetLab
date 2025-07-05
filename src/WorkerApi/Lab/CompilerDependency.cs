@@ -15,7 +15,7 @@ public sealed record CompilerDependencyInfo
     }
 
     private CompilerDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
-        : this(arg.Version, new() { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
+        : this(arg.Version, new CommitLink { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
     {
     }
 
@@ -24,14 +24,18 @@ public sealed record CompilerDependencyInfo
     {
     }
 
-    public CompilerDependencyInfo(string assemblyName)
+    public CompilerDependencyInfo(string assemblyName, Func<CompilerDependencyInfo, string?>? versionLink = null)
         : this(FromAssembly(assemblyName))
     {
+        VersionLink = versionLink?.Invoke(this);
     }
 
     public required CompilerVersionSpecifier VersionSpecifier { get; init; }
     public string Version { get; }
+    public string? VersionLink { get; init; }
     public CommitLink Commit { get; }
+    public DisplayLink? AdditionalLink { get; init; }
+    public string? AdditionalCommitHash { get; init; }
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }
 
@@ -68,6 +72,24 @@ public sealed record CommitLink
     public required string Hash { get; init; }
     public string ShortHash => VersionUtil.GetShortCommitHash(Hash);
     public string Url => string.IsNullOrEmpty(Hash) ? "" : VersionUtil.GetCommitUrl(RepoUrl, Hash);
+    public string ReleasesUrl => $"{RepoUrl}/releases";
+    public string? OwnerAndName => VersionUtil.TryGetGitHubRepoOwnerAndName(RepoUrl);
+
+    public CommitLink WithRepoUrl(string repoUrl)
+    {
+        return new CommitLink
+        {
+            RepoUrl = repoUrl,
+            Hash = Hash,
+        };
+    }
+}
+
+public sealed record DisplayLink
+{
+    public required string Text { get; init; }
+    public required string Url { get; init; }
+    public string? Description { get; set; }
 }
 
 public enum CompilerKind
@@ -129,6 +151,7 @@ public sealed record CompilerInfo(
     public string PrListUrl => $"{RepositoryUrl}/pulls";
     public string BuildListUrl => SimpleAzDoUtil.GetBuildListUrl(BuildDefinitionId);
     public string BranchListUrl => $"{RepositoryUrl}/branches";
+    public string CommitInfoSaveKey = $"{CompilerKind}CommitInfo";
 }
 
 [JsonDerivedType(typeof(BuiltIn), nameof(BuiltIn))]
@@ -196,10 +219,16 @@ internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>
     }
 }
 
+public readonly struct SdkVersionInfo
+{
+    public required string Version { get; init; }
+    public required string ReleaseDate { get; init; }
+}
+
 public sealed record SdkInfo
 {
     public required string SdkVersion { get; init; }
-    public required CommitLink Commit { get; init; }
+    public required ImmutableArray<CommitLink> Commits { get; init; }
     public required string RoslynVersion { get; init; }
     public required string RazorVersion { get; init; }
 }

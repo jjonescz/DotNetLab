@@ -101,6 +101,13 @@ code {
     color: #c02d76;
 }
 
+.option-badge::after {
+    content: attr(data-text);
+    font-size: small;
+    color: var(--input-placeholder-rest);
+    margin-left: 0.5em;
+}
+
 /*
     Causes Monaco Editor to resize properly.
     See https://github.com/microsoft/monaco-editor/issues/3512.
