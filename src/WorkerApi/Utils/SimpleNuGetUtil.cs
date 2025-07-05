@@ -9,8 +9,10 @@ public static class SimpleNuGetUtil
         return $"{BaseAddress}{packageId}/versions";
     }
 
-    public static string GetPackageDetailUrl(string packageId, string version)
+    public static string GetPackageDetailUrl(string packageId, string version, bool fromNuGetOrg)
     {
-        return $"{BaseAddress}{packageId}/overview/{version}";
+        return fromNuGetOrg
+            ? $"https://www.nuget.org/packages/{packageId}/{version}"
+            : $"{BaseAddress}{packageId}/overview/{version}";
     }
 }

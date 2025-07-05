@@ -120,6 +120,32 @@ public static class Util
         return null;
     }
 
+    public static async Task<T?> FirstOrNullAsync<T>(this IAsyncEnumerable<T> source, Func<T, bool> predicate) where T : struct
+    {
+        await foreach (var item in source)
+        {
+            if (predicate(item))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public static async Task<T?> FirstOrNullAsync<T>(this IAsyncEnumerable<T> source, Func<T, Task<bool>> predicate) where T : struct
+    {
+        await foreach (var item in source)
+        {
+            if (await predicate(item))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
     public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
     {
         foreach (var item in source)
