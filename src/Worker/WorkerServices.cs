@@ -24,6 +24,10 @@ public static class WorkerServices
                 {
                     options.AssembliesAreAlwaysInDllFormat = true;
                 });
+                services.Configure<NuGetDownloaderOptions>(static options =>
+                {
+                    options.LogRequests = true;
+                });
                 configureServices?.Invoke(services);
             });
     }
@@ -54,7 +58,7 @@ public static class WorkerServices
         services.AddScoped<AssemblyDownloader>();
         services.AddScoped<CompilerProxy>();
         services.AddScoped<DependencyRegistry>();
-        services.AddScoped<Lazy<NuGetDownloader>>();
+        services.AddScoped(sp => new Lazy<NuGetDownloader>(() => ActivatorUtilities.CreateInstance<NuGetDownloader>(sp)));
         services.AddScoped<SdkDownloader>();
         services.AddScoped<CompilerDependencyProvider>();
         services.AddScoped<BuiltInCompilerProvider>();

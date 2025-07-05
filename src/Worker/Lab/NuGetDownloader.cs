@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NuGet.Common;
 using NuGet.Packaging;
 using NuGet.Protocol;
@@ -64,47 +66,63 @@ internal sealed class NuGetDownloaderPlugin(
 
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
-    private readonly SourceRepository repository;
     private readonly SourceCacheContext cacheContext;
-    private readonly AsyncLazy<FindPackageByIdResource> findPackageById;
+    private readonly ImmutableArray<AsyncLazy<FindPackageByIdResource>> findPackageByIds;
 
-    public NuGetDownloader()
+    public NuGetDownloader(
+        IOptions<NuGetDownloaderOptions> options,
+        ILogger<NuGetDownloader> logger)
     {
+        Options = options.Value;
+        Logger = logger;
         ImmutableArray<Lazy<INuGetResourceProvider>> providers =
         [
             new(() => new RegistrationResourceV3Provider()),
             new(() => new DependencyInfoResourceV3Provider()),
-            new(() => new CustomHttpHandlerResourceV3Provider()),
+            new(() => new CustomHttpHandlerResourceV3Provider(this)),
             new(() => new HttpSourceResourceProvider()),
             new(() => new ServiceIndexResourceV3Provider()),
             new(() => new RemoteV3FindPackageByIdResourceProvider()),
         ];
-        repository = Repository.CreateSource(
+        IEnumerable<string> sourceUrls =
+        [
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
+            "https://api.nuget.org/v3/index.json",
+        ];
+        var repositories = sourceUrls.Select(url => Repository.CreateSource(
             providers,
-            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json");
+            url));
         cacheContext = new SourceCacheContext();
-        findPackageById = new(() => repository.GetResourceAsync<FindPackageByIdResource>());
+        findPackageByIds = repositories.SelectAsArray(repository =>
+            new AsyncLazy<FindPackageByIdResource>(() => repository.GetResourceAsync<FindPackageByIdResource>()));
     }
+
+    public NuGetDownloaderOptions Options { get; }
+    public ILogger<NuGetDownloader> Logger { get; }
 
     public async Task<CompilerDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
     {
-        NuGetVersion version;
+        (FindPackageByIdResource? findPackageById, NuGetVersion version) result;
         if (specifier is CompilerVersionSpecifier.NuGetLatest)
         {
-            var versions = await (await findPackageById).GetAllVersionsAsync(
-                info.PackageId,
-                cacheContext,
-                NullLogger.Instance,
-                CancellationToken.None);
-            version = versions.FirstOrDefault() ??
+            var versions = findPackageByIds.ToAsyncEnumerable()
+                .SelectAsync(static async lazy => await lazy)
+                .SelectManyAsync(findPackageById =>
+                    findPackageById.GetAllVersionsAsync(
+                        info.PackageId,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None),
+                (findPackageById, version) => (findPackageById, version));
+            result = await versions.FirstOrNullAsync() ??
                 throw new InvalidOperationException($"Package '{info.PackageId}' not found.");
         }
         else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
         {
-            version = nuGetSpecifier.Version;
+            result = (null, nuGetSpecifier.Version);
         }
         else
         {
@@ -113,14 +131,27 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         var package = new NuGetDownloadablePackage(specifier, info.PackageFolder, async () =>
         {
+            var (findPackageById, version) = result;
+
+            var finders = findPackageById != null
+                ? AsyncEnumerable.Create(findPackageById)
+                : findPackageByIds.ToAsyncEnumerable().SelectAsync(async lazy => await lazy);
+
             var stream = new MemoryStream();
-            var success = await (await findPackageById).CopyNupkgToStreamAsync(
-                info.PackageId,
-                version,
-                stream,
-                cacheContext,
-                NullLogger.Instance,
-                CancellationToken.None);
+            var success = await finders.AnyAsync(async (findPackageById, cancellationToken) =>
+            {
+                try
+                {
+                    return await findPackageById.CopyNupkgToStreamAsync(
+                        info.PackageId,
+                        version,
+                        stream,
+                        cacheContext,
+                        NullLogger.Instance,
+                        cancellationToken);
+                }
+                catch (Newtonsoft.Json.JsonReaderException) { return false; }
+            });
 
             if (!success)
             {
@@ -183,9 +214,12 @@ internal sealed class NuGetDownloadablePackage(
 
 internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
 {
-    public CustomHttpHandlerResourceV3Provider()
+    private readonly NuGetDownloader nuGetDownloader;
+
+    public CustomHttpHandlerResourceV3Provider(NuGetDownloader nuGetDownloader)
         : base(typeof(HttpHandlerResource), nameof(CustomHttpHandlerResourceV3Provider))
     {
+        this.nuGetDownloader = nuGetDownloader;
     }
 
     public override Task<Tuple<bool, INuGetResource?>> TryCreate(SourceRepository source, CancellationToken token)
@@ -193,11 +227,11 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
         return Task.FromResult(TryCreate(source));
     }
 
-    private static Tuple<bool, INuGetResource?> TryCreate(SourceRepository source)
+    private Tuple<bool, INuGetResource?> TryCreate(SourceRepository source)
     {
         if (source.PackageSource.IsHttp)
         {
-            var clientHandler = new CorsClientHandler();
+            var clientHandler = new CorsClientHandler(nuGetDownloader);
             var messageHandler = new ServerWarningLogHandler(clientHandler);
             return new(true, new HttpHandlerResourceV3(clientHandler, messageHandler));
         }
@@ -206,15 +240,31 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     }
 }
 
-internal sealed class CorsClientHandler : HttpClientHandler
+internal sealed class CorsClientHandler(NuGetDownloader nuGetDownloader) : HttpClientHandler
 {
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true)
         {
             request.RequestUri = request.RequestUri.WithCorsProxy();
         }
 
-        return base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+
+        if (nuGetDownloader.Options.LogRequests)
+        {
+            nuGetDownloader.Logger.LogDebug(
+                "Sent: {Method} {Uri}, Received: {Status}",
+                request.Method,
+                request.RequestUri,
+                response.StatusCode);
+        }
+
+        return response;
     }
+}
+
+internal sealed class NuGetDownloaderOptions
+{
+    public bool LogRequests { get; set; }
 }
