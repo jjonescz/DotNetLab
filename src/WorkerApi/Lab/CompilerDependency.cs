@@ -219,6 +219,12 @@ internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>
     }
 }
 
+public readonly struct SdkVersionInfo
+{
+    public required string Version { get; init; }
+    public required string ReleaseDate { get; init; }
+}
+
 public sealed record SdkInfo
 {
     public required string SdkVersion { get; init; }

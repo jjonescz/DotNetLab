@@ -1,3 +1,6 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Xml.Serialization;
 
 namespace DotNetLab.Lab;
@@ -16,8 +19,21 @@ internal sealed class SdkDownloader(
     private const string razorRepoUrl = "https://github.com/dotnet/razor";
     private const string versionDetailsRelativePath = "eng/Version.Details.xml";
     private const string sourceManifestRelativePath = "src/source-manifest.json";
+    private const string releasesIndexUrl = "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json";
 
     private static readonly XmlSerializer versionDetailsSerializer = new(typeof(Dependencies));
+
+    public async Task<List<SdkVersionInfo>> GetListAsync()
+    {
+        try
+        {
+            var index = await client.GetFromJsonAsync(releasesIndexUrl.WithCorsProxy(), LabWorkerKebabCaseJsonContext.Default.DotNetReleaseIndex);
+            var lists = await Task.WhenAll(index.ReleasesIndex.Select(entry => client.GetFromJsonAsync(entry.ReleasesJson.WithCorsProxy(), LabWorkerKebabCaseJsonContext.Default.ReleaseList)));
+            return lists.SelectMany(static list => list.Releases.Select(static release => release.ToVersionInfo())).ToList();
+        }
+        catch (HttpRequestException) { return []; }
+        catch (JsonException) { return []; }
+    }
 
     public async Task<SdkInfo> GetInfoAsync(string version)
     {
@@ -91,12 +107,11 @@ internal sealed class SdkDownloader(
     {
         using var response = await SendGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        if (!response.IsSuccessStatusCode)
         {
             return null;
         }
 
-        response.EnsureSuccessStatusCode();
         using var stream = await response.Content.ReadAsStreamAsync();
         return await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.SourceManifest);
     }
@@ -163,5 +178,47 @@ internal sealed class SourceManifest
                 Hash = CommitSha,
             };
         }
+    }
+}
+
+/// <summary>
+/// For JSON from <see cref="SdkDownloader.releasesIndexUrl"/>.
+/// </summary>
+internal readonly struct DotNetReleaseIndex
+{
+    public required ImmutableArray<ChannelInfo> ReleasesIndex { get; init; }
+
+    public readonly struct ChannelInfo
+    {
+        [JsonPropertyName("releases.json")]
+        public required string ReleasesJson { get; init; }
+    }
+
+    /// <summary>
+    /// For JSON from <see cref="ChannelInfo.ReleasesJson"/>.
+    /// </summary>
+    public readonly struct ReleaseList
+    {
+        public required ImmutableArray<Release> Releases { get; init; }
+    }
+
+    public readonly struct Release
+    {
+        public required string ReleaseDate { get; init; }
+        public required SdkInfo Sdk { get; init; }
+
+        public SdkVersionInfo ToVersionInfo()
+        {
+            return new SdkVersionInfo
+            {
+                Version = Sdk.Version,
+                ReleaseDate = ReleaseDate,
+            };
+        }
+    }
+
+    public readonly struct SdkInfo
+    {
+        public required string Version { get; init; }
     }
 }

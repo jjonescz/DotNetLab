@@ -81,11 +81,23 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             <h5 style="margin: 0.75rem 0 0 0">Compilers</h5>
 
             @* SDK version select *@
-            <FluentTextField @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
-            Placeholder="version" Style="width: 100%">
+            <FluentComboboxEx @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
+            Autocomplete="ComboboxAutocomplete.Both" Placeholder="version" Style="width: 100%">
                 <FluentLabel slot="start">SDK</FluentLabel>
+                @foreach (var info in sdkVersions ?? [])
+                {
+                    <FluentOption TOption="string" Value="@info.Version">
+                        @info.Version
+                        @*
+                            For some reason, we cannot customize the text displayed in the closed combo box after selection
+                            and we don't want it to contain the additional info, so we use this as a workaround.
+                            `option-badge` is a CSS class which puts the `data-text` into `content` of `::after` pseudo-element.
+                        *@
+                        <span class="option-badge" data-text="@info.ReleaseDate"></span>
+                    </FluentOption>
+                }
                 <FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkInfo" Width="1em" />
-            </FluentTextField>
+            </FluentComboboxEx>
             <FluentLabel Style="opacity: 80%">
                 Enter a .NET SDK version above to automatically get
                 the corresponding Roslyn and Razor version numbers below.
@@ -283,6 +295,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private string? sdkVersion, roslynVersion, razorVersion;
     private BuildConfiguration roslynConfiguration, razorConfiguration;
     private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
+    private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
     private CompilerDependencyInfo? roslynInfo, razorInfo;
     private string? sdkError, roslynError, razorError;
@@ -441,9 +454,15 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         modalHidden = false;
         StateHasChanged();
 
+        Task sdkVersionsTask = Task.CompletedTask;
         Task sdkTask = Task.CompletedTask;
         Task roslynTask = Task.CompletedTask;
         Task razorTask = Task.CompletedTask;
+
+        if (sdkVersions is null)
+        {
+            sdkVersionsTask = LoadSdkVersionsAsync();
+        }
 
         if (sdkInfo is null)
         {
@@ -460,7 +479,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
             razorTask = LoadRazorInfoAsync(saveState: false);
         }
 
-        return Task.WhenAll(sdkTask, roslynTask, razorTask);
+        return Task.WhenAll(sdkVersionsTask, sdkTask, roslynTask, razorTask);
     }
 
     public void CloseModal()
@@ -503,6 +522,12 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         return Task.WhenAll(sdkTask, roslynTask, razorTask);
     }
 
+    private async Task LoadSdkVersionsAsync()
+    {
+        sdkVersions = await Worker.GetSdkVersionsAsync();
+        await RefreshAsync();
+    }
+
     private async Task LoadSdkInfoAsync(bool saveState = true)
     {
         var versionToLoad = sdkVersion;
@@ -540,7 +565,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load SDK info.");
-            error = ex.Message;
+            error = ex is WorkerException w ? w.Failure.Message : ex.Message;
             info = null;
         }
 

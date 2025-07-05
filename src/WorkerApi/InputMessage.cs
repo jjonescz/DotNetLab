@@ -12,6 +12,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(GetOutput), nameof(GetOutput))]
 [JsonDerivedType(typeof(UseCompilerVersion), nameof(UseCompilerVersion))]
 [JsonDerivedType(typeof(GetCompilerDependencyInfo), nameof(GetCompilerDependencyInfo))]
+[JsonDerivedType(typeof(GetSdkVersions), nameof(GetSdkVersions))]
 [JsonDerivedType(typeof(GetSdkInfo), nameof(GetSdkInfo))]
 [JsonDerivedType(typeof(TryGetSubRepoCommitHash), nameof(TryGetSubRepoCommitHash))]
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
@@ -92,6 +93,14 @@ public abstract record WorkerInputMessage
     public sealed record GetCompilerDependencyInfo(CompilerKind CompilerKind) : WorkerInputMessage<CompilerDependencyInfo>
     {
         public override Task<CompilerDependencyInfo> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
+    public sealed record GetSdkVersions : WorkerInputMessage<List<SdkVersionInfo>>
+    {
+        public override Task<List<SdkVersionInfo>> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -193,6 +202,7 @@ public abstract record WorkerInputMessage
         Task<string> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
+        Task<List<SdkVersionInfo>> HandleAsync(GetSdkVersions message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
         Task<string?> HandleAsync(TryGetSubRepoCommitHash message);
         Task<string> HandleAsync(ProvideCompletionItems message);
