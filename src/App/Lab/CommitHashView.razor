@@ -174,8 +174,8 @@ title="@GetTitle()">@Commit.ShortHash</a>
 
     private async Task LoadAlternativeInfoAsync()
     {
-        if ((AlternativeRepoUrl is null && AlternativeCommitHash is null) ||
-            (AlternativeRepoUrl == Commit.RepoUrl && AlternativeCommitHash == Commit.Hash))
+        if ((AlternativeRepoUrl is null || AlternativeRepoUrl == Commit.RepoUrl) &&
+            (AlternativeCommitHash is null || AlternativeCommitHash == Commit.Hash))
         {
             alternativeCommit = null;
         }
