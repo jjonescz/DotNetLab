@@ -29,7 +29,13 @@ title="@GetTitle()">@Commit.ShortHash</a>
     private const string dateFormat = "MMM d, yyyy, HH:mm";
     private readonly AsyncLock loading = new();
     private CommitInfo? commitInfo;
-    private (CommitLink Result, CommitLink For)? alternativeCommit;
+    private AlternativeCommitInfo? alternativeCommit;
+
+    private readonly struct AlternativeCommitInfo
+    {
+        public required CommitLink Result { get; init; }
+        public required CommitLink For { get; init; }
+    }
 
     [Parameter, EditorRequired]
     public bool Enabled { get; init; }
@@ -174,6 +180,12 @@ title="@GetTitle()">@Commit.ShortHash</a>
 
     private async Task LoadAlternativeInfoAsync()
     {
+        var saveKey = SaveKey + "_AlternativeCommitLink";
+        if (alternativeCommit is null)
+        {
+            alternativeCommit = await LocalStorage.GetItemAsync<AlternativeCommitInfo?>(saveKey);
+        }
+
         if ((AlternativeRepoUrl is null || AlternativeRepoUrl == Commit.RepoUrl) &&
             (AlternativeCommitHash is null || AlternativeCommitHash == Commit.Hash))
         {
@@ -193,15 +205,20 @@ title="@GetTitle()">@Commit.ShortHash</a>
         }
         else
         {
-            alternativeCommit = (Result: new CommitLink
+            alternativeCommit = new()
+            {
+                Result = new CommitLink
                 {
                     RepoUrl = AlternativeRepoUrl ?? Commit.RepoUrl,
                     Hash = altCommitHash,
                 },
-            For: Commit);
+                For = Commit,
+            };
         }
 
         StateHasChanged();
+
+        await LocalStorage.SetItemAsync(saveKey, alternativeCommit);
     }
 
     private static bool Matches(CommitLink commit, CommitInfo? info)
