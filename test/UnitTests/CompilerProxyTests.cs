@@ -129,6 +129,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         string code = """
             <div>@Param</div>
+            @if (Param == 0)
+            {
+                <TestComponent Param="1" />
+            }
 
             @code {
                 [Parameter] public int Param { get; set; } = 42;
@@ -150,6 +154,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
+        Assert.Contains("AddComponentParameter", cSharpText);
 
         var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
         output.WriteLine(htmlText);
