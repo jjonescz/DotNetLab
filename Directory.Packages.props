@@ -6,7 +6,7 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
     <NetCoreVersion>10.0.0-preview.5.25277.114</NetCoreVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
-    <RoslynVersion>5.0.0-1.25321.102</RoslynVersion>
+    <RoslynVersion>5.0.0-1.25357.1</RoslynVersion>
     <FluentUIVersion>4.12.0</FluentUIVersion>
     <NuGetVersion>6.14.0</NuGetVersion>
   </PropertyGroup>
@@ -31,7 +31,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="$(FluentUIVersion)" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="$(FluentUIVersion)" />
-    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25321.102" />
+    <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="10.0.0-preview.25353.4" />
     <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="$(RoslynVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.NETCore.App.Ref" Version="$(NetCoreVersion)" />
