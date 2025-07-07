@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using System.Numerics;
 using System.Reflection.Emit;
@@ -11,6 +12,13 @@ namespace DotNetLab;
 
 public static class CodeAnalysisUtil
 {
+    private static EmitOptions DefaultEmitOptions => field ??= new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb);
+
+    extension(EmitOptions)
+    {
+        public static EmitOptions Default => DefaultEmitOptions;
+    }
+
     public static bool TryGetHostOutputSafe(
         this GeneratorRunResult result,
         string key,

@@ -14,7 +14,7 @@ public static class RefAssemblyMetadata
         foreach (var assembly in all)
         {
             builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
-                .GetReference(filePath: assembly.FileName, display: assembly.Name));
+                .GetReference(filePath: assembly.FileName, display: assembly.FileName));
         }
 
         return builder.DrainToImmutable();

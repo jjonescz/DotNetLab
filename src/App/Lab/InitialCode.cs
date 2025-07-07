@@ -33,7 +33,7 @@ internal sealed record InitialCode
             [Parameter] public int Param { get; set; }
         }
 
-        """);
+        """.ReplaceLineEndings());
 
     // https://github.com/dotnet/aspnetcore/blob/036ec9ec2ffbfe927f9eb7622dfff122c634ccbb/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWeb-CSharp/Components/_Imports.razor
     public static readonly InitialCode RazorImports = new("_Imports.razor", """
@@ -47,7 +47,7 @@ internal sealed record InitialCode
         @using Microsoft.AspNetCore.Components.Web.Virtualization
         @using Microsoft.JSInterop
 
-        """);
+        """.ReplaceLineEndings());
 
     public static readonly InitialCode Cshtml = new("TestPage.cshtml", """
         @page
@@ -76,7 +76,7 @@ internal sealed record InitialCode
             }
         }
 
-        """);
+        """.ReplaceLineEndings());
 
     // IMPORTANT: Keep in sync with `Compiler.Compile`.
     public static readonly InitialCode Configuration = new("Configuration.cs", """
@@ -89,6 +89,10 @@ internal sealed record InitialCode
             .WithAllowUnsafe(true)
             .WithNullableContextOptions(NullableContextOptions.Enable)
             .WithOptimizationLevel(OptimizationLevel.Debug)
+        );
+
+        Config.EmitOptions(options => options
+            .WithEmitMetadataOnly(false)
         );
 
         """);

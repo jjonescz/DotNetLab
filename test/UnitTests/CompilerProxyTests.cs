@@ -7,8 +7,9 @@ namespace DotNetLab;
 public sealed class CompilerProxyTests(ITestOutputHelper output)
 {
     [Theory]
-    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")]
-    [InlineData("main", "-ci (<developer build>)")]
+    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
+    [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
+    [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -25,11 +26,30 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Contains(expectedDiagnostic, diagnosticsText);
 
         // Language services should also pick up the custom compiler version.
+        // There are bunch of tests that do not assert much but they verify no type load exceptions happen.
+        // Some older versions of Roslyn are not compatible though (until we actually download the corresponding older DLLs
+        // for language services as well but we might never actually want to support that).
+
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
         markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
+
+        var loadSemanticTokens = async () =>
+        {
+            var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.Current.CancellationToken);
+            semanticTokensJson.Should().NotBeNull();
+        };
+
+        if (version.StartsWith("4.12."))
+        {
+            await loadSemanticTokens.Should().ThrowAsync<TypeLoadException>();
+        }
+        else
+        {
+            await loadSemanticTokens();
+        }
 
         var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
         codeActionsJson.Should().NotBeNull();
@@ -65,7 +85,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             // /Input.cs(1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
             // #error version
             Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
-            """, diagnosticsText);
+            """.ReplaceLineEndings(), diagnosticsText);
     }
 
     [Theory]
@@ -129,6 +149,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         string code = """
             <div>@Param</div>
+            @if (Param == 0)
+            {
+                <TestComponent Param="1" />
+            }
 
             @code {
                 [Parameter] public int Param { get; set; } = 42;
@@ -150,6 +174,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
+        Assert.Contains("AddComponentParameter", cSharpText);
 
         var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
         output.WriteLine(htmlText);
