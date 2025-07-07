@@ -139,18 +139,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             var stream = new MemoryStream();
             var success = await finders.SelectAsync(async (f) =>
             {
-                bool success;
-                try
-                {
-                    success = await f.Resource.CopyNupkgToStreamAsync(
-                        info.PackageId,
-                        version,
-                        stream,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None);
-                }
-                catch (Newtonsoft.Json.JsonReaderException) { success = false; }
+                bool success = await f.Resource.CopyNupkgToStreamAsync(
+                    info.PackageId,
+                    version,
+                    stream,
+                    cacheContext,
+                    NullLogger.Instance,
+                    CancellationToken.None);
                 return (Success: success, f.NuGetOrg);
             })
             .FirstOrNullAsync(static t => t.Success);
@@ -245,8 +240,16 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     }
 }
 
-internal sealed class CorsClientHandler(NuGetDownloader nuGetDownloader) : HttpClientHandler
+internal sealed class CorsClientHandler : HttpClientHandler
 {
+    private readonly NuGetDownloader nuGetDownloader;
+
+    public CorsClientHandler(NuGetDownloader nuGetDownloader)
+    {
+        this.nuGetDownloader = nuGetDownloader;
+        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+    }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true)

@@ -7,8 +7,9 @@ namespace DotNetLab;
 public sealed class CompilerProxyTests(ITestOutputHelper output)
 {
     [Theory]
-    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")]
-    [InlineData("main", "-ci (<developer build>)")]
+    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
+    [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
+    [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
