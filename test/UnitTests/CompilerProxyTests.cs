@@ -65,7 +65,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             // /Input.cs(1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
             // #error version
             Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
-            """, diagnosticsText);
+            """.ReplaceLineEndings(), diagnosticsText);
     }
 
     [Theory]
