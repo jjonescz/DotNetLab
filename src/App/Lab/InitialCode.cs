@@ -91,6 +91,10 @@ internal sealed record InitialCode
             .WithOptimizationLevel(OptimizationLevel.Debug)
         );
 
+        Config.EmitOptions(options => options
+            .WithEmitMetadataOnly(false)
+        );
+
         """);
 
     public InitialCode(string suggestedFileName, string textTemplate)

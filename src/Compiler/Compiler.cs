@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ public sealed class Compiler(
         global using DotNetLab;
         global using Microsoft.CodeAnalysis;
         global using Microsoft.CodeAnalysis.CSharp;
+        global using Microsoft.CodeAnalysis.Emit;
         global using System;
         """;
 
@@ -67,6 +69,7 @@ public sealed class Compiler(
 
         var parseOptions = CreateDefaultParseOptions();
         CSharpCompilationOptions? options = null;
+        EmitOptions emitOptions = EmitOptions.Default;
 
         var references = RefAssemblyMetadata.All;
         var referenceInfos = RefAssemblies.All;
@@ -106,6 +109,7 @@ public sealed class Compiler(
             }
 
             parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
+            emitOptions = Config.ConfigureEmitOptions(emitOptions);
         }
         else
         {
@@ -640,7 +644,7 @@ public sealed class Compiler(
         MemoryStream? getEmitStream(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
         {
             var stream = new MemoryStream();
-            var emitResult = compilation.Emit(stream);
+            var emitResult = compilation.Emit(stream, options: emitOptions);
             if (!emitResult.Success)
             {
                 diagnostics = emitResult.Diagnostics;
