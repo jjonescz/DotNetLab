@@ -26,11 +26,30 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Contains(expectedDiagnostic, diagnosticsText);
 
         // Language services should also pick up the custom compiler version.
+        // There are bunch of tests that do not assert much but they verify no type load exceptions happen.
+        // Some older versions of Roslyn are not compatible though (until we actually download the corresponding older DLLs
+        // for language services as well but we might never actually want to support that).
+
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
         markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
+
+        var loadSemanticTokens = async () =>
+        {
+            var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.Current.CancellationToken);
+            semanticTokensJson.Should().NotBeNull();
+        };
+
+        if (version.StartsWith("4.12."))
+        {
+            await loadSemanticTokens.Should().ThrowAsync<TypeLoadException>();
+        }
+        else
+        {
+            await loadSemanticTokens();
+        }
 
         var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
         codeActionsJson.Should().NotBeNull();
