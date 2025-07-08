@@ -4,10 +4,18 @@
     <Content Remove="**\*.d.ts" />
   </ItemGroup>
 
-  <Target Name="CopyDotNetDTs" AfterTargets="ProcessFrameworkReferences">
+  <Target Name="PrepareCopyDotNetDTs"
+          DependsOnTargets="ProcessFrameworkReferences">
     <ItemGroup>
       <_DotnetDTsPath Include="%(RuntimePack.PackageDirectory)\runtimes\browser-wasm\native\dotnet.d.ts" Condition="'%(RuntimePack.Identity)' == 'Microsoft.NETCore.App.Runtime.Mono.browser-wasm'" />
     </ItemGroup>
+  </Target>
+
+  <Target Name="CopyDotNetDTs"
+          DependsOnTargets="PrepareCopyDotNetDTs"
+          AfterTargets="ProcessFrameworkReferences"
+          Inputs="@(RuntimePack->'%(PackageDirectory)\runtimes\browser-wasm\native\dotnet.d.ts')"
+          Outputs="$(MSBuildProjectDirectory)\wwwroot\dotnet.d.ts">
     <Copy SourceFiles="@(_DotnetDTsPath)" DestinationFolder="$(MSBuildProjectDirectory)\wwwroot" />
   </Target>
 
