@@ -9,7 +9,6 @@
 
   <!-- IMPORTANT: Do not add references to Roslyn/Razor here. -->
 
-
   <ItemGroup>
     <PackageDownload Include="Microsoft.NETCore.App.Ref" Version="[$(NetCoreVersion)]" />
     <PackageDownload Include="Microsoft.AspNetCore.App.Ref" Version="[$(AspNetCoreVersion)]" />
