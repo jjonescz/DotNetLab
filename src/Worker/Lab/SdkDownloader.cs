@@ -5,6 +5,12 @@ using System.Xml.Serialization;
 
 namespace DotNetLab.Lab;
 
+/// <remarks>
+/// <para>
+/// Files under <c>https://ci.dot.net/</c> are published by official VMR builds
+/// (see the corresponding Maestro Promotion Build for the list of files being published).
+/// </para>
+/// </remarks>
 internal sealed class SdkDownloader(
     HttpClient client)
 {
@@ -46,9 +52,20 @@ internal sealed class SdkDownloader(
 
         async Task<CommitLink> getCommitAsync(string version)
         {
-            var url = $"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json";
+            return await tryGetCommitAsync($"https://ci.dot.net/public/Sdk/{version}/productCommit-win-x64.json")
+                ?? await tryGetCommitAsync($"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json")
+                ?? throw new InvalidOperationException($"Cannot find commit for .NET SDK version '{version}'.");
+        }
+
+        async Task<CommitLink?> tryGetCommitAsync(string url)
+        {
             using var response = await client.GetAsync(url.WithCorsProxy());
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
             var result = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.ProductCommit);
             return new() { Hash = result?.Sdk.Commit ?? "", RepoUrl = sdkRepoUrl };
         }
