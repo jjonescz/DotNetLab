@@ -27,7 +27,8 @@ internal sealed class SdkDownloader(
     private const string sourceManifestRelativePath = "src/source-manifest.json";
     private const string releasesIndexUrl = "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json";
 
-    private static readonly XmlSerializer versionDetailsSerializer = new(typeof(Dependencies));
+    private static XmlSerializer VersionDetailsSerializer => field ??= new(typeof(Dependencies));
+    private static XmlSerializer MergedManifestSerializer => field ??= new(typeof(MergedManifest));
 
     public async Task<List<SdkVersionInfo>> GetListAsync()
     {
@@ -76,7 +77,7 @@ internal sealed class SdkDownloader(
             using var response = await SendGitHubRequestAsync(url);
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
-            var dependencies = (Dependencies)versionDetailsSerializer.Deserialize(stream)!;
+            var dependencies = (Dependencies)VersionDetailsSerializer.Deserialize(stream)!;
 
             var roslynVersion = dependencies.GetVersion(roslynRepoUrl) ?? "";
             var razorVersion = dependencies.GetVersion(razorRepoUrl) ?? "";
@@ -99,6 +100,23 @@ internal sealed class SdkDownloader(
 
             var roslynVersion = manifest.GetRepo(roslynRepoUrl)?.PackageVersion ?? "";
             var razorVersion = manifest.GetRepo(razorRepoUrl)?.PackageVersion ?? "";
+
+            // PackageVersion fields are removed from newer source manifests.
+            // Try to get the info from MergedManifest.xml file instead.
+            if ((string.IsNullOrEmpty(roslynVersion) || string.IsNullOrEmpty(razorVersion)) &&
+                VersionUtil.TryGetBuildNumberFromVersionNumber(version, out var buildNumber))
+            {
+                var url = $"https://ci.dot.net/public/assets/manifests/dotnet-dotnet/{buildNumber}/MergedManifest.xml";
+                using var response = await client.GetAsync(url.WithCorsProxy());
+                if (response.IsSuccessStatusCode)
+                {
+                    using var stream = await response.Content.ReadAsStreamAsync();
+                    var mergedManifest = (MergedManifest)MergedManifestSerializer.Deserialize(stream)!;
+                    roslynVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Roslyn.PackageId)?.Version ?? roslynVersion;
+                    razorVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Razor.PackageId)?.Version ?? razorVersion;
+                }
+            }
+
             var sdkCommit = manifest.GetRepo(sdkRepoUrl)?.GetCommitLink();
             return new()
             {
@@ -167,6 +185,20 @@ public sealed class Dependencies
         public required string Uri { get; init; }
         [XmlAttribute]
         public required string Version { get; init; }
+    }
+}
+
+// Must be public for XmlSerializer.
+[XmlRoot("Build")]
+public sealed class MergedManifest
+{
+    [XmlElement(nameof(Package))]
+    public required List<Package> Packages { get; init; }
+
+    public sealed class Package
+    {
+        [XmlAttribute] public required string Id { get; init; }
+        [XmlAttribute] public required string Version { get; init; }
     }
 }
 

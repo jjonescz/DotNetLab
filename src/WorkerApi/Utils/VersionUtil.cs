@@ -76,4 +76,29 @@ public static partial class VersionUtil
         commitHash = null;
         return false;
     }
+
+    /// <summary>
+    /// The reverse of process described at <see href="https://github.com/dotnet/arcade/blob/b04e07acd1b58c16df6812e55946007fced80afe/Documentation/CorePackages/Versioning.md#package-version"/>.
+    /// </summary>
+    public static bool TryGetBuildNumberFromVersionNumber(string version, [NotNullWhen(returnValue: true)] out string? buildNumber)
+    {
+        var parts = version.Split('.');
+
+        if (parts.Length != 6)
+        {
+            buildNumber = null;
+            return false;
+        }
+
+        var n1 = int.Parse(parts[4]);
+        var n2 = int.Parse(parts[5]);
+        var yy = n1 / 1000;
+        n1 -= yy * 1000;
+        var mm = n1 / 50;
+        n1 -= mm * 50;
+        var dd = n1;
+        var r = n2 > 100 ? n2 - 100 : n2;
+        buildNumber = $"{2000 + yy}{mm:00}{dd:00}.{r}";
+        return true;
+    }
 }
