@@ -265,10 +265,11 @@ internal sealed class CorsClientHandler : HttpClientHandler
         if (nuGetDownloader.Options.LogRequests)
         {
             nuGetDownloader.Logger.LogDebug(
-                "Sent: {Method} {Uri}, Received: {Status}",
+                "Sent: {Method} {Uri}, Received: {Status} ({ReceivedSize} bytes)",
                 request.Method,
                 request.RequestUri,
-                response.StatusCode);
+                response.StatusCode,
+                (response.Content?.Headers.ContentLength ?? 0).SeparateThousands());
         }
 
         return response;
