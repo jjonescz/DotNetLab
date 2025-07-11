@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Collections.ObjectModel;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
@@ -17,12 +18,15 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 public sealed class Compiler(
+    ILogger<Compiler> logger,
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
 
         You can try selecting different Razor toolchain in Settings / Advanced.
         """;
+
+    private const string FileBasedProgramFeatureName = "FileBasedProgram";
 
     public static readonly string ConfigurationGlobalUsings = """
         global using DotNetLab;
@@ -31,6 +35,8 @@ public sealed class Compiler(
         global using Microsoft.CodeAnalysis.Emit;
         global using System;
         """;
+
+    private static readonly Lazy<FileLevelDirectiveParser> fileLevelDirectiveParser = new(static () => new());
 
     /// <summary>
     /// Reused for incremental source generation.
@@ -92,7 +98,7 @@ public sealed class Compiler(
         var referenceInfos = RefAssemblies.All;
 
         // If we have a configuration, compile and execute it.
-        Config.Reset();
+        Config.Instance.Reset();
         ImmutableArray<Diagnostic> configDiagnostics;
         ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
         if (compilationInput.Configuration is { } configuration)
@@ -124,14 +130,16 @@ public sealed class Compiler(
                 };
                 return getResult(configResult);
             }
-
-            parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
-            emitOptions = Config.ConfigureEmitOptions(emitOptions);
         }
         else
         {
             configDiagnostics = [];
         }
+
+        var directiveDiagnosticInputs = processDirectives();
+
+        parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
+        emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
@@ -173,7 +181,7 @@ public sealed class Compiler(
 
         options = CreateDefaultCompilationOptions(outputKind);
 
-        options = Config.ConfigureCSharpCompilationOptions(options);
+        options = Config.Instance.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
@@ -197,6 +205,7 @@ public sealed class Compiler(
         ICSharpCode.Decompiler.Metadata.PEFile? peFile = getPeFile(finalCompilation, out var emitDiagnostics);
 
         IEnumerable<Diagnostic> diagnostics = configDiagnostics
+            .Concat(processDirectiveDiagnostics())
             .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
             .Where(filterDiagnostic);
@@ -383,12 +392,14 @@ public sealed class Compiler(
 
         bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
+            var configurationParseOptions = parseOptions.WithFeatures(parseOptions.Features.Where(p => p.Key != FileBasedProgramFeatureName));
+
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
                 syntaxTrees:
                 [
-                    CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, "Configuration.cs", Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references:
                 [
@@ -796,13 +807,91 @@ public sealed class Compiler(
                 peFile,
                 new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
         }
+
+        IReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>> processDirectives()
+        {
+            try
+            {
+                var diagnostics = new Dictionary<InputCode, IReadOnlyList<(TextSpan, string)>>();
+
+                var context = new FileLevelDirective.ConsumerContext(Config.Instance);
+
+                var parser = fileLevelDirectiveParser.Value;
+
+                foreach (var input in compilationInput.Inputs.Value)
+                {
+                    if (!input.FileName.IsCSharpFileName(out _))
+                    {
+                        continue;
+                    }
+
+                    var directives = parser.Parse(input);
+                    context.Consume(directives);
+
+                    List<(TextSpan, string)>? fileDiagnostics = null;
+
+                    foreach (var directive in directives)
+                    {
+                        foreach (var error in directive.Info.Errors)
+                        {
+                            if (fileDiagnostics is null)
+                            {
+                                fileDiagnostics = new();
+                                diagnostics.Add(input, fileDiagnostics);
+                            }
+
+                            fileDiagnostics.Add((directive.Info.Span, error));
+                        }
+                    }
+                }
+
+                return diagnostics;
+            }
+            catch (Exception ex) when (ex is MissingMethodException or TypeLoadException)
+            {
+                // FileLevelDirectiveParser uses APIs which might not be available in old Roslyn versions.
+                // The whole compilation should not crash because of that.
+                logger.LogError(ex, "Cannot process file-level directives.");
+                return ReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>.Empty;
+            }
+        }
+
+        ImmutableArray<Diagnostic> processDirectiveDiagnostics()
+        {
+            var builder = ImmutableArray.CreateBuilder<Diagnostic>();
+
+            foreach (var (input, tree) in cSharpSources)
+            {
+                if (directiveDiagnosticInputs.TryGetValue(input, out var diagnostics))
+                {
+                    foreach (var (span, error) in diagnostics)
+                    {
+                        builder.Add(Diagnostic.Create(
+                            id: "LAB",
+                            category: "FileLevelDirective",
+                            message: error,
+                            DiagnosticSeverity.Warning,
+                            DiagnosticSeverity.Warning,
+                            isEnabledByDefault: true,
+                            warningLevel: 1,
+                            location: Location.Create(tree, span)));
+                    }
+                }
+            }
+
+            return builder.ToImmutable();
+        }
     }
 
     public static CSharpParseOptions CreateDefaultParseOptions()
     {
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         return new CSharpParseOptions(LanguageVersion.Preview)
-            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+            .WithFeatures(
+            [
+                new("use-roslyn-tokenizer", "true"),
+                new(FileBasedProgramFeatureName, "true"),
+            ]);
     }
 
     public static OutputKind GetDefaultOutputKind(IEnumerable<SyntaxTree> sources)

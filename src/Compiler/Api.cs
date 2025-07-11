@@ -5,37 +5,51 @@ namespace DotNetLab;
 
 public static class Config
 {
-    private static readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
-    private static readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
-    private static readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
+    internal static ConfigCollector Instance { get; } = new();
 
-    internal static void Reset()
+    public static void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
+        => Instance.CSharpParseOptions(configure);
+
+    public static void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
+        => Instance.CSharpCompilationOptions(configure);
+
+    public static void EmitOptions(Func<EmitOptions, EmitOptions> configure)
+        => Instance.EmitOptions(configure);
+}
+
+internal sealed class ConfigCollector : IConfig
+{
+    private readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
+    private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
+    private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
+
+    public void Reset()
     {
         cSharpParseOptions.Clear();
         cSharpCompilationOptions.Clear();
         emitOptions.Clear();
     }
 
-    public static void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
+    public void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
     {
         cSharpParseOptions.Add(configure);
     }
 
-    public static void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
+    public void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
     {
         cSharpCompilationOptions.Add(configure);
     }
 
-    public static void EmitOptions(Func<EmitOptions, EmitOptions> configure)
+    public void EmitOptions(Func<EmitOptions, EmitOptions> configure)
     {
         emitOptions.Add(configure);
     }
 
-    internal static CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
+    public CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
 
-    internal static CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
+    public CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
 
-    internal static EmitOptions ConfigureEmitOptions(EmitOptions options) => Configure(options, emitOptions);
+    public EmitOptions ConfigureEmitOptions(EmitOptions options) => Configure(options, emitOptions);
 
     private static T Configure<T>(T options, List<Func<T, T>> configureList)
     {
@@ -46,4 +60,11 @@ public static class Config
 
         return options;
     }
+}
+
+internal interface IConfig
+{
+    void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure);
+    void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
+    void EmitOptions(Func<EmitOptions, EmitOptions> configure);
 }

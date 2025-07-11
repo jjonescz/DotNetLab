@@ -6,8 +6,11 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
-public static class Util
+public static partial class Util
 {
+    [GeneratedRegex("""\s+""")]
+    public static partial Regex Whitespace { get; }
+
     extension(AsyncEnumerable)
     {
         public static IAsyncEnumerable<T> Create<T>(T item)
@@ -41,6 +44,14 @@ public static class Util
             {
                 ArrayList.Adapter((IList)list).Sort((IComparer)comparer);
             }
+        }
+    }
+    
+    extension(ReadOnlySpan<char> span)
+    {
+        public Regex.ValueSplitEnumerator SplitByWhitespace(int count)
+        {
+            return Whitespace.EnumerateSplits(span, count);
         }
     }
 

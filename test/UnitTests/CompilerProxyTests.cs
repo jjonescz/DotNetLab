@@ -237,6 +237,61 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             }
         }
     }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_Configuration(bool debug)
+    {
+        var services = WorkerServices.CreateTest();
+
+        var source = $"""
+            #:property Configuration={(debug ? "Debug" : "Release")}
+            System.Console.WriteLine("Hi");
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var ilText = await compiled.GetRequiredGlobalOutput("il").GetTextAsync(null);
+        output.WriteLine(ilText);
+        Action<string, string> assert = debug ? Assert.Contains : Assert.DoesNotContain;
+        assert("nop", ilText);
+    }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_LangVersion(bool old)
+    {
+        var services = WorkerServices.CreateTest();
+
+        var source = $"""
+            #:property LangVersion={(old ? "12" : "13")}
+            class C<T> where T : allows ref struct;
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+
+        if (old)
+        {
+            Assert.Equal("""
+                // /Input.cs(2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                // class C<T> where T : allows ref struct;
+                Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        else
+        {
+            Assert.Empty(diagnosticsText);
+        }
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler

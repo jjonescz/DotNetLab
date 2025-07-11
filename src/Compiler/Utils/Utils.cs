@@ -19,6 +19,16 @@ public static class CodeAnalysisUtil
         public static EmitOptions Default => DefaultEmitOptions;
     }
 
+    extension(SourceText text)
+    {
+#pragma warning disable RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental
+        public SyntaxTokenParser CreateTokenizer()
+        {
+            return SyntaxFactory.CreateTokenParser(text, Compiler.CreateDefaultParseOptions());
+        }
+#pragma warning restore RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental
+    }
+
     public static bool TryGetHostOutputSafe(
         this GeneratorRunResult result,
         string key,
