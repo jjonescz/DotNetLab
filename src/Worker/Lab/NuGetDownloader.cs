@@ -247,7 +247,10 @@ internal sealed class CorsClientHandler : HttpClientHandler
     public CorsClientHandler(NuGetDownloader nuGetDownloader)
     {
         this.nuGetDownloader = nuGetDownloader;
-        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        if (!OperatingSystem.IsBrowser())
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        }
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
