@@ -39,6 +39,23 @@ public sealed class Compiler(
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
 
+    internal static ICSharpCode.Decompiler.DecompilerSettings DefaultCSharpDecompilerSettings => field ??= new(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1)
+    {
+        ArrayInitializers = false,
+        AutomaticEvents = false,
+        DecimalConstants = false,
+        DoWhileStatement = false,
+        FixedBuffers = false,
+        ForEachStatement = false,
+        ForStatement = false,
+        LockStatement = false,
+        SparseIntegerSwitch = false,
+        StringConcat = false,
+        SwitchOnReadOnlySpanChar = false,
+        SwitchStatementOnString = false,
+        UsingStatement = false,
+    };
+
     public CompiledAssembly Compile(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
@@ -701,7 +718,7 @@ public sealed class Compiler(
             }
 
             var typeSystem = await getCSharpDecompilerTypeSystemAsync(peFile);
-            var settings = getCSharpDecompilerSettings();
+            var settings = DefaultCSharpDecompilerSettings;
             var decompiler = new ICSharpCode.Decompiler.CSharp.CSharpDecompiler(typeSystem, settings);
 
             var output = new StringWriter();
@@ -770,7 +787,7 @@ public sealed class Compiler(
         {
             return new ICSharpCode.Decompiler.CSharp.CSharpDecompiler(
                 await getCSharpDecompilerTypeSystemAsync(peFile),
-                getCSharpDecompilerSettings());
+                DefaultCSharpDecompilerSettings);
         }
 
         async Task<ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem> getCSharpDecompilerTypeSystemAsync(ICSharpCode.Decompiler.Metadata.PEFile peFile)
@@ -778,11 +795,6 @@ public sealed class Compiler(
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
                 new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
-        }
-
-        static ICSharpCode.Decompiler.DecompilerSettings getCSharpDecompilerSettings()
-        {
-            return new ICSharpCode.Decompiler.DecompilerSettings(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1);
         }
     }
 
