@@ -67,7 +67,7 @@ internal sealed class NuGetDownloaderPlugin(
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly SourceCacheContext cacheContext;
-    private readonly ImmutableArray<(AsyncLazy<FindPackageByIdResource> Resource, bool NuGetOrg)> findPackageByIds;
+    private readonly ImmutableArray<SourceRepository> repositories;
 
     public NuGetDownloader(
         IOptions<NuGetDownloaderOptions> options,
@@ -84,16 +84,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             new(() => new ServiceIndexResourceV3Provider()),
             new(() => new RemoteV3FindPackageByIdResourceProvider()),
         ];
-        IEnumerable<(string Url, bool NuGetOrg)> sources =
+        IEnumerable<string> sources =
         [
-            ("https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json", false),
-            ("https://api.nuget.org/v3/index.json", true),
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
+            "https://api.nuget.org/v3/index.json",
         ];
-        var repositories = sources.Select(t =>
-            (Source: Repository.CreateSource(providers, t.Url), t.NuGetOrg));
+        repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
         cacheContext = new SourceCacheContext();
-        findPackageByIds = repositories.SelectAsArray(t =>
-            (new AsyncLazy<FindPackageByIdResource>(() => t.Source.GetResourceAsync<FindPackageByIdResource>()), t.NuGetOrg));
     }
 
     public NuGetDownloaderOptions Options { get; }
@@ -104,18 +101,17 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
     {
-        ((FindPackageByIdResource Resource, bool NuGetOrg)? Finder, NuGetVersion version) result;
+        (SourceRepository? Repository, NuGetVersion version) result;
         if (specifier is CompilerVersionSpecifier.NuGetLatest)
         {
-            var versions = findPackageByIds.ToAsyncEnumerable()
-                .SelectAsync(static async t => (Resource: await t.Resource, t.NuGetOrg))
-                .SelectManyAsync(t =>
-                    t.Resource.GetAllVersionsAsync(
+            var versions = repositories.ToAsyncEnumerable()
+                .SelectManyAsync(async repository =>
+                    await (await repository.GetResourceAsync<FindPackageByIdResource>()).GetAllVersionsAsync(
                         info.PackageId,
                         cacheContext,
                         NullLogger.Instance,
                         CancellationToken.None),
-                (t, version) => (t, version));
+                static (repository, version) => (repository, version));
             result = await versions.FirstOrNullAsync() ??
                 throw new InvalidOperationException($"Package '{info.PackageId}' not found.");
         }
@@ -130,23 +126,23 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         var package = new NuGetDownloadablePackage(specifier, info.PackageFolder, async () =>
         {
-            var (finder, version) = result;
+            var (repo, version) = result;
 
-            var finders = finder is { } f
-                ? AsyncEnumerable.Create(f)
-                : findPackageByIds.ToAsyncEnumerable().SelectAsync(async t => (Resource: await t.Resource, t.NuGetOrg));
+            var repos = repo is { } r
+                ? AsyncEnumerable.Create(r)
+                : repositories.ToAsyncEnumerable();
 
             var stream = new MemoryStream();
-            var success = await finders.SelectAsync(async (f) =>
+            var success = await repos.SelectAsync(async (repository) =>
             {
-                bool success = await f.Resource.CopyNupkgToStreamAsync(
+                bool success = await (await repository.GetResourceAsync<FindPackageByIdResource>()).CopyNupkgToStreamAsync(
                     info.PackageId,
                     version,
                     stream,
                     cacheContext,
                     NullLogger.Instance,
                     CancellationToken.None);
-                return (Success: success, f.NuGetOrg);
+                return (Repository: repository, Success: success);
             })
             .FirstOrNullAsync(static t => t.Success);
 
@@ -156,7 +152,11 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     $"Failed to download '{info.PackageId}' version '{version}'.");
             }
 
-            return new() { Stream = stream, FromNuGetOrg = s.NuGetOrg };
+            return new()
+            {
+                Stream = stream,
+                FromNuGetOrg = s.Repository.PackageSource.SourceUri.Host == "api.nuget.org",
+            };
         });
 
         return new()
