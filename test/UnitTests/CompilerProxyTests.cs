@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
 
@@ -179,6 +180,62 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
         output.WriteLine(htmlText);
         Assert.Equal("<div>42</div>", htmlText);
+    }
+
+    [Fact]
+    public void DefaultCSharpDecompilerSettings()
+    {
+        var settings = Compiler.DefaultCSharpDecompilerSettings;
+
+        // All properties except few should be false.
+        var trueProperties = new List<string>();
+        foreach (var property in settings.GetType().GetProperties())
+        {
+            // Skip known non-boolean properties.
+            if (property.Name == nameof(settings.CSharpFormattingOptions))
+            {
+                continue;
+            }
+
+            Assert.Equal(typeof(bool), property.PropertyType);
+            var value = (bool)property.GetValue(settings)!;
+            if (value) trueProperties.Add(property.Name);
+        }
+
+        HashSet<string> expectedTrueProperties =
+        [
+            "AlwaysUseBraces",
+            "UsingDeclarations",
+            "UseDebugSymbols",
+            "ShowXmlDocumentation",
+            "DecompileMemberBodies",
+            "AssumeArrayLengthFitsIntoInt32",
+            "IntroduceIncrementAndDecrement",
+            "MakeAssignmentExpressions",
+            "ThrowOnAssemblyResolveErrors",
+            "ApplyWindowsRuntimeProjections",
+            "AutoLoadAssemblyReferences",
+            "UseSdkStyleProjectFormat",
+        ];
+
+        trueProperties.RemoveAll(expectedTrueProperties.Remove);
+
+        assertEmpty(trueProperties);
+        assertEmpty(expectedTrueProperties);
+
+        static void assertEmpty(ICollection<string> collection,
+            [CallerArgumentExpression(nameof(collection))] string e = "collection")
+        {
+            if (collection.Count > 0)
+            {
+                var text = collection
+                    .Select(p => $"""
+                    "{p}"
+                    """)
+                    .JoinToString(", ");
+                Assert.Fail($"Unexpected items in {e} ({collection.Count}): {text}");
+            }
+        }
     }
 }
 
