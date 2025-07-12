@@ -22,6 +22,12 @@ internal sealed class LanguageServicesClient(
 
     public bool Enabled => completionProvider != null;
 
+    private static void Cancel(ref DebounceInfo info)
+    {
+        info.CancellationTokenSource.Cancel();
+        info = new DebounceInfo(new CancellationTokenSource());
+    }
+
     private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
@@ -50,11 +56,11 @@ internal sealed class LanguageServicesClient(
         }
     }
 
-    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, Task> handler, Action<Exception> errorHandler)
+    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, CancellationToken, Task> handler, Action<Exception> errorHandler)
     {
         DebounceAsync(ref info, (args, handler), 0, static async (args, cancellationToken) =>
         {
-            await args.handler(args.args);
+            await args.handler(args.args, cancellationToken);
             return 0;
         },
         CancellationToken.None)
@@ -207,6 +213,14 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
+    /// <summary>
+    /// Call this to prevent in-flight diagnostics requests from completing.
+    /// </summary>
+    public void CancelDiagnostics()
+    {
+        Cancel(ref diagnosticsDebounce);
+    }
+
     private void UpdateDiagnostics()
     {
         if (currentModelUrl == null ||
@@ -216,11 +230,12 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
-        Debounce(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), static async args =>
+        Debounce(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), static async (args, cancellationToken) =>
         {
             var (worker, jsRuntime, currentModelUrl) = args;
             var markers = await worker.GetDiagnosticsAsync(currentModelUrl);
             var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
+            cancellationToken.ThrowIfCancellationRequested();
             await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
         },
         (ex) =>
