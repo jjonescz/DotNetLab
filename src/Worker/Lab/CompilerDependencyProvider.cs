@@ -19,7 +19,7 @@ internal sealed class CompilerDependencyProvider(
         var dependency = loaded.TryGetValue(compilerKind, out var result)
             ? result.Loaded
             : builtInProvider.GetBuiltInDependency(compilerKind);
-        return await dependency.Info();
+        return await dependency.Info.Value;
     }
 
     /// <returns>
@@ -45,7 +45,7 @@ internal sealed class CompilerDependencyProvider(
         var task = findOrThrowAsync();
 
         // First update the dependency registry so compilation does not start before the search completes.
-        dependencyRegistry.Set(info, async () => await (await task).Assemblies());
+        dependencyRegistry.Set(info, async () => await (await task).Assemblies.Value);
 
         await task;
 
@@ -132,13 +132,13 @@ internal sealed class BuiltInCompilerProvider : ICompilerDependencyResolver
             var info = CompilerInfo.For(compilerKind);
             return new()
             {
-                Info = () => Task.FromResult(new CompilerDependencyInfo(assemblyName: info.AssemblyNames[0],
+                Info = new(() => Task.FromResult(new CompilerDependencyInfo(assemblyName: info.AssemblyNames[0],
                     versionLink: (d) => SimpleNuGetUtil.GetPackageDetailUrl(packageId: info.PackageId, version: d.Version, fromNuGetOrg: false))
                 {
                     VersionSpecifier = specifier,
                     Configuration = BuildConfiguration.Release,
-                }),
-                Assemblies = () => Task.FromResult(ImmutableArray<LoadedAssembly>.Empty),
+                })),
+                Assemblies = new(() => Task.FromResult(ImmutableArray<LoadedAssembly>.Empty)),
             };
         }
     }
@@ -172,6 +172,6 @@ internal sealed class CompilerDependencyUserInput
 
 internal sealed class CompilerDependency
 {
-    public required Func<Task<CompilerDependencyInfo>> Info { get; init; }
-    public required Func<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
+    public required Lazy<Task<CompilerDependencyInfo>> Info { get; init; }
+    public required Lazy<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
 }

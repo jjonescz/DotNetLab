@@ -79,7 +79,7 @@ internal sealed class AzDoDownloader(
         {
             return new()
             {
-                Info = () => Task.FromResult(new CompilerDependencyInfo(
+                Info = new(() => Task.FromResult(new CompilerDependencyInfo(
                     version: build.BuildNumber,
                     commitHash: build.SourceVersion,
                     repoUrl: info.RepositoryUrl)
@@ -90,8 +90,8 @@ internal sealed class AzDoDownloader(
                     VersionSpecifier = specifier,
                     Configuration = configuration,
                     CanChangeBuildConfiguration = true,
-                }),
-                Assemblies = () => getAssembliesAsync(buildId: build.Id),
+                })),
+                Assemblies = new(() => getAssembliesAsync(buildId: build.Id)),
             };
         }
 

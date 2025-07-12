@@ -203,7 +203,7 @@ public static class Util
         return string.Join(separator, source.Select(x => $"{quote}{x}{quote}"));
     }
 
-    public static async IAsyncEnumerable<TResult> SelectAsync<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)
+    public static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)
     {
         await foreach (var item in source)
         {
@@ -241,7 +241,7 @@ public static class Util
         return results.DrainToImmutable();
     }
 
-    public static async IAsyncEnumerable<TResult> SelectManyAsync<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
+    public static async IAsyncEnumerable<TResult> SelectMany<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
     {
         await foreach (var item in source)
         {
@@ -280,6 +280,17 @@ public static class Util
         foreach (var item in source)
         {
             if (selector(item) is TResult result)
+            {
+                yield return result;
+            }
+        }
+    }
+
+    public static async IAsyncEnumerable<TResult> SelectNonNull<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult?>> selector)
+    {
+        await foreach (var item in source)
+        {
+            if (await selector(item) is TResult result)
             {
                 yield return result;
             }
