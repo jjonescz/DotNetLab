@@ -37,3 +37,8 @@ public readonly struct RefAssembly
     public required string FileName { get; init; }
     public required ImmutableArray<byte> Bytes { get; init; }
 }
+
+public interface IRefAssemblyDownloader
+{
+    Task<ImmutableArray<RefAssembly>> DownloadAsync(ReadOnlyMemory<char> targetFramework);
+}

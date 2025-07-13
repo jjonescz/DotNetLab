@@ -18,6 +18,7 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 public sealed class Compiler(
+    IServiceProvider services,
     ILogger<Compiler> logger,
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
@@ -62,7 +63,7 @@ public sealed class Compiler(
         UsingStatement = false,
     };
 
-    public CompiledAssembly Compile(
+    public async ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -76,12 +77,12 @@ public sealed class Compiler(
             }
         }
 
-        var result = CompileNoCache(input, assemblies, builtInAssemblies, alc);
+        var result = await CompileNoCacheAsync(input, assemblies, builtInAssemblies, alc);
         LastResult = (input, result);
         return result.CompiledAssembly;
     }
 
-    private LiveCompilationResult CompileNoCache(
+    private async ValueTask<LiveCompilationResult> CompileNoCacheAsync(
         CompilationInput compilationInput,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -94,8 +95,11 @@ public sealed class Compiler(
         CSharpCompilationOptions? options = null;
         EmitOptions emitOptions = EmitOptions.Default;
 
-        var references = RefAssemblyMetadata.All;
-        var referenceInfos = RefAssemblies.All;
+        var references = new RefAssemblyList
+        {
+            Metadata = RefAssemblyMetadata.All,
+            Assemblies = RefAssemblies.All,
+        };
 
         // If we have a configuration, compile and execute it.
         Config.Instance.Reset();
@@ -136,10 +140,11 @@ public sealed class Compiler(
             configDiagnostics = [];
         }
 
-        var directiveDiagnosticInputs = processDirectives();
+        var directiveDiagnosticInputs = await processDirectivesAsync();
 
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
+        references = Config.Instance.ConfigureReferences(references);
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
@@ -403,7 +408,7 @@ public sealed class Compiler(
                 ],
                 references:
                 [
-                    ..references,
+                    ..references.Metadata,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
                 options: CreateConfigurationCompilationOptions());
@@ -419,7 +424,7 @@ public sealed class Compiler(
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
                 var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
                 [
-                    ..references,
+                    ..references.Metadata,
                     ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ]);
                 emitStream = getEmitStream(configCompilationWithBuiltInReferences, out var diagnosticsWithBuiltInReferences);
@@ -475,7 +480,7 @@ public sealed class Compiler(
             var initialCompilation = CSharpCompilation.Create(
                 assemblyName: projectName,
                 syntaxTrees: cSharpSources.Select(static s => s.SyntaxTree),
-                references: references,
+                references: references.Metadata,
                 options: options);
 
             if (generatorDriver is null)
@@ -540,12 +545,12 @@ public sealed class Compiler(
                     }),
                     .. cSharpSyntaxTrees,
                 ],
-                references,
+                references.Metadata,
                 options);
 
             // Phase 2: Full generation.
             var projectEngine = createProjectEngine([
-                .. references,
+                .. references.Metadata,
                 declarationCompilation.ToMetadataReference()
             ]);
             var allRazorDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
@@ -571,7 +576,7 @@ public sealed class Compiler(
                     }),
                     .. cSharpSyntaxTrees,
                 ],
-                references,
+                references.Metadata,
                 options);
 
             return (finalCompilation, allRazorDiagnostics.ToImmutable());
@@ -805,16 +810,20 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies));
         }
 
-        IReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>> processDirectives()
+        async ValueTask<IReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>> processDirectivesAsync()
         {
             try
             {
                 var diagnostics = new Dictionary<InputCode, IReadOnlyList<(TextSpan, string)>>();
 
-                var context = new FileLevelDirective.ConsumerContext(Config.Instance);
+                var context = new FileLevelDirective.ConsumerContext
+                {
+                    Services = services,
+                    Config = Config.Instance,
+                };
 
                 var parser = fileLevelDirectiveParser.Value;
 
@@ -826,7 +835,7 @@ public sealed class Compiler(
                     }
 
                     var directives = parser.Parse(input);
-                    context.Consume(directives);
+                    await context.ConsumeAsync(directives);
 
                     List<(TextSpan, string)>? fileDiagnostics = null;
 

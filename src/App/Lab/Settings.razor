@@ -254,7 +254,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     </span>
     ;
 
-    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, CompilerDependencyInfo? Info, string? Error)> Info = (arg) =>@<div>
+    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, PackageDependencyInfo? Info, string? Error)> Info = (arg) =>@<div>
         @if (arg.Info != null)
         {
             <FluentLabel>
@@ -297,7 +297,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
     private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
-    private CompilerDependencyInfo? roslynInfo, razorInfo;
+    private PackageDependencyInfo? roslynInfo, razorInfo;
     private string? sdkError, roslynError, razorError;
     private bool checkedForUpdates;
 
@@ -585,7 +585,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await LoadSdkInfoAsync();
     }
 
-    private async Task<(CompilerDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
+    private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
         CompilerKind compilerKind,
         string? versionToLoad,
         BuildConfiguration configuration)

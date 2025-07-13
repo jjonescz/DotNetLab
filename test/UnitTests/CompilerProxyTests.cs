@@ -292,6 +292,45 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             Assert.Empty(diagnosticsText);
         }
     }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_TargetFramework(bool fx)
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = $$"""
+            #:property TargetFramework={{(fx ? "net472" : "net9.0")}}
+            class C
+            {
+                string M(string? x)
+                {
+                    System.Diagnostics.Debug.Assert(x != null);
+                    return x;
+                }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+
+        // .NET Framework does not have nullable-annotated `Debug.Assert` API.
+        if (fx)
+        {
+            Assert.Equal("""
+                // /Input.cs(7,16): warning CS8603: Possible null reference return.
+                //         return x;
+                Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        else
+        {
+            Assert.Empty(diagnosticsText);
+        }
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler

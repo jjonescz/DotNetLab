@@ -13,19 +13,38 @@ using System.Runtime.InteropServices;
 
 namespace DotNetLab.Lab;
 
-public static class NuGetUtil
+internal static class NuGetUtil
 {
     extension(PackageSource packageSource)
     {
         public bool IsNuGetOrg => packageSource.SourceUri.Host == "api.nuget.org";
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, string folder)
+    extension(VersionRange range)
+    {
+        public bool IsExact([NotNullWhen(returnValue: true)] out NuGetVersion? exactVersion)
+        {
+            if (range.HasLowerAndUpperBounds &&
+                range.MinVersion == range.MaxVersion &&
+                range.IsMinInclusive &&
+                range.IsMaxInclusive &&
+                range.MinVersion != null)
+            {
+                exactVersion = range.MinVersion;
+                return true;
+            }
+
+            exactVersion = null;
+            return false;
+        }
+    }
+
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, INuGetDllFilter dllFilter)
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
         return reader.GetFiles()
-            .Where(file => FilterNupkgFile(file, folder))
+            .Where(dllFilter.Include)
             .Select(file =>
             {
                 ZipArchiveEntry entry = reader.GetEntry(file);
@@ -43,23 +62,10 @@ public static class NuGetUtil
             .ToImmutableArray();
     }
 
-    private static bool FilterNupkgFile(string file, string folder)
-    {
-        const string dllExtension = ".dll";
-
-        // Get only DLL files directly in the specified folder
-        // and starting with `Microsoft.`.
-        return file.EndsWith(dllExtension, StringComparison.OrdinalIgnoreCase) &&
-            file.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
-            file.LastIndexOf('/') is int lastSlashIndex &&
-            lastSlashIndex == folder.Length &&
-            file.AsSpan(lastSlashIndex + 1).StartsWith("Microsoft.", StringComparison.Ordinal);
-    }
-
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, string folder)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, INuGetDllFilter dllFilter)
     {
         return await zipDirectory.Entries
-            .Where(entry => FilterNupkgFile(entry.GetName(), folder))
+            .Where(entry => dllFilter.Include(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
             {
                 var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
@@ -77,7 +83,7 @@ internal sealed class NuGetDownloaderPlugin(
     Lazy<NuGetDownloader> nuGetDownloader)
     : ICompilerDependencyResolver
 {
-    public Task<CompilerDependency?> TryResolveCompilerAsync(
+    public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
@@ -87,7 +93,7 @@ internal sealed class NuGetDownloaderPlugin(
             return nuGetDownloader.Value.TryResolveCompilerAsync(info, specifier, configuration);
         }
 
-        return Task.FromResult<CompilerDependency?>(null);
+        return Task.FromResult<PackageDependency?>(null);
     }
 }
 
@@ -129,39 +135,63 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     public NuGetDownloaderOptions Options { get; }
     public ILogger<NuGetDownloader> Logger { get; }
 
-    public async Task<CompilerDependency?> TryResolveCompilerAsync(
-        CompilerInfo info,
-        CompilerVersionSpecifier specifier,
-        BuildConfiguration configuration)
+    /// <param name="version">Package version or range.</param>
+    public Task<PackageDependency> DownloadAsync(
+        string packageId,
+        string version,
+        INuGetDllFilter dllFilter)
     {
-        (SourceRepository? Repository, NuGetVersion Version) result;
-        if (specifier is CompilerVersionSpecifier.NuGetLatest)
+        if (!VersionRange.TryParse(version, out var range))
         {
-            var results = repositories.ToAsyncEnumerable()
-                .SelectMany(async repository =>
-                    await (await repository.GetResourceAsync<FindPackageByIdResource>()).GetAllVersionsAsync(
-                        info.PackageId,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None),
-                static (repository, version) => (repository, version));
-            result = await results.FirstOrNullAsync() ??
-                throw new InvalidOperationException($"Package '{info.PackageId}' not found.");
+            throw new InvalidOperationException($"Cannot parse version range '{version}' of package '{packageId}'.");
         }
-        else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
+
+        return DownloadAsync(packageId, range, dllFilter);
+    }
+
+    public async Task<PackageDependency> DownloadAsync(
+        string packageId,
+        VersionRange range,
+        INuGetDllFilter dllFilter)
+    {
+        SourceRepository? repository;
+        if (range.IsExact(out var exactVersion))
         {
-            result = (null, nuGetSpecifier.Version);
+            repository = null;
         }
         else
         {
-            return null;
+            // NOTE: The first source feed that has a matching version wins. That is to save on HTTP requests.
+            var results = repositories.ToAsyncEnumerable()
+                .Select(async repository =>
+                {
+                    var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+                    var versions = await findPackageById.GetAllVersionsAsync(
+                        packageId,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None);
+                    return (repository, Version: range.FindBestMatch(versions));
+                })
+                .Where(t => t.Version != null);
+            var result = await results.FirstOrNullAsync() ??
+                throw new InvalidOperationException($"Package '{packageId}' not found.");
+            repository = result.repository;
+            exactVersion = result.Version;
         }
 
-        var package = new NuGetDownloadablePackage(specifier, info.PackageFolder, async () =>
-        {
-            var (repo, version) = result;
+        return Download(packageId, repository, exactVersion, dllFilter);
+    }
 
-            var repos = repo is { } r
+    public PackageDependency Download(
+        string packageId,
+        SourceRepository? repository,
+        NuGetVersion version,
+        INuGetDllFilter dllFilter)
+    {
+        var package = new NuGetDownloadablePackage(dllFilter, async () =>
+        {
+            var repos = repository is { } r
                 ? AsyncEnumerable.Create(r)
                 : repositories.ToAsyncEnumerable();
 
@@ -169,7 +199,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             {
                 var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
                 var dep = await depResource.ResolvePackage(
-                    new PackageIdentity(info.PackageId, version),
+                    new PackageIdentity(packageId, version),
                     NuGet.Frameworks.NuGetFramework.AnyFramework,
                     cacheContext,
                     NullLogger.Instance,
@@ -192,7 +222,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                         nupkgStream = new MemoryStream();
                         var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
                         await findPackageById.CopyNupkgToStreamAsync(
-                            info.PackageId,
+                            packageId,
                             version,
                             nupkgStream,
                             cacheContext,
@@ -215,7 +245,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             if (success is not { } s)
             {
                 throw new InvalidOperationException(
-                    $"Failed to download '{info.PackageId}' version '{version}'.");
+                    $"Failed to download '{packageId}' version '{version}'.");
             }
 
             return s;
@@ -226,6 +256,25 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             Info = new(package.GetInfoAsync),
             Assemblies = new(package.GetAssembliesAsync),
         };
+    }
+
+    public async Task<PackageDependency?> TryResolveCompilerAsync(
+        CompilerInfo info,
+        CompilerVersionSpecifier specifier,
+        BuildConfiguration configuration)
+    {
+        if (specifier is CompilerVersionSpecifier.NuGetLatest)
+        {
+            return await DownloadAsync(info.PackageId, VersionRange.All, new CompilerNuGetDllFilter(info.PackageFolder));
+        }
+        else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
+        {
+            return Download(info.PackageId, null, nuGetSpecifier.Version, new CompilerNuGetDllFilter(info.PackageFolder));
+        }
+        else
+        {
+            return null;
+        }
     }
 }
 
@@ -253,14 +302,49 @@ internal sealed class NuGetDownloadablePackageResult
     }
 }
 
+internal interface INuGetDllFilter
+{
+    bool Include(string filePath);
+}
+
+internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
+{
+    public bool Include(string filePath)
+    {
+        const string dllExtension = ".dll";
+
+        // Get only DLL files directly in the specified folder
+        // and starting with `Microsoft.`.
+        return filePath.EndsWith(dllExtension, StringComparison.OrdinalIgnoreCase) &&
+            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.LastIndexOf('/') is int lastSlashIndex &&
+            lastSlashIndex == folder.Length &&
+            filePath.AsSpan(lastSlashIndex + 1).StartsWith("Microsoft.", StringComparison.Ordinal);
+    }
+}
+
+internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : INuGetDllFilter
+{
+    public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
+
+    public bool Include(string filePath)
+    {
+        const string dllExtension = ".dll";
+
+        return filePath.EndsWith(dllExtension, StringComparison.OrdinalIgnoreCase) &&
+            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.Count('/') == level &&
+            AdditionalFilter(filePath);
+    }
+}
+
 internal sealed class NuGetDownloadablePackage(
-    CompilerVersionSpecifier specifier,
-    string folder,
+    INuGetDllFilter dllFilter,
     Func<Task<NuGetDownloadablePackageResult>> resultFactory)
 {
     private readonly AsyncLazy<NuGetDownloadablePackageResult> result = new(resultFactory);
 
-    public async Task<CompilerDependencyInfo> GetInfoAsync()
+    public async Task<PackageDependencyInfo> GetInfoAsync()
     {
         var result = await this.result;
         var nuspecReader = await result.GetNuspecReaderAsync();
@@ -276,7 +360,6 @@ internal sealed class NuGetDownloadablePackage(
                 packageId: identity.Id,
                 version: version,
                 fromNuGetOrg: result.DependencyInfo.Source.PackageSource.IsNuGetOrg),
-            VersionSpecifier = specifier,
             Configuration = BuildConfiguration.Release,
         };
     }
@@ -286,12 +369,12 @@ internal sealed class NuGetDownloadablePackage(
         var result = await this.result;
         if (result.Zip is { } zip)
         {
-            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, folder: folder);
+            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter);
         }
 
         Debug.Assert(result.NupkgStream != null);
         result.NupkgStream.Position = 0;
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(result.NupkgStream, folder: folder);
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(result.NupkgStream, dllFilter);
     }
 }
 
@@ -352,7 +435,7 @@ internal sealed class CorsClientHandler : HttpClientHandler
                 request.Method,
                 request.RequestUri,
                 response.StatusCode,
-                (response.Content?.Headers.ContentLength ?? 0).SeparateThousands());
+                response.Content?.Headers.ContentLength?.SeparateThousands() ?? "?");
         }
 
         return response;

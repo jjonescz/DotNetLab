@@ -22,12 +22,14 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
     private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
+    private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
 
     public void Reset()
     {
         cSharpParseOptions.Clear();
         cSharpCompilationOptions.Clear();
         emitOptions.Clear();
+        references.Clear();
     }
 
     public void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
@@ -45,11 +47,18 @@ internal sealed class ConfigCollector : IConfig
         emitOptions.Add(configure);
     }
 
+    public void References(Func<RefAssemblyList, RefAssemblyList> configure)
+    {
+        references.Add(configure);
+    }
+
     public CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
 
     public CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
 
     public EmitOptions ConfigureEmitOptions(EmitOptions options) => Configure(options, emitOptions);
+
+    public RefAssemblyList ConfigureReferences(RefAssemblyList options) => Configure(options, references);
 
     private static T Configure<T>(T options, List<Func<T, T>> configureList)
     {
@@ -67,4 +76,5 @@ internal interface IConfig
     void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure);
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);
+    void References(Func<RefAssemblyList, RefAssemblyList> configure);
 }

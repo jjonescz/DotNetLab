@@ -2,6 +2,8 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Collections.Frozen;
 
 namespace DotNetLab;
@@ -81,7 +83,7 @@ internal sealed class FileLevelDirectiveParser
         }
     }
 
-    private FileLevelDirective ParseOne(in FileLevelDirective.ParseInfo info)
+    private FileLevelDirective ParseOne(FileLevelDirective.ParseInfo info)
     {
         var lookup = Descriptors.GetAlternateLookup<ReadOnlySpan<char>>();
         if (lookup.TryGetValue(info.DirectiveKind.Span, out var descriptor))
@@ -103,11 +105,11 @@ internal interface IPairFileLevelDirective : IFileLevelDirective
     new static abstract FileLevelDirective.IPairDescriptor Descriptor { get; }
 }
 
-internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
+internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 {
-    public delegate FileLevelDirective Parser(in ParseInfo info);
+    public delegate FileLevelDirective Parser(ParseInfo info);
 
-    public delegate T Factory<out T, in TInput>(in ParseInfo info, TInput input);
+    public delegate T Factory<out T, in TInput>(ParseInfo info, TInput input);
 
     private class Descriptor : IDescriptor
     {
@@ -133,7 +135,7 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
         char Separator { get; }
     }
 
-    public readonly struct ParseInfo
+    public sealed class ParseInfo
     {
         public required TextSpan Span { get; init; }
         public required InputCode Input { get; init; }
@@ -142,48 +144,49 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
         public required List<string> Errors { get; init; }
     }
 
-    public readonly struct ConsumerContext(IConfig config)
+    public sealed class ConsumerContext
     {
-        public IConfig Config { get; } = config;
+        public required IServiceProvider Services { get; init; }
+        public required IConfig Config { get; init; }
 
-        public void Consume(ImmutableArray<FileLevelDirective> directives)
+        public async ValueTask ConsumeAsync(ImmutableArray<FileLevelDirective> directives)
         {
             foreach (var directive in directives)
             {
-                directive.Consume(this);
+                await directive.ConsumeAsync(this);
             }
         }
     }
 
     public readonly ParseInfo Info = info;
 
-    public abstract void Consume(in ConsumerContext context);
+    public abstract ValueTask ConsumeAsync(ConsumerContext context);
 
     public sealed class Unknown : FileLevelDirective
     {
-        private Unknown(in ParseInfo info) : base(info) { }
+        private Unknown(ParseInfo info) : base(info) { }
 
-        public static Unknown Create(in ParseInfo info)
+        public static Unknown Create(ParseInfo info)
         {
             info.Errors.Add($"Unrecognized directive '#:{info.DirectiveKind}'.");
             return new(info);
         }
 
-        public override void Consume(in ConsumerContext context) { }
+        public override ValueTask ConsumeAsync(ConsumerContext context) => default;
     }
 
-    public abstract class Named(in ParseInfo info) : FileLevelDirective(info)
+    public abstract class Named(ParseInfo info) : FileLevelDirective(info)
     {
         public required ReadOnlyMemory<char> Name { get; init; }
     }
 
-    public abstract class Pair<T>(in ParseInfo info) : Named(info), IFileLevelDirective where T : Pair<T>, IPairFileLevelDirective
+    public abstract class Pair<T>(ParseInfo info) : Named(info), IFileLevelDirective where T : Pair<T>, IPairFileLevelDirective
     {
-        public delegate void Consumer(in ConsumerContext context, in ParseInfo info, ReadOnlySpan<char> value);
+        public delegate ValueTask Consumer(ConsumerContext context, ParseInfo info, ReadOnlyMemory<char> value);
 
         public readonly struct ConsumerInfo
         {
-            public required Consumer Consumer { get; init; }
+            public required Consumer ConsumeAsync { get; init; }
             public required Func<ReadOnlySpan<char>, ImmutableArray<string>> SuggestValues { get; init; }
         }
 
@@ -191,7 +194,7 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
 
         public required ReadOnlyMemory<char> Value { get; init; }
 
-        protected static T Parse(in ParseInfo info, Factory<T, (ReadOnlyMemory<char> Name, ReadOnlyMemory<char> Value)> factory)
+        protected static T Parse(ParseInfo info, Factory<T, (ReadOnlyMemory<char> Name, ReadOnlyMemory<char> Value)> factory)
         {
             var parts = info.DirectiveText.Span.Split(T.Descriptor.Separator);
             var name = parts.MoveNext() ? info.DirectiveText[parts.Current].Trim() : default;
@@ -209,7 +212,7 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
         {
             return new(name, new()
             {
-                Consumer = consumer,
+                ConsumeAsync = consumer,
                 SuggestValues = suggestValues,
             });
         }
@@ -248,35 +251,69 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
             [
                 Create(
                     "Configuration",
-                    static (in context, in info, value) =>
+                    static (context, info, value) =>
                     {
-                        if (!Enum.TryParse<OptimizationLevel>(value, ignoreCase: true, out var result))
+                        if (!Enum.TryParse<OptimizationLevel>(value.Span, ignoreCase: true, out var result))
                         {
                             info.Errors.Add($"Invalid property value '{value}'.");
-                            return;
+                            return default;
                         }
 
                         context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(result));
+                        return default;
                     },
                     Constant(["Debug", "Release"])),
                 Create(
                     "LangVersion",
-                    static (in context, in info, value) =>
+                    static (context, info, value) =>
                     {
                         if (!LanguageVersionFacts.TryParse(value.ToString(), out var result))
                         {
                             info.Errors.Add($"Invalid property value '{value}'.");
-                            return;
+                            return default;
                         }
 
                         context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
+                        return default;
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().SelectAsArray(v => v.ToDisplayString()))),
+                Create(
+                    "TargetFramework",
+                    static async (context, info, value) =>
+                    {
+                        var downloader = context.Services.GetRequiredService<IRefAssemblyDownloader>();
+
+                        ImmutableArray<RefAssembly> assemblies;
+                        try
+                        {
+                            assemblies = await downloader.DownloadAsync(value);
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>()
+                                .LogError(ex, "Failed to download target framework '{TargetFramework}'.", value);
+                            info.Errors.Add($"Failed to download target framework '{value}': {ex.Message.GetFirstLine()}");
+                            return;
+                        }
+
+                        if (assemblies.IsEmpty)
+                        {
+                            info.Errors.Add($"No assemblies found for target framework '{value}'.");
+                            return;
+                        }
+
+                        context.Config.References(_ => new()
+                        {
+                            Metadata = RefAssemblyMetadata.Create(assemblies),
+                            Assemblies = assemblies,
+                        });
+                    },
+                    Constant([])),
             ]);
 
-        private Property(in ParseInfo info) : base(info) { }
+        private Property(ParseInfo info) : base(info) { }
 
-        private static Property Parse(in ParseInfo info) => Parse(info, static (in info, t) =>
+        private static Property Parse(ParseInfo info) => Parse(info, static (info, t) =>
         {
             return new(info)
             {
@@ -296,16 +333,17 @@ internal abstract class FileLevelDirective(in FileLevelDirective.ParseInfo info)
             return [];
         }
 
-        public override void Consume(in ConsumerContext context)
+        public override ValueTask ConsumeAsync(ConsumerContext context)
         {
             var lookup = Consumers.GetAlternateLookup<ReadOnlySpan<char>>();
             if (lookup.TryGetValue(Name.Span, out var consumerInfo))
             {
-                consumerInfo.Consumer(context, Info, Value.Span);
+                return consumerInfo.ConsumeAsync(context, Info, Value);
             }
             else
             {
                 Info.Errors.Add($"Unrecognized property name '{Name}'.");
+                return default;
             }
         }
     }

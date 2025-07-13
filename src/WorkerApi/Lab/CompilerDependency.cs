@@ -5,32 +5,31 @@ using System.Text.Json.Serialization;
 
 namespace DotNetLab.Lab;
 
-public sealed record CompilerDependencyInfo
+public sealed record PackageDependencyInfo
 {
     [JsonConstructor]
-    public CompilerDependencyInfo(string version, CommitLink commit)
+    public PackageDependencyInfo(string version, CommitLink commit)
     {
         Version = version;
         Commit = commit;
     }
 
-    private CompilerDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
+    private PackageDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
         : this(arg.Version, new CommitLink { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
     {
     }
 
-    public CompilerDependencyInfo(string version, string commitHash, string repoUrl)
+    public PackageDependencyInfo(string version, string commitHash, string repoUrl)
         : this((Version: version, CommitHash: commitHash, RepoUrl: repoUrl))
     {
     }
 
-    public CompilerDependencyInfo(string assemblyName, Func<CompilerDependencyInfo, string?>? versionLink = null)
+    public PackageDependencyInfo(string assemblyName, Func<PackageDependencyInfo, string?>? versionLink = null)
         : this(FromAssembly(assemblyName))
     {
         VersionLink = versionLink?.Invoke(this);
     }
 
-    public required CompilerVersionSpecifier VersionSpecifier { get; init; }
     public string Version { get; }
     public string? VersionLink { get; init; }
     public CommitLink Commit { get; }

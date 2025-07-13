@@ -6,7 +6,7 @@ namespace DotNetLab;
 
 public interface ICompiler
 {
-    CompiledAssembly Compile(
+    ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,

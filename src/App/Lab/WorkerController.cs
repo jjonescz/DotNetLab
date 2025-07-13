@@ -423,11 +423,11 @@ internal sealed class WorkerController : IAsyncDisposable
         deserializeAs: default(bool));
     }
 
-    public Task<CompilerDependencyInfo> GetCompilerDependencyInfoAsync(CompilerKind compilerKind)
+    public Task<PackageDependencyInfo> GetCompilerDependencyInfoAsync(CompilerKind compilerKind)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.GetCompilerDependencyInfo(compilerKind) { Id = messageId++ },
-            deserializeAs: default(CompilerDependencyInfo));
+            deserializeAs: default(PackageDependencyInfo));
     }
 
     public Task<List<SdkVersionInfo>> GetSdkVersionsAsync()
