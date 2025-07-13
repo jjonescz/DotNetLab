@@ -49,6 +49,7 @@ internal sealed class LanguageServices : ILanguageServices
         workspace = new(MefHostServices.Create(
             [
                 .. MefHostServices.DefaultAssemblies,
+                typeof(FileLevelDirectiveCompletionProvider).Assembly,
                 typeof(RoslynWorkspaceAccessors).Assembly,
             ]));
 

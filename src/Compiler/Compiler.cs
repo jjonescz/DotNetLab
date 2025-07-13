@@ -37,8 +37,6 @@ public sealed class Compiler(
         global using System;
         """;
 
-    private static readonly Lazy<FileLevelDirectiveParser> fileLevelDirectiveParser = new(static () => new());
-
     /// <summary>
     /// Reused for incremental source generation.
     /// </summary>
@@ -825,7 +823,7 @@ public sealed class Compiler(
                     Config = Config.Instance,
                 };
 
-                var parser = fileLevelDirectiveParser.Value;
+                var parser = FileLevelDirectiveParser.Instance;
 
                 foreach (var input in compilationInput.Inputs.Value)
                 {

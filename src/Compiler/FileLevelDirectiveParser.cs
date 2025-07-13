@@ -1,10 +1,13 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Frozen;
+using System.Composition;
 
 namespace DotNetLab;
 
@@ -13,9 +16,13 @@ namespace DotNetLab;
 /// </summary>
 internal sealed class FileLevelDirectiveParser
 {
+    private static readonly Lazy<FileLevelDirectiveParser> _instance = new(() => new());
+
+    public static FileLevelDirectiveParser Instance => _instance.Value;
+
     public FrozenDictionary<string, FileLevelDirective.IDescriptor> Descriptors { get; }
 
-    public FileLevelDirectiveParser()
+    private FileLevelDirectiveParser()
     {
         IEnumerable<FileLevelDirective.IDescriptor> descriptors =
         [
@@ -128,11 +135,13 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
     {
         string DirectiveKind { get; }
         Parser Parse { get; }
+        Func<ReadOnlySpan<char>, ImmutableArray<string>> SuggestNames { get; }
     }
 
     public interface IPairDescriptor : IDescriptor
     {
         char Separator { get; }
+        Func<ReadOnlySpan<char>, ReadOnlySpan<char>, ImmutableArray<string>> SuggestValues { get; }
     }
 
     public sealed class ParseInfo
@@ -380,5 +389,133 @@ internal sealed class NamedDirectiveComparer : IEqualityComparer<FileLevelDirect
         }
 
         return hash.ToHashCode();
+    }
+}
+
+[ExportCompletionProvider(nameof(FileLevelDirectiveCompletionProvider), LanguageNames.CSharp), Shared]
+[method: ImportingConstructor]
+[method: Obsolete("Importing constructor", error: true)]
+internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvider
+{
+    private static readonly ImmutableArray<string> keywordTags = [WellKnownTags.Keyword];
+    private static readonly ImmutableArray<string> propertyTags = [WellKnownTags.Property];
+
+    public override async Task ProvideCompletionsAsync(CompletionContext context)
+    {
+        var syntaxRoot = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        if (syntaxRoot is null)
+        {
+            return;
+        }
+
+        // Only continue if we are somewhere inside a `#:` directive.
+        var token = syntaxRoot.FindToken(context.CompletionListSpan.Start, findInsideTrivia: true);
+        if (token.Parent is not IgnoredDirectiveTriviaSyntax syntax)
+        {
+            return;
+        }
+
+        // Ignore requests before the colon token.
+        if (context.CompletionListSpan.Start <= syntax.ColonToken.SpanStart)
+        {
+            return;
+        }
+
+        var parser = FileLevelDirectiveParser.Instance;
+
+        // If we are at the end, move back to find the string literal token if there is any.
+        if (token.IsKind(SyntaxKind.EndOfDirectiveToken) && context.CompletionListSpan.Start > 0)
+        {
+            token = token.GetPreviousToken();
+        }
+
+        if (!token.IsKind(SyntaxKind.StringLiteralToken))
+        {
+            // We are just after `#:` and there is no text yet.
+            suggestKinds();
+            return;
+        }
+
+        var caretIndex = context.CompletionListSpan.Start - token.SpanStart;
+        var whitespaceIndex = getFirstWhitespaceIndex(token.Text);
+        if (caretIndex < whitespaceIndex)
+        {
+            // We are in directive kind territory.
+            suggestKinds();
+            return;
+        }
+
+        // We are in directive text territory.
+        var directiveKind = token.Text.AsSpan(0, whitespaceIndex);
+        var directiveText = token.Text.AsSpan(whitespaceIndex).TrimStart();
+        var directiveTextStart = token.Text.Length - directiveText.Length;
+
+        var lookup = parser.Descriptors.GetAlternateLookup<ReadOnlySpan<char>>();
+        if (lookup.TryGetValue(directiveKind, out var descriptor))
+        {
+            string? suffix;
+
+            if (descriptor is FileLevelDirective.IPairDescriptor pairDescriptor)
+            {
+                var separatorIndex = directiveText.IndexOf(pairDescriptor.Separator);
+                if (separatorIndex >= 0 && caretIndex > directiveTextStart + separatorIndex)
+                {
+                    // We are in directive value territory.
+                    var directiveName = directiveText[..separatorIndex];
+                    var directiveValue = directiveText[(separatorIndex + 1)..];
+
+                    // Suggest values.
+                    foreach (var value in pairDescriptor.SuggestValues(directiveName, directiveValue))
+                    {
+                        context.AddItem(CompletionItem.Create(value));
+                    }
+
+                    return;
+                }
+
+                suffix = pairDescriptor.Separator.ToString();
+            }
+            else
+            {
+                suffix = null;
+            }
+
+            // Suggest names.
+            foreach (var name in descriptor.SuggestNames(directiveText))
+            {
+                var item = CompletionItem.Create(name, tags: propertyTags);
+
+                if (suffix != null)
+                {
+                    item = item.WithInsertionText(name + suffix);
+                }
+
+                context.AddItem(item);
+            }
+
+            return;
+        }
+
+        return;
+
+        static int getFirstWhitespaceIndex(ReadOnlySpan<char> text)
+        {
+            var split = text.SplitByWhitespace(2);
+            if (split.MoveNext())
+            {
+                return split.Current.End.GetOffset(text.Length);
+            }
+
+            return text.Length;
+        }
+
+        void suggestKinds()
+        {
+            foreach (var kind in parser.Descriptors.Keys)
+            {
+                context.AddItem(CompletionItem.Create(kind, tags: keywordTags)
+                    .WithInsertionText(kind + " "));
+            }
+        }
     }
 }

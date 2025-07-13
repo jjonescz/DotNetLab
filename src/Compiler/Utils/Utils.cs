@@ -14,6 +14,21 @@ public static class CodeAnalysisUtil
 {
     private static EmitOptions DefaultEmitOptions => field ??= new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb);
 
+    extension(RoslynCompletionItem item)
+    {
+        public static string InsertionTextPropertyName => "InsertionText";
+
+        public RoslynCompletionItem WithProperty(string name, string value)
+        {
+            return item.WithProperties(item.Properties.SetItem(name, value));
+        }
+
+        public RoslynCompletionItem WithInsertionText(string value)
+        {
+            return item.WithProperty(RoslynCompletionItem.InsertionTextPropertyName, value);
+        }
+    }
+
     extension(EmitOptions)
     {
         public static EmitOptions Default => DefaultEmitOptions;
