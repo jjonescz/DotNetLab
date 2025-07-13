@@ -105,17 +105,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
 
-    public NuGetDownloader(
-        IOptions<NuGetDownloaderOptions> options,
-        ILogger<NuGetDownloader> logger)
+    public NuGetDownloader(CorsClientHandler corsClientHandler)
     {
-        Options = options.Value;
-        Logger = logger;
         ImmutableArray<Lazy<INuGetResourceProvider>> providers =
         [
             new(() => new RegistrationResourceV3Provider()),
             new(() => new DependencyInfoResourceV3Provider()),
-            new(() => new CustomHttpHandlerResourceV3Provider(this)),
+            new(() => new CustomHttpHandlerResourceV3Provider(corsClientHandler)),
             new(() => new HttpSourceResourceProvider()),
             new(() => new ServiceIndexResourceV3Provider()),
             new(() => new RemoteV3FindPackageByIdResourceProvider()),
@@ -129,12 +125,9 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
         cacheContext = new SourceCacheContext();
         downloadContext = new PackageDownloadContext(cacheContext);
-        httpClient = new HttpClient(new CorsClientHandler(this));
+        httpClient = new HttpClient(corsClientHandler);
         httpZipProvider = new HttpZipProvider(httpClient);
     }
-
-    public NuGetDownloaderOptions Options { get; }
-    public ILogger<NuGetDownloader> Logger { get; }
 
     /// <param name="version">Package version or range.</param>
     public Task<PackageDependency> DownloadAsync(
@@ -406,12 +399,12 @@ internal sealed class NuGetDownloadablePackage(
 
 internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
 {
-    private readonly NuGetDownloader nuGetDownloader;
+    private readonly CorsClientHandler corsClientHandler;
 
-    public CustomHttpHandlerResourceV3Provider(NuGetDownloader nuGetDownloader)
+    public CustomHttpHandlerResourceV3Provider(CorsClientHandler corsClientHandler)
         : base(typeof(HttpHandlerResource), nameof(CustomHttpHandlerResourceV3Provider))
     {
-        this.nuGetDownloader = nuGetDownloader;
+        this.corsClientHandler = corsClientHandler;
     }
 
     public override Task<Tuple<bool, INuGetResource?>> TryCreate(SourceRepository source, CancellationToken token)
@@ -423,52 +416,34 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     {
         if (source.PackageSource.IsHttp)
         {
-            var clientHandler = new CorsClientHandler(nuGetDownloader);
-            var messageHandler = new ServerWarningLogHandler(clientHandler);
-            return new(true, new HttpHandlerResourceV3(clientHandler, messageHandler));
+            var messageHandler = new ServerWarningLogHandler(corsClientHandler);
+            return new(true, new HttpHandlerResourceV3(corsClientHandler, messageHandler));
         }
 
         return new(false, null);
     }
 }
 
-internal sealed class CorsClientHandler : HttpClientHandler
+internal sealed class CorsClientHandler : LoggingHttpClientHandler
 {
-    private readonly NuGetDownloader nuGetDownloader;
-
-    public CorsClientHandler(NuGetDownloader nuGetDownloader)
+    public CorsClientHandler(
+        ILogger<LoggingHttpClientHandler> logger,
+        IOptions<HttpClientOptions> options)
+        : base(logger, options)
     {
-        this.nuGetDownloader = nuGetDownloader;
         if (!OperatingSystem.IsBrowser())
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
         }
     }
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true)
         {
             request.RequestUri = request.RequestUri.WithCorsProxy();
         }
 
-        var response = await base.SendAsync(request, cancellationToken);
-
-        if (nuGetDownloader.Options.LogRequests)
-        {
-            nuGetDownloader.Logger.LogDebug(
-                "Sent: {Method} {Uri}, Received: {Status} ({ReceivedSize} bytes)",
-                request.Method,
-                request.RequestUri,
-                response.StatusCode,
-                response.Content?.Headers.ContentLength?.SeparateThousands() ?? "?");
-        }
-
-        return response;
+        return base.SendAsync(request, cancellationToken);
     }
-}
-
-internal sealed class NuGetDownloaderOptions
-{
-    public bool LogRequests { get; set; }
 }
