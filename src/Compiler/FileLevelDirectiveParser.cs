@@ -317,7 +317,33 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             Assemblies = assemblies,
                         });
                     },
-                    Constant([])),
+                    Constant(
+                    [
+                        "net10.0",
+                        "net9.0",
+                        "net8.0",
+                        "net7.0",
+                        "net6.0",
+                        "net5.0",
+                        "netcoreapp3.1",
+                        "netcoreapp3.0",
+                        "netstandard2.1",
+                        "netstandard2.0",
+                        "net481",
+                        "net48",
+                        "net472",
+                        "net471",
+                        "net47",
+                        "net462",
+                        "net461",
+                        "net46",
+                        "net452",
+                        "net451",
+                        "net45",
+                        "net40",
+                        "net35",
+                        "net20",
+                    ])),
             ]);
 
         private Property(ParseInfo info) : base(info) { }
