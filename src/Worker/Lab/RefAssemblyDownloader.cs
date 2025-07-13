@@ -14,7 +14,7 @@ internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloade
         {
             // e.g., `ref/net5.0/*.dll`
             var dllFilter = new SingleLevelNuGetDllFilter("ref", 2);
-            var versionRange = $"{parsed.Version.Major}.{parsed.Version.Minor}-*";
+            var versionRange = $"{parsed.Version.Major}.{parsed.Version.Minor}.*-*";
             await downloadAsync("Microsoft.NETCore.App.Ref", versionRange, dllFilter);
             await downloadAsync("Microsoft.AspNetCore.App.Ref", versionRange, dllFilter);
         }
@@ -29,6 +29,20 @@ internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloade
             };
             var packageId = $"Microsoft.NETFramework.ReferenceAssemblies.{targetFramework}";
             await downloadAsync(packageId, "*-*", dllFilter);
+        }
+        else if (".NETStandard".Equals(parsed.Framework, StringComparison.OrdinalIgnoreCase) &&
+            parsed.Version == new Version(2, 0, 0, 0))
+        {
+            // e.g., `build/netstandard2.0/ref/*.dll`
+            var dllFilter = new SingleLevelNuGetDllFilter("build", 3);
+            await downloadAsync("NETStandard.Library", "2.0.*-*", dllFilter);
+        }
+        else if (".NETStandard".Equals(parsed.Framework, StringComparison.OrdinalIgnoreCase) &&
+            parsed.Version == new Version(2, 1, 0, 0))
+        {
+            // e.g., `ref/netstandard2.1/*.dll`
+            var dllFilter = new SingleLevelNuGetDllFilter("ref", 2);
+            await downloadAsync("NETStandard.Library.Ref", "2.1.*-*", dllFilter);
         }
         else
         {
