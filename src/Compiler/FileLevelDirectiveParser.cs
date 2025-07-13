@@ -285,7 +285,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
                         return default;
                     },
-                    Constant(() => Enum.GetValues<LanguageVersion>().SelectAsArray(v => v.ToDisplayString()))),
+                    Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
                 Create(
                     "TargetFramework",
                     static async (context, info, value) =>
@@ -425,6 +425,7 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
 {
     private static readonly ImmutableArray<string> keywordTags = [WellKnownTags.Keyword];
     private static readonly ImmutableArray<string> propertyTags = [WellKnownTags.Property];
+    private static readonly ImmutableArray<string> constantTags = [WellKnownTags.Constant];
 
     public override async Task ProvideCompletionsAsync(CompletionContext context)
     {
@@ -490,10 +491,10 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
                     var directiveName = directiveText[..separatorIndex];
                     var directiveValue = directiveText[(separatorIndex + 1)..];
 
-                    // Suggest values.
-                    foreach (var value in pairDescriptor.SuggestValues(directiveName, directiveValue))
+                    // Suggest values, preserving their original order via `sortText`.
+                    foreach (var (index, value) in pairDescriptor.SuggestValues(directiveName, directiveValue).Index())
                     {
-                        context.AddItem(CompletionItem.Create(value));
+                        context.AddItem(CompletionItem.Create(value, sortText: $"{index:D10}", tags: constantTags));
                     }
 
                     return;
