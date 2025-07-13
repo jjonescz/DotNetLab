@@ -81,8 +81,11 @@ internal sealed class AzDoDownloader(
             {
                 Info = new(() => Task.FromResult(new PackageDependencyInfo(
                     version: build.BuildNumber,
-                    commitHash: build.SourceVersion,
-                    repoUrl: info.RepositoryUrl)
+                    commit: new CommitLink
+                    {
+                        Hash = build.SourceVersion,
+                        RepoUrl = info.RepositoryUrl,
+                    })
                 {
                     AdditionalLink = additionalLink,
                     AdditionalCommitHash = additionalCommitHash,

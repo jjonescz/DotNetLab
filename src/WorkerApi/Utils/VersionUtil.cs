@@ -9,6 +9,9 @@ public static partial class VersionUtil
     [GeneratedRegex(@"^(https?://)?(www\.)?github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)(/|$)", RegexOptions.IgnoreCase)]
     private static partial Regex GitHubUrlPattern { get; }
 
+    [GeneratedRegex(@"https:\/\/github\.com\/(?<owner>[^\/\s]+)\/(?<repo>[^\/\s]+)\/commit\/(?<hash>[a-fA-F0-9]{7,40})", RegexOptions.IgnoreCase)]
+    private static partial Regex GitHubCommitUrlPattern { get; }
+
     public static CommitLink CurrentCommit => field ??= new()
     {
         RepoUrl = "https://github.com/jjonescz/DotNetLab",
@@ -41,6 +44,21 @@ public static partial class VersionUtil
         return TryExtractGitHubRepoOwnerAndName(repoUrl, out var owner, out var name)
             ? $"{owner}/{name}"
             : null;
+    }
+
+    public static CommitLink? TryExtractGitHubRepoCommitInfoFromText(string text)
+    {
+        var match = GitHubCommitUrlPattern.Match(text);
+        if (match.Success)
+        {
+            return new CommitLink
+            {
+                RepoUrl = $"https://github.com/{match.Groups["owner"].Value}/{match.Groups["repo"].Value}",
+                Hash = match.Groups["hash"].Value,
+            };
+        }
+
+        return null;
     }
 
     private static string? GetCurrentCommitHash()

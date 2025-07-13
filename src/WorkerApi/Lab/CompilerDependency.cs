@@ -14,13 +14,8 @@ public sealed record PackageDependencyInfo
         Commit = commit;
     }
 
-    private PackageDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
-        : this(arg.Version, new CommitLink { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
-    {
-    }
-
-    public PackageDependencyInfo(string version, string commitHash, string repoUrl)
-        : this((Version: version, CommitHash: commitHash, RepoUrl: repoUrl))
+    private PackageDependencyInfo((string Version, CommitLink Commit) arg)
+        : this(arg.Version, arg.Commit)
     {
     }
 
@@ -38,7 +33,7 @@ public sealed record PackageDependencyInfo
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }
 
-    private static (string Version, string CommitHash, string RepoUrl) FromAssembly(string assemblyName)
+    private static (string Version, CommitLink Commit) FromAssembly(string assemblyName)
     {
         string version = "";
         string hash = "";
@@ -61,7 +56,7 @@ public sealed record PackageDependencyInfo
             }
         }
 
-        return (Version: version, CommitHash: hash, RepoUrl: repositoryUrl);
+        return (Version: version, Commit: new CommitLink { Hash = hash, RepoUrl = repositoryUrl });
     }
 }
 

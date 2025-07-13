@@ -119,6 +119,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             new(() => new HttpSourceResourceProvider()),
             new(() => new ServiceIndexResourceV3Provider()),
             new(() => new RemoteV3FindPackageByIdResourceProvider()),
+            new(() => new PackageMetadataResourceV3Provider()),
         ];
         IEnumerable<string> sources =
         [
@@ -206,14 +207,17 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     CancellationToken.None);
                 if (dep?.DownloadUri is { } url)
                 {
-                    (ZipDirectoryReader, ZipDirectory)? zip;
+                    Lazy<Task<(ZipDirectoryReader, ZipDirectory)>>? zip;
                     Stream? nupkgStream;
 
                     if (dep.Source.PackageSource.IsNuGetOrg)
                     {
                         // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
-                        var reader = await httpZipProvider.GetReaderAsync(url);
-                        zip = (reader, await reader.ReadAsync());
+                        zip = new(async () =>
+                        {
+                            var reader = await httpZipProvider.GetReaderAsync(url);
+                            return (reader, await reader.ReadAsync());
+                        });
                         nupkgStream = null;
                     }
                     else
@@ -232,6 +236,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
                     return new()
                     {
+                        CacheContext = cacheContext,
                         DependencyInfo = dep,
                         Zip = zip,
                         NupkgStream = nupkgStream,
@@ -280,14 +285,16 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
 internal sealed class NuGetDownloadablePackageResult
 {
+    public required SourceCacheContext CacheContext { get; init; }
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
-    public required (ZipDirectoryReader Reader, ZipDirectory Directory)? Zip { get; init; }
+    public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)>>? Zip { get; init; }
     public required Stream? NupkgStream { get; init; }
 
     public async Task<NuspecReader> GetNuspecReaderAsync()
     {
-        if (Zip is { } zip)
+        if (Zip is { } zipFactory)
         {
+            var zip = await zipFactory.Value;
             var nuspecEntry = zip.Directory.Entries
                 .Where(e => PackageHelper.IsManifest(e.GetName()))
                 .FirstOrDefault()
@@ -347,17 +354,35 @@ internal sealed class NuGetDownloadablePackage(
     public async Task<PackageDependencyInfo> GetInfoAsync()
     {
         var result = await this.result;
-        var nuspecReader = await result.GetNuspecReaderAsync();
-        var metadata = nuspecReader.GetRepositoryMetadata();
-        var identity = nuspecReader.GetIdentity();
-        var version = identity.Version.ToString();
+
+        // Try extracting from metadata endpoint (to avoid downloading the nupkg just to extract the nuspec out of it).
+        var metadataResource = await result.DependencyInfo.Source.GetResourceAsync<PackageMetadataResource>();
+        var metadata = await metadataResource.GetMetadataAsync(
+            new PackageIdentity(result.DependencyInfo.Id, result.DependencyInfo.Version),
+            result.CacheContext,
+            NullLogger.Instance,
+            CancellationToken.None);
+        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata.Description);
+
+        if (commitLink is null)
+        {
+            // Fallback to extracting the info from nuspec.
+            var nuspecReader = await result.GetNuspecReaderAsync();
+            var repoMetadata = nuspecReader.GetRepositoryMetadata();
+            commitLink = new()
+            {
+                RepoUrl = repoMetadata.Url,
+                Hash = repoMetadata.Commit,
+            };
+        }
+
+        var version = result.DependencyInfo.Version.ToString();
         return new(
             version: version,
-            commitHash: metadata.Commit,
-            repoUrl: metadata.Url)
+            commit: commitLink)
         {
             VersionLink = SimpleNuGetUtil.GetPackageDetailUrl(
-                packageId: identity.Id,
+                packageId: result.DependencyInfo.Id,
                 version: version,
                 fromNuGetOrg: result.DependencyInfo.Source.PackageSource.IsNuGetOrg),
             Configuration = BuildConfiguration.Release,
@@ -367,8 +392,9 @@ internal sealed class NuGetDownloadablePackage(
     public async Task<ImmutableArray<LoadedAssembly>> GetAssembliesAsync()
     {
         var result = await this.result;
-        if (result.Zip is { } zip)
+        if (result.Zip is { } zipFactory)
         {
+            var zip = await zipFactory.Value;
             return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter);
         }
 
