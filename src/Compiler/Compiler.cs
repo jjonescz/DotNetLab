@@ -703,7 +703,7 @@ public sealed class Compiler(
                 return "";
             }
 
-            var output = new ICSharpCode.Decompiler.PlainTextOutput();
+            var output = new ICSharpCode.Decompiler.PlainTextOutput() { IndentationString = "    " };
             var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default);
             disassembler.WriteModuleContents(peFile);
             return output.ToString();
