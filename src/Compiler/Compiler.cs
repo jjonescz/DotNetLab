@@ -99,8 +99,12 @@ public sealed class Compiler(
             Assemblies = RefAssemblies.All,
         };
 
-        // If we have a configuration, compile and execute it.
         Config.Instance.Reset();
+
+        // Process `#:` directives first, so the C# Configuration code can perform more fine-grained option manipulation on top of that.
+        var directiveDiagnosticInputs = await processDirectivesAsync();
+
+        // If we have a configuration, compile and execute it.
         ImmutableArray<Diagnostic> configDiagnostics;
         ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
         if (compilationInput.Configuration is { } configuration)
@@ -137,8 +141,6 @@ public sealed class Compiler(
         {
             configDiagnostics = [];
         }
-
-        var directiveDiagnosticInputs = await processDirectivesAsync();
 
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
