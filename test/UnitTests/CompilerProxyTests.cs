@@ -237,6 +237,67 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             }
         }
     }
+
+    [Fact]
+    public async Task ILDecompilationUsesSpacesForIndentation()
+    {
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var code = """
+public class C
+{
+    public static void Main()
+    {
+        System.Console.WriteLine("Hello, World!");
+    }
+}
+""";
+
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Program.cs", Text = code }])));
+
+        string ilText = await compiled.GetRequiredGlobalOutput("il").GetTextAsync(outputFactory: null);
+        Assert.DoesNotContain("\t", ilText);
+
+        // Verify that the IL contains expected content
+        Assert.Contains(".method", ilText);
+        Assert.Contains("Main", ilText);
+
+        // Count leading spaces on each indented line and verify they are multiples of 4
+        var indentedLines = ilText.Split('\n').Where(line => line.StartsWith(" ") && line.Length > 1).ToArray();
+        bool found4Spaces = false;
+        bool found8Spaces = false;
+        for (int i = 0; i < indentedLines.Length; i++)
+        {
+            int leadingSpaces = countLeadingSpaces(indentedLines[i]);
+            if (leadingSpaces == 4)
+            {
+                found4Spaces = true;
+            }
+            else if (leadingSpaces == 8)
+            {
+                found8Spaces = true;
+            }
+
+            Assert.True(leadingSpaces % 4 == 0, "All lines should be indented by a multiple of 4 spaces");
+        }
+
+        Assert.True(found4Spaces);
+        Assert.True(found8Spaces);
+
+        return;
+
+        static int countLeadingSpaces(string line)
+        {
+            int currentPos = 0;
+            while (currentPos < line.Length && line[currentPos] == ' ')
+            {
+                currentPos++;
+            }
+
+            return currentPos;
+        }
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler
