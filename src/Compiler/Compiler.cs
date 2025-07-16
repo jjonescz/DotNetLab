@@ -388,8 +388,9 @@ public sealed class Compiler(
             {
                 CompiledAssembly = result,
                 CompilerAssemblies = compilerAssembliesUsed,
-                CSharpParseOptions = compilerAssembliesUsed != null ? parseOptions : null,
-                CSharpCompilationOptions = compilerAssembliesUsed != null ? options : null,
+                CSharpParseOptions = Config.Instance.HasParseOptions ? parseOptions : null,
+                CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
+                ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
             };
         }
 
@@ -1116,4 +1117,10 @@ internal sealed class LiveCompilationResult
     /// Set to <see langword="null"/> if the default options were used.
     /// </summary>
     public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
+
+    /// <summary>
+    /// Reference assemblies used by the main compilation.
+    /// Set to <see langword="default"/> if the default reference assemblies were used.
+    /// </summary>
+    public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
 }

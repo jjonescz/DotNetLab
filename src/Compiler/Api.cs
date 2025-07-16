@@ -24,6 +24,11 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
 
+    public bool HasParseOptions => cSharpParseOptions.Count > 0;
+    public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
+    public bool HasEmitOptions => emitOptions.Count > 0;
+    public bool HasReferences => references.Count > 0;
+
     public void Reset()
     {
         cSharpParseOptions.Clear();

@@ -609,6 +609,15 @@ internal sealed class LanguageServices : ILanguageServices
                     project = project.WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(defaultOutputKind));
                 }
 
+                if (compiler.LastResult?.Output.ReferenceAssemblies is { } references)
+                {
+                    project = project.WithMetadataReferences(references);
+                }
+                else
+                {
+                    project = project.WithMetadataReferences(RefAssemblyMetadata.All);
+                }
+
                 ApplyChanges(project.Solution);
             }
         }
