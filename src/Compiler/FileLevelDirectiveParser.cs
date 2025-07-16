@@ -71,6 +71,7 @@ internal sealed class FileLevelDirectiveParser
                     !deduplicated.Add(named))
                 {
                     named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
+                    continue;
                 }
 
                 builder.Add(parsed);
