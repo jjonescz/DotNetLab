@@ -304,6 +304,8 @@ internal sealed class NuGetDownloadablePackageResult
 
 internal interface INuGetDllFilter
 {
+    public const string DllExtension = ".dll";
+
     bool Include(string filePath);
 }
 
@@ -311,11 +313,9 @@ internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
 {
     public bool Include(string filePath)
     {
-        const string dllExtension = ".dll";
-
         // Get only DLL files directly in the specified folder
         // and starting with `Microsoft.`.
-        return filePath.EndsWith(dllExtension, StringComparison.OrdinalIgnoreCase) &&
+        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
             filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.LastIndexOf('/') is int lastSlashIndex &&
             lastSlashIndex == folder.Length &&
@@ -329,9 +329,7 @@ internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : INuG
 
     public bool Include(string filePath)
     {
-        const string dllExtension = ".dll";
-
-        return filePath.EndsWith(dllExtension, StringComparison.OrdinalIgnoreCase) &&
+        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
             filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.Count('/') == level &&
             AdditionalFilter(filePath);
