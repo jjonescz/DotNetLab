@@ -150,6 +150,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public required IServiceProvider Services { get; init; }
         public required IConfig Config { get; init; }
 
+        public bool? Prefer32Bit { get; set; }
+
         public async ValueTask ConsumeAsync(ImmutableArray<FileLevelDirective> directives)
         {
             foreach (var directive in directives)
@@ -634,13 +636,15 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     "PlatformTarget",
                     static (context, result) =>
                     {
-                        context.Config.CSharpCompilationOptions(options => options.WithPlatform(result));
+                        context.Config.CSharpCompilationOptions(options => options.WithPlatform(
+                            context.Prefer32Bit is { } b && result == default ? Platform.AnyCpu32BitPreferred : result));
                     },
                     lowercase: true),
                 CreateBool(
                     "Prefer32Bit",
                     static (context, result) =>
                     {
+                        context.Prefer32Bit = result;
                         if (result is { } b)
                         {
                             context.Config.CSharpCompilationOptions(options => options.WithPlatform(
