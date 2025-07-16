@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Buffers;
 using System.Collections.Frozen;
 using System.Composition;
@@ -253,6 +254,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
         private const string InterceptorsNamespaces = nameof(InterceptorsNamespaces);
 
+        private const string InterceptorsPreviewNamespaces = nameof(InterceptorsPreviewNamespaces);
+
         private static KeyValuePair<string, ConsumerInfo> Create<T>(
             string name,
             TryParse<T> parser,
@@ -443,7 +446,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         "disable-length-based-switch",
                         "experimental-data-section-string-literals",
                         "FileBasedProgram",
-                        "InterceptorsNamespace",
+                        InterceptorsNamespaces,
                         "noRefSafetyRulesAttribute",
                         "nullablePublicOnly",
                         "peverify-compat",
@@ -456,23 +459,37 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     InterceptorsNamespaces,
                     static (context, info, value) =>
                     {
-                        context.Config.CSharpParseOptions(options => options.WithFeatures(
-                        [
-                            .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
-                            new(InterceptorsNamespaces, value.ToString()),
-                        ]));
+                        context.Config.CSharpParseOptions(options =>
+                        {
+                            var existing = options.Features.TryGetValue(InterceptorsPreviewNamespaces, out var s) ? s : null;
+                            var added = value.ToString();
+                            var total = existing.IsWhiteSpace() ? added : $"{existing};{added}";
+
+                            return options.WithFeatures(
+                            [
+                                .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
+                                new(InterceptorsNamespaces, total),
+                            ]);
+                        });
                         return default;
                     },
                     NoValues),
                 Create(
-                    "InterceptorsPreviewNamespaces",
+                    InterceptorsPreviewNamespaces,
                     static (context, info, value) =>
                     {
-                        context.Config.CSharpParseOptions(options => options.WithFeatures(
-                        [
-                            .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
-                            new(InterceptorsNamespaces, value.ToString()),
-                        ]));
+                        context.Config.CSharpParseOptions(options =>
+                        {
+                            var existing = options.Features.TryGetValue(InterceptorsNamespaces, out var s) ? s : null;
+                            var added = value.ToString();
+                            var total = existing.IsWhiteSpace() ? added : $"{existing};{added}";
+
+                            return options.WithFeatures(
+                            [
+                                .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
+                                new(InterceptorsNamespaces, total),
+                            ]);
+                        });
                         return default;
                     },
                     NoValues),
