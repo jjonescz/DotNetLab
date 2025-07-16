@@ -43,24 +43,9 @@ internal sealed class FileLevelDirectiveParser
         var text = SourceText.From(input.Text);
         var tokenizer = text.CreateTokenizer();
 
-        for (var result = tokenizer.ParseNextToken();
-            !result.Token.IsKind(SyntaxKind.EndOfFileToken);
-            result = tokenizer.ParseNextToken())
-        {
-            foreach (var trivia in result.Token.LeadingTrivia)
-            {
-                tryParseOne(trivia);
-            }
+        var result = tokenizer.ParseLeadingTrivia();
 
-            foreach (var trivia in result.Token.TrailingTrivia)
-            {
-                tryParseOne(trivia);
-            }
-        }
-
-        return builder.DrainToImmutable();
-
-        void tryParseOne(SyntaxTrivia trivia)
+        foreach (var trivia in result.Token.LeadingTrivia)
         {
             if (trivia.IsKind(SyntaxKind.IgnoredDirectiveTrivia))
             {
@@ -91,6 +76,8 @@ internal sealed class FileLevelDirectiveParser
                 builder.Add(parsed);
             }
         }
+
+        return builder.DrainToImmutable();
     }
 
     private FileLevelDirective ParseOne(FileLevelDirective.ParseInfo info)
