@@ -18,15 +18,10 @@ internal sealed class LanguageServicesClient(
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
+    private CancellationTokenSource diagnosticsCts = new();
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
 
     public bool Enabled => completionProvider != null;
-
-    private static void Cancel(ref DebounceInfo info)
-    {
-        info.CancellationTokenSource.Cancel();
-        info = new DebounceInfo(new CancellationTokenSource());
-    }
 
     private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
@@ -54,23 +49,6 @@ internal sealed class LanguageServicesClient(
                 return fallback;
             }
         }
-    }
-
-    private static void Debounce<T>(ref DebounceInfo info, T args, Func<T, CancellationToken, Task> handler, Action<Exception> errorHandler)
-    {
-        DebounceAsync(ref info, (args, handler), 0, static async (args, cancellationToken) =>
-        {
-            await args.handler(args.args, cancellationToken);
-            return 0;
-        },
-        CancellationToken.None)
-        .ContinueWith(t =>
-        {
-            if (t.IsFaulted)
-            {
-                errorHandler(t.Exception);
-            }
-        });
     }
 
     public Task EnableAsync(bool enable)
@@ -214,14 +192,14 @@ internal sealed class LanguageServicesClient(
     }
 
     /// <summary>
-    /// Call this to prevent in-flight diagnostics requests from completing.
+    /// Call this to prevent in-flight request for live diagnostics from completing.
     /// </summary>
     public void CancelDiagnostics()
     {
-        Cancel(ref diagnosticsDebounce);
+        diagnosticsCts.Cancel();
     }
 
-    private void UpdateDiagnostics()
+    private async void UpdateDiagnostics()
     {
         if (currentModelUrl == null ||
             !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
@@ -230,18 +208,27 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
-        Debounce(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), static async (args, cancellationToken) =>
+        try
         {
-            var (worker, jsRuntime, currentModelUrl) = args;
-            var markers = await worker.GetDiagnosticsAsync(currentModelUrl);
-            var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
-            cancellationToken.ThrowIfCancellationRequested();
-            await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
-        },
-        (ex) =>
+            await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
+            {
+                var (worker, jsRuntime, currentModelUrl) = args;
+                var markers = await worker.GetDiagnosticsAsync(currentModelUrl);
+                var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
+                cancellationToken.ThrowIfCancellationRequested();
+                await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
+                return 0;
+            },
+            diagnosticsCts.Token);
+        }
+        catch (Exception ex)
         {
             logger.LogError(ex, "Updating diagnostics failed");
-        });
+        }
+        finally
+        {
+            diagnosticsCts = new();
+        }
     }
 }
 
