@@ -151,6 +151,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public required IConfig Config { get; init; }
 
         public bool? Prefer32Bit { get; set; }
+        public OptimizationLevel? OptimizationLevel { get; set; }
+        public bool SawDefineConstants { get; set; }
 
         public async ValueTask ConsumeAsync(ImmutableArray<FileLevelDirective> directives)
         {
@@ -343,6 +345,24 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     "Configuration",
                     static (context, result) =>
                     {
+                        context.OptimizationLevel = result;
+
+                        context.Config.CSharpParseOptions(options =>
+                        {
+                            if (!context.SawDefineConstants)
+                            {
+                                switch (result)
+                                {
+                                    case OptimizationLevel.Debug:
+                                        return options.WithPreprocessorSymbols("DEBUG");
+                                    case OptimizationLevel.Release:
+                                        return options.WithPreprocessorSymbols();
+                                }
+                            }
+
+                            return options;
+                        });
+
                         context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(result));
                     },
                     lowercase: false),
@@ -381,14 +401,34 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     "DefineConstants",
                     static (context, info, value) =>
                     {
-                        var result = CSharpCommandLineParser.ParseConditionalCompilationSymbols(value.ToString(), out var diagnostics).ToImmutableArray();
+                        context.SawDefineConstants = true;
 
-                        foreach (var diagnostic in diagnostics)
+                        if (value.Span.IsWhiteSpace())
                         {
-                            info.Errors.Add(diagnostic.GetMessage());
+                            return default;
                         }
 
-                        context.Config.CSharpParseOptions(options => options.WithPreprocessorSymbols(result));
+                        context.Config.CSharpParseOptions(options =>
+                        {
+                            var original = context.OptimizationLevel switch
+                            {
+                                OptimizationLevel.Debug => ["DEBUG"],
+                                OptimizationLevel.Release => [],
+                                _ => options.PreprocessorSymbolNames,
+                            };
+
+                            var text = value.ToString()
+                                .Replace("$(DefineConstants)", original.JoinToString(";"));
+
+                            var result = CSharpCommandLineParser.ParseConditionalCompilationSymbols(text, out var diagnostics).ToImmutableArray();
+
+                            foreach (var diagnostic in diagnostics)
+                            {
+                                info.Errors.Add(diagnostic.GetMessage());
+                            }
+
+                            return options.WithPreprocessorSymbols(result);
+                        });
                         return default;
                     },
                     NoValues),

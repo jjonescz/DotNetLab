@@ -82,6 +82,7 @@ internal sealed record InitialCode
     public static readonly InitialCode Configuration = new("Configuration.cs", """
         Config.CSharpParseOptions(options => options
             .WithLanguageVersion(LanguageVersion.Preview)
+            .WithPreprocessorSymbols("DEBUG")
             .WithFeatures(
             [
                 new("use-roslyn-tokenizer", "true"),

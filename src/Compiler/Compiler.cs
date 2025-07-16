@@ -897,6 +897,7 @@ public sealed class Compiler(
     {
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         return new CSharpParseOptions(LanguageVersion.Preview)
+            .WithPreprocessorSymbols("DEBUG")
             .WithFeatures(
             [
                 new("use-roslyn-tokenizer", "true"),
