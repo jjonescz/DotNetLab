@@ -2,12 +2,15 @@
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Buffers;
 using System.Collections.Frozen;
 using System.Composition;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -205,14 +208,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
         protected static T Parse(ParseInfo info, Factory<T, (ReadOnlyMemory<char> Name, ReadOnlyMemory<char> Value)> factory)
         {
-            var parts = info.DirectiveText.Span.Split(T.Descriptor.Separator);
-            var name = parts.MoveNext() ? info.DirectiveText[parts.Current].Trim() : default;
-            var value = parts.MoveNext() ? info.DirectiveText[parts.Current].Trim() : default;
-
-            if (parts.MoveNext())
-            {
-                info.Errors.Add($"{typeof(T).Name} directive must have exactly one '{T.Descriptor.Separator}' separator.");
-            }
+            // Multiple separators are allowed, that's useful e.g. for `property Features=key=value`.
+            var separatorIndex = info.DirectiveText.Span.IndexOf(T.Descriptor.Separator);
+            var (name, value) = separatorIndex >= 0
+                ? (info.DirectiveText[..separatorIndex].Trim(), info.DirectiveText[(separatorIndex + 1)..].Trim())
+                : (info.DirectiveText, default);
 
             return factory(info, (name, value));
         }
@@ -255,37 +255,429 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             SuggestValues = SuggestValues,
         };
 
+        private delegate bool TryParse<T>(ReadOnlyMemory<char> value, out T result);
+
+        private static readonly Func<ReadOnlySpan<char>, ImmutableArray<string>> BoolValues = Constant([bool.FalseString, bool.TrueString]);
+
+        private static readonly Func<ReadOnlySpan<char>, ImmutableArray<string>> NoValues = Constant([]);
+
+        private static readonly SearchValues<char> FeatureSeparators = SearchValues.Create([',', ';', ' ']);
+
+        private const string InterceptorsNamespaces = nameof(InterceptorsNamespaces);
+
+        private static KeyValuePair<string, ConsumerInfo> Create<T>(
+            string name,
+            TryParse<T> parser,
+            Action<ConsumerContext, T> handler,
+            Func<ReadOnlySpan<char>, ImmutableArray<string>> suggestValues,
+            string? parserErrorSuffix = null,
+            bool useSuggestValuesInError = false)
+        {
+            return Create(
+                name,
+                (context, info, value) =>
+                {
+                    if (!parser(value, out var result))
+                    {
+                        info.Errors.Add($"Invalid property value '{value}'." +
+                            (parserErrorSuffix != null
+                                ? $" {parserErrorSuffix}"
+                                : (useSuggestValuesInError ?
+                                    $" Expected one of {suggestValues(default).JoinToString(", ", "'")}."
+                                    : null)));
+                        return default;
+                    }
+
+                    handler(context, result);
+                    return default;
+                },
+                suggestValues);
+        }
+
+        private static KeyValuePair<string, ConsumerInfo> CreateBool(
+            string name,
+            Action<ConsumerContext, bool?> handler)
+        {
+            return Create(
+                name,
+                static (value, out result) => MsbuildUtil.TryConvertStringToBool(value.Span, out result),
+                handler,
+                BoolValues,
+                parserErrorSuffix: "Expected 'true' or 'false'.");
+        }
+
+        private static KeyValuePair<string, ConsumerInfo> CreateEnum<T>(
+            string name,
+            Action<ConsumerContext, T> handler,
+            bool lowercase) where T : struct, Enum
+        {
+            return Create(
+                name,
+                static (value, out result) => Enum.TryParse(value.Span, ignoreCase: true, out result),
+                handler,
+                Constant(() =>
+                {
+                    var names = Enum.GetNames<T>();
+                    return lowercase
+                        ? names.SelectAsArray(static n => n.ToLowerInvariant())
+                        : ImmutableCollectionsMarshal.AsImmutableArray(names);
+                }),
+                useSuggestValuesInError: true);
+        }
+
         private static FrozenDictionary<string, ConsumerInfo> Consumers => field ??= FrozenDictionary.Create(
             StringComparer.OrdinalIgnoreCase,
             [
-                Create(
-                    "Configuration",
-                    static (context, info, value) =>
+                CreateBool(
+                    "AllowUnsafeBlocks",
+                    static (context, result) =>
                     {
-                        if (!Enum.TryParse<OptimizationLevel>(value.Span, ignoreCase: true, out var result))
+                        if (result is { } b)
                         {
-                            info.Errors.Add($"Invalid property value '{value}'.");
-                            return default;
+                            context.Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(b));
+                        }
+                    }),
+                CreateBool(
+                    "CheckForOverflowUnderflow",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpCompilationOptions(options => options.WithOverflowChecks(b));
+                        }
+                    }),
+                CreateEnum<OptimizationLevel>(
+                    "Configuration",
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(result));
+                    },
+                    lowercase: false),
+                Create<DebugInformationFormat>(
+                    "DebugType",
+                    static (value, out result) =>
+                    {
+                        if ("full".Equals(value.Span, StringComparison.OrdinalIgnoreCase) ||
+                            "pdbonly".Equals(value.Span, StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = Path.DirectorySeparatorChar == '/' ? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb;
+                            return true;
                         }
 
-                        context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(result));
+                        if ("portable".Equals(value.Span, StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = DebugInformationFormat.PortablePdb;
+                            return true;
+                        }
+
+                        if ("embedded".Equals(value.Span, StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = DebugInformationFormat.Embedded;
+                            return true;
+                        }
+
+                        result = default;
+                        return false;
+                    },
+                    static (context, result) =>
+                    {
+                        context.Config.EmitOptions(options => options.WithDebugInformationFormat(result));
+                    },
+                    Constant(["full", "pdbonly", "portable", "embedded"])),
+                Create(
+                    "DefineConstants",
+                    static (context, info, value) =>
+                    {
+                        var result = CSharpCommandLineParser.ParseConditionalCompilationSymbols(value.ToString(), out var diagnostics).ToImmutableArray();
+
+                        foreach (var diagnostic in diagnostics)
+                        {
+                            info.Errors.Add(diagnostic.GetMessage());
+                        }
+
+                        context.Config.CSharpParseOptions(options => options.WithPreprocessorSymbols(result));
                         return default;
                     },
-                    Constant(["Debug", "Release"])),
+                    NoValues),
+                CreateBool(
+                    "Deterministic",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpCompilationOptions(options => options.WithDeterministic(b));
+                        }
+                    }),
                 Create(
-                    "LangVersion",
+                    "Features",
                     static (context, info, value) =>
                     {
-                        if (!LanguageVersionFacts.TryParse(value.ToString(), out var result))
+                        context.Config.CSharpParseOptions(options =>
                         {
-                            info.Errors.Add($"Invalid property value '{value}'.");
-                            return default;
+                            var features = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                            foreach (var range in value.Span.SplitAny(FeatureSeparators))
+                            {
+                                var feature = value.Span[range];
+
+                                if (feature.IsWhiteSpace())
+                                {
+                                    continue;
+                                }
+
+                                if ("$(Features)".Equals(feature, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    features.SetRange(options.Features);
+                                    continue;
+                                }
+
+                                int equalsIndex = feature.IndexOf('=');
+                                if (equalsIndex < 0)
+                                {
+                                    features[feature.ToString()] = "true";
+                                }
+                                else
+                                {
+                                    var namePart = feature[..equalsIndex];
+                                    var valuePart = feature[(equalsIndex + 1)..];
+                                    features[namePart.ToString()] = valuePart.ToString();
+                                }
+                            }
+
+                            return options.WithFeatures(features);
+                        });
+                        return default;
+                    },
+                    Constant(
+                    [
+                        // Search for `Feature("` in roslyn codebase to find supported features.
+                        "debug-analyzers",
+                        "disable-length-based-switch",
+                        "experimental-data-section-string-literals",
+                        "FileBasedProgram",
+                        "InterceptorsNamespace",
+                        "noRefSafetyRulesAttribute",
+                        "nullablePublicOnly",
+                        "peverify-compat",
+                        "run-nullable-analysis=always",
+                        "run-nullable-analysis=never",
+                        "strict",
+                        "UseLegacyStrongNameProvider",
+                    ])),
+                Create(
+                    InterceptorsNamespaces,
+                    static (context, info, value) =>
+                    {
+                        context.Config.CSharpParseOptions(options => options.WithFeatures(
+                        [
+                            .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
+                            new(InterceptorsNamespaces, value.ToString()),
+                        ]));
+                        return default;
+                    },
+                    NoValues),
+                Create(
+                    "InterceptorsPreviewNamespaces",
+                    static (context, info, value) =>
+                    {
+                        context.Config.CSharpParseOptions(options => options.WithFeatures(
+                        [
+                            .. options.Features.Where(p => p.Key != InterceptorsNamespaces),
+                            new(InterceptorsNamespaces, value.ToString()),
+                        ]));
+                        return default;
+                    },
+                    NoValues),
+                Create<int>(
+                    "FileAlignment",
+                    static (value, out result) => int.TryParse(value.Span, out result),
+                    static (context, result) =>
+                    {
+                        context.Config.EmitOptions(options => options.WithFileAlignment(result));
+                    },
+                    Constant(["0", "512", "1024", "2048", "4096", "8192"]),
+                    parserErrorSuffix: "Integer expected."),
+                CreateBool(
+                    "HighEntropyVA",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.EmitOptions(options => options.WithHighEntropyVirtualAddressSpace(b));
+                        }
+                    }),
+                Create(
+                    "Instrument",
+                    static (context, info, value) =>
+                    {
+                        var builder = ImmutableArray.CreateBuilder<InstrumentationKind>();
+
+                        foreach (var range in value.Span.Split(','))
+                        {
+                            var kind = value.Span[range];
+
+                            if (kind.IsWhiteSpace())
+                            {
+                                continue;
+                            }
+
+                            if (!Enum.TryParse<InstrumentationKind>(kind, ignoreCase: true, out var parsed))
+                            {
+                                info.Errors.Add($"Invalid instrumentation kind '{kind}'.");
+                                continue;
+                            }
+
+                            builder.Add(parsed);
                         }
 
-                        context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
+                        var kinds = builder.ToImmutable();
+                        context.Config.EmitOptions(options => options.WithInstrumentationKinds(kinds));
                         return default;
+                    },
+                    Constant(() => ImmutableCollectionsMarshal.AsImmutableArray(Enum.GetNames<InstrumentationKind>()))),
+                Create<LanguageVersion>(
+                    "LangVersion",
+                    static (value, out result) => LanguageVersionFacts.TryParse(value.ToString(), out result),
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
+                Create(
+                    "ModuleAssemblyName",
+                    static (context, info, value) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithModuleName(value.ToString()));
+                        return default;
+                    },
+                    NoValues),
+                CreateEnum<NullableContextOptions>(
+                    "Nullable",
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithNullableContextOptions(result));
+                    },
+                    lowercase: true),
+                CreateBool(
+                    "Optimize",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(b ? OptimizationLevel.Release : OptimizationLevel.Debug));
+                        }
+                    }),
+                Create<OutputKind>(
+                    "OutputType",
+                    static (value, out result) =>
+                    {
+                        if (value.Span.Equals("exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.ConsoleApplication;
+                            return true;
+                        }
+
+                        if (value.Span.Equals("winexe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.WindowsApplication;
+                            return true;
+                        }
+
+                        if (value.Span.Equals("library", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.DynamicallyLinkedLibrary;
+                            return true;
+                        }
+
+                        if (value.Span.Equals("module", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.NetModule;
+                            return true;
+                        }
+
+                        if (value.Span.Equals("appcontainerexe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.WindowsRuntimeApplication;
+                            return true;
+                        }
+
+                        if (value.Span.Equals("winmdobj", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = OutputKind.WindowsRuntimeMetadata;
+                            return true;
+                        }
+
+                        result = default;
+                        return false;
+                    },
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithOutputKind(result));
+                    },
+                    Constant(["AppContainerExe", "Exe", "Library", "Module", "WinExe", "WinMdObj"]),
+                    useSuggestValuesInError: true),
+                CreateBool(
+                    "PublicSign",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpCompilationOptions(options => options.WithPublicSign(b));
+                        }
+                    }),
+                CreateEnum<Platform>(
+                    "PlatformTarget",
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithPlatform(result));
+                    },
+                    lowercase: true),
+                CreateBool(
+                    "Prefer32Bit",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpCompilationOptions(options => options.WithPlatform(
+                                options.Platform == default ? Platform.AnyCpu32BitPreferred : options.Platform));
+                        }
+                    }),
+                CreateBool(
+                    "ProduceOnlyReferenceAssembly",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.EmitOptions(options => options
+                                .WithEmitMetadataOnly(b)
+                                .WithIncludePrivateMembers(!b));
+                        }
+                    }),
+                Create(
+                    "RuntimeMetadataVersion",
+                    static (context, info, value) =>
+                    {
+                        context.Config.EmitOptions(options => options.WithRuntimeMetadataVersion(value.ToString()));
+                        return default;
+                    },
+                    NoValues),
+                Create(
+                    "StartupObject",
+                    static (context, info, value) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithMainTypeName(value.ToString()));
+                        return default;
+                    },
+                    NoValues),
+                Create<SubsystemVersion>(
+                    "SubsystemVersion",
+                    static (value, out result) => SubsystemVersion.TryParse(value.ToString(), out result),
+                    static (context, result) =>
+                    {
+                        context.Config.EmitOptions(options => options.WithSubsystemVersion(result));
+                    },
+                    suggestValues: Constant(["5.00", "5.01", "6.00", "6.01", "6.02"]),
+                    useSuggestValuesInError: true),
                 Create(
                     "TargetFramework",
                     static async (context, info, value) =>

@@ -391,3 +391,50 @@ internal readonly record struct RazorGeneratorResultSafe(object Inner)
         return false;
     }
 }
+
+internal static class MsbuildUtil
+{
+    public static bool TryConvertStringToBool(ReadOnlySpan<char> text, out bool? result)
+    {
+        if (text.IsWhiteSpace())
+        {
+            result = null;
+            return true;
+        }
+
+        if (IsValidBooleanTrue(text))
+        {
+            result = true;
+            return true;
+        }
+
+        if (IsValidBooleanFalse(text))
+        {
+            result = false;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
+    public static bool IsValidBooleanTrue(ReadOnlySpan<char> text)
+    {
+        return text.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!false", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!off", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!no", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsValidBooleanFalse(ReadOnlySpan<char> text)
+    {
+        return text.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("no", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!true", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!on", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!yes", StringComparison.OrdinalIgnoreCase);
+    }
+}

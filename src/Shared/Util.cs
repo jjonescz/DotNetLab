@@ -19,6 +19,17 @@ public static partial class Util
         }
     }
 
+    extension<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+    {
+        public void SetRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
+        {
+            foreach (var item in items)
+            {
+                dictionary[item.Key] = item.Value;
+            }
+        }
+    }
+
     extension<T>(IEnumerable<T> collection)
     {
         public IList<T> AsList()
@@ -46,7 +57,7 @@ public static partial class Util
             }
         }
     }
-    
+
     extension(ReadOnlySpan<char> span)
     {
         public Regex.ValueSplitEnumerator SplitByWhitespace(int count)
