@@ -7,7 +7,6 @@ using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Buffers;
 using System.Collections.Frozen;
 using System.Composition;
@@ -68,11 +67,11 @@ internal sealed class FileLevelDirectiveParser
                 };
 
                 var parsed = ParseOne(info);
+
                 if (parsed is FileLevelDirective.Named named &&
                     !deduplicated.Add(named))
                 {
                     named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
-                    continue;
                 }
 
                 builder.Add(parsed);
@@ -158,6 +157,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         {
             foreach (var directive in directives)
             {
+                if (directive.Info.Errors.Count > 0)
+                {
+                    continue;
+                }
+
                 await directive.ConsumeAsync(this);
             }
         }
@@ -166,6 +170,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
     public readonly ParseInfo Info = info;
 
     public abstract ValueTask ConsumeAsync(ConsumerContext context);
+
+    public override string ToString()
+    {
+        return $"#:{Info.DirectiveKind} {Info.DirectiveText}";
+    }
 
     public sealed class Unknown : FileLevelDirective
     {
