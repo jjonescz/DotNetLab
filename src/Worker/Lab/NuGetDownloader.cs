@@ -104,14 +104,20 @@ internal sealed class NuGetOptions
 
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
+    private readonly ILogger<NuGetDownloader> logger;
     private readonly SourceCacheContext cacheContext;
     private readonly PackageDownloadContext downloadContext;
     private readonly ImmutableArray<SourceRepository> repositories;
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
 
-    public NuGetDownloader(CorsClientHandler corsClientHandler, IOptions<NuGetOptions> options)
+    public NuGetDownloader(
+        ILogger<NuGetDownloader> logger,
+        IOptions<NuGetOptions> options,
+        CorsClientHandler corsClientHandler)
     {
+        this.logger = logger;
+
         ImmutableArray<Lazy<INuGetResourceProvider>> providers =
         [
             new(() => new RegistrationResourceV3Provider()),
@@ -218,39 +224,42 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     CancellationToken.None);
                 if (dep?.DownloadUri is { } url)
                 {
-                    Lazy<Task<(ZipDirectoryReader, ZipDirectory)>>? zip;
-                    Stream? nupkgStream;
-
-                    if (dep.Source.PackageSource.IsNuGetOrg)
-                    {
-                        // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
-                        zip = new(async () =>
-                        {
-                            var reader = await httpZipProvider.GetReaderAsync(url);
-                            return (reader, await reader.ReadAsync());
-                        });
-                        nupkgStream = null;
-                    }
-                    else
-                    {
-                        zip = null;
-                        nupkgStream = new MemoryStream();
-                        var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
-                        await findPackageById.CopyNupkgToStreamAsync(
-                            packageId,
-                            version,
-                            nupkgStream,
-                            cacheContext,
-                            NullLogger.Instance,
-                            CancellationToken.None);
-                    }
-
                     return new()
                     {
                         CacheContext = cacheContext,
                         DependencyInfo = dep,
-                        Zip = zip,
-                        NupkgStream = nupkgStream,
+                        // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
+                        Zip = !dep.Source.PackageSource.IsNuGetOrg
+                            ? null
+                            : new(async () =>
+                            {
+                                try
+                                {
+                                    var reader = await httpZipProvider.GetReaderAsync(url);
+                                    return (reader, await reader.ReadAsync());
+                                }
+                                catch (MiniZipHttpException e)
+                                {
+                                    logger.LogError(e, "Cannot download package '{PackageId}@{Version}' using range requests from: {Url}",
+                                        packageId, version, url);
+
+                                    // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
+                                    return null;
+                                }
+                            }),
+                        NupkgStream = new(async () =>
+                        {
+                            var stream = new MemoryStream();
+                            var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+                            await findPackageById.CopyNupkgToStreamAsync(
+                                packageId,
+                                version,
+                                stream,
+                                cacheContext,
+                                NullLogger.Instance,
+                                CancellationToken.None);
+                            return stream;
+                        }),
                     };
                 }
 
@@ -298,14 +307,14 @@ internal sealed class NuGetDownloadablePackageResult
 {
     public required SourceCacheContext CacheContext { get; init; }
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
-    public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)>>? Zip { get; init; }
-    public required Stream? NupkgStream { get; init; }
+    public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
+    public required Lazy<Task<Stream>> NupkgStream { get; init; }
 
     public async Task<NuspecReader> GetNuspecReaderAsync()
     {
-        if (Zip is { } zipFactory)
+        if (Zip is { } zipFactory &&
+            await zipFactory.Value is { } zip)
         {
-            var zip = await zipFactory.Value;
             var nuspecEntry = zip.Directory.Entries
                 .Where(e => PackageHelper.IsManifest(e.GetName()))
                 .FirstOrDefault()
@@ -314,9 +323,9 @@ internal sealed class NuGetDownloadablePackageResult
             return new NuspecReader(new MemoryStream(nuspecBytes));
         }
 
-        Debug.Assert(NupkgStream != null);
-        NupkgStream.Position = 0;
-        return new PackageArchiveReader(NupkgStream, leaveStreamOpen: true).NuspecReader;
+        var nupkgStream = await NupkgStream.Value;
+        nupkgStream.Position = 0;
+        return new PackageArchiveReader(nupkgStream, leaveStreamOpen: true).NuspecReader;
     }
 }
 
@@ -401,15 +410,15 @@ internal sealed class NuGetDownloadablePackage(
     public async Task<ImmutableArray<LoadedAssembly>> GetAssembliesAsync()
     {
         var result = await this.result;
-        if (result.Zip is { } zipFactory)
+        if (result.Zip is { } zipFactory &&
+            await zipFactory.Value is { } zip)
         {
-            var zip = await zipFactory.Value;
             return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter);
         }
 
-        Debug.Assert(result.NupkgStream != null);
-        result.NupkgStream.Position = 0;
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(result.NupkgStream, dllFilter);
+        var nupkgStream = await result.NupkgStream.Value;
+        nupkgStream.Position = 0;
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter);
     }
 }
 
