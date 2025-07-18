@@ -17,6 +17,11 @@ internal sealed class TestLoggerProvider(ITestOutputHelper output) : ILoggerProv
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             output.WriteLine(formatter(state, exception));
+
+            if (exception != null)
+            {
+                output.WriteLine(exception.ToString());
+            }
         }
     }
 }
