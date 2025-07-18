@@ -5,32 +5,26 @@ using System.Text.Json.Serialization;
 
 namespace DotNetLab.Lab;
 
-public sealed record CompilerDependencyInfo
+public sealed record PackageDependencyInfo
 {
     [JsonConstructor]
-    public CompilerDependencyInfo(string version, CommitLink commit)
+    public PackageDependencyInfo(string version, CommitLink commit)
     {
         Version = version;
         Commit = commit;
     }
 
-    private CompilerDependencyInfo((string Version, string CommitHash, string RepoUrl) arg)
-        : this(arg.Version, new CommitLink { Hash = arg.CommitHash, RepoUrl = arg.RepoUrl })
+    private PackageDependencyInfo((string Version, CommitLink Commit) arg)
+        : this(arg.Version, arg.Commit)
     {
     }
 
-    public CompilerDependencyInfo(string version, string commitHash, string repoUrl)
-        : this((Version: version, CommitHash: commitHash, RepoUrl: repoUrl))
-    {
-    }
-
-    public CompilerDependencyInfo(string assemblyName, Func<CompilerDependencyInfo, string?>? versionLink = null)
+    public PackageDependencyInfo(string assemblyName, Func<PackageDependencyInfo, string?>? versionLink = null)
         : this(FromAssembly(assemblyName))
     {
         VersionLink = versionLink?.Invoke(this);
     }
 
-    public required CompilerVersionSpecifier VersionSpecifier { get; init; }
     public string Version { get; }
     public string? VersionLink { get; init; }
     public CommitLink Commit { get; }
@@ -39,7 +33,7 @@ public sealed record CompilerDependencyInfo
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }
 
-    private static (string Version, string CommitHash, string RepoUrl) FromAssembly(string assemblyName)
+    private static (string Version, CommitLink Commit) FromAssembly(string assemblyName)
     {
         string version = "";
         string hash = "";
@@ -62,7 +56,7 @@ public sealed record CompilerDependencyInfo
             }
         }
 
-        return (Version: version, CommitHash: hash, RepoUrl: repositoryUrl);
+        return (Version: version, Commit: new CommitLink { Hash = hash, RepoUrl = repositoryUrl });
     }
 }
 

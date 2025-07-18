@@ -6,13 +6,27 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
-public static class Util
+public static partial class Util
 {
+    [GeneratedRegex("""\s+""")]
+    public static partial Regex Whitespace { get; }
+
     extension(AsyncEnumerable)
     {
         public static IAsyncEnumerable<T> Create<T>(T item)
         {
             return AsyncEnumerable.Repeat(item, 1);
+        }
+    }
+
+    extension<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+    {
+        public void SetRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
+        {
+            foreach (var item in items)
+            {
+                dictionary[item.Key] = item.Value;
+            }
         }
     }
 
@@ -41,6 +55,14 @@ public static class Util
             {
                 ArrayList.Adapter((IList)list).Sort((IComparer)comparer);
             }
+        }
+    }
+
+    extension(ReadOnlySpan<char> span)
+    {
+        public Regex.ValueSplitEnumerator SplitByWhitespace(int count)
+        {
+            return Whitespace.EnumerateSplits(span, count);
         }
     }
 
@@ -203,7 +225,7 @@ public static class Util
         return string.Join(separator, source.Select(x => $"{quote}{x}{quote}"));
     }
 
-    public static async IAsyncEnumerable<TResult> SelectAsync<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)
+    public static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)
     {
         await foreach (var item in source)
         {
@@ -241,7 +263,7 @@ public static class Util
         return results.DrainToImmutable();
     }
 
-    public static async IAsyncEnumerable<TResult> SelectManyAsync<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
+    public static async IAsyncEnumerable<TResult> SelectMany<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
     {
         await foreach (var item in source)
         {
@@ -280,6 +302,17 @@ public static class Util
         foreach (var item in source)
         {
             if (selector(item) is TResult result)
+            {
+                yield return result;
+            }
+        }
+    }
+
+    public static async IAsyncEnumerable<TResult> SelectNonNull<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult?>> selector)
+    {
+        await foreach (var item in source)
+        {
+            if (await selector(item) is TResult result)
             {
                 yield return result;
             }

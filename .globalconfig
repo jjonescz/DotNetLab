@@ -1,4 +1,7 @@
-﻿# CA2016: Forward the 'CancellationToken' parameter to methods
+﻿# CA2012: Use ValueTasks correctly
+dotnet_diagnostic.CA2012.severity = warning
+
+# CA2016: Forward the 'CancellationToken' parameter to methods
 dotnet_diagnostic.CA2016.severity = warning
 
 # CA2025: Do not pass 'IDisposable' instances into unawaited tasks

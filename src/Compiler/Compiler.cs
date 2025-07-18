@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Collections.ObjectModel;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
@@ -17,12 +18,16 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 public sealed class Compiler(
+    IServiceProvider services,
+    ILogger<Compiler> logger,
     ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
 {
     private const string ToolchainHelpText = """
 
         You can try selecting different Razor toolchain in Settings / Advanced.
         """;
+
+    private const string FileBasedProgramFeatureName = "FileBasedProgram";
 
     public static readonly string ConfigurationGlobalUsings = """
         global using DotNetLab;
@@ -56,7 +61,7 @@ public sealed class Compiler(
         UsingStatement = false,
     };
 
-    public CompiledAssembly Compile(
+    public async ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -70,12 +75,12 @@ public sealed class Compiler(
             }
         }
 
-        var result = CompileNoCache(input, assemblies, builtInAssemblies, alc);
+        var result = await CompileNoCacheAsync(input, assemblies, builtInAssemblies, alc);
         LastResult = (input, result);
         return result.CompiledAssembly;
     }
 
-    private LiveCompilationResult CompileNoCache(
+    private async ValueTask<LiveCompilationResult> CompileNoCacheAsync(
         CompilationInput compilationInput,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
@@ -88,11 +93,18 @@ public sealed class Compiler(
         CSharpCompilationOptions? options = null;
         EmitOptions emitOptions = EmitOptions.Default;
 
-        var references = RefAssemblyMetadata.All;
-        var referenceInfos = RefAssemblies.All;
+        var references = new RefAssemblyList
+        {
+            Metadata = RefAssemblyMetadata.All,
+            Assemblies = RefAssemblies.All,
+        };
+
+        Config.Instance.Reset();
+
+        // Process `#:` directives first, so the C# Configuration code can perform more fine-grained option manipulation on top of that.
+        var directiveDiagnosticInputs = await processDirectivesAsync();
 
         // If we have a configuration, compile and execute it.
-        Config.Reset();
         ImmutableArray<Diagnostic> configDiagnostics;
         ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
         if (compilationInput.Configuration is { } configuration)
@@ -124,14 +136,15 @@ public sealed class Compiler(
                 };
                 return getResult(configResult);
             }
-
-            parseOptions = Config.ConfigureCSharpParseOptions(parseOptions);
-            emitOptions = Config.ConfigureEmitOptions(emitOptions);
         }
         else
         {
             configDiagnostics = [];
         }
+
+        parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
+        emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
+        references = Config.Instance.ConfigureReferences(references);
 
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
@@ -173,7 +186,7 @@ public sealed class Compiler(
 
         options = CreateDefaultCompilationOptions(outputKind);
 
-        options = Config.ConfigureCSharpCompilationOptions(options);
+        options = Config.Instance.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
         ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
@@ -197,6 +210,7 @@ public sealed class Compiler(
         ICSharpCode.Decompiler.Metadata.PEFile? peFile = getPeFile(finalCompilation, out var emitDiagnostics);
 
         IEnumerable<Diagnostic> diagnostics = configDiagnostics
+            .Concat(processDirectiveDiagnostics())
             .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
             .Where(filterDiagnostic);
@@ -374,8 +388,9 @@ public sealed class Compiler(
             {
                 CompiledAssembly = result,
                 CompilerAssemblies = compilerAssembliesUsed,
-                CSharpParseOptions = compilerAssembliesUsed != null ? parseOptions : null,
-                CSharpCompilationOptions = compilerAssembliesUsed != null ? options : null,
+                CSharpParseOptions = Config.Instance.HasParseOptions ? parseOptions : null,
+                CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
+                ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
             };
         }
 
@@ -383,16 +398,18 @@ public sealed class Compiler(
 
         bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
+            var configurationParseOptions = parseOptions.WithFeatures(parseOptions.Features.Where(p => p.Key != FileBasedProgramFeatureName));
+
             var configCompilation = CSharpCompilation.Create(
                 assemblyName: "Configuration",
                 syntaxTrees:
                 [
-                    CSharpSyntaxTree.ParseText(code, parseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, parseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, "Configuration.cs", Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references:
                 [
-                    ..references,
+                    ..references.Metadata,
                     ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ],
                 options: CreateConfigurationCompilationOptions());
@@ -408,7 +425,7 @@ public sealed class Compiler(
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
                 var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
                 [
-                    ..references,
+                    ..references.Metadata,
                     ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ]);
                 emitStream = getEmitStream(configCompilationWithBuiltInReferences, out var diagnosticsWithBuiltInReferences);
@@ -464,7 +481,7 @@ public sealed class Compiler(
             var initialCompilation = CSharpCompilation.Create(
                 assemblyName: projectName,
                 syntaxTrees: cSharpSources.Select(static s => s.SyntaxTree),
-                references: references,
+                references: references.Metadata,
                 options: options);
 
             if (generatorDriver is null)
@@ -529,12 +546,12 @@ public sealed class Compiler(
                     }),
                     .. cSharpSyntaxTrees,
                 ],
-                references,
+                references.Metadata,
                 options);
 
             // Phase 2: Full generation.
             var projectEngine = createProjectEngine([
-                .. references,
+                .. references.Metadata,
                 declarationCompilation.ToMetadataReference()
             ]);
             var allRazorDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
@@ -560,7 +577,7 @@ public sealed class Compiler(
                     }),
                     .. cSharpSyntaxTrees,
                 ],
-                references,
+                references.Metadata,
                 options);
 
             return (finalCompilation, allRazorDiagnostics.ToImmutable());
@@ -794,7 +811,85 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, referenceInfos));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies));
+        }
+
+        async ValueTask<IReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>> processDirectivesAsync()
+        {
+            try
+            {
+                var diagnostics = new Dictionary<InputCode, IReadOnlyList<(TextSpan, string)>>();
+
+                var context = new FileLevelDirective.ConsumerContext
+                {
+                    Services = services,
+                    Config = Config.Instance,
+                };
+
+                var parser = FileLevelDirectiveParser.Instance;
+
+                foreach (var input in compilationInput.Inputs.Value)
+                {
+                    if (!input.FileName.IsCSharpFileName(out _))
+                    {
+                        continue;
+                    }
+
+                    var directives = parser.Parse(input);
+                    await context.ConsumeAsync(directives);
+
+                    List<(TextSpan, string)>? fileDiagnostics = null;
+
+                    foreach (var directive in directives)
+                    {
+                        foreach (var error in directive.Info.Errors)
+                        {
+                            if (fileDiagnostics is null)
+                            {
+                                fileDiagnostics = new();
+                                diagnostics.Add(input, fileDiagnostics);
+                            }
+
+                            fileDiagnostics.Add((directive.Info.Span, error));
+                        }
+                    }
+                }
+
+                return diagnostics;
+            }
+            catch (Exception ex) when (ex is MissingMethodException or TypeLoadException)
+            {
+                // FileLevelDirectiveParser uses APIs which might not be available in old Roslyn versions.
+                // The whole compilation should not crash because of that.
+                logger.LogError(ex, "Cannot process file-level directives.");
+                return ReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>.Empty;
+            }
+        }
+
+        ImmutableArray<Diagnostic> processDirectiveDiagnostics()
+        {
+            var builder = ImmutableArray.CreateBuilder<Diagnostic>();
+
+            foreach (var (input, tree) in cSharpSources)
+            {
+                if (directiveDiagnosticInputs.TryGetValue(input, out var diagnostics))
+                {
+                    foreach (var (span, error) in diagnostics)
+                    {
+                        builder.Add(Diagnostic.Create(
+                            id: "LAB",
+                            category: "FileLevelDirective",
+                            message: error,
+                            DiagnosticSeverity.Warning,
+                            DiagnosticSeverity.Warning,
+                            isEnabledByDefault: true,
+                            warningLevel: 1,
+                            location: Location.Create(tree, span)));
+                    }
+                }
+            }
+
+            return builder.ToImmutable();
         }
     }
 
@@ -802,7 +897,12 @@ public sealed class Compiler(
     {
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
         return new CSharpParseOptions(LanguageVersion.Preview)
-            .WithFeatures([new("use-roslyn-tokenizer", "true")]);
+            .WithPreprocessorSymbols("DEBUG")
+            .WithFeatures(
+            [
+                new("use-roslyn-tokenizer", "true"),
+                new(FileBasedProgramFeatureName, "true"),
+            ]);
     }
 
     public static OutputKind GetDefaultOutputKind(IEnumerable<SyntaxTree> sources)
@@ -1018,4 +1118,10 @@ internal sealed class LiveCompilationResult
     /// Set to <see langword="null"/> if the default options were used.
     /// </summary>
     public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
+
+    /// <summary>
+    /// Reference assemblies used by the main compilation.
+    /// Set to <see langword="default"/> if the default reference assemblies were used.
+    /// </summary>
+    public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
 }

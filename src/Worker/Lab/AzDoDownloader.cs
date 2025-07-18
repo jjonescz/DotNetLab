@@ -13,9 +13,9 @@ internal sealed class AzDoDownloader(
     HttpClient client)
     : ICompilerDependencyResolver
 {
-    private static readonly Task<CompilerDependency?> nullResult = Task.FromResult<CompilerDependency?>(null);
+    private static readonly Task<PackageDependency?> nullResult = Task.FromResult<PackageDependency?>(null);
 
-    public Task<CompilerDependency?> TryResolveCompilerAsync(
+    public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
@@ -28,7 +28,7 @@ internal sealed class AzDoDownloader(
             _ => nullResult,
         };
 
-        Task<CompilerDependency?> fromPrNumberAsync(int pullRequestNumber)
+        Task<PackageDependency?> fromPrNumberAsync(int pullRequestNumber)
         {
             return fromRawBranchNameAsync(branchName: $"refs/pull/{pullRequestNumber}/merge", new()
             {
@@ -37,7 +37,7 @@ internal sealed class AzDoDownloader(
             });
         }
 
-        Task<CompilerDependency?> fromBranchNameAsync(string branchName)
+        Task<PackageDependency?> fromBranchNameAsync(string branchName)
         {
             return fromRawBranchNameAsync(branchName: $"refs/heads/{branchName}", new()
             {
@@ -46,7 +46,7 @@ internal sealed class AzDoDownloader(
             });
         }
 
-        async Task<CompilerDependency?> fromRawBranchNameAsync(string branchName, DisplayLink additionalLink)
+        async Task<PackageDependency?> fromRawBranchNameAsync(string branchName, DisplayLink additionalLink)
         {
             var build = await GetLatestBuildAsync(
                 definitionId: info.BuildDefinitionId,
@@ -68,30 +68,32 @@ internal sealed class AzDoDownloader(
             return fromBuild(build, additionalLink, additionalCommitHash: additionalCommitHash);
         }
 
-        async Task<CompilerDependency?> fromBuildIdAsync(int buildId)
+        async Task<PackageDependency?> fromBuildIdAsync(int buildId)
         {
             var build = await GetBuildAsync(buildId: buildId);
 
             return fromBuild(build);
         }
 
-        CompilerDependency fromBuild(Build build, DisplayLink? additionalLink = null, string? additionalCommitHash = null)
+        PackageDependency fromBuild(Build build, DisplayLink? additionalLink = null, string? additionalCommitHash = null)
         {
             return new()
             {
-                Info = () => Task.FromResult(new CompilerDependencyInfo(
+                Info = new(() => Task.FromResult(new PackageDependencyInfo(
                     version: build.BuildNumber,
-                    commitHash: build.SourceVersion,
-                    repoUrl: info.RepositoryUrl)
+                    commit: new CommitLink
+                    {
+                        Hash = build.SourceVersion,
+                        RepoUrl = info.RepositoryUrl,
+                    })
                 {
                     AdditionalLink = additionalLink,
                     AdditionalCommitHash = additionalCommitHash,
                     VersionLink = SimpleAzDoUtil.GetBuildUrl(build.Id),
-                    VersionSpecifier = specifier,
                     Configuration = configuration,
                     CanChangeBuildConfiguration = true,
-                }),
-                Assemblies = () => getAssembliesAsync(buildId: build.Id),
+                })),
+                Assemblies = new(() => getAssembliesAsync(buildId: build.Id)),
             };
         }
 
@@ -146,7 +148,7 @@ internal sealed class AzDoDownloader(
             artifactName: artifactName,
             fileId: nupkg.Id);
 
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, folder: packageFolder);
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, new CompilerNuGetDllFilter(packageFolder));
     }
 
     private async Task<ImmutableArray<LoadedAssembly>> GetAssembliesViaRehydrateAsync(

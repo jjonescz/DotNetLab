@@ -1,6 +1,7 @@
 ﻿using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace DotNetLab;
 
@@ -24,9 +25,13 @@ public static class WorkerServices
                 {
                     options.AssembliesAreAlwaysInDllFormat = true;
                 });
-                services.Configure<NuGetDownloaderOptions>(static options =>
+                services.Configure<HttpClientOptions>(static options =>
                 {
                     options.LogRequests = true;
+                });
+                services.Configure<NuGetOptions>(static options =>
+                {
+                    options.NoCache = true;
                 });
                 configureServices?.Invoke(services);
             });
@@ -39,7 +44,11 @@ public static class WorkerServices
     {
         return Create(
             logLevel,
-            sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler()) { BaseAddress = new Uri(baseUrl) });
+            sp =>
+            {
+                var handler = httpMessageHandler ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp);
+                return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
+            });
     }
 
     private static IServiceProvider Create(
@@ -54,6 +63,7 @@ public static class WorkerServices
             builder.AddProvider(new SimpleConsoleLoggerProvider());
         });
         services.AddScoped(httpClientFactory);
+        services.AddScoped<CorsClientHandler>();
         services.AddScoped<CompilerLoaderServices>();
         services.AddScoped<AssemblyDownloader>();
         services.AddScoped<CompilerProxy>();
@@ -65,9 +75,45 @@ public static class WorkerServices
         services.AddScoped<ICompilerDependencyResolver, NuGetDownloaderPlugin>();
         services.AddScoped<ICompilerDependencyResolver, AzDoDownloader>();
         services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(static sp => sp.GetRequiredService<BuiltInCompilerProvider>());
+        services.AddScoped<IRefAssemblyDownloader, RefAssemblyDownloader>();
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
         services.AddScoped<Func<DotNetBootConfig?>>(static _ => DotNetBootConfig.GetFromRuntime);
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
+    }
+}
+
+internal sealed class HttpClientOptions
+{
+    public bool LogRequests { get; set; }
+}
+
+internal class LoggingHttpClientHandler(
+    ILogger<LoggingHttpClientHandler> logger,
+    IOptions<HttpClientOptions> options)
+    : HttpClientHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (options.Value.LogRequests)
+        {
+            return SendAndLogAsync(request, cancellationToken);
+        }
+
+        return base.SendAsync(request, cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendAndLogAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+
+        logger.LogDebug(
+            "Sent: {Method} {Uri}, Received: {Status} ({ReceivedSize} bytes)",
+            request.Method,
+            request.RequestUri,
+            response.StatusCode,
+            response.Content?.Headers.ContentLength?.SeparateThousands() ?? "?");
+
+        return response;
     }
 }

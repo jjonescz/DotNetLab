@@ -57,6 +57,24 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2", "2158b59104a5fb7db33796657d4ab3231e312302")] // preview version is downloaded from an AzDo feed
+    [InlineData("4.14.0", "4.14.0", "8edf7bcd4f1594c3d68a6a567469f41dbd33dd1b")] // non-preview version is downloaded from nuget.org
+    public async Task SpecifiedNuGetRoslynVersion_Info(string version, string expectedVersion, string expectedCommit)
+    {
+        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+
+        var dependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+
+        await dependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+        var info = await dependencyProvider.GetLoadedInfoAsync(CompilerKind.Roslyn);
+
+        info.Version.Should().Be(expectedVersion);
+        info.Commit.Hash.Should().Be(expectedCommit);
+        info.Commit.RepoUrl.Should().Be("https://github.com/dotnet/roslyn");
+    }
+
+    [Theory]
     [InlineData("4.11.0-3.24352.2", "92051d4c")]
     [InlineData("4.10.0-1.24076.1", "e1c36b10")]
     [InlineData("5.0.0-1.25252.6", "b6ec1031")]
@@ -296,6 +314,100 @@ public class C
             }
 
             return currentPos;
+        }
+    }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_Configuration(bool debug)
+    {
+        var services = WorkerServices.CreateTest();
+
+        var source = $"""
+            #:property Configuration={(debug ? "Debug" : "Release")}
+            System.Console.WriteLine("Hi");
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var ilText = await compiled.GetRequiredGlobalOutput("il").GetTextAsync(null);
+        output.WriteLine(ilText);
+        Action<string, string> assert = debug ? Assert.Contains : Assert.DoesNotContain;
+        assert("nop", ilText);
+    }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_LangVersion(bool old)
+    {
+        var services = WorkerServices.CreateTest();
+
+        var source = $"""
+            #:property LangVersion={(old ? "12" : "13")}
+            class C<T> where T : allows ref struct;
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+
+        if (old)
+        {
+            Assert.Equal("""
+                // /Input.cs(2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                // class C<T> where T : allows ref struct;
+                Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        else
+        {
+            Assert.Empty(diagnosticsText);
+        }
+    }
+
+    [Theory, CombinatorialData]
+    public async Task Directives_TargetFramework(bool fx)
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = $$"""
+            #:property TargetFramework={{(fx ? "net472" : "net9.0")}}
+            class C
+            {
+                string M(string? x)
+                {
+                    System.Diagnostics.Debug.Assert(x != null);
+                    return x;
+                }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+
+        // .NET Framework does not have nullable-annotated `Debug.Assert` API.
+        if (fx)
+        {
+            Assert.Equal("""
+                // /Input.cs(7,16): warning CS8603: Possible null reference return.
+                //         return x;
+                Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        else
+        {
+            Assert.Empty(diagnosticsText);
         }
     }
 }

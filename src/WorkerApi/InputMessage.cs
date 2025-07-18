@@ -90,9 +90,9 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record GetCompilerDependencyInfo(CompilerKind CompilerKind) : WorkerInputMessage<CompilerDependencyInfo>
+    public sealed record GetCompilerDependencyInfo(CompilerKind CompilerKind) : WorkerInputMessage<PackageDependencyInfo>
     {
-        public override Task<CompilerDependencyInfo> HandleAsync(IExecutor executor)
+        public override Task<PackageDependencyInfo> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -201,7 +201,7 @@ public abstract record WorkerInputMessage
         Task<CompiledAssembly> HandleAsync(Compile message);
         Task<string> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);
-        Task<CompilerDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
+        Task<PackageDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<List<SdkVersionInfo>> HandleAsync(GetSdkVersions message);
         Task<SdkInfo> HandleAsync(GetSdkInfo message);
         Task<string?> HandleAsync(TryGetSubRepoCommitHash message);

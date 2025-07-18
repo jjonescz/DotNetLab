@@ -14,9 +14,34 @@ public static class CodeAnalysisUtil
 {
     private static EmitOptions DefaultEmitOptions => field ??= new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb);
 
+    extension(RoslynCompletionItem item)
+    {
+        public static string InsertionTextPropertyName => "InsertionText";
+
+        public RoslynCompletionItem WithProperty(string name, string value)
+        {
+            return item.WithProperties(item.Properties.SetItem(name, value));
+        }
+
+        public RoslynCompletionItem WithInsertionText(string value)
+        {
+            return item.WithProperty(RoslynCompletionItem.InsertionTextPropertyName, value);
+        }
+    }
+
     extension(EmitOptions)
     {
         public static EmitOptions Default => DefaultEmitOptions;
+    }
+
+    extension(SourceText text)
+    {
+#pragma warning disable RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental
+        public SyntaxTokenParser CreateTokenizer()
+        {
+            return SyntaxFactory.CreateTokenParser(text, Compiler.CreateDefaultParseOptions());
+        }
+#pragma warning restore RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental
     }
 
     public static bool TryGetHostOutputSafe(
@@ -364,5 +389,52 @@ internal readonly record struct RazorGeneratorResultSafe(object Inner)
 
         result = null;
         return false;
+    }
+}
+
+internal static class MsbuildUtil
+{
+    public static bool TryConvertStringToBool(ReadOnlySpan<char> text, out bool? result)
+    {
+        if (text.IsWhiteSpace())
+        {
+            result = null;
+            return true;
+        }
+
+        if (IsValidBooleanTrue(text))
+        {
+            result = true;
+            return true;
+        }
+
+        if (IsValidBooleanFalse(text))
+        {
+            result = false;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
+    public static bool IsValidBooleanTrue(ReadOnlySpan<char> text)
+    {
+        return text.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("on", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!false", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!off", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!no", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsValidBooleanFalse(ReadOnlySpan<char> text)
+    {
+        return text.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("off", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("no", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!true", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!on", StringComparison.OrdinalIgnoreCase) ||
+            text.Equals("!yes", StringComparison.OrdinalIgnoreCase);
     }
 }

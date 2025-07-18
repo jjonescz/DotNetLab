@@ -681,6 +681,9 @@
 
     public async Task DisplaySquigglesAsync()
     {
+        // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
+        LanguageServices.CancelDiagnostics();
+
         foreach (var input in inputs)
         {
             List<MarkerData> markers = compiled is { } result ? result.Output.Diagnostics

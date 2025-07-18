@@ -447,7 +447,7 @@ public static class MonacoConversions
         this RoslynCompletionItem completionItem,
         [NotNullWhen(returnValue: true)] out string? insertionText)
     {
-        return completionItem.Properties.TryGetValue("InsertionText", out insertionText);
+        return completionItem.Properties.TryGetValue(RoslynCompletionItem.InsertionTextPropertyName, out insertionText);
     }
 
     private static string[] DefaultCommitCharacters { get; } = [.. RoslynCompletionRules.Default.DefaultCommitCharacters.Select(c => c.ToString())];

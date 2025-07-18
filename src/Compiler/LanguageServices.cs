@@ -49,6 +49,7 @@ internal sealed class LanguageServices : ILanguageServices
         workspace = new(MefHostServices.Create(
             [
                 .. MefHostServices.DefaultAssemblies,
+                typeof(FileLevelDirectiveCompletionProvider).Assembly,
                 typeof(RoslynWorkspaceAccessors).Assembly,
             ]));
 
@@ -606,6 +607,15 @@ internal sealed class LanguageServices : ILanguageServices
                 else
                 {
                     project = project.WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(defaultOutputKind));
+                }
+
+                if (compiler.LastResult?.Output.ReferenceAssemblies is { } references)
+                {
+                    project = project.WithMetadataReferences(references);
+                }
+                else
+                {
+                    project = project.WithMetadataReferences(RefAssemblyMetadata.All);
                 }
 
                 ApplyChanges(project.Solution);

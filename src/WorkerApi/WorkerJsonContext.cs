@@ -7,7 +7,7 @@ namespace DotNetLab;
 [JsonSerializable(typeof(WorkerInputMessage))]
 [JsonSerializable(typeof(WorkerOutputMessage))]
 [JsonSerializable(typeof(CompiledAssembly))]
-[JsonSerializable(typeof(CompilerDependencyInfo))]
+[JsonSerializable(typeof(PackageDependencyInfo))]
 [JsonSerializable(typeof(List<SdkVersionInfo>))]
 [JsonSerializable(typeof(SdkInfo))]
 [JsonSerializable(typeof(ImmutableArray<MarkerData>))]

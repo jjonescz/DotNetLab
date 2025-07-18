@@ -1,7 +1,10 @@
+using Knapcode.MiniZip;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGet.Common;
+using NuGet.Configuration;
 using NuGet.Packaging;
+using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
@@ -10,24 +13,38 @@ using System.Runtime.InteropServices;
 
 namespace DotNetLab.Lab;
 
-public static class NuGetUtil
+internal static class NuGetUtil
 {
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, string folder)
+    extension(PackageSource packageSource)
     {
-        const string extension = ".dll";
-        using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: false, entryNameEncoding: null);
+        public bool IsNuGetOrg => packageSource.SourceUri.Host == "api.nuget.org";
+    }
+
+    extension(VersionRange range)
+    {
+        public bool IsExact([NotNullWhen(returnValue: true)] out NuGetVersion? exactVersion)
+        {
+            if (range.HasLowerAndUpperBounds &&
+                range.MinVersion == range.MaxVersion &&
+                range.IsMinInclusive &&
+                range.IsMaxInclusive &&
+                range.MinVersion != null)
+            {
+                exactVersion = range.MinVersion;
+                return true;
+            }
+
+            exactVersion = null;
+            return false;
+        }
+    }
+
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, INuGetDllFilter dllFilter)
+    {
+        using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
         return reader.GetFiles()
-            .Where(file =>
-            {
-                // Get only DLL files directly in the specified folder
-                // and starting with `Microsoft.`.
-                return file.EndsWith(extension, StringComparison.OrdinalIgnoreCase) &&
-                    file.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
-                    file.LastIndexOf('/') is int lastSlashIndex &&
-                    lastSlashIndex == folder.Length &&
-                    file.AsSpan(lastSlashIndex + 1).StartsWith("Microsoft.", StringComparison.Ordinal);
-            })
+            .Where(dllFilter.Include)
             .Select(file =>
             {
                 ZipArchiveEntry entry = reader.GetEntry(file);
@@ -37,12 +54,28 @@ public static class NuGetUtil
                 entryStream.CopyTo(memoryStream);
                 return new LoadedAssembly()
                 {
-                    Name = entry.Name[..^extension.Length],
+                    Name = Path.GetFileNameWithoutExtension(entry.Name),
                     Data = ImmutableCollectionsMarshal.AsImmutableArray(buffer),
                     Format = AssemblyDataFormat.Dll,
                 };
             })
             .ToImmutableArray();
+    }
+
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, INuGetDllFilter dllFilter)
+    {
+        return await zipDirectory.Entries
+            .Where(entry => dllFilter.Include(entry.GetName()))
+            .SelectAsArrayAsync(async entry =>
+            {
+                var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
+                return new LoadedAssembly()
+                {
+                    Name = Path.GetFileNameWithoutExtension(entry.GetName()),
+                    Data = ImmutableCollectionsMarshal.AsImmutableArray(bytes),
+                    Format = AssemblyDataFormat.Dll,
+                };
+            });
     }
 }
 
@@ -50,7 +83,7 @@ internal sealed class NuGetDownloaderPlugin(
     Lazy<NuGetDownloader> nuGetDownloader)
     : ICompilerDependencyResolver
 {
-    public Task<CompilerDependency?> TryResolveCompilerAsync(
+    public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
@@ -60,166 +93,343 @@ internal sealed class NuGetDownloaderPlugin(
             return nuGetDownloader.Value.TryResolveCompilerAsync(info, specifier, configuration);
         }
 
-        return Task.FromResult<CompilerDependency?>(null);
+        return Task.FromResult<PackageDependency?>(null);
     }
+}
+
+internal sealed class NuGetOptions
+{
+    public bool NoCache { get; set; }
 }
 
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
+    private readonly ILogger<NuGetDownloader> logger;
     private readonly SourceCacheContext cacheContext;
-    private readonly ImmutableArray<(AsyncLazy<FindPackageByIdResource> Resource, bool NuGetOrg)> findPackageByIds;
+    private readonly PackageDownloadContext downloadContext;
+    private readonly ImmutableArray<SourceRepository> repositories;
+    private readonly HttpClient httpClient;
+    private readonly HttpZipProvider httpZipProvider;
 
     public NuGetDownloader(
-        IOptions<NuGetDownloaderOptions> options,
-        ILogger<NuGetDownloader> logger)
+        ILogger<NuGetDownloader> logger,
+        IOptions<NuGetOptions> options,
+        CorsClientHandler corsClientHandler)
     {
-        Options = options.Value;
-        Logger = logger;
+        this.logger = logger;
+
         ImmutableArray<Lazy<INuGetResourceProvider>> providers =
         [
             new(() => new RegistrationResourceV3Provider()),
             new(() => new DependencyInfoResourceV3Provider()),
-            new(() => new CustomHttpHandlerResourceV3Provider(this)),
+            new(() => new CustomHttpHandlerResourceV3Provider(corsClientHandler)),
             new(() => new HttpSourceResourceProvider()),
             new(() => new ServiceIndexResourceV3Provider()),
             new(() => new RemoteV3FindPackageByIdResourceProvider()),
+            new(() => new PackageMetadataResourceV3Provider()),
         ];
-        IEnumerable<(string Url, bool NuGetOrg)> sources =
+        IEnumerable<string> sources =
         [
-            ("https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json", false),
-            ("https://api.nuget.org/v3/index.json", true),
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
+            "https://api.nuget.org/v3/index.json",
         ];
-        var repositories = sources.Select(t =>
-            (Source: Repository.CreateSource(providers, t.Url), t.NuGetOrg));
-        cacheContext = new SourceCacheContext();
-        findPackageByIds = repositories.SelectAsArray(t =>
-            (new AsyncLazy<FindPackageByIdResource>(() => t.Source.GetResourceAsync<FindPackageByIdResource>()), t.NuGetOrg));
+        repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
+
+        bool noCache = options.Value.NoCache;
+        cacheContext = noCache
+            ? new SourceCacheContext
+            {
+                NoCache = true,
+                DirectDownload = true,
+                GeneratedTempFolder = Directory.CreateTempSubdirectory().FullName,
+            }
+            : new SourceCacheContext();
+        downloadContext = new PackageDownloadContext(
+            cacheContext, 
+            directDownloadDirectory: noCache ? Directory.CreateTempSubdirectory().FullName : null,
+            directDownload: noCache);
+
+        httpClient = new HttpClient(corsClientHandler);
+        httpZipProvider = new HttpZipProvider(httpClient);
     }
 
-    public NuGetDownloaderOptions Options { get; }
-    public ILogger<NuGetDownloader> Logger { get; }
+    /// <param name="version">Package version or range.</param>
+    public Task<PackageDependency> DownloadAsync(
+        string packageId,
+        string version,
+        INuGetDllFilter dllFilter)
+    {
+        if (!VersionRange.TryParse(version, out var range))
+        {
+            throw new InvalidOperationException($"Cannot parse version range '{version}' of package '{packageId}'.");
+        }
 
-    public async Task<CompilerDependency?> TryResolveCompilerAsync(
+        return DownloadAsync(packageId, range, dllFilter);
+    }
+
+    public async Task<PackageDependency> DownloadAsync(
+        string packageId,
+        VersionRange range,
+        INuGetDllFilter dllFilter)
+    {
+        SourceRepository? repository;
+        if (range.IsExact(out var exactVersion))
+        {
+            repository = null;
+        }
+        else
+        {
+            // NOTE: The first source feed that has a matching version wins. That is to save on HTTP requests.
+            var results = repositories.ToAsyncEnumerable()
+                .Select(async repository =>
+                {
+                    var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+                    var versions = await findPackageById.GetAllVersionsAsync(
+                        packageId,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None);
+                    return (repository, Version: range.FindBestMatch(versions));
+                })
+                .Where(t => t.Version != null);
+            var result = await results.FirstOrNullAsync() ??
+                throw new InvalidOperationException($"Package '{packageId}' not found.");
+            repository = result.repository;
+            exactVersion = result.Version;
+        }
+
+        return Download(packageId, repository, exactVersion, dllFilter);
+    }
+
+    public PackageDependency Download(
+        string packageId,
+        SourceRepository? repository,
+        NuGetVersion version,
+        INuGetDllFilter dllFilter)
+    {
+        var package = new NuGetDownloadablePackage(dllFilter, async () =>
+        {
+            var repos = repository is { } r
+                ? AsyncEnumerable.Create(r)
+                : repositories.ToAsyncEnumerable();
+
+            var success = await repos.SelectNonNull(async Task<NuGetDownloadablePackageResult?> (repository) =>
+            {
+                var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
+                var dep = await depResource.ResolvePackage(
+                    new PackageIdentity(packageId, version),
+                    NuGet.Frameworks.NuGetFramework.AnyFramework,
+                    cacheContext,
+                    NullLogger.Instance,
+                    CancellationToken.None);
+                if (dep?.DownloadUri is { } url)
+                {
+                    return new()
+                    {
+                        CacheContext = cacheContext,
+                        DependencyInfo = dep,
+                        // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
+                        Zip = !dep.Source.PackageSource.IsNuGetOrg
+                            ? null
+                            : new(async () =>
+                            {
+                                try
+                                {
+                                    var reader = await httpZipProvider.GetReaderAsync(url);
+                                    return (reader, await reader.ReadAsync());
+                                }
+                                catch (MiniZipHttpException e)
+                                {
+                                    logger.LogError(e, "Cannot download package '{PackageId}@{Version}' using range requests from: {Url}",
+                                        packageId, version, url);
+
+                                    // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
+                                    return null;
+                                }
+                            }),
+                        NupkgStream = new(async () =>
+                        {
+                            var stream = new MemoryStream();
+                            var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+                            await findPackageById.CopyNupkgToStreamAsync(
+                                packageId,
+                                version,
+                                stream,
+                                cacheContext,
+                                NullLogger.Instance,
+                                CancellationToken.None);
+                            return stream;
+                        }),
+                    };
+                }
+
+                return null;
+            })
+            .FirstOrDefaultAsync();
+
+            if (success is not { } s)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to download '{packageId}' version '{version}'.");
+            }
+
+            return s;
+        });
+
+        return new()
+        {
+            Info = new(package.GetInfoAsync),
+            Assemblies = new(package.GetAssembliesAsync),
+        };
+    }
+
+    public async Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
     {
-        ((FindPackageByIdResource Resource, bool NuGetOrg)? Finder, NuGetVersion version) result;
         if (specifier is CompilerVersionSpecifier.NuGetLatest)
         {
-            var versions = findPackageByIds.ToAsyncEnumerable()
-                .SelectAsync(static async t => (Resource: await t.Resource, t.NuGetOrg))
-                .SelectManyAsync(t =>
-                    t.Resource.GetAllVersionsAsync(
-                        info.PackageId,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None),
-                (t, version) => (t, version));
-            result = await versions.FirstOrNullAsync() ??
-                throw new InvalidOperationException($"Package '{info.PackageId}' not found.");
+            return await DownloadAsync(info.PackageId, VersionRange.All, new CompilerNuGetDllFilter(info.PackageFolder));
         }
         else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
         {
-            result = (null, nuGetSpecifier.Version);
+            return Download(info.PackageId, null, nuGetSpecifier.Version, new CompilerNuGetDllFilter(info.PackageFolder));
         }
         else
         {
             return null;
         }
-
-        var package = new NuGetDownloadablePackage(specifier, info.PackageFolder, async () =>
-        {
-            var (finder, version) = result;
-
-            var finders = finder is { } f
-                ? AsyncEnumerable.Create(f)
-                : findPackageByIds.ToAsyncEnumerable().SelectAsync(async t => (Resource: await t.Resource, t.NuGetOrg));
-
-            var stream = new MemoryStream();
-            var success = await finders.SelectAsync(async (f) =>
-            {
-                bool success = await f.Resource.CopyNupkgToStreamAsync(
-                    info.PackageId,
-                    version,
-                    stream,
-                    cacheContext,
-                    NullLogger.Instance,
-                    CancellationToken.None);
-                return (Success: success, f.NuGetOrg);
-            })
-            .FirstOrNullAsync(static t => t.Success);
-
-            if (success is not { } s)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to download '{info.PackageId}' version '{version}'.");
-            }
-
-            return new() { Stream = stream, FromNuGetOrg = s.NuGetOrg };
-        });
-
-        return new()
-        {
-            Info = package.GetInfoAsync,
-            Assemblies = package.GetAssembliesAsync,
-        };
     }
 }
 
-internal readonly struct NuGetDownloadablePackageResult
+internal sealed class NuGetDownloadablePackageResult
 {
-    public required MemoryStream Stream { get; init; }
-    public required bool FromNuGetOrg { get; init; }
+    public required SourceCacheContext CacheContext { get; init; }
+    public required SourcePackageDependencyInfo DependencyInfo { get; init; }
+    public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
+    public required Lazy<Task<Stream>> NupkgStream { get; init; }
+
+    public async Task<NuspecReader> GetNuspecReaderAsync()
+    {
+        if (Zip is { } zipFactory &&
+            await zipFactory.Value is { } zip)
+        {
+            var nuspecEntry = zip.Directory.Entries
+                .Where(e => PackageHelper.IsManifest(e.GetName()))
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException($"Nuspec file not found in the package: {DependencyInfo.DownloadUri}");
+            var nuspecBytes = await zip.Reader.ReadFileDataAsync(zip.Directory, nuspecEntry);
+            return new NuspecReader(new MemoryStream(nuspecBytes));
+        }
+
+        var nupkgStream = await NupkgStream.Value;
+        nupkgStream.Position = 0;
+        return new PackageArchiveReader(nupkgStream, leaveStreamOpen: true).NuspecReader;
+    }
+}
+
+internal interface INuGetDllFilter
+{
+    public const string DllExtension = ".dll";
+
+    bool Include(string filePath);
+}
+
+internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
+{
+    public bool Include(string filePath)
+    {
+        // Get only DLL files directly in the specified folder
+        // and starting with `Microsoft.`.
+        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.LastIndexOf('/') is int lastSlashIndex &&
+            lastSlashIndex == folder.Length &&
+            filePath.AsSpan(lastSlashIndex + 1).StartsWith("Microsoft.", StringComparison.Ordinal);
+    }
+}
+
+internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : INuGetDllFilter
+{
+    public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
+
+    public bool Include(string filePath)
+    {
+        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.Count('/') == level &&
+            AdditionalFilter(filePath);
+    }
 }
 
 internal sealed class NuGetDownloadablePackage(
-    CompilerVersionSpecifier specifier,
-    string folder,
+    INuGetDllFilter dllFilter,
     Func<Task<NuGetDownloadablePackageResult>> resultFactory)
 {
-    private readonly AsyncLazy<NuGetDownloadablePackageResult> _result = new(resultFactory);
+    private readonly AsyncLazy<NuGetDownloadablePackageResult> result = new(resultFactory);
 
-    private async Task<NuGetDownloadablePackageResult> GetResultAsync()
+    public async Task<PackageDependencyInfo> GetInfoAsync()
     {
-        var result = await _result;
-        result.Stream.Position = 0;
-        return result;
-    }
+        var result = await this.result;
 
-    public async Task<CompilerDependencyInfo> GetInfoAsync()
-    {
-        var result = await GetResultAsync();
-        using var reader = new PackageArchiveReader(result.Stream, leaveStreamOpen: true);
-        var metadata = reader.NuspecReader.GetRepositoryMetadata();
-        var identity = reader.GetIdentity();
-        var version = identity.Version.ToString();
+        // Try extracting from metadata endpoint (to avoid downloading the nupkg just to extract the nuspec out of it).
+        var metadataResource = await result.DependencyInfo.Source.GetResourceAsync<PackageMetadataResource>();
+        var metadata = await metadataResource.GetMetadataAsync(
+            new PackageIdentity(result.DependencyInfo.Id, result.DependencyInfo.Version),
+            result.CacheContext,
+            NullLogger.Instance,
+            CancellationToken.None);
+        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata.Description);
+
+        if (commitLink is null)
+        {
+            // Fallback to extracting the info from nuspec.
+            var nuspecReader = await result.GetNuspecReaderAsync();
+            var repoMetadata = nuspecReader.GetRepositoryMetadata();
+            commitLink = new()
+            {
+                RepoUrl = repoMetadata.Url,
+                Hash = repoMetadata.Commit,
+            };
+        }
+
+        var version = result.DependencyInfo.Version.ToString();
         return new(
             version: version,
-            commitHash: metadata.Commit,
-            repoUrl: metadata.Url)
+            commit: commitLink)
         {
-            VersionLink = SimpleNuGetUtil.GetPackageDetailUrl(packageId: identity.Id, version: version, fromNuGetOrg: result.FromNuGetOrg),
-            VersionSpecifier = specifier,
+            VersionLink = SimpleNuGetUtil.GetPackageDetailUrl(
+                packageId: result.DependencyInfo.Id,
+                version: version,
+                fromNuGetOrg: result.DependencyInfo.Source.PackageSource.IsNuGetOrg),
             Configuration = BuildConfiguration.Release,
         };
     }
 
     public async Task<ImmutableArray<LoadedAssembly>> GetAssembliesAsync()
     {
-        var result = await GetResultAsync();
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(result.Stream, folder: folder);
+        var result = await this.result;
+        if (result.Zip is { } zipFactory &&
+            await zipFactory.Value is { } zip)
+        {
+            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter);
+        }
+
+        var nupkgStream = await result.NupkgStream.Value;
+        nupkgStream.Position = 0;
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter);
     }
 }
 
 internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
 {
-    private readonly NuGetDownloader nuGetDownloader;
+    private readonly CorsClientHandler corsClientHandler;
 
-    public CustomHttpHandlerResourceV3Provider(NuGetDownloader nuGetDownloader)
+    public CustomHttpHandlerResourceV3Provider(CorsClientHandler corsClientHandler)
         : base(typeof(HttpHandlerResource), nameof(CustomHttpHandlerResourceV3Provider))
     {
-        this.nuGetDownloader = nuGetDownloader;
+        this.corsClientHandler = corsClientHandler;
     }
 
     public override Task<Tuple<bool, INuGetResource?>> TryCreate(SourceRepository source, CancellationToken token)
@@ -231,51 +441,34 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     {
         if (source.PackageSource.IsHttp)
         {
-            var clientHandler = new CorsClientHandler(nuGetDownloader);
-            var messageHandler = new ServerWarningLogHandler(clientHandler);
-            return new(true, new HttpHandlerResourceV3(clientHandler, messageHandler));
+            var messageHandler = new ServerWarningLogHandler(corsClientHandler);
+            return new(true, new HttpHandlerResourceV3(corsClientHandler, messageHandler));
         }
 
         return new(false, null);
     }
 }
 
-internal sealed class CorsClientHandler : HttpClientHandler
+internal sealed class CorsClientHandler : LoggingHttpClientHandler
 {
-    private readonly NuGetDownloader nuGetDownloader;
-
-    public CorsClientHandler(NuGetDownloader nuGetDownloader)
+    public CorsClientHandler(
+        ILogger<LoggingHttpClientHandler> logger,
+        IOptions<HttpClientOptions> options)
+        : base(logger, options)
     {
-        this.nuGetDownloader = nuGetDownloader;
         if (!OperatingSystem.IsBrowser())
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
         }
     }
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true)
         {
             request.RequestUri = request.RequestUri.WithCorsProxy();
         }
 
-        var response = await base.SendAsync(request, cancellationToken);
-
-        if (nuGetDownloader.Options.LogRequests)
-        {
-            nuGetDownloader.Logger.LogDebug(
-                "Sent: {Method} {Uri}, Received: {Status}",
-                request.Method,
-                request.RequestUri,
-                response.StatusCode);
-        }
-
-        return response;
+        return base.SendAsync(request, cancellationToken);
     }
-}
-
-internal sealed class NuGetDownloaderOptions
-{
-    public bool LogRequests { get; set; }
 }

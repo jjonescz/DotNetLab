@@ -2,16 +2,17 @@
 
 namespace DotNetLab;
 
-public static class RefAssemblyMetadata
+internal static class RefAssemblyMetadata
 {
-    private static readonly Lazy<ImmutableArray<PortableExecutableReference>> all = new(GetAll);
+    private static readonly Lazy<ImmutableArray<PortableExecutableReference>> all = new(() => Create(RefAssemblies.All));
 
-    private static ImmutableArray<PortableExecutableReference> GetAll()
+    public static ImmutableArray<PortableExecutableReference> All => all.Value;
+
+    public static ImmutableArray<PortableExecutableReference> Create(ImmutableArray<RefAssembly> assemblies)
     {
-        var all = RefAssemblies.All;
-        var builder = ImmutableArray.CreateBuilder<PortableExecutableReference>(all.Length);
+        var builder = ImmutableArray.CreateBuilder<PortableExecutableReference>(assemblies.Length);
 
-        foreach (var assembly in all)
+        foreach (var assembly in assemblies)
         {
             builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
                 .GetReference(filePath: assembly.FileName, display: assembly.FileName));
@@ -19,6 +20,10 @@ public static class RefAssemblyMetadata
 
         return builder.DrainToImmutable();
     }
+}
 
-    public static ImmutableArray<PortableExecutableReference> All => all.Value;
+public readonly struct RefAssemblyList
+{
+    public required ImmutableArray<PortableExecutableReference> Metadata { get; init; }
+    public required ImmutableArray<RefAssembly> Assemblies { get; init; }
 }

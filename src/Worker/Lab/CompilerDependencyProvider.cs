@@ -12,14 +12,14 @@ internal sealed class CompilerDependencyProvider(
     BuiltInCompilerProvider builtInProvider,
     IEnumerable<ICompilerDependencyResolver> resolvers)
 {
-    private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, CompilerDependency Loaded)> loaded = new();
+    private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, PackageDependency Loaded)> loaded = new();
 
-    public async Task<CompilerDependencyInfo> GetLoadedInfoAsync(CompilerKind compilerKind)
+    public async Task<PackageDependencyInfo> GetLoadedInfoAsync(CompilerKind compilerKind)
     {
         var dependency = loaded.TryGetValue(compilerKind, out var result)
             ? result.Loaded
             : builtInProvider.GetBuiltInDependency(compilerKind);
-        return await dependency.Info();
+        return await dependency.Info.Value;
     }
 
     /// <returns>
@@ -45,17 +45,17 @@ internal sealed class CompilerDependencyProvider(
         var task = findOrThrowAsync();
 
         // First update the dependency registry so compilation does not start before the search completes.
-        dependencyRegistry.Set(info, async () => await (await task).Assemblies());
+        dependencyRegistry.Set(info, async () => await (await task).Assemblies.Value);
 
         await task;
 
         return true;
 
-        async Task<CompilerDependency> findOrThrowAsync()
+        async Task<PackageDependency> findOrThrowAsync()
         {
             bool any = false;
             List<string>? errors = null;
-            CompilerDependency? found = await findAsync();
+            PackageDependency? found = await findAsync();
 
             if (!any)
             {
@@ -77,7 +77,7 @@ internal sealed class CompilerDependencyProvider(
 
             return found;
 
-            async Task<CompilerDependency?> findAsync()
+            async Task<PackageDependency?> findAsync()
             {
                 foreach (var specifier in CompilerVersionSpecifier.Parse(version))
                 {
@@ -111,7 +111,7 @@ internal interface ICompilerDependencyResolver
     /// <see langword="null"/> if the <paramref name="specifier"/> is not supported by this resolver.
     /// An exception is thrown if the <paramref name="specifier"/> is supported but the resolution fails.
     /// </returns>
-    Task<CompilerDependency?> TryResolveCompilerAsync(
+    Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration);
@@ -119,48 +119,47 @@ internal interface ICompilerDependencyResolver
 
 internal sealed class BuiltInCompilerProvider : ICompilerDependencyResolver
 {
-    private readonly ImmutableDictionary<CompilerKind, CompilerDependency> builtIn = LoadBuiltIn();
+    private readonly ImmutableDictionary<CompilerKind, PackageDependency> builtIn = LoadBuiltIn();
 
-    private static ImmutableDictionary<CompilerKind, CompilerDependency> LoadBuiltIn()
+    private static ImmutableDictionary<CompilerKind, PackageDependency> LoadBuiltIn()
     {
         return ImmutableDictionary.CreateRange(Enum.GetValues<CompilerKind>()
             .Select(kind => KeyValuePair.Create(kind, createOne(kind))));
 
-        static CompilerDependency createOne(CompilerKind compilerKind)
+        static PackageDependency createOne(CompilerKind compilerKind)
         {
             var specifier = new CompilerVersionSpecifier.BuiltIn();
             var info = CompilerInfo.For(compilerKind);
             return new()
             {
-                Info = () => Task.FromResult(new CompilerDependencyInfo(assemblyName: info.AssemblyNames[0],
+                Info = new(() => Task.FromResult(new PackageDependencyInfo(assemblyName: info.AssemblyNames[0],
                     versionLink: (d) => SimpleNuGetUtil.GetPackageDetailUrl(packageId: info.PackageId, version: d.Version, fromNuGetOrg: false))
                 {
-                    VersionSpecifier = specifier,
                     Configuration = BuildConfiguration.Release,
-                }),
-                Assemblies = () => Task.FromResult(ImmutableArray<LoadedAssembly>.Empty),
+                })),
+                Assemblies = new(() => Task.FromResult(ImmutableArray<LoadedAssembly>.Empty)),
             };
         }
     }
 
-    public CompilerDependency GetBuiltInDependency(CompilerKind compilerKind)
+    public PackageDependency GetBuiltInDependency(CompilerKind compilerKind)
     {
         return builtIn.TryGetValue(compilerKind, out var result)
             ? result
             : throw new InvalidOperationException($"Built-in compiler {compilerKind} was not found.");
     }
 
-    public Task<CompilerDependency?> TryResolveCompilerAsync(
+    public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
         BuildConfiguration configuration)
     {
         if (specifier is CompilerVersionSpecifier.BuiltIn)
         {
-            return Task.FromResult<CompilerDependency?>(GetBuiltInDependency(info.CompilerKind));
+            return Task.FromResult<PackageDependency?>(GetBuiltInDependency(info.CompilerKind));
         }
 
-        return Task.FromResult<CompilerDependency?>(null);
+        return Task.FromResult<PackageDependency?>(null);
     }
 }
 
@@ -170,8 +169,8 @@ internal sealed class CompilerDependencyUserInput
     public required BuildConfiguration Configuration { get; init; }
 }
 
-internal sealed class CompilerDependency
+internal sealed class PackageDependency
 {
-    public required Func<Task<CompilerDependencyInfo>> Info { get; init; }
-    public required Func<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
+    public required Lazy<Task<PackageDependencyInfo>> Info { get; init; }
+    public required Lazy<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
 }
