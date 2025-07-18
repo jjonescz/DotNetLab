@@ -227,7 +227,10 @@ internal sealed class LanguageServicesClient(
         }
         finally
         {
-            diagnosticsCts = new();
+            if (diagnosticsCts.IsCancellationRequested)
+            {
+                diagnosticsCts = new();
+            }
         }
     }
 }
