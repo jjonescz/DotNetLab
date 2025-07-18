@@ -3,8 +3,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGet.Common;
 using NuGet.Configuration;
+using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
+using NuGet.Packaging.Signing;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
@@ -43,8 +45,9 @@ internal static class NuGetUtil
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
-        return reader.GetFiles()
-            .Where(dllFilter.Include)
+        var files = reader.GetFiles();
+        return files
+            .Where(dllFilter.GetFilter(files))
             .Select(file =>
             {
                 ZipArchiveEntry entry = reader.GetEntry(file);
@@ -64,8 +67,10 @@ internal static class NuGetUtil
 
     internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, INuGetDllFilter dllFilter)
     {
+        var files = zipDirectory.Entries.Select(static e => e.GetName());
+        var filter = dllFilter.GetFilter(files);
         return await zipDirectory.Entries
-            .Where(entry => dllFilter.Include(entry.GetName()))
+            .Where(entry => filter(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
             {
                 var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
@@ -81,7 +86,7 @@ internal static class NuGetUtil
 
 internal sealed class NuGetDownloaderPlugin(
     Lazy<NuGetDownloader> nuGetDownloader)
-    : ICompilerDependencyResolver
+    : ICompilerDependencyResolver, INuGetDownloader
 {
     public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
@@ -94,6 +99,20 @@ internal sealed class NuGetDownloaderPlugin(
         }
 
         return Task.FromResult<PackageDependency?>(null);
+    }
+
+    public async Task<ImmutableArray<RefAssembly>> DownloadAsync(string packageId, string version, string targetFramework)
+    {
+        var parsed = NuGetFramework.Parse(targetFramework);
+        var filter = new LibNuGetDllFilter(parsed);
+        var dep = await nuGetDownloader.Value.DownloadAsync(packageId, version, filter);
+        var assemblies = await dep.Assemblies.Value;
+        return assemblies.SelectAsArray(a => new RefAssembly
+        {
+            Name = a.Name,
+            FileName = a.Name + ".dll",
+            Bytes = a.DataAsDll,
+        });
     }
 }
 
@@ -333,11 +352,13 @@ internal interface INuGetDllFilter
 {
     public const string DllExtension = ".dll";
 
-    bool Include(string filePath);
+    Func<string, bool> GetFilter(IEnumerable<string> allFiles);
 }
 
 internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
 {
+    public Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+
     public bool Include(string filePath)
     {
         // Get only DLL files directly in the specified folder
@@ -354,12 +375,93 @@ internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : INuG
 {
     public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
 
+    public Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+
     public bool Include(string filePath)
     {
         return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
             filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.Count('/') == level &&
             AdditionalFilter(filePath);
+    }
+}
+
+internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : INuGetDllFilter
+{
+    public Func<string, bool> GetFilter(IEnumerable<string> allFiles)
+    {
+        var reader = new VirtualPackageReader(allFiles);
+        var group = reader.GetLibItems()
+            .GetNearest(targetFramework)
+            ?? throw new InvalidOperationException($"No lib DLLs found for target framework '{targetFramework}'.\nFiles:\n{allFiles.JoinToString("\n", " - ", "")}");
+        var set = group.Items.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return filePath =>
+        {
+            return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+                set.Contains(filePath);
+        };
+    }
+
+    private sealed class VirtualPackageReader(IEnumerable<string> files)
+        : PackageReaderBase(DefaultFrameworkNameProvider.Instance)
+    {
+        public override IEnumerable<string> GetFiles()
+        {
+            return files;
+        }
+
+        public override IEnumerable<string> GetFiles(string folder)
+        {
+            return files.Where(file => file.StartsWith(folder, StringComparison.OrdinalIgnoreCase));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+        }
+
+        #region Stubs
+
+        public override bool CanVerifySignedPackages(SignedPackageVerifierSettings verifierSettings)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override IEnumerable<string> CopyFiles(string destination, IEnumerable<string> packageFiles, ExtractPackageFileDelegate extractFile, NuGet.Common.ILogger logger, CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<byte[]> GetArchiveHashAsync(HashAlgorithmName hashAlgorithm, CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override string GetContentHash(CancellationToken token, Func<string>? getUnsignedPackageHash = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<PrimarySignature> GetPrimarySignatureAsync(CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Stream GetStream(string path)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<bool> IsSignedAsync(CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task ValidateIntegrityAsync(SignatureContent signatureContent, CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
     }
 }
 

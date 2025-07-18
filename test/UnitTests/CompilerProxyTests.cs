@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
@@ -409,6 +410,31 @@ public class C
         {
             Assert.Empty(diagnosticsText);
         }
+    }
+
+    [Fact]
+    public async Task Directives_Package()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Humanizer.Core
+            using Humanizer;
+            using System;
+            Console.WriteLine(DateTimeOffset.Now.Humanize());
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("now", runText.Trim());
     }
 }
 
