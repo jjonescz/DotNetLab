@@ -17,7 +17,8 @@ C# and Razor compiler playground in the browser via Blazor WebAssembly. https://
 - VSCode Monaco Editor.
 - Multiple input sources (especially useful for interlinked Razor components).
 - C# Language Services (completions, live diagnostics, code fixes).
-- Configuring any C# options (e.g., LangVersion, Features, OptimizationLevel, AllowUnsafe).
+- Configuring any C# options (e.g., LangVersion, Features, OptimizationLevel, AllowUnsafe)
+  via Roslyn C# APIs or via `#:property` directives (both with editor completions).
 
 ## Development
 
