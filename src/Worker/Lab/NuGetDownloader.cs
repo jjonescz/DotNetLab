@@ -97,6 +97,11 @@ internal sealed class NuGetDownloaderPlugin(
     }
 }
 
+internal sealed class NuGetOptions
+{
+    public bool NoCache { get; set; }
+}
+
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly SourceCacheContext cacheContext;
@@ -105,7 +110,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
 
-    public NuGetDownloader(CorsClientHandler corsClientHandler)
+    public NuGetDownloader(CorsClientHandler corsClientHandler, IOptions<NuGetOptions> options)
     {
         ImmutableArray<Lazy<INuGetResourceProvider>> providers =
         [
@@ -123,8 +128,21 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             "https://api.nuget.org/v3/index.json",
         ];
         repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
-        cacheContext = new SourceCacheContext();
-        downloadContext = new PackageDownloadContext(cacheContext);
+
+        bool noCache = options.Value.NoCache;
+        cacheContext = noCache
+            ? new SourceCacheContext
+            {
+                NoCache = true,
+                DirectDownload = true,
+                GeneratedTempFolder = Directory.CreateTempSubdirectory().FullName,
+            }
+            : new SourceCacheContext();
+        downloadContext = new PackageDownloadContext(
+            cacheContext, 
+            directDownloadDirectory: noCache ? Directory.CreateTempSubdirectory().FullName : null,
+            directDownload: noCache);
+
         httpClient = new HttpClient(corsClientHandler);
         httpZipProvider = new HttpZipProvider(httpClient);
     }

@@ -29,6 +29,10 @@ public static class WorkerServices
                 {
                     options.LogRequests = true;
                 });
+                services.Configure<NuGetOptions>(static options =>
+                {
+                    options.NoCache = true;
+                });
                 configureServices?.Invoke(services);
             });
     }
