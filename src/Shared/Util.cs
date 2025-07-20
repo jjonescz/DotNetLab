@@ -222,7 +222,12 @@ public static partial class Util
 
     public static string JoinToString<T>(this IEnumerable<T> source, string separator, string quote)
     {
-        return string.Join(separator, source.Select(x => $"{quote}{x}{quote}"));
+        return source.JoinToString(separator, quote, quote);
+    }
+
+    public static string JoinToString<T>(this IEnumerable<T> source, string separator, string prefix, string suffix)
+    {
+        return string.Join(separator, source.Select(x => $"{prefix}{x}{suffix}"));
     }
 
     public static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)

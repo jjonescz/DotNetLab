@@ -23,11 +23,12 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
+    private readonly List<Func<RefAssemblyList>> additionalReferences = new();
 
     public bool HasParseOptions => cSharpParseOptions.Count > 0;
     public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
     public bool HasEmitOptions => emitOptions.Count > 0;
-    public bool HasReferences => references.Count > 0;
+    public bool HasReferences => references.Count > 0 || additionalReferences.Count > 0;
 
     public void Reset()
     {
@@ -35,6 +36,7 @@ internal sealed class ConfigCollector : IConfig
         cSharpCompilationOptions.Clear();
         emitOptions.Clear();
         references.Clear();
+        additionalReferences.Clear();
     }
 
     public void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
@@ -57,13 +59,29 @@ internal sealed class ConfigCollector : IConfig
         references.Add(configure);
     }
 
+    public void AdditionalReferences(Func<RefAssemblyList> configure)
+    {
+        additionalReferences.Add(configure);
+    }
+
     public CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
 
     public CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
 
     public EmitOptions ConfigureEmitOptions(EmitOptions options) => Configure(options, emitOptions);
 
-    public RefAssemblyList ConfigureReferences(RefAssemblyList options) => Configure(options, references);
+    public RefAssemblyList ConfigureReferences(RefAssemblyList options)
+    {
+        var list = Configure(options, references);
+
+        foreach (var configure in additionalReferences)
+        {
+            var additional = configure();
+            list = list.Add(additional);
+        }
+
+        return list;
+    }
 
     private static T Configure<T>(T options, List<Func<T, T>> configureList)
     {
@@ -82,4 +100,5 @@ internal interface IConfig
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);
     void References(Func<RefAssemblyList, RefAssemblyList> configure);
+    void AdditionalReferences(Func<RefAssemblyList> configure);
 }

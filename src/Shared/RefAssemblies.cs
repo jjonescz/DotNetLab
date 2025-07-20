@@ -29,6 +29,24 @@ public static class RefAssemblies
     }
 
     public static ImmutableArray<RefAssembly> All => all.Value;
+
+    /// <returns>
+    /// TFM like <c>net10.0</c>.
+    /// </returns>
+    public static string CurrentTargetFramework
+    {
+        get
+        {
+            return field ??= compute();
+
+            static string compute()
+            {
+                var parts = RuntimeInformation.FrameworkDescription.Split(' ', 2);
+                var versions = parts[1].Split('.');
+                return $"net{versions[0]}.{versions[1]}";
+            }
+        }
+    }
 }
 
 public readonly struct RefAssembly

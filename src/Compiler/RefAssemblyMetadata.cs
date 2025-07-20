@@ -26,4 +26,13 @@ public readonly struct RefAssemblyList
 {
     public required ImmutableArray<PortableExecutableReference> Metadata { get; init; }
     public required ImmutableArray<RefAssembly> Assemblies { get; init; }
+
+    public RefAssemblyList Add(RefAssemblyList another)
+    {
+        return new()
+        {
+            Metadata = Metadata.AddRange(another.Metadata),
+            Assemblies = Assemblies.AddRange(another.Assemblies),
+        };
+    }
 }
