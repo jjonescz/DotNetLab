@@ -94,6 +94,11 @@ internal sealed record InitialCode
             .WithAllowUnsafe(true)
             .WithNullableContextOptions(NullableContextOptions.Enable)
             .WithOptimizationLevel(OptimizationLevel.Debug)
+            .WithSpecificDiagnosticOptions(
+            [
+                new("CS1701", ReportDiagnostic.Suppress),
+                new("CS1702", ReportDiagnostic.Suppress),
+            ])
         );
 
         Config.EmitOptions(options => options

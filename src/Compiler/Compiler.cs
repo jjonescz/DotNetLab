@@ -921,7 +921,12 @@ public sealed class Compiler(
             outputKind,
             allowUnsafe: true,
             nullableContextOptions: NullableContextOptions.Enable,
-            concurrentBuild: false);
+            concurrentBuild: false,
+            specificDiagnosticOptions:
+            [
+                new("CS1701", ReportDiagnostic.Suppress),
+                new("CS1702", ReportDiagnostic.Suppress),
+            ]);
     }
 
     public static CSharpCompilationOptions CreateConfigurationCompilationOptions()
