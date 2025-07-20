@@ -54,6 +54,12 @@ public readonly struct RefAssembly
     public required string Name { get; init; }
     public required string FileName { get; init; }
     public required ImmutableArray<byte> Bytes { get; init; }
+
+    /// <summary>
+    /// Whether to load the assembly when executing the code.
+    /// Otherwise it is only used during compilation.
+    /// </summary>
+    public bool LoadForExecution { get; init; }
 }
 
 public interface IRefAssemblyDownloader

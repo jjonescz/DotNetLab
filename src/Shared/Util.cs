@@ -58,6 +58,22 @@ public static partial class Util
         }
     }
 
+    extension<T>(ImmutableArray<T> array)
+    {
+        public ImmutableArray<T> WhereAsArray(Func<T, bool> predicate)
+        {
+            var builder = ImmutableArray.CreateBuilder<T>(array.Length);
+            foreach (var item in array)
+            {
+                if (predicate(item))
+                {
+                    builder.Add(item);
+                }
+            }
+            return builder.DrainToImmutable();
+        }
+    }
+
     extension(ReadOnlySpan<char> span)
     {
         public Regex.ValueSplitEnumerator SplitByWhitespace(int count)

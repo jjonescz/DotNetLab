@@ -112,6 +112,7 @@ internal sealed class NuGetDownloaderPlugin(
             Name = a.Name,
             FileName = a.Name + ".dll",
             Bytes = a.DataAsDll,
+            LoadForExecution = true,
         });
     }
 }

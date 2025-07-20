@@ -361,7 +361,7 @@ public sealed class Compiler(
                     LazyText = () =>
                     {
                         string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
-                            ? Executor.Execute(emitStream)
+                            ? Executor.Execute(emitStream, references.Assemblies)
                             : error;
                         return new(output);
                     },
