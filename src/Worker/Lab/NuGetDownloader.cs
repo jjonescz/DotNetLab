@@ -152,6 +152,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         [
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
             "https://api.nuget.org/v3/index.json",
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-libraries/nuget/v3/index.json",
         ];
         repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
 
