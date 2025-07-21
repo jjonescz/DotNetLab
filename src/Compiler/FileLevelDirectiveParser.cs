@@ -149,6 +149,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
     {
         public required IServiceProvider Services { get; init; }
         public required IConfig Config { get; init; }
+        public ILogger<FileLevelDirectiveParser> Logger => field ??= Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>();
 
         public ReadOnlyMemory<char>? TargetFramework { get; set; }
         public bool? Prefer32Bit { get; set; }
@@ -308,8 +309,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             }
             catch (Exception ex)
             {
-                context.Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>()
-                    .LogError(ex, "Failed to download package '{PackageName}@{PackageVersion}'.", Name, Value);
+                context.Logger.LogError(ex, "Failed to download package '{PackageName}@{PackageVersion}'.", Name, Value);
                 Info.Errors.Add($"Failed to download package: {ex.Message.GetFirstLine()}");
             }
         }
@@ -820,8 +820,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         }
                         catch (Exception ex)
                         {
-                            context.Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>()
-                                .LogError(ex, "Failed to download target framework '{TargetFramework}'.", value);
+                            context.Logger.LogError(ex, "Failed to download target framework '{TargetFramework}'.", value);
                             info.Errors.Add($"Failed to download target framework '{value}': {ex.Message.GetFirstLine()}");
                             return;
                         }
