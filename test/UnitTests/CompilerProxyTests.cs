@@ -420,7 +420,7 @@ public class C
             #:package Humanizer.Core
             using Humanizer;
             using System;
-            Console.WriteLine(DateTimeOffset.Now.Humanize());
+            Console.Write(DateTimeOffset.Now.Humanize());
             """;
 
         var compiled = await services.GetRequiredService<CompilerProxy>()
@@ -437,9 +437,8 @@ public class C
             Exit code: 0
             Stdout:
             now
-
             Stderr:
-            """, runText.Trim());
+            """.ReplaceLineEndings("\n"), runText.Trim());
     }
 }
 
