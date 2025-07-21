@@ -51,7 +51,7 @@ internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloade
 
         return builder.ToImmutable();
 
-        async Task downloadAsync(string packageId, string version, INuGetDllFilter dllFilter)
+        async Task downloadAsync(string packageId, string version, NuGetDllFilter dllFilter)
         {
             var dep = await nuGetDownloader.Value.DownloadAsync(packageId, version, dllFilter);
             var assemblies = await dep.Assemblies.Value;

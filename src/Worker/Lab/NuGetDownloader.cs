@@ -41,7 +41,7 @@ internal static class NuGetUtil
         }
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, INuGetDllFilter dllFilter)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, NuGetDllFilter dllFilter)
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
@@ -65,7 +65,7 @@ internal static class NuGetUtil
             .ToImmutableArray();
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, INuGetDllFilter dllFilter)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, NuGetDllFilter dllFilter)
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
         var filter = dllFilter.GetFilter(files);
@@ -178,7 +178,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     public Task<PackageDependency> DownloadAsync(
         string packageId,
         string version,
-        INuGetDllFilter dllFilter)
+        NuGetDllFilter dllFilter)
     {
         if (!VersionRange.TryParse(version, out var range))
         {
@@ -191,7 +191,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     public async Task<PackageDependency> DownloadAsync(
         string packageId,
         VersionRange range,
-        INuGetDllFilter dllFilter)
+        NuGetDllFilter dllFilter)
     {
         SourceRepository? repository;
         if (range.IsExact(out var exactVersion))
@@ -226,7 +226,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         string packageId,
         SourceRepository? repository,
         NuGetVersion version,
-        INuGetDllFilter dllFilter)
+        NuGetDllFilter dllFilter)
     {
         var package = new NuGetDownloadablePackage(dllFilter, async () =>
         {
@@ -350,22 +350,26 @@ internal sealed class NuGetDownloadablePackageResult
     }
 }
 
-internal interface INuGetDllFilter
+internal abstract class NuGetDllFilter
 {
-    public const string DllExtension = ".dll";
+    public abstract Func<string, bool> GetFilter(IEnumerable<string> allFiles);
 
-    Func<string, bool> GetFilter(IEnumerable<string> allFiles);
+    public static bool IsDll(string filePath)
+    {
+        return filePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) &&
+            !filePath.EndsWith(".resources.dll", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
-internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
+internal sealed class CompilerNuGetDllFilter(string folder) : NuGetDllFilter
 {
-    public Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
 
     public bool Include(string filePath)
     {
         // Get only DLL files directly in the specified folder
         // and starting with `Microsoft.`.
-        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+        return IsDll(filePath) &&
             filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.LastIndexOf('/') is int lastSlashIndex &&
             lastSlashIndex == folder.Length &&
@@ -373,24 +377,24 @@ internal sealed class CompilerNuGetDllFilter(string folder) : INuGetDllFilter
     }
 }
 
-internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : INuGetDllFilter
+internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : NuGetDllFilter
 {
     public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
 
-    public Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
 
     public bool Include(string filePath)
     {
-        return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+        return IsDll(filePath) &&
             filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.Count('/') == level &&
             AdditionalFilter(filePath);
     }
 }
 
-internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : INuGetDllFilter
+internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : NuGetDllFilter
 {
-    public Func<string, bool> GetFilter(IEnumerable<string> allFiles)
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles)
     {
         var reader = new VirtualPackageReader(allFiles);
         var group = reader.GetLibItems()
@@ -399,7 +403,7 @@ internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : INuGet
         var set = group.Items.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return filePath =>
         {
-            return filePath.EndsWith(INuGetDllFilter.DllExtension, StringComparison.OrdinalIgnoreCase) &&
+            return IsDll(filePath) &&
                 set.Contains(filePath);
         };
     }
@@ -468,7 +472,7 @@ internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : INuGet
 }
 
 internal sealed class NuGetDownloadablePackage(
-    INuGetDllFilter dllFilter,
+    NuGetDllFilter dllFilter,
     Func<Task<NuGetDownloadablePackageResult>> resultFactory)
 {
     private readonly AsyncLazy<NuGetDownloadablePackageResult> result = new(resultFactory);
