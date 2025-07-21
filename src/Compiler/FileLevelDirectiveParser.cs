@@ -310,7 +310,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             {
                 context.Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>()
                     .LogError(ex, "Failed to download package '{PackageName}@{PackageVersion}'.", Name, Value);
-                Info.Errors.Add($"Failed to download package '{Name}@{Value}': {ex.Message.GetFirstLine()}");
+                Info.Errors.Add($"Failed to download package: {ex.Message.GetFirstLine()}");
             }
         }
     }

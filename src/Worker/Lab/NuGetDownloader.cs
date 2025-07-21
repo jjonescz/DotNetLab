@@ -213,7 +213,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 })
                 .Where(t => t.Version != null);
             var result = await results.FirstOrNullAsync() ??
-                throw new InvalidOperationException($"Package '{packageId}' not found.");
+                throw new InvalidOperationException($"Package '{packageId}@{range.OriginalString}' not found.");
             repository = result.repository;
             exactVersion = result.Version;
         }
