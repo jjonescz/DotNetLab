@@ -239,7 +239,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
                 var dep = await depResource.ResolvePackage(
                     new PackageIdentity(packageId, version),
-                    NuGet.Frameworks.NuGetFramework.AnyFramework,
+                    NuGetFramework.AnyFramework,
                     cacheContext,
                     NullLogger.Instance,
                     CancellationToken.None);
