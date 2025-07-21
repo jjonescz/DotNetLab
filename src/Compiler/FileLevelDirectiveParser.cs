@@ -289,7 +289,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             try
             {
                 string name = Name.ToString();
-                string version = Value.Span.IsWhiteSpace() ? "*" : Value.ToString();
+                string version = Value.Span.IsWhiteSpace() ? "*-*" : Value.ToString();
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
