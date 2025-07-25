@@ -417,7 +417,7 @@ public class C
         var services = WorkerServices.CreateTest(output);
 
         var source = """
-            #:package Humanizer.Core
+            #:package Humanizer
             using Humanizer;
             using System;
             Console.Write(DateTimeOffset.Now.Humanize());
@@ -437,6 +437,40 @@ public class C
             Exit code: 0
             Stdout:
             now
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    [Fact]
+    public async Task Directives_Package_Unification()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package System.Reactive.Providers@3.1.1
+            #:package System.Reactive.PlatformServices@3.0.0
+            using System;
+            using System.Reactive.Linq;
+            using System.Reactive.PlatformServices;
+            _ = Qbservable.Provider; // System.Reactive.Providers needed
+            _ = typeof(CurrentPlatformEnlightenmentProvider); // System.Reactive.PlatformServices needed
+            Console.Write(typeof(Observable).Assembly.GetName().Version); // System.Reactive.Linq, version 3.0.3000.0 = 3.1.1
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            3.0.3000.0
             Stderr:
             """.ReplaceLineEndings("\n"), runText.Trim());
     }

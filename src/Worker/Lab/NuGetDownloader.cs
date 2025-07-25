@@ -1,4 +1,5 @@
 using Knapcode.MiniZip;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGet.Common;
@@ -9,6 +10,7 @@ using NuGet.Packaging.Core;
 using NuGet.Packaging.Signing;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using NuGet.Resolver;
 using NuGet.Versioning;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
@@ -41,13 +43,13 @@ internal static class NuGetUtil
         }
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, NuGetDllFilter dllFilter)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(Stream nupkgStream, NuGetDllFilter dllFilter, string forPackage)
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
         var files = reader.GetFiles();
         return files
-            .Where(dllFilter.GetFilter(files))
+            .Where(dllFilter.GetFilter(files, forPackage))
             .Select(file =>
             {
                 ZipArchiveEntry entry = reader.GetEntry(file);
@@ -65,10 +67,10 @@ internal static class NuGetUtil
             .ToImmutableArray();
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, NuGetDllFilter dllFilter)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, NuGetDllFilter dllFilter, string forPackage)
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
-        var filter = dllFilter.GetFilter(files);
+        var filter = dllFilter.GetFilter(files, forPackage);
         return await zipDirectory.Entries
             .Where(entry => filter(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
@@ -85,6 +87,7 @@ internal static class NuGetUtil
 }
 
 internal sealed class NuGetDownloaderPlugin(
+    IServiceProvider services,
     Lazy<NuGetDownloader> nuGetDownloader)
     : ICompilerDependencyResolver, INuGetDownloader
 {
@@ -101,19 +104,11 @@ internal sealed class NuGetDownloaderPlugin(
         return Task.FromResult<PackageDependency?>(null);
     }
 
-    public async Task<ImmutableArray<RefAssembly>> DownloadAsync(string packageId, string version, string targetFramework)
+    public Task<ImmutableArray<RefAssembly>> DownloadAsync(ImmutableArray<NuGetDependency> dependencies, string targetFramework)
     {
         var parsed = NuGetFramework.Parse(targetFramework);
-        var filter = new LibNuGetDllFilter(parsed);
-        var dep = await nuGetDownloader.Value.DownloadAsync(packageId, version, filter);
-        var assemblies = await dep.Assemblies.Value;
-        return assemblies.SelectAsArray(a => new RefAssembly
-        {
-            Name = a.Name,
-            FileName = a.Name + ".dll",
-            Bytes = a.DataAsDll,
-            LoadForExecution = true,
-        });
+        var filter = ActivatorUtilities.CreateInstance<LibNuGetDllFilter>(services, parsed);
+        return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter);
     }
 }
 
@@ -172,6 +167,170 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         httpClient = new HttpClient(corsClientHandler);
         httpZipProvider = new HttpZipProvider(httpClient);
+    }
+
+    public async Task<ImmutableArray<RefAssembly>> DownloadAsync(
+        ImmutableArray<NuGetDependency> dependencies,
+        NuGetFramework targetFramework,
+        NuGetDllFilter dllFilter)
+    {
+        var dependencyInfos = new Dictionary<string, SourcePackageDependencyInfo>(StringComparer.OrdinalIgnoreCase);
+
+        async Task collectDependenciesAsync(NuGetDependency dependency, VersionRange? range)
+        {
+            if (dependencyInfos.ContainsKey(dependency.PackageId))
+            {
+                return;
+            }
+
+            if (range == null && !VersionRange.TryParse(dependency.VersionRange, out range))
+            {
+                dependency.Errors.Add($"Cannot parse version range '{dependency.VersionRange}' of package '{dependency.PackageId}'.");
+                return;
+            }
+
+            // If we have a range, find the best version.
+            if (!range.IsExact(out var version))
+            {
+                foreach (var repository in repositories)
+                {
+                    var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+                    var versions = await findPackageById.GetAllVersionsAsync(
+                        dependency.PackageId,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None);
+                    var best = range.FindBestMatch(versions);
+                    if (best != null)
+                    {
+                        version = best;
+                        break;
+                    }
+                }
+            }
+
+            if (version == null)
+            {
+                dependency.Errors.Add($"Cannot find a version for package '{dependency.PackageId}@{range}'.");
+                return;
+            }
+
+            bool found = false;
+            foreach (var repository in repositories)
+            {
+                var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
+                var dep = await depResource.ResolvePackage(
+                    new PackageIdentity(dependency.PackageId, version),
+                    targetFramework,
+                    cacheContext,
+                    NullLogger.Instance,
+                    CancellationToken.None);
+                if (dep == null)
+                {
+                    continue;
+                }
+
+                found = true;
+                dependencyInfos[dependency.PackageId] = dep;
+
+                // Recursively collect dependencies.
+                foreach (var subDependency in dep.Dependencies)
+                {
+                    var nuGetDependency = new NuGetDependency
+                    {
+                        PackageId = subDependency.Id,
+                        VersionRange = string.Empty,
+                    };
+                    await collectDependenciesAsync(nuGetDependency, subDependency.VersionRange);
+                    dependency.Errors.AddRange(nuGetDependency.Errors);
+                }
+
+                break;
+            }
+
+            if (!found)
+            {
+                dependency.Errors.Add($"Cannot find info for package '{dependency.PackageId}@{version}'.");
+            }
+        }
+
+        foreach (var dependency in dependencies)
+        {
+            await collectDependenciesAsync(dependency, null);
+        }
+
+        var context = new PackageResolverContext(
+            DependencyBehavior.Lowest,
+            targetIds: dependencies.Select(d => d.PackageId),
+            requiredPackageIds: [],
+            packagesConfig: [],
+            preferredVersions: [],
+            availablePackages: dependencyInfos.Values,
+            packageSources: repositories.Select(r => r.PackageSource),
+            NullLogger.Instance);
+        var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
+
+        Dictionary<string, NuGetDependency>? lookup = null;
+
+        var assemblies = ImmutableArray.CreateBuilder<RefAssembly>();
+
+        foreach (var package in resolved)
+        {
+            if (!dependencyInfos.TryGetValue(package.Id, out var dep))
+            {
+                reportError(package, $"Dependency info of resolved package '{package.Id}@{package.Version}' not found.");
+                continue;
+            }
+
+            var result = Download(dep);
+
+            if (result == null)
+            {
+                reportError(package, $"Download info of package '{package.Id}' not found.");
+                continue;
+            }
+
+            var packageResult = new NuGetDownloadablePackage(dllFilter, () => Task.FromResult(result));
+            ImmutableArray<LoadedAssembly> loadedAssemblies;
+
+            try
+            {
+                loadedAssemblies = await packageResult.GetAssembliesAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to load assemblies for package '{PackageId}@{Version}'.", package.Id, package.Version);
+                reportError(package, $"Failed to load assemblies for package '{package.Id}@{package.Version}': {ex.Message}");
+                continue;
+            }
+
+            foreach (var loadedAssembly in loadedAssemblies)
+            {
+                assemblies.Add(new()
+                {
+                    Name = loadedAssembly.Name,
+                    FileName = loadedAssembly.Name + ".dll",
+                    Bytes = loadedAssembly.DataAsDll,
+                    LoadForExecution = true,
+                });
+            }
+        }
+
+        return assemblies.DrainToImmutable();
+
+        void reportError(PackageIdentity identity, string message)
+        {
+            lookup ??= dependencies.ToDictionary(d => d.PackageId, StringComparer.OrdinalIgnoreCase);
+
+            if (lookup.TryGetValue(identity.Id, out var dependency))
+            {
+                dependency.Errors.Add(message);
+            }
+            else
+            {
+                throw new InvalidOperationException(message);
+            }
+        }
     }
 
     /// <param name="version">Package version or range.</param>
@@ -243,48 +402,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     cacheContext,
                     NullLogger.Instance,
                     CancellationToken.None);
-                if (dep?.DownloadUri is { } url)
-                {
-                    return new()
-                    {
-                        CacheContext = cacheContext,
-                        DependencyInfo = dep,
-                        // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
-                        Zip = !dep.Source.PackageSource.IsNuGetOrg
-                            ? null
-                            : new(async () =>
-                            {
-                                try
-                                {
-                                    var reader = await httpZipProvider.GetReaderAsync(url);
-                                    return (reader, await reader.ReadAsync());
-                                }
-                                catch (MiniZipHttpException e)
-                                {
-                                    logger.LogError(e, "Cannot download package '{PackageId}@{Version}' using range requests from: {Url}",
-                                        packageId, version, url);
-
-                                    // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
-                                    return null;
-                                }
-                            }),
-                        NupkgStream = new(async () =>
-                        {
-                            var stream = new MemoryStream();
-                            var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
-                            await findPackageById.CopyNupkgToStreamAsync(
-                                packageId,
-                                version,
-                                stream,
-                                cacheContext,
-                                NullLogger.Instance,
-                                CancellationToken.None);
-                            return stream;
-                        }),
-                    };
-                }
-
-                return null;
+                return Download(dep);
             })
             .FirstOrDefaultAsync();
 
@@ -302,6 +420,52 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             Info = new(package.GetInfoAsync),
             Assemblies = new(package.GetAssembliesAsync),
         };
+    }
+
+    private NuGetDownloadablePackageResult? Download(SourcePackageDependencyInfo? dep)
+    {
+        if (dep?.DownloadUri is { } url)
+        {
+            return new()
+            {
+                CacheContext = cacheContext,
+                DependencyInfo = dep,
+                // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
+                Zip = !dep.Source.PackageSource.IsNuGetOrg
+                    ? null
+                    : new(async () =>
+                    {
+                        try
+                        {
+                            var reader = await httpZipProvider.GetReaderAsync(url);
+                            return (reader, await reader.ReadAsync());
+                        }
+                        catch (MiniZipHttpException e)
+                        {
+                            logger.LogError(e, "Cannot download package '{PackageId}@{Version}' using range requests from: {Url}",
+                                dep.Id, dep.Version, url);
+
+                            // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
+                            return null;
+                        }
+                    }),
+                NupkgStream = new(async () =>
+                {
+                    var stream = new MemoryStream();
+                    var findPackageById = await dep.Source.GetResourceAsync<FindPackageByIdResource>();
+                    await findPackageById.CopyNupkgToStreamAsync(
+                        dep.Id,
+                        dep.Version,
+                        stream,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None);
+                    return stream;
+                }),
+            };
+        }
+
+        return null;
     }
 
     public async Task<PackageDependency?> TryResolveCompilerAsync(
@@ -352,7 +516,7 @@ internal sealed class NuGetDownloadablePackageResult
 
 internal abstract class NuGetDllFilter
 {
-    public abstract Func<string, bool> GetFilter(IEnumerable<string> allFiles);
+    public abstract Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage);
 
     public static bool IsDll(string filePath)
     {
@@ -363,7 +527,7 @@ internal abstract class NuGetDllFilter
 
 internal sealed class CompilerNuGetDllFilter(string folder) : NuGetDllFilter
 {
-    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage) => Include;
 
     public bool Include(string filePath)
     {
@@ -381,7 +545,7 @@ internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : NuGe
 {
     public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
 
-    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles) => Include;
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage) => Include;
 
     public bool Include(string filePath)
     {
@@ -392,14 +556,22 @@ internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : NuGe
     }
 }
 
-internal sealed class LibNuGetDllFilter(NuGetFramework targetFramework) : NuGetDllFilter
+internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGetFramework targetFramework) : NuGetDllFilter
 {
-    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles)
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
     {
         var reader = new VirtualPackageReader(allFiles);
         var group = reader.GetLibItems()
-            .GetNearest(targetFramework)
-            ?? throw new InvalidOperationException($"No lib DLLs found for target framework '{targetFramework}'.\nFiles:\n{allFiles.JoinToString("\n", " - ", "")}");
+            .GetNearest(targetFramework);
+
+        if (group is null)
+        {
+            logger.LogWarning("No lib DLLs found in '{Package}' for target framework '{TargetFramework}'.\nFiles:\n{Files}",
+                forPackage, targetFramework, allFiles.JoinToString("\n", " - ", ""));
+
+            return static _ => false;
+        }
+
         var set = group.Items.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return filePath =>
         {
@@ -518,15 +690,16 @@ internal sealed class NuGetDownloadablePackage(
     public async Task<ImmutableArray<LoadedAssembly>> GetAssembliesAsync()
     {
         var result = await this.result;
+        string forPackage = $"{result.DependencyInfo.Id}@{result.DependencyInfo.Version}";
         if (result.Zip is { } zipFactory &&
             await zipFactory.Value is { } zip)
         {
-            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter);
+            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter, forPackage);
         }
 
         var nupkgStream = await result.NupkgStream.Value;
         nupkgStream.Position = 0;
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter);
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter, forPackage);
     }
 }
 

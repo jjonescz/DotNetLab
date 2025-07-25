@@ -66,7 +66,6 @@ internal sealed class FileLevelDirectiveParser
                         Input = input,
                         DirectiveKind = kind,
                         DirectiveText = rest,
-                        Errors = [],
                     };
 
                     var parsed = ParseOne(info);
@@ -145,7 +144,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public required InputCode Input { get; init; }
         public required ReadOnlyMemory<char> DirectiveKind { get; init; }
         public required ReadOnlyMemory<char> DirectiveText { get; init; }
-        public required List<string> Errors { get; init; }
+        public List<string> Errors { get; } = [];
     }
 
     public sealed class ConsumerContext
@@ -159,6 +158,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public bool? Prefer32Bit { get; set; }
         public OptimizationLevel? OptimizationLevel { get; set; }
         public bool SawDefineConstants { get; set; }
+        public bool ConsumedPackages { get; set; }
 
         public async ValueTask ConsumeAsync()
         {
@@ -291,17 +291,29 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
         public override async ValueTask ConsumeAsync(ConsumerContext context)
         {
+            if (context.ConsumedPackages)
+            {
+                return;
+            }
+
             try
             {
-                string name = Name.ToString();
-                string version = Value.Span.IsWhiteSpace() ? "*-*" : Value.ToString();
+                var dependencies = CollectDependencies(context.Directives);
+
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
-                var assemblies = await downloader.DownloadAsync(name, version, targetFramework);
+                var assemblies = await downloader.DownloadAsync(dependencies.Keys.ToImmutableArray(), targetFramework);
+
+                // Collect errors.
+                foreach (var (dep, directive) in dependencies)
+                {
+                    directive.Info.Errors.AddRange(dep.Errors);
+                }
+
                 if (assemblies.IsDefaultOrEmpty)
                 {
-                    Info.Errors.Add($"No assemblies found for package '{name}@{version}' for target framework '{targetFramework}'.");
+                    Info.Errors.Add("No assemblies found across all dependencies.");
                     return;
                 }
 
@@ -313,9 +325,30 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             }
             catch (Exception ex)
             {
-                context.Logger.LogError(ex, "Failed to download package '{PackageName}@{PackageVersion}'.", Name, Value);
-                Info.Errors.Add($"Failed to download package: {ex.Message.GetFirstLine()}");
+                context.Logger.LogError(ex, "Failed to download packages.");
+                Info.Errors.Add($"Failed to download packages: {ex.Message.GetFirstLine()}");
             }
+            finally
+            {
+                context.ConsumedPackages = true;
+            }
+        }
+
+        private static IReadOnlyDictionary<NuGetDependency, FileLevelDirective> CollectDependencies(ImmutableArray<FileLevelDirective> directives)
+        {
+            var dependencies = new Dictionary<NuGetDependency, FileLevelDirective>();
+
+            foreach (var directive in directives)
+            {
+                if (directive is Package package)
+                {
+                    string name = package.Name.ToString();
+                    string version = package.Value.Span.IsWhiteSpace() ? "*-*" : package.Value.ToString();
+                    dependencies.Add(new NuGetDependency { PackageId = name, VersionRange = version }, directive);
+                }
+            }
+
+            return dependencies;
         }
     }
 
