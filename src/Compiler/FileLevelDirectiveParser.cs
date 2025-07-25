@@ -303,7 +303,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
-                var assemblies = await downloader.DownloadAsync(dependencies.Keys.ToImmutableArray(), targetFramework);
+                var assemblies = await downloader.DownloadAsync(dependencies.Keys.ToImmutableArray(), targetFramework, loadForExecution: true);
 
                 // Collect errors.
                 foreach (var (dep, directive) in dependencies)

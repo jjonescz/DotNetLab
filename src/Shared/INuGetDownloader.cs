@@ -2,7 +2,10 @@
 
 public interface INuGetDownloader
 {
-    Task<ImmutableArray<RefAssembly>> DownloadAsync(ImmutableArray<NuGetDependency> dependencies, string targetFramework);
+    Task<ImmutableArray<RefAssembly>> DownloadAsync(
+        ImmutableArray<NuGetDependency> dependencies,
+        string targetFramework,
+        bool loadForExecution);
 }
 
 public sealed class NuGetDependency

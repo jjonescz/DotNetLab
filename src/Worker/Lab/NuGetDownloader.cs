@@ -105,11 +105,14 @@ internal sealed class NuGetDownloaderPlugin(
         return Task.FromResult<PackageDependency?>(null);
     }
 
-    public Task<ImmutableArray<RefAssembly>> DownloadAsync(ImmutableArray<NuGetDependency> dependencies, string targetFramework)
+    public Task<ImmutableArray<RefAssembly>> DownloadAsync(
+        ImmutableArray<NuGetDependency> dependencies,
+        string targetFramework,
+        bool loadForExecution)
     {
         var parsed = NuGetFramework.Parse(targetFramework);
         var filter = ActivatorUtilities.CreateInstance<LibNuGetDllFilter>(services, parsed);
-        return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter);
+        return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter, loadForExecution);
     }
 }
 
@@ -173,7 +176,8 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     public async Task<ImmutableArray<RefAssembly>> DownloadAsync(
         ImmutableArray<NuGetDependency> dependencies,
         NuGetFramework targetFramework,
-        NuGetDllFilter dllFilter)
+        NuGetDllFilter dllFilter,
+        bool loadForExecution)
     {
         var dependencyInfos = new ConcurrentDictionary<(string Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
 
@@ -329,7 +333,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 Name = loadedAssembly.Name,
                 FileName = loadedAssembly.Name + ".dll",
                 Bytes = loadedAssembly.DataAsDll,
-                LoadForExecution = true,
+                LoadForExecution = loadForExecution,
             });
         }));
 
@@ -348,20 +352,6 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 throw new InvalidOperationException(message);
             }
         }
-    }
-
-    /// <param name="version">Package version or range.</param>
-    public Task<PackageDependency> DownloadAsync(
-        string packageId,
-        string version,
-        NuGetDllFilter dllFilter)
-    {
-        if (!VersionRange.TryParse(version, out var range))
-        {
-            throw new InvalidOperationException($"Cannot parse version range '{version}' of package '{packageId}'.");
-        }
-
-        return DownloadAsync(packageId, range, dllFilter);
     }
 
     public async Task<PackageDependency> DownloadAsync(
