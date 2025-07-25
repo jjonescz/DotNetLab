@@ -175,11 +175,11 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         NuGetFramework targetFramework,
         NuGetDllFilter dllFilter)
     {
-        var dependencyInfos = new ConcurrentDictionary<(string Id, string Range, VersionRange? ParsedRange), Task<SourcePackageDependencyInfo?>>();
+        var dependencyInfos = new ConcurrentDictionary<(string Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
 
         void enqueueDependency(NuGetDependency dependency, VersionRange? range, NuGetDependency? parent)
         {
-            var key = (dependency.PackageId.ToLowerInvariant(), dependency.VersionRange, range);
+            var key = (dependency.PackageId.ToLowerInvariant(), range);
             dependencyInfos.GetOrAdd(key, async _ =>
             {
                 var result = await collectDependenciesAsync(dependency, range);
@@ -190,7 +190,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         async Task<SourcePackageDependencyInfo?> collectDependenciesAsync(NuGetDependency dependency, VersionRange? range)
         {
-            if (range == null && !VersionRange.TryParse(dependency.VersionRange, out range))
+            if (range == null)
             {
                 dependency.Errors.Add($"Cannot parse version range '{dependency.VersionRange}' of package '{dependency.PackageId}'.");
                 return null;
@@ -262,7 +262,9 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         foreach (var dependency in dependencies)
         {
-            enqueueDependency(dependency, range: null, parent: null);
+            enqueueDependency(dependency,
+                range: VersionRange.TryParse(dependency.VersionRange, out var range) ? range : null,
+                parent: null);
         }
 
         // Wait for all tasks to finish (they can be added recursively so we need a loop).
@@ -291,7 +293,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             var depTask = dependencyInfos.FirstOrDefault(
                 p => p.Value != null &&
                     p.Key.Id.Equals(package.Id, StringComparison.OrdinalIgnoreCase) &&
-                    (p.Key.ParsedRange?.Satisfies(package.Version) == true || VersionRange.Parse(p.Key.Range).Satisfies(package.Version)))
+                    p.Key.Range!.Satisfies(package.Version))
                 .Value;
 
             if (depTask == null || await depTask is not { } dep)
