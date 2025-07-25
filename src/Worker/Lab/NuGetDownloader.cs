@@ -12,6 +12,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 using NuGet.Versioning;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
@@ -174,19 +175,25 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         NuGetFramework targetFramework,
         NuGetDllFilter dllFilter)
     {
-        var dependencyInfos = new Dictionary<string, SourcePackageDependencyInfo>(StringComparer.OrdinalIgnoreCase);
+        var dependencyInfos = new ConcurrentDictionary<(string Id, string Range, VersionRange? ParsedRange), Task<SourcePackageDependencyInfo?>>();
 
-        async Task collectDependenciesAsync(NuGetDependency dependency, VersionRange? range)
+        void enqueueDependency(NuGetDependency dependency, VersionRange? range, NuGetDependency? parent)
         {
-            if (dependencyInfos.ContainsKey(dependency.PackageId))
+            var key = (dependency.PackageId.ToLowerInvariant(), dependency.VersionRange, range);
+            dependencyInfos.GetOrAdd(key, async _ =>
             {
-                return;
-            }
+                var result = await collectDependenciesAsync(dependency, range);
+                parent?.Errors.AddRange(dependency.Errors);
+                return result;
+            });
+        }
 
+        async Task<SourcePackageDependencyInfo?> collectDependenciesAsync(NuGetDependency dependency, VersionRange? range)
+        {
             if (range == null && !VersionRange.TryParse(dependency.VersionRange, out range))
             {
                 dependency.Errors.Add($"Cannot parse version range '{dependency.VersionRange}' of package '{dependency.PackageId}'.");
-                return;
+                return null;
             }
 
             // If we have a range, find the best version.
@@ -212,14 +219,15 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             if (version == null)
             {
                 dependency.Errors.Add($"Cannot find a version for package '{dependency.PackageId}@{range}'.");
-                return;
+                return null;
             }
 
-            bool found = false;
+            SourcePackageDependencyInfo? dep = null;
+
             foreach (var repository in repositories)
             {
                 var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
-                var dep = await depResource.ResolvePackage(
+                dep = await depResource.ResolvePackage(
                     new PackageIdentity(dependency.PackageId, version),
                     targetFramework,
                     cacheContext,
@@ -230,9 +238,6 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     continue;
                 }
 
-                found = true;
-                dependencyInfos[dependency.PackageId] = dep;
-
                 // Recursively collect dependencies.
                 foreach (var subDependency in dep.Dependencies)
                 {
@@ -241,45 +246,58 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                         PackageId = subDependency.Id,
                         VersionRange = string.Empty,
                     };
-                    await collectDependenciesAsync(nuGetDependency, subDependency.VersionRange);
-                    dependency.Errors.AddRange(nuGetDependency.Errors);
+                    enqueueDependency(nuGetDependency, subDependency.VersionRange, parent: dependency);
                 }
 
                 break;
             }
 
-            if (!found)
+            if (dep == null)
             {
                 dependency.Errors.Add($"Cannot find info for package '{dependency.PackageId}@{version}'.");
             }
+
+            return dep;
         }
 
         foreach (var dependency in dependencies)
         {
-            await collectDependenciesAsync(dependency, null);
+            enqueueDependency(dependency, range: null, parent: null);
         }
+
+        // Wait for all tasks to finish (they can be added recursively so we need a loop).
+        SourcePackageDependencyInfo?[] dependencyValues;
+        do
+        {
+            dependencyValues = await Task.WhenAll(dependencyInfos.Values);
+        }
+        while (dependencyValues.Length != dependencyInfos.Count);
 
         var context = new PackageResolverContext(
             DependencyBehavior.Lowest,
-            targetIds: dependencies.Select(d => d.PackageId),
+            targetIds: dependencies.Select(static d => d.PackageId),
             requiredPackageIds: [],
             packagesConfig: [],
             preferredVersions: [],
-            availablePackages: dependencyInfos.Values,
-            packageSources: repositories.Select(r => r.PackageSource),
+            availablePackages: dependencyValues.SelectNonNull(static d => d),
+            packageSources: repositories.Select(static r => r.PackageSource),
             NullLogger.Instance);
         var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
 
-        Dictionary<string, NuGetDependency>? lookup = null;
+        var lookup = dependencies.ToDictionary(d => d.PackageId, StringComparer.OrdinalIgnoreCase);
 
-        var assemblies = ImmutableArray.CreateBuilder<RefAssembly>();
-
-        foreach (var package in resolved)
+        var results = await Task.WhenAll(resolved.Select(async package =>
         {
-            if (!dependencyInfos.TryGetValue(package.Id, out var dep))
+            var depTask = dependencyInfos.FirstOrDefault(
+                p => p.Value != null &&
+                    p.Key.Id.Equals(package.Id, StringComparison.OrdinalIgnoreCase) &&
+                    (p.Key.ParsedRange?.Satisfies(package.Version) == true || VersionRange.Parse(p.Key.Range).Satisfies(package.Version)))
+                .Value;
+
+            if (depTask == null || await depTask is not { } dep)
             {
                 reportError(package, $"Dependency info of resolved package '{package.Id}@{package.Version}' not found.");
-                continue;
+                return null;
             }
 
             var result = Download(dep);
@@ -287,7 +305,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             if (result == null)
             {
                 reportError(package, $"Download info of package '{package.Id}' not found.");
-                continue;
+                return null;
             }
 
             var packageResult = new NuGetDownloadablePackage(dllFilter, () => Task.FromResult(result));
@@ -301,27 +319,24 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             {
                 logger.LogError(ex, "Failed to load assemblies for package '{PackageId}@{Version}'.", package.Id, package.Version);
                 reportError(package, $"Failed to load assemblies for package '{package.Id}@{package.Version}': {ex.Message}");
-                continue;
+                return null;
             }
 
-            foreach (var loadedAssembly in loadedAssemblies)
+            return loadedAssemblies.Select(loadedAssembly => new RefAssembly
             {
-                assemblies.Add(new()
-                {
-                    Name = loadedAssembly.Name,
-                    FileName = loadedAssembly.Name + ".dll",
-                    Bytes = loadedAssembly.DataAsDll,
-                    LoadForExecution = true,
-                });
-            }
-        }
+                Name = loadedAssembly.Name,
+                FileName = loadedAssembly.Name + ".dll",
+                Bytes = loadedAssembly.DataAsDll,
+                LoadForExecution = true,
+            });
+        }));
 
-        return assemblies.DrainToImmutable();
+        return results.SelectNonNull(static r => r)
+            .SelectMany(static r => r)
+            .ToImmutableArray();
 
         void reportError(PackageIdentity identity, string message)
         {
-            lookup ??= dependencies.ToDictionary(d => d.PackageId, StringComparer.OrdinalIgnoreCase);
-
             if (lookup.TryGetValue(identity.Id, out var dependency))
             {
                 dependency.Errors.Add(message);
