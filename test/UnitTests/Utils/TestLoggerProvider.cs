@@ -4,11 +4,11 @@ namespace DotNetLab;
 
 internal sealed class TestLoggerProvider(ITestOutputHelper output) : ILoggerProvider
 {
-    public ILogger CreateLogger(string categoryName) => new Logger(output);
+    public ILogger CreateLogger(string categoryName) => new Logger(categoryName, output);
 
     public void Dispose() { }
 
-    private sealed class Logger(ITestOutputHelper output) : ILogger
+    private sealed class Logger(string categoryName, ITestOutputHelper output) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -16,7 +16,7 @@ internal sealed class TestLoggerProvider(ITestOutputHelper output) : ILoggerProv
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            output.WriteLine(formatter(state, exception));
+            output.WriteLine(SimpleConsoleLoggerProvider.Format(categoryName, logLevel, eventId, state, exception, formatter));
 
             if (exception != null)
             {
