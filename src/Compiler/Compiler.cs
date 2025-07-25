@@ -1,3 +1,4 @@
+using ICSharpCode.Decompiler.Util;
 using Microsoft.AspNetCore.Mvc.Razor.Extensions;
 using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.Language.Intermediate;
@@ -10,7 +11,6 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
-using System.Collections.ObjectModel;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
@@ -814,44 +814,31 @@ public sealed class Compiler(
                 new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies));
         }
 
-        async ValueTask<IReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>> processDirectivesAsync()
+        async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()
         {
             try
             {
-                var diagnostics = new Dictionary<InputCode, IReadOnlyList<(TextSpan, string)>>();
+                var diagnostics = new MultiDictionary<InputCode, (TextSpan, string)>();
+
+                var inputs = compilationInput.Inputs.Value
+                    .Where(input => input.FileName.IsCSharpFileName(out _));
+
+                var directives = FileLevelDirectiveParser.Instance.Parse(inputs);
 
                 var context = new FileLevelDirective.ConsumerContext
                 {
+                    Directives = directives,
                     Services = services,
                     Config = Config.Instance,
                 };
 
-                var parser = FileLevelDirectiveParser.Instance;
+                await context.ConsumeAsync();
 
-                foreach (var input in compilationInput.Inputs.Value)
+                foreach (var directive in directives)
                 {
-                    if (!input.FileName.IsCSharpFileName(out _))
+                    foreach (var error in directive.Info.Errors)
                     {
-                        continue;
-                    }
-
-                    var directives = parser.Parse(input);
-                    await context.ConsumeAsync(directives);
-
-                    List<(TextSpan, string)>? fileDiagnostics = null;
-
-                    foreach (var directive in directives)
-                    {
-                        foreach (var error in directive.Info.Errors)
-                        {
-                            if (fileDiagnostics is null)
-                            {
-                                fileDiagnostics = new();
-                                diagnostics.Add(input, fileDiagnostics);
-                            }
-
-                            fileDiagnostics.Add((directive.Info.Span, error));
-                        }
+                        diagnostics.Add(directive.Info.Input, (directive.Info.Span, error));
                     }
                 }
 
@@ -862,30 +849,32 @@ public sealed class Compiler(
                 // FileLevelDirectiveParser uses APIs which might not be available in old Roslyn versions.
                 // The whole compilation should not crash because of that.
                 logger.LogError(ex, "Cannot process file-level directives.");
-                return ReadOnlyDictionary<InputCode, IReadOnlyList<(TextSpan, string)>>.Empty;
+                return null;
             }
         }
 
         ImmutableArray<Diagnostic> processDirectiveDiagnostics()
         {
+            if (directiveDiagnosticInputs is null)
+            {
+                return [];
+            }
+
             var builder = ImmutableArray.CreateBuilder<Diagnostic>();
 
             foreach (var (input, tree) in cSharpSources)
             {
-                if (directiveDiagnosticInputs.TryGetValue(input, out var diagnostics))
+                foreach (var (span, error) in directiveDiagnosticInputs[input])
                 {
-                    foreach (var (span, error) in diagnostics)
-                    {
-                        builder.Add(Diagnostic.Create(
-                            id: "LAB",
-                            category: "FileLevelDirective",
-                            message: error,
-                            DiagnosticSeverity.Warning,
-                            DiagnosticSeverity.Warning,
-                            isEnabledByDefault: true,
-                            warningLevel: 1,
-                            location: Location.Create(tree, span)));
-                    }
+                    builder.Add(Diagnostic.Create(
+                        id: "LAB",
+                        category: "FileLevelDirective",
+                        message: error,
+                        DiagnosticSeverity.Warning,
+                        DiagnosticSeverity.Warning,
+                        isEnabledByDefault: true,
+                        warningLevel: 1,
+                        location: Location.Create(tree, span)));
                 }
             }
 

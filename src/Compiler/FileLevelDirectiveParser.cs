@@ -36,46 +36,49 @@ internal sealed class FileLevelDirectiveParser
         Descriptors = descriptors.ToFrozenDictionary(d => d.DirectiveKind, StringComparer.Ordinal);
     }
 
-    public ImmutableArray<FileLevelDirective> Parse(InputCode input)
+    public ImmutableArray<FileLevelDirective> Parse(IEnumerable<InputCode> inputs)
     {
         var deduplicated = new HashSet<FileLevelDirective.Named>(NamedDirectiveComparer.Instance);
         var builder = ImmutableArray.CreateBuilder<FileLevelDirective>();
 
-        var text = SourceText.From(input.Text);
-        var tokenizer = text.CreateTokenizer();
-
-        var result = tokenizer.ParseLeadingTrivia();
-
-        foreach (var trivia in result.Token.LeadingTrivia)
+        foreach (var input in inputs)
         {
-            if (trivia.IsKind(SyntaxKind.IgnoredDirectiveTrivia))
+            var text = SourceText.From(input.Text);
+            var tokenizer = text.CreateTokenizer();
+
+            var result = tokenizer.ParseLeadingTrivia();
+
+            foreach (var trivia in result.Token.LeadingTrivia)
             {
-                var message = trivia.GetStructure() is IgnoredDirectiveTriviaSyntax { Content: { RawKind: (int)SyntaxKind.StringLiteralToken } content }
-                    ? content.Text.AsMemory().Trim()
-                    : default;
-                var parts = message.Span.SplitByWhitespace(2);
-                var kind = parts.MoveNext() ? message[parts.Current] : default;
-                var rest = parts.MoveNext() ? message[parts.Current] : default;
-                Debug.Assert(!parts.MoveNext());
-
-                var info = new FileLevelDirective.ParseInfo
+                if (trivia.IsKind(SyntaxKind.IgnoredDirectiveTrivia))
                 {
-                    Span = trivia.Span,
-                    Input = input,
-                    DirectiveKind = kind,
-                    DirectiveText = rest,
-                    Errors = [],
-                };
+                    var message = trivia.GetStructure() is IgnoredDirectiveTriviaSyntax { Content: { RawKind: (int)SyntaxKind.StringLiteralToken } content }
+                        ? content.Text.AsMemory().Trim()
+                        : default;
+                    var parts = message.Span.SplitByWhitespace(2);
+                    var kind = parts.MoveNext() ? message[parts.Current] : default;
+                    var rest = parts.MoveNext() ? message[parts.Current] : default;
+                    Debug.Assert(!parts.MoveNext());
 
-                var parsed = ParseOne(info);
+                    var info = new FileLevelDirective.ParseInfo
+                    {
+                        Span = trivia.Span,
+                        Input = input,
+                        DirectiveKind = kind,
+                        DirectiveText = rest,
+                        Errors = [],
+                    };
 
-                if (parsed is FileLevelDirective.Named named &&
-                    !deduplicated.Add(named))
-                {
-                    named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
+                    var parsed = ParseOne(info);
+
+                    if (parsed is FileLevelDirective.Named named &&
+                        !deduplicated.Add(named))
+                    {
+                        named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
+                    }
+
+                    builder.Add(parsed);
                 }
-
-                builder.Add(parsed);
             }
         }
 
@@ -147,6 +150,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
     public sealed class ConsumerContext
     {
+        public required ImmutableArray<FileLevelDirective> Directives { get; init; }
         public required IServiceProvider Services { get; init; }
         public required IConfig Config { get; init; }
         public ILogger<FileLevelDirectiveParser> Logger => field ??= Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>();
@@ -156,14 +160,14 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public OptimizationLevel? OptimizationLevel { get; set; }
         public bool SawDefineConstants { get; set; }
 
-        public async ValueTask ConsumeAsync(ImmutableArray<FileLevelDirective> directives)
+        public async ValueTask ConsumeAsync()
         {
-            foreach (var directive in directives)
+            foreach (var directive in Directives)
             {
                 directive.Evaluate(this);
             }
 
-            foreach (var directive in directives)
+            foreach (var directive in Directives)
             {
                 if (directive.Info.Errors.Count > 0)
                 {
