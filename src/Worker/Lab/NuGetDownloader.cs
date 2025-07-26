@@ -129,6 +129,12 @@ internal readonly record struct DependencyKey
     public required bool LoadForExecution { get; init; }
 }
 
+internal readonly record struct PackageKey
+{
+    public required PackageIdentity PackageIdentity { get; init; }
+    public required NuGetDllFilter DllFilter { get; init; }
+}
+
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly ILogger<NuGetDownloader> logger;
@@ -138,6 +144,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
     private readonly ConcurrentDictionary<DependencyKey, NuGetResults> dependencyCache = new();
+    private readonly ConcurrentDictionary<PackageKey, PackageDependency> packageCache = new();
 
     public NuGetDownloader(
         ILogger<NuGetDownloader> logger,
@@ -334,20 +341,16 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 return null;
             }
 
-            var result = Download(dep);
-
-            if (result == null)
-            {
-                reportError(package, $"Download info of package '{package.Id}' not found.");
-                return null;
-            }
-
-            var packageResult = new NuGetDownloadablePackage(dllFilter, () => Task.FromResult(result));
             ImmutableArray<LoadedAssembly> loadedAssemblies;
 
             try
             {
-                loadedAssemblies = await packageResult.GetAssembliesAsync();
+                var packageDependency = GetOrCreatePackageDependency(new PackageIdentity(dep.Id, dep.Version), dllFilter, () =>
+                {
+                    return Task.FromResult(Download(dep)
+                        ?? throw new InvalidOperationException($"Download info of '{dep.Id}@{dep.Version}' not found."));
+                });
+                loadedAssemblies = await packageDependency.Assemblies.Value;
             }
             catch (Exception ex)
             {
@@ -435,7 +438,8 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         NuGetVersion version,
         NuGetDllFilter dllFilter)
     {
-        var package = new NuGetDownloadablePackage(dllFilter, async () =>
+        var packageIdentity = new PackageIdentity(packageId, version);
+        return GetOrCreatePackageDependency(packageIdentity, dllFilter, async () =>
         {
             var repos = repository is { } r
                 ? AsyncEnumerable.Create(r)
@@ -445,7 +449,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             {
                 var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
                 var dep = await depResource.ResolvePackage(
-                    new PackageIdentity(packageId, version),
+                    packageIdentity,
                     NuGetFramework.AnyFramework,
                     cacheContext,
                     NullLogger.Instance,
@@ -457,17 +461,25 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             if (success is not { } s)
             {
                 throw new InvalidOperationException(
-                    $"Failed to download '{packageId}' version '{version}'.");
+                    $"Failed to download '{packageId}@{version}'.");
             }
 
             return s;
         });
+    }
 
-        return new()
+    private PackageDependency GetOrCreatePackageDependency(PackageIdentity packageIdentity, NuGetDllFilter dllFilter, Func<Task<NuGetDownloadablePackageResult>> resultFactory)
+    {
+        var key = new PackageKey { PackageIdentity = packageIdentity, DllFilter = dllFilter };
+        return packageCache.GetOrAdd(key, _ => 
         {
-            Info = new(package.GetInfoAsync),
-            Assemblies = new(package.GetAssembliesAsync),
-        };
+            var package = new NuGetDownloadablePackage(dllFilter, resultFactory);
+            return new PackageDependency
+            {
+                Info = new(package.GetInfoAsync),
+                Assemblies = new(package.GetAssembliesAsync),
+            };
+        });
     }
 
     private NuGetDownloadablePackageResult? Download(SourcePackageDependencyInfo? dep)
