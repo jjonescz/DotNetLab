@@ -523,8 +523,10 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                         }
                         catch (MiniZipHttpException e)
                         {
-                            logger.LogError(e, "Cannot download package '{PackageId}@{Version}' using range requests from: {Url}",
-                                dep.Id, dep.Version, url);
+                            // The exception message is long because it contains all headers
+                            // but those can be inspected in dev tools anyway, so we include only the first line.
+                            logger.LogWarning("Cannot download package '{PackageId}@{Version}' using range requests from '{Url}': {Message}",
+                                dep.Id, dep.Version, url, e.Message.GetFirstLine());
 
                             // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
                             return null;
