@@ -165,8 +165,9 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         ];
         IEnumerable<string> sources =
         [
-            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
+            // NuGet.org should be tried first because it supports more efficient range requests.
             "https://api.nuget.org/v3/index.json",
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-libraries/nuget/v3/index.json",
         ];
         repositories = sources.SelectAsArray(url => Repository.CreateSource(providers, url));
