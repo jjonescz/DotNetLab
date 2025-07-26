@@ -48,7 +48,7 @@ internal sealed class SimpleConsoleLoggerProvider : ILoggerProvider
 
         return $"""
             {logLevelString}: {categoryName}[{eventId}]
-                    {formatter(state, exception)}
+                {formatter(state, exception)}
             """;
     }
 }
