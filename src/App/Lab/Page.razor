@@ -503,7 +503,7 @@
             return;
         }
 
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
 
         await SaveStateToUrlAsync();
     }
@@ -524,7 +524,7 @@
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, input.Model, newLanguage);
             }
 
-            OnWorkspaceChanged();
+            await OnWorkspaceChangedAsync();
         }
 
         await SaveStateToUrlAsync();
@@ -566,7 +566,7 @@
             var inputCode = InitialCode.Configuration.ToInputCode();
             var model = await CreateModelAsync(inputCode);
             configuration = new(fileName, model) { NewContent = inputCode.Text };
-            OnWorkspaceChanged();
+            await OnWorkspaceChangedAsync();
 
             await SaveStateToUrlAsync();
         }
@@ -603,7 +603,7 @@
         var model = await CreateModelAsync(inputCode);
         var input = new Input(fileName, model) { NewContent = inputCode.Text };
         inputs.Add(input);
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
         if (selectAsCurrent)
         {
             await SelectInputTabAsync(input, inputs.Count - 1);
@@ -1034,13 +1034,13 @@
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="InputsAndConfiguration"/> change.
     /// </summary>
-    public void OnWorkspaceChanged()
+    public Task OnWorkspaceChangedAsync()
     {
         outputOutdated = true;
 
         if (!LanguageServices.Enabled)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         var models = InputsAndConfiguration
@@ -1051,7 +1051,7 @@
             })
             .ToImmutableArray();
         InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
-        LanguageServices.OnDidChangeWorkspace(models);
+        return LanguageServices.OnDidChangeWorkspaceAsync(models);
     }
 
     /// <summary>
@@ -1070,7 +1070,7 @@
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        LanguageServices.OnDidChangeWorkspace(models, updateDiagnostics: updateDiagnostics);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics: updateDiagnostics, refresh: true);
     }
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)

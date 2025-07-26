@@ -13,6 +13,7 @@ internal sealed class LanguageServicesClient(
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
 {
+    private readonly LanguageSelector cSharpLanguageSelector = new("csharp");
     private Dictionary<string, string> modelUrlToFileName = [];
     private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
     private string? currentModelUrl;
@@ -71,7 +72,6 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
-        var cSharpLanguageSelector = new LanguageSelector("csharp");
         completionProvider = await blazorMonacoInterop.RegisterCompletionProviderAsync(cSharpLanguageSelector, new(loggerFactory)
         {
             TriggerCharacters = [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~"],
@@ -85,16 +85,6 @@ internal sealed class LanguageServicesClient(
                     cancellationToken);
             },
             ResolveCompletionItemFunc = worker.ResolveCompletionItemAsync,
-        });
-
-        semanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new(loggerFactory)
-        {
-            Legend = new SemanticTokensLegend
-            {
-                TokenTypes = SemanticTokensUtil.TokenTypes.LspValues,
-                TokenModifiers = SemanticTokensUtil.TokenModifiers.LspValues,
-            },
-            ProvideSemanticTokens = worker.ProvideSemanticTokensAsync,
         });
 
         codeActionProvider = await blazorMonacoInterop.RegisterCodeActionProviderAsync(cSharpLanguageSelector, new(loggerFactory)
@@ -124,6 +114,19 @@ internal sealed class LanguageServicesClient(
         });
     }
 
+    private async Task RegisterSemanticTokensProviderAsync()
+    {
+        semanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(cSharpLanguageSelector, new(loggerFactory)
+        {
+            Legend = new SemanticTokensLegend
+            {
+                TokenTypes = SemanticTokensUtil.TokenTypes.LspValues,
+                TokenModifiers = SemanticTokensUtil.TokenModifiers.LspValues,
+            },
+            ProvideSemanticTokens = worker.ProvideSemanticTokensAsync,
+        });
+    }
+
     private void Unregister()
     {
         completionProvider?.Dispose();
@@ -144,11 +147,11 @@ internal sealed class LanguageServicesClient(
         lastCodeActions = null;
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true)
+    public Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true, bool refresh = false)
     {
         if (!Enabled)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         InvalidateCaches();
@@ -159,6 +162,16 @@ internal sealed class LanguageServicesClient(
         {
             UpdateDiagnostics();
         }
+
+        if (refresh)
+        {
+            // Refresh semantic tokens which might be outdated after compilation (e.g., due to new references).
+            semanticTokensProvider?.Dispose();
+            semanticTokensProvider = null;
+            return RegisterSemanticTokensProviderAsync();
+        }
+
+        return Task.CompletedTask;
     }
 
     public void OnDidChangeModel(ModelChangedEvent args)

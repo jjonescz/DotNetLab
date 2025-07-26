@@ -1,4 +1,3 @@
-using BlazorMonaco.Editor;
 using ProtoBuf;
 using System.Collections.Frozen;
 
@@ -116,7 +115,7 @@ partial class Page
         activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
 
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
 
         if ((activeInput ?? firstInput) is { } selectInput)
         {
