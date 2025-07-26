@@ -146,6 +146,13 @@ public sealed class Compiler(
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
 
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Using references:\n{References}", references.Assemblies
+                .Select(r => $"{r.FileName}: {r.Source}")
+                .JoinToString("\n", " - ", ""));
+        }
+
         var optionsProvider = new TestAnalyzerConfigOptionsProvider
         {
             GlobalOptions =

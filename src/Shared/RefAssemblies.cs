@@ -22,6 +22,7 @@ public static class RefAssemblies
                 Name = name,
                 FileName = name + ".dll",
                 Bytes = ImmutableCollectionsMarshal.AsImmutableArray(bytes),
+                Source = "Built-in",
             });
         }
 
@@ -54,6 +55,11 @@ public readonly struct RefAssembly
     public required string Name { get; init; }
     public required string FileName { get; init; }
     public required ImmutableArray<byte> Bytes { get; init; }
+
+    /// <summary>
+    /// Where does this assembly come from.
+    /// </summary>
+    public required string Source { get; init; }
 
     /// <summary>
     /// Whether to load the assembly when executing the code.

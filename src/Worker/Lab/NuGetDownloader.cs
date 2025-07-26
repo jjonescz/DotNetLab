@@ -377,11 +377,14 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 return null;
             }
 
+            string source = $"NuGet: {dep.DownloadUri}";
+
             return loadedAssemblies.Select(loadedAssembly => new RefAssembly
             {
                 Name = loadedAssembly.Name,
                 FileName = loadedAssembly.Name + ".dll",
                 Bytes = loadedAssembly.DataAsDll,
+                Source = source,
                 LoadForExecution = loadForExecution,
             });
         }));
