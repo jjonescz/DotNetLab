@@ -13,6 +13,7 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 using NuGet.Versioning;
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
@@ -407,6 +408,11 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         IReadOnlyDictionary<NuGetDependency, IReadOnlyList<string>> getErrors()
         {
+            if (errors.IsEmpty)
+            {
+                return ReadOnlyDictionary<NuGetDependency, IReadOnlyList<string>>.Empty;
+            }
+
             return errors.ToDictionary(
                 static p => p.Key,
                 static IReadOnlyList<string> (p) => p.Value.ToList());

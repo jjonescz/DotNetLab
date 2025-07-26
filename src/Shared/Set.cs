@@ -39,7 +39,7 @@ public readonly struct Set<T>(IReadOnlySet<T> value) : IEquatable<Set<T>>
         {
             if (item is not null)
             {
-                hash |= comparer.GetHashCode(item);
+                hash ^= comparer.GetHashCode(item);
             }
         }
 
