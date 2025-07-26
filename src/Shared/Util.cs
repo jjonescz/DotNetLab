@@ -41,6 +41,19 @@ public static partial class Util
         {
             return collection is IReadOnlyList<T> list ? list : [.. collection];
         }
+
+        public async Task<T?> FirstOrDefaultAsync(Func<T, ValueTask<bool>> predicate)
+        {
+            foreach (var item in collection)
+            {
+                if (await predicate(item))
+                {
+                    return item;
+                }
+            }
+
+            return default;
+        }
     }
 
     extension<T>(IList<T> list)
@@ -55,6 +68,29 @@ public static partial class Util
             {
                 ArrayList.Adapter((IList)list).Sort((IComparer)comparer);
             }
+        }
+    }
+
+    extension<T>(ImmutableArray<T> array)
+    {
+        public ImmutableArray<T>.Builder ToBuilder(int additionalCapacity)
+        {
+            var builder = ImmutableArray.CreateBuilder<T>(array.Length + additionalCapacity);
+            builder.AddRange(array);
+            return builder;
+        }
+
+        public ImmutableArray<T> WhereAsArray(Func<T, bool> predicate)
+        {
+            var builder = ImmutableArray.CreateBuilder<T>(array.Length);
+            foreach (var item in array)
+            {
+                if (predicate(item))
+                {
+                    builder.Add(item);
+                }
+            }
+            return builder.DrainToImmutable();
         }
     }
 
@@ -222,7 +258,12 @@ public static partial class Util
 
     public static string JoinToString<T>(this IEnumerable<T> source, string separator, string quote)
     {
-        return string.Join(separator, source.Select(x => $"{quote}{x}{quote}"));
+        return source.JoinToString(separator, quote, quote);
+    }
+
+    public static string JoinToString<T>(this IEnumerable<T> source, string separator, string prefix, string suffix)
+    {
+        return string.Join(separator, source.Select(x => $"{prefix}{x}{suffix}"));
     }
 
     public static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<TResult>> selector)

@@ -26,4 +26,44 @@ public readonly struct RefAssemblyList
 {
     public required ImmutableArray<PortableExecutableReference> Metadata { get; init; }
     public required ImmutableArray<RefAssembly> Assemblies { get; init; }
+
+    public RefAssemblyList AddDiscardingDuplicates(RefAssemblyList another)
+    {
+        if (another.Metadata.IsDefaultOrEmpty && another.Assemblies.IsDefaultOrEmpty)
+        {
+            return this;
+        }
+
+        if (another.Metadata.Length != another.Assemblies.Length)
+        {
+            throw new InvalidOperationException(
+                $"Expected ref assembly and metadata lists to have the same length but found " +
+                $"{another.Metadata.Length} and {another.Assemblies.Length}.");
+        }
+
+        var existingNames = Assemblies
+            .Select(a => a.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var metadataBuilder = Metadata.ToBuilder(additionalCapacity: another.Metadata.Length);
+        var assembliesBuilder = Assemblies.ToBuilder(additionalCapacity: another.Assemblies.Length);
+
+        for (int i = 0; i < another.Assemblies.Length; i++)
+        {
+            var assembly = another.Assemblies[i];
+            if (existingNames.Contains(assembly.Name))
+            {
+                continue; // Skip duplicates
+            }
+
+            metadataBuilder.Add(another.Metadata[i]);
+            assembliesBuilder.Add(assembly);
+        }
+
+        return new()
+        {
+            Metadata = metadataBuilder.DrainToImmutable(),
+            Assemblies = assembliesBuilder.DrainToImmutable(),
+        };
+    }
 }

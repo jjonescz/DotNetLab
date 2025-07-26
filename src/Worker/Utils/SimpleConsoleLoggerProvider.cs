@@ -12,11 +12,11 @@ namespace DotNetLab;
 /// </remarks>
 internal sealed class SimpleConsoleLoggerProvider : ILoggerProvider
 {
-    public ILogger CreateLogger(string categoryName) => new Logger();
+    public ILogger CreateLogger(string categoryName) => new Logger(categoryName);
 
     public void Dispose() { }
 
-    sealed class Logger : ILogger
+    private sealed class Logger(string categoryName) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -24,7 +24,31 @@ internal sealed class SimpleConsoleLoggerProvider : ILoggerProvider
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            Console.WriteLine("Worker: {0}", formatter(state, exception));
+            Console.WriteLine(Format(categoryName, logLevel, eventId, state, exception, formatter));
+
+            if (exception != null)
+            {
+                Console.WriteLine(exception);
+            }
         }
+    }
+
+    internal static string Format<TState>(string categoryName, LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        var logLevelString = logLevel switch
+        {
+            LogLevel.Trace => "trce",
+            LogLevel.Debug => "dbug",
+            LogLevel.Information => "info",
+            LogLevel.Warning => "warn",
+            LogLevel.Error => "fail",
+            LogLevel.Critical => "crit",
+            _ => throw new ArgumentOutOfRangeException(nameof(logLevel)),
+        };
+
+        return $"""
+            {logLevelString}: {categoryName}[{eventId}]
+                  {formatter(state, exception)}
+            """;
     }
 }

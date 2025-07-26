@@ -137,18 +137,20 @@ internal sealed class AzDoDownloader(
     {
         var prefix = $"/{nupkgArtifactPath}/{packageId}.";
         var suffix = ".nupkg";
-        var nupkg = files.Items
+        var nupkgFile = files.Items
             .FirstOrDefault(f =>
                 f.Path.StartsWith(prefix, StringComparison.Ordinal) &&
-                f.Path.EndsWith(suffix, StringComparison.Ordinal))?.Blob
+                f.Path.EndsWith(suffix, StringComparison.Ordinal));
+
+        var nupkgBlob = nupkgFile?.Blob
             ?? throw new InvalidOperationException($"No artifact '{prefix}*{suffix}' found in build {buildId}.");
 
         var stream = await GetFileAsStreamAsync(
             buildId: buildId,
             artifactName: artifactName,
-            fileId: nupkg.Id);
+            fileId: nupkgBlob.Id);
 
-        return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, new CompilerNuGetDllFilter(packageFolder));
+        return await NuGetUtil.GetAssembliesFromNupkgAsync(stream, new CompilerNuGetDllFilter(packageFolder), forPackage: nupkgFile.Path);
     }
 
     private async Task<ImmutableArray<LoadedAssembly>> GetAssembliesViaRehydrateAsync(

@@ -29,52 +29,55 @@ internal sealed class FileLevelDirectiveParser
     {
         IEnumerable<FileLevelDirective.IDescriptor> descriptors =
         [
+            FileLevelDirective.Package.Descriptor,
             FileLevelDirective.Property.Descriptor,
         ];
 
         Descriptors = descriptors.ToFrozenDictionary(d => d.DirectiveKind, StringComparer.Ordinal);
     }
 
-    public ImmutableArray<FileLevelDirective> Parse(InputCode input)
+    public ImmutableArray<FileLevelDirective> Parse(IEnumerable<InputCode> inputs)
     {
         var deduplicated = new HashSet<FileLevelDirective.Named>(NamedDirectiveComparer.Instance);
         var builder = ImmutableArray.CreateBuilder<FileLevelDirective>();
 
-        var text = SourceText.From(input.Text);
-        var tokenizer = text.CreateTokenizer();
-
-        var result = tokenizer.ParseLeadingTrivia();
-
-        foreach (var trivia in result.Token.LeadingTrivia)
+        foreach (var input in inputs)
         {
-            if (trivia.IsKind(SyntaxKind.IgnoredDirectiveTrivia))
+            var text = SourceText.From(input.Text);
+            var tokenizer = text.CreateTokenizer();
+
+            var result = tokenizer.ParseLeadingTrivia();
+
+            foreach (var trivia in result.Token.LeadingTrivia)
             {
-                var message = trivia.GetStructure() is IgnoredDirectiveTriviaSyntax { Content: { RawKind: (int)SyntaxKind.StringLiteralToken } content }
-                    ? content.Text.AsMemory().Trim()
-                    : default;
-                var parts = message.Span.SplitByWhitespace(2);
-                var kind = parts.MoveNext() ? message[parts.Current] : default;
-                var rest = parts.MoveNext() ? message[parts.Current] : default;
-                Debug.Assert(!parts.MoveNext());
-
-                var info = new FileLevelDirective.ParseInfo
+                if (trivia.IsKind(SyntaxKind.IgnoredDirectiveTrivia))
                 {
-                    Span = trivia.Span,
-                    Input = input,
-                    DirectiveKind = kind,
-                    DirectiveText = rest,
-                    Errors = [],
-                };
+                    var message = trivia.GetStructure() is IgnoredDirectiveTriviaSyntax { Content: { RawKind: (int)SyntaxKind.StringLiteralToken } content }
+                        ? content.Text.AsMemory().Trim()
+                        : default;
+                    var parts = message.Span.SplitByWhitespace(2);
+                    var kind = parts.MoveNext() ? message[parts.Current] : default;
+                    var rest = parts.MoveNext() ? message[parts.Current] : default;
+                    Debug.Assert(!parts.MoveNext());
 
-                var parsed = ParseOne(info);
+                    var info = new FileLevelDirective.ParseInfo
+                    {
+                        Span = trivia.Span,
+                        Input = input,
+                        DirectiveKind = kind,
+                        DirectiveText = rest,
+                    };
 
-                if (parsed is FileLevelDirective.Named named &&
-                    !deduplicated.Add(named))
-                {
-                    named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
+                    var parsed = ParseOne(info);
+
+                    if (parsed is FileLevelDirective.Named named &&
+                        !deduplicated.Add(named))
+                    {
+                        named.Info.Errors.Add($"Duplicate directive '#:{info.DirectiveKind} {named.Name}'.");
+                    }
+
+                    builder.Add(parsed);
                 }
-
-                builder.Add(parsed);
             }
         }
 
@@ -141,21 +144,30 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public required InputCode Input { get; init; }
         public required ReadOnlyMemory<char> DirectiveKind { get; init; }
         public required ReadOnlyMemory<char> DirectiveText { get; init; }
-        public required List<string> Errors { get; init; }
+        public List<string> Errors { get; } = [];
     }
 
     public sealed class ConsumerContext
     {
+        public required ImmutableArray<FileLevelDirective> Directives { get; init; }
         public required IServiceProvider Services { get; init; }
         public required IConfig Config { get; init; }
+        public ILogger<FileLevelDirectiveParser> Logger => field ??= Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>();
 
+        public ReadOnlyMemory<char>? TargetFramework { get; set; }
         public bool? Prefer32Bit { get; set; }
         public OptimizationLevel? OptimizationLevel { get; set; }
         public bool SawDefineConstants { get; set; }
+        public bool ConsumedPackages { get; set; }
 
-        public async ValueTask ConsumeAsync(ImmutableArray<FileLevelDirective> directives)
+        public async ValueTask ConsumeAsync()
         {
-            foreach (var directive in directives)
+            foreach (var directive in Directives)
+            {
+                directive.Evaluate(this);
+            }
+
+            foreach (var directive in Directives)
             {
                 if (directive.Info.Errors.Count > 0)
                 {
@@ -168,6 +180,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
     }
 
     public readonly ParseInfo Info = info;
+
+    public virtual void Evaluate(ConsumerContext context) { }
 
     public abstract ValueTask ConsumeAsync(ConsumerContext context);
 
@@ -196,10 +210,12 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
     public abstract class Pair<T>(ParseInfo info) : Named(info), IFileLevelDirective where T : Pair<T>, IPairFileLevelDirective
     {
+        public delegate void Evaluator(ConsumerContext context, ParseInfo info, ReadOnlyMemory<char> value);
         public delegate ValueTask Consumer(ConsumerContext context, ParseInfo info, ReadOnlyMemory<char> value);
 
         public readonly struct ConsumerInfo
         {
+            public Evaluator? Evaluate { get; init; }
             public required Consumer ConsumeAsync { get; init; }
             public required Func<ReadOnlySpan<char>, ImmutableArray<string>> SuggestValues { get; init; }
         }
@@ -219,10 +235,15 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             return factory(info, (name, value));
         }
 
-        protected static KeyValuePair<string, ConsumerInfo> Create(string name, Consumer consumer, Func<ReadOnlySpan<char>, ImmutableArray<string>> suggestValues)
+        protected static KeyValuePair<string, ConsumerInfo> Create(
+            string name,
+            Consumer consumer,
+            Func<ReadOnlySpan<char>, ImmutableArray<string>> suggestValues,
+            Evaluator? evaluate = null)
         {
             return new(name, new()
             {
+                Evaluate = evaluate,
                 ConsumeAsync = consumer,
                 SuggestValues = suggestValues,
             });
@@ -243,6 +264,97 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         {
             ImmutableArray<string>? lazy = null;
             return _ => lazy ??= values();
+        }
+    }
+
+    public sealed class Package : Pair<Package>, IPairFileLevelDirective
+    {
+        public static new IPairDescriptor Descriptor { get; } = new PairDescriptor()
+        {
+            DirectiveKind = "package",
+            Parse = Parse,
+            Separator = '@',
+            SuggestNames = static _ => [],
+            SuggestValues = static (_, _) => [],
+        };
+
+        private Package(ParseInfo info) : base(info) { }
+
+        private static Package Parse(ParseInfo info) => Parse(info, static (info, t) =>
+        {
+            return new(info)
+            {
+                Name = t.Name,
+                Value = t.Value,
+            };
+        });
+
+        public override async ValueTask ConsumeAsync(ConsumerContext context)
+        {
+            if (context.ConsumedPackages)
+            {
+                return;
+            }
+
+            try
+            {
+                var dependencies = CollectDependencies(context.Directives);
+
+                string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
+
+                var downloader = context.Services.GetRequiredService<INuGetDownloader>();
+                var result = await downloader.DownloadAsync(dependencies.Keys.ToHashSet(), targetFramework, loadForExecution: true);
+
+                // Collect errors.
+                int foundErrors = 0;
+                foreach (var (dep, directive) in dependencies)
+                {
+                    if (result.Errors.TryGetValue(dep, out var errors))
+                    {
+                        foundErrors++;
+                        directive.Info.Errors.AddRange(errors);
+                    }
+                }
+                Debug.Assert(foundErrors == result.Errors.Count);
+
+                if (result.Assemblies.IsDefaultOrEmpty)
+                {
+                    Info.Errors.Add("No assemblies found across all dependencies.");
+                    return;
+                }
+
+                context.Config.AdditionalReferences(() => new()
+                {
+                    Assemblies = result.Assemblies,
+                    Metadata = RefAssemblyMetadata.Create(result.Assemblies),
+                });
+            }
+            catch (Exception ex)
+            {
+                context.Logger.LogError(ex, "Failed to download packages.");
+                Info.Errors.Add($"Failed to download packages: {ex.Message.GetFirstLine()}");
+            }
+            finally
+            {
+                context.ConsumedPackages = true;
+            }
+        }
+
+        private static IReadOnlyDictionary<NuGetDependency, FileLevelDirective> CollectDependencies(ImmutableArray<FileLevelDirective> directives)
+        {
+            var dependencies = new Dictionary<NuGetDependency, FileLevelDirective>();
+
+            foreach (var directive in directives)
+            {
+                if (directive is Package package)
+                {
+                    string name = package.Name.ToString();
+                    string version = package.Value.Span.IsWhiteSpace() ? "*-*" : package.Value.ToString();
+                    dependencies.Add(new NuGetDependency { PackageId = name, VersionRange = version }, directive);
+                }
+            }
+
+            return dependencies;
         }
     }
 
@@ -275,7 +387,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             Action<ConsumerContext, T> handler,
             Func<ReadOnlySpan<char>, ImmutableArray<string>> suggestValues,
             string? parserErrorSuffix = null,
-            bool useSuggestValuesInError = false)
+            bool useSuggestValuesInError = false,
+            Evaluator? evaluate = null)
         {
             return Create(
                 name,
@@ -295,7 +408,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     handler(context, result);
                     return default;
                 },
-                suggestValues);
+                suggestValues,
+                evaluate);
         }
 
         private static KeyValuePair<string, ConsumerInfo> CreateBool(
@@ -742,20 +856,27 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     {
                         var downloader = context.Services.GetRequiredService<IRefAssemblyDownloader>();
 
-                        ImmutableArray<RefAssembly> assemblies;
+                        NuGetResults result;
                         try
                         {
-                            assemblies = await downloader.DownloadAsync(value);
+                            result = await downloader.DownloadAsync(value);
                         }
                         catch (Exception ex)
                         {
-                            context.Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>()
-                                .LogError(ex, "Failed to download target framework '{TargetFramework}'.", value);
+                            context.Logger.LogError(ex, "Failed to download target framework '{TargetFramework}'.", value);
                             info.Errors.Add($"Failed to download target framework '{value}': {ex.Message.GetFirstLine()}");
                             return;
                         }
 
-                        if (assemblies.IsEmpty)
+                        foreach (var (key, errors) in result.Errors)
+                        {
+                            foreach (var error in errors)
+                            {
+                                info.Errors.Add($"{key}: {error}");
+                            }
+                        }
+
+                        if (result.Assemblies.IsEmpty)
                         {
                             info.Errors.Add($"No assemblies found for target framework '{value}'.");
                             return;
@@ -763,8 +884,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
                         context.Config.References(_ => new()
                         {
-                            Metadata = RefAssemblyMetadata.Create(assemblies),
-                            Assemblies = assemblies,
+                            Metadata = RefAssemblyMetadata.Create(result.Assemblies),
+                            Assemblies = result.Assemblies,
                         });
                     },
                     Constant(
@@ -793,7 +914,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         "net40",
                         "net35",
                         "net20",
-                    ])),
+                    ]),
+                    evaluate: static (context, info, value) =>
+                    {
+                        context.TargetFramework = value;
+                    }),
             ]);
 
         private Property(ParseInfo info) : base(info) { }
@@ -818,6 +943,19 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             return [];
         }
 
+        public override void Evaluate(ConsumerContext context)
+        {
+            var lookup = Consumers.GetAlternateLookup<ReadOnlySpan<char>>();
+            if (lookup.TryGetValue(Name.Span, out var consumerInfo))
+            {
+                consumerInfo.Evaluate?.Invoke(context, Info, Value);
+            }
+            else
+            {
+                Info.Errors.Add($"Unrecognized property name '{Name}'.");
+            }
+        }
+
         public override ValueTask ConsumeAsync(ConsumerContext context)
         {
             var lookup = Consumers.GetAlternateLookup<ReadOnlySpan<char>>();
@@ -827,7 +965,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
             }
             else
             {
-                Info.Errors.Add($"Unrecognized property name '{Name}'.");
+                Debug.Fail("This should have been caught during evaluation.");
                 return default;
             }
         }

@@ -410,6 +410,183 @@ public class C
             Assert.Empty(diagnosticsText);
         }
     }
+
+    [Fact]
+    public async Task Directives_Package()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Humanizer
+            using Humanizer;
+            using System;
+            Console.Write(DateTimeOffset.Now.Humanize());
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            now
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    [Fact]
+    public async Task Directives_Package_Unification()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package System.Reactive.Providers@3.1.1
+            #:package System.Reactive.PlatformServices@3.0.0
+            using System;
+            using System.Reactive.Linq;
+            using System.Reactive.PlatformServices;
+            _ = Qbservable.Provider; // System.Reactive.Providers needed
+            _ = typeof(CurrentPlatformEnlightenmentProvider); // System.Reactive.PlatformServices needed
+            Console.Write(typeof(Observable).Assembly.GetName().Version); // System.Reactive.Linq, version 3.0.3000.0 = 3.1.1
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            3.0.3000.0
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    /// <summary>
+    /// In this example, the referenced package references ASP.NET Core v9 but we have v10+.
+    /// We should not pass both to the compiler to avoid compiler errors due to duplicate references.
+    /// </summary>
+    [Fact]
+    public async Task Directives_Package_DuplicateRefs()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var csSource = """
+            #:package Microsoft.FluentUI.AspNetCore.Components@4.12.1
+            """;
+
+        var razorSource = """
+            @using Microsoft.FluentUI.AspNetCore.Components
+            <FluentButton />
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new() { FileName = "Input.cs", Text = csSource },
+                new() { FileName = "Input.razor", Text = razorSource },
+            ])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var csText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(null);
+        output.WriteLine(csText);
+        Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
+    }
+
+    [Fact]
+    public async Task Directives_Package_Roslyn()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Microsoft.CodeAnalysis@*-*
+            #:package Basic.Reference.Assemblies.Net100@*-*
+
+            using System;
+            using Microsoft.CodeAnalysis;
+            using Microsoft.CodeAnalysis.CSharp;
+            using Basic.Reference.Assemblies;
+
+            var compilation = CSharpCompilation.Create(
+                "Test",
+                [CSharpSyntaxTree.ParseText("class C {")],
+                Net100.References.All,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Console.Write(string.Join("\n", compilation.GetDiagnostics()));
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            (1,10): error CS1513: } expected
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    /// <summary>
+    /// When one package does not exist, the other should still be downloaded.
+    /// </summary>
+    [Fact]
+    public async Task Directives_Package_OneDoesNotExist()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Humanizer.Core
+            #:package Microsoft.CodeAnalysis@1000
+            using Humanizer;
+            using System;
+            Console.Write(DateTimeOffset.Now.Humanize());
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Equal("""
+            // /Input.cs(2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+            // #:package Microsoft.CodeAnalysis@1000
+            Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
+            """.ReplaceLineEndings(), diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            now
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler

@@ -1,15 +1,16 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
 namespace DotNetLab;
 
 public static class Executor
 {
-    public static string Execute(MemoryStream emitStream)
+    public static string Execute(MemoryStream emitStream, ImmutableArray<RefAssembly> assemblies)
     {
-        var alc = new AssemblyLoadContext(nameof(Executor), isCollectible: true);
+        var alc = new ExecutorLoader(assemblies);
         try
         {
             var assembly = alc.LoadFromStream(emitStream);
@@ -78,5 +79,38 @@ public static class Executor
         {
             alc.Unload();
         }
+    }
+}
+
+internal sealed class ExecutorLoader(ImmutableArray<RefAssembly> assemblies) : AssemblyLoadContext(nameof(ExecutorLoader), isCollectible: true)
+{
+    private readonly Dictionary<string, Assembly> loadedAssemblies = new();
+    private readonly IReadOnlyDictionary<string, ImmutableArray<byte>> lookup = assemblies
+        .Where(a => a.LoadForExecution)
+        .ToDictionary(a => a.Name, a => a.Bytes);
+
+    protected override Assembly? Load(AssemblyName assemblyName)
+    {
+        if (assemblyName.Name is { } name)
+        {
+            if (loadedAssemblies.TryGetValue(name, out var loaded))
+            {
+                return loaded;
+            }
+
+            if (lookup.TryGetValue(name, out var bytes))
+            {
+                var array = ImmutableCollectionsMarshal.AsArray(bytes)!;
+                loaded = LoadFromStream(new MemoryStream(array));
+                loadedAssemblies.Add(name, loaded);
+                return loaded;
+            }
+
+            loaded = Default.LoadFromAssemblyName(assemblyName);
+            loadedAssemblies.Add(name, loaded);
+            return loaded;
+        }
+
+        return null;
     }
 }
