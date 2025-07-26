@@ -19,6 +19,7 @@ C# and Razor compiler playground in the browser via Blazor WebAssembly. https://
 - C# Language Services (completions, live diagnostics, code fixes).
 - Configuring any C# options (e.g., LangVersion, Features, OptimizationLevel, AllowUnsafe)
   via Roslyn C# APIs or via `#:property` directives (both with editor completions).
+- Referencing NuGet packages via `#:package` directives.
 
 ## Development
 
