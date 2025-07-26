@@ -510,6 +510,46 @@ public class C
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
 
+    [Fact]
+    public async Task Directives_Package_Roslyn()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Microsoft.CodeAnalysis@*-*
+            #:package Basic.Reference.Assemblies.Net100@*-*
+
+            using System;
+            using Microsoft.CodeAnalysis;
+            using Microsoft.CodeAnalysis.CSharp;
+            using Basic.Reference.Assemblies;
+
+            var compilation = CSharpCompilation.Create(
+                "Test",
+                [CSharpSyntaxTree.ParseText("class C {")],
+                Net100.References.All,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Console.Write(string.Join("\n", compilation.GetDiagnostics()));
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            (1,10): error CS1513: } expected
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
     /// <summary>
     /// When one package does not exist, the other should still be downloaded.
     /// </summary>

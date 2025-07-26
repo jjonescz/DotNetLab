@@ -41,6 +41,19 @@ public static partial class Util
         {
             return collection is IReadOnlyList<T> list ? list : [.. collection];
         }
+
+        public async Task<T?> FirstOrDefaultAsync(Func<T, ValueTask<bool>> predicate)
+        {
+            foreach (var item in collection)
+            {
+                if (await predicate(item))
+                {
+                    return item;
+                }
+            }
+
+            return default;
+        }
     }
 
     extension<T>(IList<T> list)

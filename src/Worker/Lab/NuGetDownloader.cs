@@ -342,15 +342,15 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             NullLogger.Instance);
         var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
 
-        var lookup = dependencies.Value.ToDictionary(d => d.PackageId);
+        var lookup = dependencies.Value.ToDictionary(static d => d.PackageId);
 
         // Download DLLs.
         var results = await Task.WhenAll(resolved.Select(async package =>
         {
-            var depTask = dependencyInfos.FirstOrDefault(
-                p => p.Value != null &&
+            var depTask = (await dependencyInfos.FirstOrDefaultAsync(
+                async p => p.Value is { } depTask &&
                     p.Key.Id.Equals(package.Id) &&
-                    p.Key.Range!.Satisfies(package.Version))
+                    (await depTask)?.Version == package.Version))
                 .Value;
 
             if (depTask == null || await depTask is not { } dep)
