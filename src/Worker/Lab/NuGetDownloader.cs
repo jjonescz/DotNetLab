@@ -105,8 +105,8 @@ internal sealed class NuGetDownloaderPlugin(
         return Task.FromResult<PackageDependency?>(null);
     }
 
-    public Task<ImmutableArray<RefAssembly>> DownloadAsync(
-        ImmutableArray<NuGetDependency> dependencies,
+    public Task<NuGetResults> DownloadAsync(
+        Set<NuGetDependency> dependencies,
         string targetFramework,
         bool loadForExecution)
     {
@@ -121,6 +121,14 @@ internal sealed class NuGetOptions
     public bool NoCache { get; set; }
 }
 
+internal readonly record struct DependencyKey
+{
+    public required Set<NuGetDependency> Dependencies { get; init; }
+    public required NuGetFramework TargetFramework { get; init; }
+    public required NuGetDllFilter DllFilter { get; init; }
+    public required bool LoadForExecution { get; init; }
+}
+
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly ILogger<NuGetDownloader> logger;
@@ -129,6 +137,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     private readonly ImmutableArray<SourceRepository> repositories;
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
+    private readonly ConcurrentDictionary<DependencyKey, NuGetResults> dependencyCache = new();
 
     public NuGetDownloader(
         ILogger<NuGetDownloader> logger,
@@ -173,30 +182,49 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         httpZipProvider = new HttpZipProvider(httpClient);
     }
 
-    public async Task<ImmutableArray<RefAssembly>> DownloadAsync(
-        ImmutableArray<NuGetDependency> dependencies,
+    public async Task<NuGetResults> DownloadAsync(
+        Set<NuGetDependency> dependencies,
         NuGetFramework targetFramework,
         NuGetDllFilter dllFilter,
         bool loadForExecution)
     {
-        var dependencyInfos = new ConcurrentDictionary<(string Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
-
-        void enqueueDependency(NuGetDependency dependency, VersionRange? range, NuGetDependency? parent)
+        var key = new DependencyKey
         {
-            var key = (dependency.PackageId.ToLowerInvariant(), range);
-            dependencyInfos.GetOrAdd(key, async _ =>
-            {
-                var result = await collectDependenciesAsync(dependency, range);
-                parent?.Errors.AddRange(dependency.Errors);
-                return result;
-            });
+            Dependencies = dependencies,
+            TargetFramework = targetFramework,
+            DllFilter = dllFilter,
+            LoadForExecution = loadForExecution,
+        };
+
+        if (dependencyCache.TryGetValue(key, out var result))
+        {
+            return result;
         }
 
-        async Task<SourcePackageDependencyInfo?> collectDependenciesAsync(NuGetDependency dependency, VersionRange? range)
+        result = await DownloadNoCacheAsync(dependencies, targetFramework, dllFilter, loadForExecution);
+        return dependencyCache.GetOrAdd(key, result);
+    }
+
+    private async Task<NuGetResults> DownloadNoCacheAsync(
+        Set<NuGetDependency> dependencies,
+        NuGetFramework targetFramework,
+        NuGetDllFilter dllFilter,
+        bool loadForExecution)
+    {
+        var errors = new ConcurrentDictionary<NuGetDependency, ConcurrentBag<string>>();
+        var dependencyInfos = new ConcurrentDictionary<(Comparable<string, Comparers.String.OrdinalIgnoreCase> Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
+
+        void enqueueDependency(NuGetDependency dependency, VersionRange? range, NuGetDependency forErrors)
+        {
+            var key = (dependency.PackageId, range);
+            dependencyInfos.GetOrAdd(key, _ => collectDependenciesAsync(dependency, range, forErrors));
+        }
+
+        async Task<SourcePackageDependencyInfo?> collectDependenciesAsync(NuGetDependency dependency, VersionRange? range, NuGetDependency forErrors)
         {
             if (range == null)
             {
-                dependency.Errors.Add($"Cannot parse version range '{dependency.VersionRange}' of package '{dependency.PackageId}'.");
+                addError(forErrors, $"Cannot parse version range '{dependency.VersionRange}' of package '{dependency.PackageId}'.");
                 return null;
             }
 
@@ -222,7 +250,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
             if (version == null)
             {
-                dependency.Errors.Add($"Cannot find a version for package '{dependency.PackageId}@{range}'.");
+                addError(forErrors, $"Cannot find a version for package '{dependency.PackageId}@{range}'.");
                 return null;
             }
 
@@ -250,7 +278,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                         PackageId = subDependency.Id,
                         VersionRange = string.Empty,
                     };
-                    enqueueDependency(nuGetDependency, subDependency.VersionRange, parent: dependency);
+                    enqueueDependency(nuGetDependency, subDependency.VersionRange, forErrors: forErrors);
                 }
 
                 break;
@@ -258,17 +286,17 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
             if (dep == null)
             {
-                dependency.Errors.Add($"Cannot find info for package '{dependency.PackageId}@{version}'.");
+                addError(forErrors, $"Cannot find info for package '{dependency.PackageId}@{version}'.");
             }
 
             return dep;
         }
 
-        foreach (var dependency in dependencies)
+        foreach (var dependency in dependencies.Value)
         {
             enqueueDependency(dependency,
                 range: VersionRange.TryParse(dependency.VersionRange, out var range) ? range : null,
-                parent: null);
+                forErrors: dependency);
         }
 
         // Wait for all tasks to finish (they can be added recursively so we need a loop).
@@ -281,7 +309,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         var context = new PackageResolverContext(
             DependencyBehavior.Lowest,
-            targetIds: dependencies.Select(static d => d.PackageId),
+            targetIds: dependencies.Value.Select(static d => d.PackageId.Value),
             requiredPackageIds: [],
             packagesConfig: [],
             preferredVersions: [],
@@ -290,13 +318,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             NullLogger.Instance);
         var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
 
-        var lookup = dependencies.ToDictionary(d => d.PackageId, StringComparer.OrdinalIgnoreCase);
+        var lookup = dependencies.Value.ToDictionary(d => d.PackageId);
 
         var results = await Task.WhenAll(resolved.Select(async package =>
         {
             var depTask = dependencyInfos.FirstOrDefault(
                 p => p.Value != null &&
-                    p.Key.Id.Equals(package.Id, StringComparison.OrdinalIgnoreCase) &&
+                    p.Key.Id.Equals(package.Id) &&
                     p.Key.Range!.Satisfies(package.Version))
                 .Value;
 
@@ -337,15 +365,28 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             });
         }));
 
-        return results.SelectNonNull(static r => r)
+        var assemblies = results.SelectNonNull(static r => r)
             .SelectMany(static r => r)
             .ToImmutableArray();
+
+        return new()
+        {
+            Assemblies = assemblies,
+            Errors = errors.ToDictionary(
+                static p => p.Key,
+                static IReadOnlyList<string> (p) => p.Value.ToList()),
+        };
+        
+        void addError(NuGetDependency dependency, string message)
+        {
+            errors.GetOrAdd(dependency, _ => []).Add(message);
+        }
 
         void reportError(PackageIdentity identity, string message)
         {
             if (lookup.TryGetValue(identity.Id, out var dependency))
             {
-                dependency.Errors.Add(message);
+                addError(dependency, message);
             }
             else
             {
@@ -521,7 +562,7 @@ internal sealed class NuGetDownloadablePackageResult
     }
 }
 
-internal abstract class NuGetDllFilter
+internal abstract class NuGetDllFilter : IEquatable<NuGetDllFilter>
 {
     public abstract Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage);
 
@@ -530,10 +571,21 @@ internal abstract class NuGetDllFilter
         return filePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) &&
             !filePath.EndsWith(".resources.dll", StringComparison.OrdinalIgnoreCase);
     }
+
+    public abstract bool Equals(NuGetDllFilter? other);
+
+    public sealed override bool Equals(object? obj)
+    {
+        return obj is NuGetDllFilter filter && Equals(filter);
+    }
+
+    public abstract override int GetHashCode();
 }
 
 internal sealed class CompilerNuGetDllFilter(string folder) : NuGetDllFilter
 {
+    public string Folder { get; } = folder;
+
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage) => Include;
 
     public bool Include(string filePath)
@@ -541,40 +593,82 @@ internal sealed class CompilerNuGetDllFilter(string folder) : NuGetDllFilter
         // Get only DLL files directly in the specified folder
         // and starting with `Microsoft.`.
         return IsDll(filePath) &&
-            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.StartsWith(Folder, StringComparison.OrdinalIgnoreCase) &&
             filePath.LastIndexOf('/') is int lastSlashIndex &&
-            lastSlashIndex == folder.Length &&
+            lastSlashIndex == Folder.Length &&
             filePath.AsSpan(lastSlashIndex + 1).StartsWith("Microsoft.", StringComparison.Ordinal);
+    }
+
+    public override bool Equals(NuGetDllFilter? other)
+    {
+        return other is CompilerNuGetDllFilter filter &&
+            string.Equals(Folder, filter.Folder, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override int GetHashCode()
+    {
+        return StringComparer.OrdinalIgnoreCase.GetHashCode(Folder);
     }
 }
 
-internal sealed class SingleLevelNuGetDllFilter(string folder, int level) : NuGetDllFilter
+internal class SingleLevelNuGetDllFilter(string folder, int level) : NuGetDllFilter
 {
-    public Func<string, bool> AdditionalFilter { get; init; } = static _ => true;
+    public string Folder { get; } = folder;
+    public int Level { get; } = level;
 
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage) => Include;
+
+    protected virtual bool AdditionalFilter(string filePath) => true;
 
     public bool Include(string filePath)
     {
         return IsDll(filePath) &&
-            filePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase) &&
-            filePath.Count('/') == level &&
+            filePath.StartsWith(Folder, StringComparison.OrdinalIgnoreCase) &&
+            filePath.Count('/') == Level &&
             AdditionalFilter(filePath);
+    }
+
+    public override bool Equals(NuGetDllFilter? other)
+    {
+        return other is SingleLevelNuGetDllFilter filter &&
+            Level == filter.Level &&
+            string.Equals(Folder, filter.Folder, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Level, StringComparer.OrdinalIgnoreCase.GetHashCode(Folder));
+    }
+}
+
+internal sealed class TargetFrameworkNuGetDllFilter(string folder, int level) : SingleLevelNuGetDllFilter(folder, level)
+{
+    protected override bool AdditionalFilter(string filePath)
+    {
+        return !filePath.EndsWith(".Thunk.dll", StringComparison.OrdinalIgnoreCase) &&
+            !filePath.EndsWith(".Wrapper.dll", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override bool Equals(NuGetDllFilter? other)
+    {
+        return other is TargetFrameworkNuGetDllFilter && base.Equals(other);
     }
 }
 
 internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGetFramework targetFramework) : NuGetDllFilter
 {
+    public NuGetFramework TargetFramework { get; } = targetFramework;
+
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
     {
         var reader = new VirtualPackageReader(allFiles);
         var group = reader.GetLibItems()
-            .GetNearest(targetFramework);
+            .GetNearest(TargetFramework);
 
         if (group is null)
         {
             logger.LogWarning("No lib DLLs found in '{Package}' for target framework '{TargetFramework}'.\nFiles:\n{Files}",
-                forPackage, targetFramework, allFiles.JoinToString("\n", " - ", ""));
+                forPackage, TargetFramework, allFiles.JoinToString("\n", " - ", ""));
 
             return static _ => false;
         }
@@ -585,6 +679,17 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
             return IsDll(filePath) &&
                 set.Contains(filePath);
         };
+    }
+
+    public override bool Equals(NuGetDllFilter? other)
+    {
+        return other is LibNuGetDllFilter filter &&
+            Equals(TargetFramework, filter.TargetFramework);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(TargetFramework);
     }
 
     private sealed class VirtualPackageReader(IEnumerable<string> files)

@@ -4,7 +4,7 @@ namespace DotNetLab.Lab;
 
 internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloader) : IRefAssemblyDownloader
 {
-    public async Task<ImmutableArray<RefAssembly>> DownloadAsync(ReadOnlyMemory<char> targetFramework)
+    public async Task<NuGetResults> DownloadAsync(ReadOnlyMemory<char> targetFramework)
     {
         var parsed = NuGetFramework.Parse(targetFramework.ToString());
 
@@ -24,12 +24,7 @@ internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloade
         if (".NETFramework".Equals(parsed.Framework, StringComparison.OrdinalIgnoreCase))
         {
             // e.g., `build/.NETFramework/v4.7.2/*.dll`
-            var dllFilter = new SingleLevelNuGetDllFilter("build", 3)
-            {
-                AdditionalFilter = (filePath) =>
-                    !filePath.EndsWith(".Thunk.dll", StringComparison.OrdinalIgnoreCase) &&
-                    !filePath.EndsWith(".Wrapper.dll", StringComparison.OrdinalIgnoreCase),
-            };
+            var dllFilter = new TargetFrameworkNuGetDllFilter("build", 3);
             var packageId = $"Microsoft.NETFramework.ReferenceAssemblies.{targetFramework}";
             return await downloadAsync(
                 [new NuGetDependency { PackageId = packageId, VersionRange = "*-*" }],
@@ -58,7 +53,7 @@ internal sealed class RefAssemblyDownloader(Lazy<NuGetDownloader> nuGetDownloade
 
         throw new InvalidOperationException($"Unsupported target framework '{targetFramework}' ({parsed}).");
 
-        async Task<ImmutableArray<RefAssembly>> downloadAsync(ImmutableArray<NuGetDependency> dependencies, NuGetDllFilter dllFilter)
+        async Task<NuGetResults> downloadAsync(HashSet<NuGetDependency> dependencies, NuGetDllFilter dllFilter)
         {
             return await nuGetDownloader.Value.DownloadAsync(dependencies, NuGetFramework.AnyFramework, dllFilter, loadForExecution: false);
         }

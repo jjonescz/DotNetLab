@@ -303,15 +303,21 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
-                var assemblies = await downloader.DownloadAsync(dependencies.Keys.ToImmutableArray(), targetFramework, loadForExecution: true);
+                var result = await downloader.DownloadAsync(dependencies.Keys.ToHashSet(), targetFramework, loadForExecution: true);
 
                 // Collect errors.
+                int found = 0;
                 foreach (var (dep, directive) in dependencies)
                 {
-                    directive.Info.Errors.AddRange(dep.Errors);
+                    if (result.Errors.TryGetValue(dep, out var errors))
+                    {
+                        found++;
+                        directive.Info.Errors.AddRange(errors);
+                    }
                 }
+                Debug.Assert(found == result.Errors.Count);
 
-                if (assemblies.IsDefaultOrEmpty)
+                if (result.Assemblies.IsDefaultOrEmpty)
                 {
                     Info.Errors.Add("No assemblies found across all dependencies.");
                     return;
@@ -319,8 +325,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
                 context.Config.AdditionalReferences(() => new()
                 {
-                    Assemblies = assemblies,
-                    Metadata = RefAssemblyMetadata.Create(assemblies),
+                    Assemblies = result.Assemblies,
+                    Metadata = RefAssemblyMetadata.Create(result.Assemblies),
                 });
             }
             catch (Exception ex)
@@ -850,10 +856,10 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     {
                         var downloader = context.Services.GetRequiredService<IRefAssemblyDownloader>();
 
-                        ImmutableArray<RefAssembly> assemblies;
+                        NuGetResults result;
                         try
                         {
-                            assemblies = await downloader.DownloadAsync(value);
+                            result = await downloader.DownloadAsync(value);
                         }
                         catch (Exception ex)
                         {
@@ -862,7 +868,20 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             return;
                         }
 
-                        if (assemblies.IsEmpty)
+                        if (result.Errors.Count != 0)
+                        {
+                            foreach (var (key, errors) in result.Errors)
+                            {
+                                foreach (var error in errors)
+                                {
+                                    info.Errors.Add($"{key}: {error}");
+                                }
+                            }
+
+                            return;
+                        }
+
+                        if (result.Assemblies.IsEmpty)
                         {
                             info.Errors.Add($"No assemblies found for target framework '{value}'.");
                             return;
@@ -870,8 +889,8 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
 
                         context.Config.References(_ => new()
                         {
-                            Metadata = RefAssemblyMetadata.Create(assemblies),
-                            Assemblies = assemblies,
+                            Metadata = RefAssemblyMetadata.Create(result.Assemblies),
+                            Assemblies = result.Assemblies,
                         });
                     },
                     Constant(

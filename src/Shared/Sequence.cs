@@ -65,7 +65,7 @@ public readonly struct Sequence<T>(ImmutableArray<T> value) : IEquatable<Sequenc
 
     public static bool operator !=(Sequence<T> left, Sequence<T> right)
     {
-        return !(left == right);
+        return !left.Equals(right);
     }
 
     public override int GetHashCode()

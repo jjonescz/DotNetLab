@@ -64,5 +64,5 @@ public readonly struct RefAssembly
 
 public interface IRefAssemblyDownloader
 {
-    Task<ImmutableArray<RefAssembly>> DownloadAsync(ReadOnlyMemory<char> targetFramework);
+    Task<NuGetResults> DownloadAsync(ReadOnlyMemory<char> targetFramework);
 }
