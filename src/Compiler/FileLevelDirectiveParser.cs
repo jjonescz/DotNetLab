@@ -306,16 +306,21 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 var result = await downloader.DownloadAsync(dependencies.Keys.ToHashSet(), targetFramework, loadForExecution: true);
 
                 // Collect errors.
-                int found = 0;
+                int foundErrors = 0;
                 foreach (var (dep, directive) in dependencies)
                 {
                     if (result.Errors.TryGetValue(dep, out var errors))
                     {
-                        found++;
+                        foundErrors++;
                         directive.Info.Errors.AddRange(errors);
                     }
                 }
-                Debug.Assert(found == result.Errors.Count);
+                Debug.Assert(foundErrors == result.Errors.Count);
+
+                if (foundErrors != 0)
+                {
+                    return;
+                }
 
                 if (result.Assemblies.IsDefaultOrEmpty)
                 {

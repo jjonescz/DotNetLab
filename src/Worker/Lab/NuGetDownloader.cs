@@ -314,6 +314,15 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         }
         while (dependencyValues.Length != dependencyInfos.Count);
 
+        if (!errors.IsEmpty)
+        {
+            return new NuGetResults
+            {
+                Assemblies = [],
+                Errors = getErrors(),
+            };
+        }
+
         var context = new PackageResolverContext(
             DependencyBehavior.Lowest,
             targetIds: dependencies.Value.Select(static d => d.PackageId.Value),
@@ -375,9 +384,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         return new()
         {
             Assemblies = assemblies,
-            Errors = errors.ToDictionary(
-                static p => p.Key,
-                static IReadOnlyList<string> (p) => p.Value.ToList()),
+            Errors = getErrors(),
         };
         
         void addError(NuGetDependency dependency, string message)
@@ -395,6 +402,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             {
                 throw new InvalidOperationException(message);
             }
+        }
+
+        IReadOnlyDictionary<NuGetDependency, IReadOnlyList<string>> getErrors()
+        {
+            return errors.ToDictionary(
+                static p => p.Key,
+                static IReadOnlyList<string> (p) => p.Value.ToList());
         }
     }
 
