@@ -60,6 +60,13 @@ public static partial class Util
 
     extension<T>(ImmutableArray<T> array)
     {
+        public ImmutableArray<T>.Builder ToBuilder(int additionalCapacity)
+        {
+            var builder = ImmutableArray.CreateBuilder<T>(array.Length + additionalCapacity);
+            builder.AddRange(array);
+            return builder;
+        }
+
         public ImmutableArray<T> WhereAsArray(Func<T, bool> predicate)
         {
             var builder = ImmutableArray.CreateBuilder<T>(array.Length);

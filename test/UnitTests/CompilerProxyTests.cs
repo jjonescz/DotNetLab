@@ -474,6 +474,41 @@ public class C
             Stderr:
             """.ReplaceLineEndings("\n"), runText.Trim());
     }
+
+    /// <summary>
+    /// In this example, the referenced package references ASP.NET Core v9 but we have v10+.
+    /// We should not pass both to the compiler to avoid compiler errors due to duplicate references.
+    /// </summary>
+    [Fact]
+    public async Task Directives_Package_DuplicateRefs()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var csSource = """
+            #:package Microsoft.FluentUI.AspNetCore.Components@4.12.1
+            """;
+
+        var razorSource = """
+            @using Microsoft.FluentUI.AspNetCore.Components
+            <FluentButton />
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new() { FileName = "Input.cs", Text = csSource },
+                new() { FileName = "Input.razor", Text = razorSource },
+            ])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var csText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(null);
+        output.WriteLine(csText);
+        Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler

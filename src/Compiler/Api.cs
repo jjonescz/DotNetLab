@@ -77,7 +77,7 @@ internal sealed class ConfigCollector : IConfig
         foreach (var configure in additionalReferences)
         {
             var additional = configure();
-            list = list.Add(additional);
+            list = list.AddDiscardingDuplicates(additional);
         }
 
         return list;
