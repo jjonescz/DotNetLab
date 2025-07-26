@@ -259,7 +259,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
             if (version == null)
             {
-                addError(forErrors, $"Cannot find a version for package '{dependency.PackageId}@{range}'.");
+                addError(forErrors, $"Cannot find a version for package '{dependency.PackageId}' in range '{range}'.");
                 return null;
             }
 
@@ -309,14 +309,17 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         }
 
         // Wait for all tasks to finish (they can be added recursively so we need a loop).
-        SourcePackageDependencyInfo?[] dependencyValues;
+        SourcePackageDependencyInfo?[] rawDependencyValues;
         do
         {
-            dependencyValues = await Task.WhenAll(dependencyInfos.Values);
+            rawDependencyValues = await Task.WhenAll(dependencyInfos.Values);
         }
-        while (dependencyValues.Length != dependencyInfos.Count);
+        while (rawDependencyValues.Length != dependencyInfos.Count);
 
-        if (!errors.IsEmpty)
+        // Remove dependencies with errors.
+        var dependencyValues = rawDependencyValues.SelectNonNull(static d => d);
+
+        if (!dependencyValues.Any())
         {
             return new NuGetResults
             {
@@ -325,19 +328,23 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             };
         }
 
+        var targetIds = dependencyValues.Select(static d => d.Id);
+
+        // Resolve versions given the available ranges.
         var context = new PackageResolverContext(
             DependencyBehavior.Lowest,
-            targetIds: dependencies.Value.Select(static d => d.PackageId.Value),
+            targetIds: targetIds,
             requiredPackageIds: [],
             packagesConfig: [],
             preferredVersions: [],
-            availablePackages: dependencyValues.SelectNonNull(static d => d),
+            availablePackages: dependencyValues,
             packageSources: repositories.Select(static r => r.PackageSource),
             NullLogger.Instance);
         var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
 
         var lookup = dependencies.Value.ToDictionary(d => d.PackageId);
 
+        // Download DLLs.
         var results = await Task.WhenAll(resolved.Select(async package =>
         {
             var depTask = dependencyInfos.FirstOrDefault(

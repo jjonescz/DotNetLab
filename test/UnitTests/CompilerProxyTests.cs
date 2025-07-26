@@ -509,6 +509,44 @@ public class C
         output.WriteLine(csText);
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
+
+    /// <summary>
+    /// When one package does not exist, the other should still be downloaded.
+    /// </summary>
+    [Fact]
+    public async Task Directives_Package_OneDoesNotExist()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:package Humanizer.Core
+            #:package Microsoft.CodeAnalysis@1000
+            using Humanizer;
+            using System;
+            Console.Write(DateTimeOffset.Now.Humanize());
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Equal("""
+            // /Input.cs(2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+            // #:package Microsoft.CodeAnalysis@1000
+            Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
+            """.ReplaceLineEndings(), diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 0
+            Stdout:
+            now
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler

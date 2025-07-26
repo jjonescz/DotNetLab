@@ -317,11 +317,6 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 }
                 Debug.Assert(foundErrors == result.Errors.Count);
 
-                if (foundErrors != 0)
-                {
-                    return;
-                }
-
                 if (result.Assemblies.IsDefaultOrEmpty)
                 {
                     Info.Errors.Add("No assemblies found across all dependencies.");
@@ -873,17 +868,12 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             return;
                         }
 
-                        if (result.Errors.Count != 0)
+                        foreach (var (key, errors) in result.Errors)
                         {
-                            foreach (var (key, errors) in result.Errors)
+                            foreach (var error in errors)
                             {
-                                foreach (var error in errors)
-                                {
-                                    info.Errors.Add($"{key}: {error}");
-                                }
+                                info.Errors.Add($"{key}: {error}");
                             }
-
-                            return;
                         }
 
                         if (result.Assemblies.IsEmpty)
