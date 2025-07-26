@@ -433,6 +433,20 @@
         await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, GetMonacoTheme(dark: dark));
     }
 
+    private async Task RegisterWordWrapActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "word-wrap",
+            Label = "Toggle Word Wrap",
+            ContextMenuGroupId = "navigation",
+            Keybindings = [(int)KeyMod.Alt | (int)BlazorMonaco.KeyCode.KeyZ],
+            Run = _ => InvokeAsync(settings.ToggleWordWrapAsync),
+        };
+        await inputEditor.AddAction(action);
+        await outputEditor.AddAction(action);
+    }
+
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
         if (args.Id is { } slug && NavigateToSlug(slug))
@@ -942,6 +956,7 @@
 
         await BlazorMonacoInterop.EnableSemanticHighlightingAsync(inputEditor.Id);
         await DefineMonacoThemeAsync();
+        await RegisterWordWrapActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);

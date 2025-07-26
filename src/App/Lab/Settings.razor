@@ -686,6 +686,12 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         await LoadRazorInfoAsync();
     }
 
+    public Task ToggleWordWrapAsync()
+    {
+        WordWrap = !WordWrap;
+        return OnWordWrapChanged();
+    }
+
     private async Task OnWordWrapChanged()
     {
         await RefreshAsync();
