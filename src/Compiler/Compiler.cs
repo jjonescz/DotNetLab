@@ -818,7 +818,8 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies),
+                DefaultCSharpDecompilerSettings);
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()
