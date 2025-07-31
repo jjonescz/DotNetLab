@@ -147,7 +147,7 @@ public sealed class Compiler(
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
 
-        if (logger.IsEnabled(LogLevel.Debug))
+        if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
             logger.LogDebug("Using references:\n{References}", references.Assemblies
                 .Select(r => $"{r.FileName}: {r.Source}")
