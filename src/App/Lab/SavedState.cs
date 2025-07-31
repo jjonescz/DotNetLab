@@ -123,9 +123,6 @@ partial class Page
             await inputEditor.SetModel(selectInput.Model);
         }
 
-        // Load settings.
-        await settings.LoadFromStateAsync(savedState);
-
         // Try loading from cache.
         if (!await TryLoadFromTemplateCacheAsync(state, updateOutput: false) &&
             settings.EnableCaching)
@@ -138,6 +135,9 @@ partial class Page
                 updateTimestampMode: OutputActionMode.Never,
                 storeInCacheMode: OutputActionMode.Never);
         }
+
+        // Load settings.
+        await settings.LoadFromStateAsync(savedState);
     }
 
     private bool NavigateToSlug(string slug)
