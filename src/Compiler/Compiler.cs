@@ -46,6 +46,7 @@ public sealed class Compiler(
 
     internal static ICSharpCode.Decompiler.DecompilerSettings DefaultCSharpDecompilerSettings => field ??= new(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1)
     {
+        LoadInMemory = true,
         ArrayInitializers = false,
         AutomaticEvents = false,
         DecimalConstants = false,

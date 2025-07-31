@@ -259,6 +259,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             "ApplyWindowsRuntimeProjections",
             "AutoLoadAssemblyReferences",
             "UseSdkStyleProjectFormat",
+            "LoadInMemory",
         ];
 
         trueProperties.RemoveAll(expectedTrueProperties.Remove);
