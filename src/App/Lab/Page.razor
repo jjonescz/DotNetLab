@@ -27,7 +27,7 @@
     <div>
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
-        Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())">
+        Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
             Compile
         </FluentButton>
 
@@ -221,6 +221,7 @@
     private readonly List<Input> inputs = new();
     private readonly Dictionary<string, EditorState> outputStates = new();
     private bool editorInitializationStarted;
+    private bool initialized;
     private bool monacoThemeDefined;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
@@ -969,6 +970,9 @@
         {
             Logger.LogError("Failed to set editor initialized result.");
         }
+
+        initialized = true;
+        StateHasChanged();
 
         if (settings.AutoCompileOnStart && !compilationInProgress)
         {
