@@ -588,7 +588,8 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
         CompilerKind compilerKind,
         string? versionToLoad,
-        BuildConfiguration configuration)
+        BuildConfiguration configuration,
+        bool saveState)
     {
         try
         {
@@ -597,7 +598,9 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
                 version: versionToLoad,
                 configuration: configuration);
 
-            if (changed)
+            // `saveState` is `false` during initial load where we don't want to
+            // display "output outdated" which would override the "cached" info.
+            if (changed && saveState)
             {
                 Page.OnSettingsInputChanged();
             }
@@ -632,7 +635,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         loadingRoslynInfo = true;
         await RefreshAsync();
 
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration);
+        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
 
         if (roslynVersion == versionToLoad)
         {
@@ -667,7 +670,7 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         loadingRazorInfo = true;
         await RefreshAsync();
 
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration);
+        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
 
         if (razorVersion == versionToLoad)
         {
@@ -684,6 +687,12 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
         razorVersion = version;
         razorConfiguration = BuildConfiguration.Release;
         await LoadRazorInfoAsync();
+    }
+
+    public Task ToggleWordWrapAsync()
+    {
+        WordWrap = !WordWrap;
+        return OnWordWrapChanged();
     }
 
     private async Task OnWordWrapChanged()

@@ -46,6 +46,7 @@ public sealed class Compiler(
 
     internal static ICSharpCode.Decompiler.DecompilerSettings DefaultCSharpDecompilerSettings => field ??= new(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1)
     {
+        LoadInMemory = true,
         ArrayInitializers = false,
         AutomaticEvents = false,
         DecimalConstants = false,
@@ -146,7 +147,7 @@ public sealed class Compiler(
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
 
-        if (logger.IsEnabled(LogLevel.Debug))
+        if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
             logger.LogDebug("Using references:\n{References}", references.Assemblies
                 .Select(r => $"{r.FileName}: {r.Source}")
@@ -818,7 +819,8 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies));
+                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies),
+                DefaultCSharpDecompilerSettings);
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()

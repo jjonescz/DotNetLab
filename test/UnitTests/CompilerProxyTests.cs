@@ -201,6 +201,31 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task DecompileExtension()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        string code = """
+            static class E
+            {
+                public static int M(this int x) => x;
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        output.WriteLine(cSharpText);
+        Assert.Contains("[Extension]", cSharpText);
+    }
+
+    [Fact]
     public void DefaultCSharpDecompilerSettings()
     {
         var settings = Compiler.DefaultCSharpDecompilerSettings;
@@ -234,6 +259,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             "ApplyWindowsRuntimeProjections",
             "AutoLoadAssemblyReferences",
             "UseSdkStyleProjectFormat",
+            "LoadInMemory",
         ];
 
         trueProperties.RemoveAll(expectedTrueProperties.Remove);

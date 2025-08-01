@@ -1,4 +1,3 @@
-using BlazorMonaco.Editor;
 using ProtoBuf;
 using System.Collections.Frozen;
 
@@ -116,16 +115,13 @@ partial class Page
         activeInputTabId = IndexToInputTabId(activeIndex);
         selectedOutputType = savedState.SelectedOutputType;
 
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
 
         if ((activeInput ?? firstInput) is { } selectInput)
         {
             currentInput = selectInput;
             await inputEditor.SetModel(selectInput.Model);
         }
-
-        // Load settings.
-        await settings.LoadFromStateAsync(savedState);
 
         // Try loading from cache.
         if (!await TryLoadFromTemplateCacheAsync(state, updateOutput: false) &&
@@ -139,6 +135,9 @@ partial class Page
                 updateTimestampMode: OutputActionMode.Never,
                 storeInCacheMode: OutputActionMode.Never);
         }
+
+        // Load settings.
+        await settings.LoadFromStateAsync(savedState);
     }
 
     private bool NavigateToSlug(string slug)

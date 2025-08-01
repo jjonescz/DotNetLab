@@ -27,7 +27,7 @@
     <div>
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
-        Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())">
+        Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
             Compile
         </FluentButton>
 
@@ -221,6 +221,7 @@
     private readonly List<Input> inputs = new();
     private readonly Dictionary<string, EditorState> outputStates = new();
     private bool editorInitializationStarted;
+    private bool initialized;
     private bool monacoThemeDefined;
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
@@ -433,6 +434,20 @@
         await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, GetMonacoTheme(dark: dark));
     }
 
+    private async Task RegisterWordWrapActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "word-wrap",
+            Label = "Toggle Word Wrap",
+            ContextMenuGroupId = "navigation",
+            Keybindings = [(int)KeyMod.Alt | (int)BlazorMonaco.KeyCode.KeyZ],
+            Run = _ => InvokeAsync(settings.ToggleWordWrapAsync),
+        };
+        await inputEditor.AddAction(action);
+        await outputEditor.AddAction(action);
+    }
+
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
         if (args.Id is { } slug && NavigateToSlug(slug))
@@ -503,7 +518,7 @@
             return;
         }
 
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
 
         await SaveStateToUrlAsync();
     }
@@ -524,7 +539,7 @@
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, input.Model, newLanguage);
             }
 
-            OnWorkspaceChanged();
+            await OnWorkspaceChangedAsync();
         }
 
         await SaveStateToUrlAsync();
@@ -566,7 +581,7 @@
             var inputCode = InitialCode.Configuration.ToInputCode();
             var model = await CreateModelAsync(inputCode);
             configuration = new(fileName, model) { NewContent = inputCode.Text };
-            OnWorkspaceChanged();
+            await OnWorkspaceChangedAsync();
 
             await SaveStateToUrlAsync();
         }
@@ -603,7 +618,7 @@
         var model = await CreateModelAsync(inputCode);
         var input = new Input(fileName, model) { NewContent = inputCode.Text };
         inputs.Add(input);
-        OnWorkspaceChanged();
+        await OnWorkspaceChangedAsync();
         if (selectAsCurrent)
         {
             await SelectInputTabAsync(input, inputs.Count - 1);
@@ -942,6 +957,7 @@
 
         await BlazorMonacoInterop.EnableSemanticHighlightingAsync(inputEditor.Id);
         await DefineMonacoThemeAsync();
+        await RegisterWordWrapActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
@@ -954,6 +970,9 @@
         {
             Logger.LogError("Failed to set editor initialized result.");
         }
+
+        initialized = true;
+        StateHasChanged();
 
         if (settings.AutoCompileOnStart && !compilationInProgress)
         {
@@ -1034,13 +1053,13 @@
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="InputsAndConfiguration"/> change.
     /// </summary>
-    public void OnWorkspaceChanged()
+    public Task OnWorkspaceChangedAsync()
     {
         outputOutdated = true;
 
         if (!LanguageServices.Enabled)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         var models = InputsAndConfiguration
@@ -1051,7 +1070,7 @@
             })
             .ToImmutableArray();
         InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
-        LanguageServices.OnDidChangeWorkspace(models);
+        return LanguageServices.OnDidChangeWorkspaceAsync(models);
     }
 
     /// <summary>
@@ -1070,7 +1089,7 @@
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        LanguageServices.OnDidChangeWorkspace(models, updateDiagnostics: updateDiagnostics);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics: updateDiagnostics, refresh: true);
     }
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)
