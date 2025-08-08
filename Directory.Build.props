@@ -22,9 +22,6 @@
     -->
     <PublishTrimmed>false</PublishTrimmed>
     <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
-
-    <!-- Workaround a bug in the compiler toolset package (trying to load tasks\net472\../bincore\csc.dll). -->
-    <RoslynCompilerType Condition="'$(MSBuildRuntimeType)' == 'Full'">Framework</RoslynCompilerType>
   </PropertyGroup>
 
   <ItemGroup>
