@@ -47,10 +47,7 @@
     <div style="flex-grow: 1">
         <div style="flex-grow: 1; min-width: 10rem">
             @* Outdated output info *@
-            @* We don't check equality of last compiled input with current input
-                 because we might not have current input fully loaded
-                 (parts can live only in the editor until Compile is clicked). *@
-            @if (compiled is not { Start: var compileStart } || compileStart < inputChanged)
+            @if (IsOutputOutdated)
             {
                 <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
                 Style="font-size: 0.8rem; font-style: normal; width: auto"
@@ -319,6 +316,14 @@
     {
         get => AllOutputs.Select(o => o.Type).JoinToString(",");
     }
+
+    /// <remarks>
+    /// We don't check equality of last compiled input and current input
+    /// because we might not have current input fully loaded
+    /// (parts can live only in the editor until Compile is clicked).
+    /// </remarks>
+    private bool IsOutputOutdated
+        => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     protected override void OnInitialized()
     {
@@ -699,8 +704,17 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
-        LanguageServices.CancelDiagnostics();
+        if (LanguageServices.Enabled)
+        {
+            if (IsOutputOutdated)
+            {
+                // Avoid overwriting live diagnostics which are newer.
+                return;
+            }
+
+            // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
+            LanguageServices.CancelDiagnostics();
+        }
 
         foreach (var input in inputs)
         {
