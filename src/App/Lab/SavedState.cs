@@ -106,9 +106,10 @@ partial class Page
 
         {
             // Unset cache info (the loaded state might not be cached).
-            if (compiled is (var input, var output, { }))
+            if (compiled is { Input: var input, Output: var output, CacheInfo: { } })
             {
-                compiled = (input, output, null);
+                var timestamp = DateTimeOffset.Now;
+                compiled = (input, output, CacheInfo: null, Start: timestamp, End: timestamp);
             }
         }
 
