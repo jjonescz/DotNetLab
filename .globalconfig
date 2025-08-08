@@ -1,4 +1,8 @@
-﻿# CA2012: Use ValueTasks correctly
+﻿# Roslyn.Diagnostics.Analyzers
+dotnet_analyzer_diagnostic.category-ApiDesign.severity = none
+dotnet_analyzer_diagnostic.category-RoslynDiagnosticsMaintainability.severity = suggestion
+
+# CA2012: Use ValueTasks correctly
 dotnet_diagnostic.CA2012.severity = warning
 
 # CA2016: Forward the 'CancellationToken' parameter to methods

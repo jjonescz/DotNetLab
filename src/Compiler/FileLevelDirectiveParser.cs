@@ -1008,7 +1008,7 @@ internal sealed class NamedDirectiveComparer : IEqualityComparer<FileLevelDirect
 
 [ExportCompletionProvider(nameof(FileLevelDirectiveCompletionProvider), LanguageNames.CSharp), Shared]
 [method: ImportingConstructor]
-[method: Obsolete("Importing constructor", error: true)]
+[method: Obsolete("This exported object must be obtained through the MEF export provider.", error: true)]
 internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvider
 {
     private static readonly ImmutableArray<string> keywordTags = [WellKnownTags.Keyword];
