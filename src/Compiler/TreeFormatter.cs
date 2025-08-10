@@ -5,7 +5,7 @@ using System.Collections;
 
 namespace DotNetLab;
 
-internal sealed class TreeFormatter
+public sealed class TreeFormatter
 {
     public string Format(object? obj)
     {

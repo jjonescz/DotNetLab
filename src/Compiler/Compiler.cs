@@ -20,7 +20,9 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger) : ICompiler
+    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger,
+    TreeFormatter treeFormatter)
+    : ICompiler
 {
     private const string ToolchainHelpText = """
 
@@ -231,10 +233,17 @@ public sealed class Compiler(
 
         var result = new CompiledAssembly(
             BaseDirectory: directory,
-            Files: cSharpSources.Select(static (cSharpSource) =>
+            Files: cSharpSources.Select((cSharpSource) =>
             {
                 var syntaxTree = cSharpSource.SyntaxTree;
                 var compiledFile = new CompiledFile([
+                    new()
+                    {
+                        Type = "tree",
+                        Label = "Tree",
+                        Language = "csharp",
+                        LazyText = () => new(treeFormatter.Format(syntaxTree.GetRoot())),
+                    },
                     new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
                     new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
                 ]);
