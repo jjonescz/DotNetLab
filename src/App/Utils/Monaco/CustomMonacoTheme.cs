@@ -14,7 +14,11 @@ internal static class CustomMonacoTheme
         {
             Base = BuiltInMonacoTheme.Light,
             Inherit = true,
-            Colors = [],
+            Colors = new()
+            {
+                // Avoid colorizing unmatched brackets as red (which overrides even semantic colors which are more correct).
+                { "editorBracketHighlight.unexpectedBracket.foreground", "#222222" }, // same as "punctuation"
+            },
             Rules =
             [
                 new() { Token = "comment", Foreground = "008000" },
@@ -100,7 +104,11 @@ internal static class CustomMonacoTheme
         {
             Base = BuiltInMonacoTheme.Dark,
             Inherit = true,
-            Colors = [],
+            Colors = new()
+            {
+                // Avoid colorizing unmatched brackets as red (which overrides even semantic colors which are more correct).
+                { "editorBracketHighlight.unexpectedBracket.foreground", "#d4d4d4" }, // same as "punctuation"
+            },
             Rules =
             [
                 new() { Token = "comment", Foreground = "6a9955" },
