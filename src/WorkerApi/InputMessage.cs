@@ -18,6 +18,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(ProvideCompletionItems), nameof(ProvideCompletionItems))]
 [JsonDerivedType(typeof(ResolveCompletionItem), nameof(ResolveCompletionItem))]
 [JsonDerivedType(typeof(ProvideSemanticTokens), nameof(ProvideSemanticTokens))]
+[JsonDerivedType(typeof(ProvideOutputSemanticTokens), nameof(ProvideOutputSemanticTokens))]
 [JsonDerivedType(typeof(ProvideCodeActions), nameof(ProvideCodeActions))]
 [JsonDerivedType(typeof(ProvideHover), nameof(ProvideHover))]
 [JsonDerivedType(typeof(ProvideSignatureHelp), nameof(ProvideSignatureHelp))]
@@ -146,6 +147,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record ProvideOutputSemanticTokens(string ModelUri, bool Debug) : WorkerInputMessage<string?>
+    {
+        public override Task<string?> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record ProvideCodeActions(string ModelUri, string? RangeJson) : WorkerInputMessage<string?>
     {
         public override Task<string?> HandleAsync(IExecutor executor)
@@ -208,6 +217,7 @@ public abstract record WorkerInputMessage
         Task<string> HandleAsync(ProvideCompletionItems message);
         Task<string?> HandleAsync(ResolveCompletionItem message);
         Task<string?> HandleAsync(ProvideSemanticTokens message);
+        Task<string?> HandleAsync(ProvideOutputSemanticTokens message);
         Task<string?> HandleAsync(ProvideCodeActions message);
         Task<string?> HandleAsync(ProvideHover message);
         Task<string?> HandleAsync(ProvideSignatureHelp message);

@@ -94,6 +94,13 @@ internal sealed class CompilerProxy(
         return loaded.LanguageServices.Value;
     }
 
+    public async Task<ICompiler> GetCompilerAsync()
+    {
+        await EnsureLoadedAsync();
+        Debug.Assert(loaded is not null);
+        return loaded.Compiler;
+    }
+
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
     {
         var assemblies = ImmutableDictionary.CreateBuilder<string, LoadedAssembly>();
