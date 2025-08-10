@@ -13,9 +13,11 @@ internal sealed class LanguageServicesClient(
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
 {
-    private readonly LanguageSelector cSharpLanguageSelector = new("csharp");
+    private readonly LanguageSelector cSharpLanguageSelector = new(CompiledAssembly.CSharpLanguageId);
+    private readonly LanguageSelector outputLanguageSelector = new(CompiledAssembly.OutputLanguageId);
     private Dictionary<string, string> modelUrlToFileName = [];
     private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
+    private int outputRegistered;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
@@ -52,17 +54,39 @@ internal sealed class LanguageServicesClient(
         }
     }
 
-    public Task EnableAsync(bool enable)
+    public async Task EnableAsync(bool enable)
     {
+        // Output language services are "static" (provided directly from our compiler
+        // and don't need to react to live changes) and hence are always enabled.
+        await RegisterOutputAsync();
+
         if (enable)
         {
-            return RegisterAsync();
+            await RegisterAsync();
         }
         else
         {
             Unregister();
-            return Task.CompletedTask;
         }
+    }
+
+    private async Task RegisterOutputAsync()
+    {
+        if (Interlocked.CompareExchange(ref outputRegistered, 1, 0) != 0)
+        {
+            return;
+        }
+
+        await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(outputLanguageSelector, new(loggerFactory)
+        {
+            Legend = new SemanticTokensLegend
+            {
+                TokenTypes = SemanticTokensUtil.TokenTypes.LspValues,
+                TokenModifiers = SemanticTokensUtil.TokenModifiers.LspValues,
+            },
+            ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) => worker.ProvideOutputSemanticTokensAsync(modelUri, debug),
+            RegisterRangeProvider = false,
+        });
     }
 
     private async Task RegisterAsync()

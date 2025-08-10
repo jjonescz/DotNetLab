@@ -126,7 +126,7 @@ public sealed class Compiler(
                         {
                             Type = CompiledAssembly.DiagnosticsOutputType,
                             Label = CompiledAssembly.DiagnosticsOutputLabel,
-                            Language = "csharp",
+                            Language = CompiledAssembly.CSharpLanguageId,
                             EagerText = configDiagnosticsText,
                         },
                     ],
@@ -241,8 +241,15 @@ public sealed class Compiler(
                     {
                         Type = "tree",
                         Label = "Tree",
-                        Language = "csharp",
-                        LazyText = () => new(treeFormatter.Format(syntaxTree.GetRoot())),
+                        Language = CompiledAssembly.OutputLanguageId,
+                        LazyTextAndMetadata = () =>
+                        {
+                            var formatted = treeFormatter.Format(syntaxTree.GetRoot());
+                            return new((formatted.Text, new CompiledFileOutputMetadata
+                            {
+                                ClassifiedSpans = formatted.ClassifiedSpans,
+                            }));
+                        },
                     },
                     new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
                     new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
@@ -271,7 +278,7 @@ public sealed class Compiler(
                     {
                         Type = "ir",
                         Label = "IR",
-                        Language = "csharp",
+                        Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNodeSafe().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
@@ -288,7 +295,7 @@ public sealed class Compiler(
                     {
                         Type = "gcs",
                         Label = "C#",
-                        Language = "csharp",
+                        Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
@@ -346,7 +353,7 @@ public sealed class Compiler(
                 {
                     Type = "il",
                     Label = "IL",
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     LazyText = () =>
                     {
                         return new(getIl(peFile));
@@ -365,7 +372,7 @@ public sealed class Compiler(
                 {
                     Type = "cs",
                     Label = "C#",
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     LazyText = () =>
                     {
                         return new(getCSharpAsync(peFile));
@@ -388,7 +395,7 @@ public sealed class Compiler(
                 {
                     Type = CompiledAssembly.DiagnosticsOutputType,
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     EagerText = diagnosticsText,
                     Priority = numErrors > 0 ? 2 : 0,
                 },
@@ -898,6 +905,23 @@ public sealed class Compiler(
 
             return builder.ToImmutable();
         }
+    }
+
+    /// <summary>
+    /// Similar to <see cref="LanguageServices.ProvideSemanticTokensAsync"/> but for <see cref="CompiledAssembly.OutputLanguageId"/>.
+    /// </summary>
+    public Task<string?> ProvideSemanticTokensAsync(string modelUri, bool debug)
+    {
+        if (!CompiledAssembly.TryParseOutputModelUri(modelUri, out var outputType, out var inputFileName) ||
+            LastResult is not { Output: var lastOutput } ||
+            lastOutput.CompiledAssembly.GetOutput(inputFileName, outputType) is not { EagerText: { } text, Metadata: CompiledFileOutputMetadata metadata })
+        {
+            logger.LogDebug("Cannot provide output semantic tokens for '{ModelUri}'.", modelUri);
+            return SemanticTokensUtil.EmptyResponse;
+        }
+
+        return LanguageServices.ConvertSemanticTokensAsync(logger, docPath: $"out/{outputType}/{inputFileName}", rangeJson: null, debug,
+            _ => new((SourceText.From(text), metadata.ClassifiedSpans.ToList())));
     }
 
     public static CSharpParseOptions CreateDefaultParseOptions()

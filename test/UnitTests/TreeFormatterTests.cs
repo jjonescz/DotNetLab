@@ -23,7 +23,7 @@ public sealed class TreeFormatterTests(ITestOutputHelper output)
             cancellationToken: TestContext.Current.CancellationToken);
         var root = tree.GetRoot(TestContext.Current.CancellationToken);
         var formatter = WorkerServices.CreateTest().GetRequiredService<TreeFormatter>();
-        var formatted = formatter.Format(root);
+        var formatted = formatter.Format(root).Text;
         output.WriteLine($"""
             ---
             {formatted}
@@ -55,7 +55,7 @@ public sealed class TreeFormatterTests(ITestOutputHelper output)
         var model = compilation.GetSemanticModel(tree);
         var operation = model.GetOperation(method, TestContext.Current.CancellationToken);
         var formatter = WorkerServices.CreateTest().GetRequiredService<TreeFormatter>();
-        var formatted = formatter.Format(operation);
+        var formatted = formatter.Format(operation).Text;
         output.WriteLine($"""
             ---
             {formatted}

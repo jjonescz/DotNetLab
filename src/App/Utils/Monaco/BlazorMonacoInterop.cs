@@ -23,13 +23,14 @@ internal sealed partial class BlazorMonacoInterop
         [JSMarshalAs<JSType.Any>] object completionItemProvider);
 
     [JSImport("enableSemanticHighlighting", moduleName)]
-    private static partial void EnableSemanticHighlighting(string editorId);
+    private static partial void EnableSemanticHighlighting();
 
     [JSImport("registerSemanticTokensProvider", moduleName)]
     private static partial JSObject RegisterSemanticTokensProvider(
         string language,
         string legend,
-        [JSMarshalAs<JSType.Any>] object provider);
+        [JSMarshalAs<JSType.Any>] object provider,
+        bool registerRangeProvider);
 
     [JSImport("registerCodeActionProvider", moduleName)]
     private static partial JSObject RegisterCodeActionProvider(
@@ -45,6 +46,9 @@ internal sealed partial class BlazorMonacoInterop
     private static partial JSObject RegisterSignatureHelpProvider(
         string language,
         [JSMarshalAs<JSType.Any>] object provider);
+
+    [JSImport("registerLanguage", moduleName)]
+    private static partial void RegisterLanguage(string languageId);
 
     [JSImport("dispose", moduleName)]
     private static partial void DisposeDisposable(JSObject disposable);
@@ -144,10 +148,10 @@ internal sealed partial class BlazorMonacoInterop
         return new Disposable(disposable);
     }
 
-    public async Task EnableSemanticHighlightingAsync(string editorId)
+    public async Task EnableSemanticHighlightingAsync()
     {
         await EnsureInitializedAsync();
-        EnableSemanticHighlighting(editorId);
+        EnableSemanticHighlighting();
     }
 
     public async Task<IDisposable> RegisterSemanticTokensProviderAsync(
@@ -158,7 +162,8 @@ internal sealed partial class BlazorMonacoInterop
         JSObject disposable = RegisterSemanticTokensProvider(
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             JsonSerializer.Serialize(provider.Legend, BlazorMonacoJsonContext.Default.SemanticTokensLegend),
-            DotNetObjectReference.Create(provider));
+            DotNetObjectReference.Create(provider),
+            provider.RegisterRangeProvider);
         return new Disposable(disposable);
     }
 
@@ -193,6 +198,12 @@ internal sealed partial class BlazorMonacoInterop
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             DotNetObjectReference.Create(provider));
         return new Disposable(disposable);
+    }
+
+    public async Task RegisterLanguageAsync(string languageId)
+    {
+        await EnsureInitializedAsync();
+        RegisterLanguage(languageId);
     }
 
     public static CancellationToken ToCancellationToken(JSObject token, ILogger logger, [CallerMemberName] string memberName = "")

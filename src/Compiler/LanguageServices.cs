@@ -211,21 +211,31 @@ internal sealed class LanguageServices : ILanguageServices
     /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/semanticTokensProvider.ts#L161"/>
     /// and <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/SemanticTokens/SemanticTokensHelpers.cs#L22"/>.
     /// </remarks>
-    public async Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
+    public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
     {
         if (!TryGetDocument(modelUri, out var document))
         {
-            return string.Empty;
+            return SemanticTokensUtil.EmptyResponse;
         }
 
-        var sw = Stopwatch.StartNew();
-        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
-        try
+        return ConvertSemanticTokensAsync(logger, docPath: $"in/{document.FilePath}", rangeJson: rangeJson, debug, async (range) =>
         {
             var text = await document.GetTextAsync(cancellationToken);
             var lines = text.Lines;
             var span = range is null ? text.FullRange : range.ToSpan(lines);
             var classifiedSpansMutable = (await Classifier.GetClassifiedSpansAsync(document, span, cancellationToken)).AsList();
+            return (text, classifiedSpansMutable);
+        });
+    }
+
+    public static async Task<string?> ConvertSemanticTokensAsync(ILogger logger, string? docPath, string? rangeJson, bool debug, Func<MonacoRange?, ValueTask<(SourceText, IList<ClassifiedSpan>)>> factory)
+    {
+        var sw = Stopwatch.StartNew();
+        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
+        try
+        {
+            var (text, classifiedSpansMutable) = await factory(range);
+            var lines = text.Lines;
 
             classifiedSpansMutable.Sort(ClassifiedSpanComparer.Instance);
 
@@ -307,16 +317,15 @@ internal sealed class LanguageServices : ILanguageServices
 
             string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
 
-            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Got semantic tokens ({Count}) for {DocPath}{Range} in {Milliseconds} ms", data.Count / 5, docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             return result;
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled completions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Canceled completions for {DocPath}{Range} in {Time} ms", docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
-            // `null` will be transformed into an exception at the front end.
-            return null;
+            return SemanticTokensUtil.CancelledResponse;
         }
     }
 
