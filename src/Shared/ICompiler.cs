@@ -11,6 +11,8 @@ public interface ICompiler
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc);
+
+    Task<string?> ProvideSemanticTokensAsync(string modelUri, bool debug);
 }
 
 public sealed record CompilationInput
@@ -93,6 +95,8 @@ public sealed record CompiledAssembly(
 
     public static readonly string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
+    public static readonly string CSharpLanguageId = "csharp";
+    public static readonly string OutputLanguageId = "output";
 
     public static CompiledAssembly Fail(string output)
     {
@@ -123,6 +127,41 @@ public sealed record CompiledAssembly(
         return GetGlobalOutput(type)
             ?? throw new InvalidOperationException($"Global output of type '{type}' not found.");
     }
+
+    public CompiledFileOutput? GetOutput(string? inputFileName, string outputType)
+    {
+        if (inputFileName is not null)
+        {
+            return Files.TryGetValue(inputFileName, out var file)
+                ? file.GetOutput(outputType)
+                : null;
+        }
+
+        return GetGlobalOutput(outputType);
+    }
+
+    public static string GetOutputModelUri(string? inputFileName, string outputType)
+    {
+        return $"out/{Guid.CreateVersion7()}/{outputType}/{inputFileName}";
+    }
+
+    public static bool TryParseOutputModelUri(string modelUri,
+        [NotNullWhen(returnValue: true)] out string? outputType,
+        out string? inputFileName)
+    {
+        if (Util.OutputModelUri.Match(modelUri) is { Success: true } match)
+        {
+            outputType = match.Groups["type"].Value;
+            inputFileName = match.Groups["input"].ValueSpan is ['/', .. var input]
+                ? input.ToString()
+                : null;
+            return true;
+        }
+
+        outputType = null;
+        inputFileName = null;
+        return false;
+    }
 }
 
 public sealed record CompiledFile(ImmutableArray<CompiledFileOutput> Outputs)
@@ -148,6 +187,9 @@ public sealed class CompiledFileOutput
     public int Priority { get; init; }
     public string? Language { get; init; }
 
+    [JsonIgnore]
+    public object? Metadata { get; private set; }
+
     public string? EagerText
     {
         get
@@ -172,6 +214,14 @@ public sealed class CompiledFileOutput
     }
 
     public Func<ValueTask<string>> LazyText
+    {
+        init
+        {
+            text ??= value;
+        }
+    }
+
+    public Func<ValueTask<(string Text, object Metadata)>> LazyTextAndMetadata
     {
         init
         {
@@ -208,6 +258,19 @@ public sealed class CompiledFileOutput
             var result = factory();
             text = result;
             return result;
+        }
+
+        if (text is Func<ValueTask<(string Text, object Metadata)>> factoryWithMetadata)
+        {
+            var result = factoryWithMetadata();
+
+            return result.Select(t =>
+            {
+                var (text, metadata) = t;
+                Metadata = metadata;
+                this.text = text;
+                return text;
+            });
         }
 
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");

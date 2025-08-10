@@ -801,16 +801,17 @@
         if (compiled is null || selectedOutputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
-            await setModelAsync("", "", null);
+            await setModelAsync(null, "", "", null);
         }
         else
         {
             var compiledOutput = compiled?.Output;
             var outputType = selectedOutputType;
             var output = GetOutput(outputType);
+            var inputFileName = CurrentInput?.FileName;
             var (outputText, resolvedLazyText) = await LoadOutputTextAsync(output);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
-            await setModelAsync(outputType, outputText, output?.Output.Language);
+            await setModelAsync(inputFileName, outputType, outputText, output?.Output.Language);
 
             if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
             {
@@ -845,7 +846,7 @@
             });
         }
 
-        async Task setModelAsync(string outputType, string text, string? language)
+        async Task setModelAsync(string? inputFileName, string outputType, string text, string? language)
         {
             if (!outputStates.TryGetValue(outputType, out var state))
             {
@@ -853,7 +854,7 @@
                     JSRuntime,
                     value: text,
                     language: language,
-                    uri: $"out/{Guid.CreateVersion7()}/{outputType}"));
+                    uri: CompiledAssembly.GetOutputModelUri(inputFileName, outputType)));
                 outputStates[outputType] = state;
             }
             else
@@ -996,7 +997,8 @@
 
         editorInitializationStarted = true;
 
-        await BlazorMonacoInterop.EnableSemanticHighlightingAsync(inputEditor.Id);
+        await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
+        await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
@@ -1073,7 +1075,7 @@
             value: inputCode.Text,
             language: GetLanguageForFileExtension(inputCode.FileExtension),
             // Needs to be unique otherwise renaming this model and then adding an input by the same name would crash.
-            uri: $"{Guid.CreateVersion7()}/{inputCode.FileName}");
+            uri: $"in/{Guid.CreateVersion7()}/{inputCode.FileName}");
     }
 
     private static string? GetLanguageForFileExtension(string extension)
@@ -1085,7 +1087,7 @@
 
         if (extension.IsCSharpFileName())
         {
-            return "csharp";
+            return CompiledAssembly.CSharpLanguageId;
         }
 
         return null;

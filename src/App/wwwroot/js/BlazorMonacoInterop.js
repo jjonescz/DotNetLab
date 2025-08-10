@@ -33,22 +33,23 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
 let debugSemanticTokens = false;
 
-export function enableSemanticHighlighting(editorId) {
-    const editor = window.blazorMonaco.editors.find((e) => e.id === editorId).editor;
-    editor.updateOptions({
-        'semanticHighlighting.enabled': true,
-    });
-    editor.addAction({
-        id: 'debug-semantic-token',
-        label: 'Debug Semantic Tokens (See Browser Console)',
-        run: () => {
-            debugSemanticTokens = !debugSemanticTokens;
-            console.log('Debugging semantic tokens ' + (debugSemanticTokens ? 'enabled' : 'disabled'));
-        },
-    });
+export function enableSemanticHighlighting() {
+    for (const editor of window.blazorMonaco.editors.map(x => x.editor)) {
+        editor.updateOptions({
+            'semanticHighlighting.enabled': true,
+        });
+        editor.addAction({
+            id: 'debug-semantic-token',
+            label: 'Debug Semantic Tokens (See Browser Console)',
+            run: () => {
+                debugSemanticTokens = !debugSemanticTokens;
+                console.log('Debugging semantic tokens ' + (debugSemanticTokens ? 'enabled' : 'disabled'));
+            },
+        });
+    }
 }
 
-export function registerSemanticTokensProvider(language, legend, provider) {
+export function registerSemanticTokensProvider(language, legend, provider, registerRangeProvider) {
     const disposables = new DisposableList();
     const languageParsed = JSON.parse(language);
     const legendParsed = JSON.parse(legend);
@@ -66,15 +67,18 @@ export function registerSemanticTokensProvider(language, legend, provider) {
         },
     }));
 
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
-    disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
-        getLegend: () => legendParsed,
-        provideDocumentRangeSemanticTokens: async (model, range, token) => {
-            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
-                provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, token);
-            return decodeResult(result, legendParsed);
-        },
-    }));
+    if (registerRangeProvider) {
+        // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
+        disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
+            getLegend: () => legendParsed,
+            provideDocumentRangeSemanticTokens: async (model, range, token) => {
+                const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
+                    provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, token);
+                return decodeResult(result, legendParsed);
+            },
+        }));
+    }
+
     return disposables;
 
     function decodeResult(result, legend) {
@@ -186,6 +190,10 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
             };
         },
     });
+}
+
+export function registerLanguage(languageId) {
+    monaco.languages.register({ id: languageId });
 }
 
 /**

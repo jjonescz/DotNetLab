@@ -7,7 +7,7 @@ namespace DotNetLab;
 
 public sealed class TreeFormatter
 {
-    public string Format(object? obj)
+    public Result Format(object? obj)
     {
         const int maxDepth = 10;
 
@@ -119,7 +119,11 @@ public sealed class TreeFormatter
             }
         }
 
-        return writer.ToString();
+        return new()
+        {
+            Text = writer.ToString(),
+            ClassifiedSpans = writer.GetClassifiedSpans(),
+        };
     }
 
     [NonCopyable]
@@ -128,7 +132,7 @@ public sealed class TreeFormatter
         private const int indentSize = 2;
 
         private readonly StringBuilder sb = new();
-        private readonly List<ClassifiedSpan> classifiedSpans = [];
+        private readonly ImmutableArray<ClassifiedSpan>.Builder classifiedSpans = ImmutableArray.CreateBuilder<ClassifiedSpan>();
         private int? needsIndent;
         private int depth;
 
@@ -181,6 +185,12 @@ public sealed class TreeFormatter
             return sb.ToString();
         }
 
+        public readonly ImmutableArray<ClassifiedSpan> GetClassifiedSpans()
+        {
+            return classifiedSpans.ToImmutable();
+        }
+
+
         [NonCopyable]
         public ref struct Scope
         {
@@ -227,5 +237,11 @@ public sealed class TreeFormatter
 
             return false;
         }
+    }
+
+    public readonly struct Result
+    {
+        public required string Text { get; init; }
+        public required ImmutableArray<ClassifiedSpan> ClassifiedSpans { get; init; }
     }
 }

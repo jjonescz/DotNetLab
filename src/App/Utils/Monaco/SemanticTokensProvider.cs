@@ -18,4 +18,6 @@ internal sealed class SemanticTokensProvider(ILoggerFactory loggerFactory)
         CancellationToken cancellationToken);
 
     public required ProvideSemanticTokensDelegate ProvideSemanticTokens { get; init; }
+
+    public bool RegisterRangeProvider { get; init; } = true;
 }

@@ -11,6 +11,9 @@ public static partial class Util
     [GeneratedRegex("""\s+""")]
     public static partial Regex Whitespace { get; }
 
+    [GeneratedRegex("^file:///out/[^/]+/(?<type>[^/]+)(?<input>(/.*)?)$")]
+    internal static partial Regex OutputModelUri { get; }
+
     extension(AsyncEnumerable)
     {
         public static IAsyncEnumerable<T> Create<T>(T item)
@@ -99,6 +102,20 @@ public static partial class Util
         public Regex.ValueSplitEnumerator SplitByWhitespace(int count)
         {
             return Whitespace.EnumerateSplits(span, count);
+        }
+    }
+
+    extension<T>(ValueTask<T> task)
+    {
+        public ValueTask<TResult> Select<TResult>(Func<T, TResult> selector)
+        {
+            if (task.IsCompletedSuccessfully)
+            {
+                return new(selector(task.Result));
+            }
+
+            return new(task.AsTask()
+                .ContinueWith(t => selector(t.Result), TaskContinuationOptions.OnlyOnRanToCompletion));
         }
     }
 
