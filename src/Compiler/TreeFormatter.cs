@@ -35,6 +35,19 @@ public sealed class TreeFormatter
                 return;
             }
 
+            var type = obj?.GetType();
+
+            if (type != null)
+            {
+                Debug.Assert(obj != null);
+
+                if (type.IsEnum)
+                {
+                    writer.WriteLine(obj.ToString(), ClassificationTypeNames.EnumMemberName);
+                    return;
+                }
+            }
+
             if (SymbolDisplay.FormatPrimitive(obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
             {
                 writer.WriteLine(formatted, 
@@ -46,7 +59,7 @@ public sealed class TreeFormatter
                 return;
             }
 
-            Debug.Assert(obj != null);
+            Debug.Assert(type != null);
 
             if (obj is TextSpan textSpan)
             {
@@ -54,7 +67,6 @@ public sealed class TreeFormatter
                 return;
             }
 
-            var type = obj.GetType();
             writer.WriteLine(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
 
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -166,7 +178,7 @@ public sealed class TreeFormatter
             }
         }
 
-        public void Write(string value, string classification)
+        public void Write(string? value, string classification)
         {
             if (needsIndent is { } indent)
             {
@@ -175,12 +187,16 @@ public sealed class TreeFormatter
             }
 
             sb.Append(value);
-            classifiedSpans.Add(new ClassifiedSpan(
-                new TextSpan(sb.Length - value.Length, value.Length),
-                classification));
+
+            if (value != null)
+            {
+                classifiedSpans.Add(new ClassifiedSpan(
+                    new TextSpan(sb.Length - value.Length, value.Length),
+                    classification));
+            }
         }
 
-        public void WriteLine(string value, string classification)
+        public void WriteLine(string? value, string classification)
         {
             Write(value, classification);
             WriteLine();
