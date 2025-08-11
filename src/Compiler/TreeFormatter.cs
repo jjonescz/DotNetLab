@@ -9,24 +9,13 @@ public sealed class TreeFormatter
 {
     public Result Format(object? obj)
     {
-        const int maxDepth = 10;
-
         var writer = new Writer();
 
-        format(obj: obj, depth: 0, parents: []);
+        format(obj: obj, parents: []);
 
-        void format(object? obj, int depth, ImmutableHashSet<object> parents, PropertyInfo? property = null)
+        void format(object? obj, ImmutableHashSet<object> parents)
         {
-            Debug.Assert(depth >= 0 && depth <= maxDepth);
-
-            writer.SetDepth(depth);
-
-            if (property != null)
-            {
-                writePropertyPrefix(property);
-            }
-
-            if (addParent(out var newParents) == false)
+            if (addParent() == false)
             {
                 writer.Write("..recursive", ClassificationTypeNames.Keyword);
                 writer.WriteLine();
@@ -48,7 +37,7 @@ public sealed class TreeFormatter
 
             if (SymbolDisplay.FormatPrimitive(obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
             {
-                writer.WriteLine(formatted, 
+                writer.WriteLine(formatted,
                     formatted.StartsWith('"')
                     ? ClassificationTypeNames.StringLiteral
                     : formatted is [{ } c, ..] && char.IsAsciiDigit(c)
@@ -67,94 +56,69 @@ public sealed class TreeFormatter
 
             writer.WriteLine(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
 
+            using var _ = writer.TryNest(out bool success);
+            if (!success)
+            {
+                return;
+            }
+
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(static p => p.GetIndexParameters().Length == 0).ToList();
 
             if (properties.Count != 0)
             {
-                if (!tryNest(out var nested))
+                foreach (var property in properties)
                 {
-                    return;
-                }
+                    writer.Write(".", ClassificationTypeNames.Punctuation);
+                    writer.Write(property.Name, ClassificationTypeNames.PropertyName);
+                    writer.Write(" = ", ClassificationTypeNames.Punctuation);
 
-                foreach (var p in properties)
-                {
-                    if (p.PropertyType.IsByRefLike)
+                    if (property.PropertyType.IsByRefLike)
                     {
                         // Cannot obtain ref structs via reflection, so just write the type.
-                        using var _ = writer.Indent();
-                        writePropertyPrefix(p);
                         writer.Write("ref struct ", ClassificationTypeNames.Keyword);
-                        writer.WriteLine(p.PropertyType.Name, ClassificationTypeNames.StructName);
-                        return;
+                        writer.WriteLine(property.PropertyType.Name, ClassificationTypeNames.StructName);
+                        continue;
                     }
 
-                    object? o; try { o = p.GetValue(obj); } catch (Exception ex) { o = ex; }
-                    format(o, nested, newParents, p);
+                    object? o; try { o = property.GetValue(obj); } catch (Exception ex) { o = ex; }
+                    format(o, parents);
                 }
             }
 
             if (obj is IEnumerable enumerable)
             {
-                if (!tryNest(out var nested))
-                {
-                    return;
-                }
-
                 try
                 {
                     foreach (var item in enumerable)
                     {
-                        format(item, nested, newParents);
+                        format(item, parents);
                     }
                 }
                 catch (Exception ex)
                 {
-                    format(ex, nested, newParents);
+                    format(ex, parents);
                 }
             }
 
-            void writePropertyPrefix(PropertyInfo property)
-            {
-                writer.Write(".", ClassificationTypeNames.Punctuation);
-                writer.Write(property.Name, ClassificationTypeNames.PropertyName);
-                writer.Write(" = ", ClassificationTypeNames.Punctuation);
-            }
-
-            bool? addParent(out ImmutableHashSet<object> newParents)
+            bool? addParent()
             {
                 if (obj == null || obj.GetType().IsValueType)
                 {
-                    newParents = parents;
                     return null;
                 }
 
-                newParents = parents.Add(obj);
+                var newParents = parents.Add(obj);
 
                 if (newParents.Count != parents.Count)
                 {
                     Debug.Assert(newParents.Count == parents.Count + 1);
+                    parents = newParents;
                     return true;
                 }
 
+                Debug.Assert(parents == newParents);
                 return false;
-            }
-
-            bool tryNest(out int nested)
-            {
-                nested = depth + 1;
-
-                if (nested > maxDepth)
-                {
-                    using var _ = writer.Indent();
-                    writer.Write("..error", ClassificationTypeNames.Keyword);
-                    writer.Write(" = ", ClassificationTypeNames.Punctuation);
-                    writer.Write($"maximum depth ({maxDepth}) reached", ClassificationTypeNames.StringLiteral);
-                    writer.WriteLine();
-                    return false;
-                }
-
-                return true;
             }
         }
 
@@ -168,6 +132,7 @@ public sealed class TreeFormatter
     [NonCopyable]
     private struct Writer()
     {
+        private const int maxDepth = 10;
         private const int indentSize = 2;
 
         private readonly StringBuilder sb = new();
@@ -176,12 +141,25 @@ public sealed class TreeFormatter
         private int depth;
 
         [UnscopedRef]
-        public Scope Indent()
+        public Scope TryNest(out bool success)
         {
+            var nested = depth + 1;
+            if (nested > maxDepth)
+            {
+                var scope = new Scope(ref this);
+                Write("..error", ClassificationTypeNames.Keyword);
+                Write(" = ", ClassificationTypeNames.Punctuation);
+                Write($"maximum depth ({maxDepth}) reached", ClassificationTypeNames.StringLiteral);
+                WriteLine();
+                success = false;
+                return scope;
+            }
+
+            success = true;
             return new Scope(ref this);
         }
 
-        public void SetDepth(int value)
+        private void SetDepth(int value)
         {
             Debug.Assert(value >= 0);
             Debug.Assert(needsIndent is null || needsIndent == depth);
