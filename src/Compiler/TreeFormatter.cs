@@ -30,15 +30,19 @@ public sealed class TreeFormatter
 
             if (addParent(out var newParents) == false)
             {
-                writer.Write("..", ClassificationTypeNames.Punctuation);
-                writer.Write("recursive", ClassificationTypeNames.Keyword);
+                writer.Write("..recursive", ClassificationTypeNames.Keyword);
                 writer.WriteLine();
                 return;
             }
 
             if (SymbolDisplay.FormatPrimitive(obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
             {
-                writer.WriteLine(formatted, ClassificationTypeNames.Keyword);
+                writer.WriteLine(formatted, 
+                    formatted.StartsWith('"')
+                    ? ClassificationTypeNames.StringLiteral
+                    : formatted is [{ } c, ..] && char.IsAsciiDigit(c)
+                    ? ClassificationTypeNames.NumericLiteral
+                    : ClassificationTypeNames.Keyword);
                 return;
             }
 
@@ -46,7 +50,7 @@ public sealed class TreeFormatter
 
             if (obj is TextSpan textSpan)
             {
-                writer.WriteLine(textSpan.ToString(), ClassificationTypeNames.StringLiteral);
+                writer.WriteLine(textSpan.ToString(), ClassificationTypeNames.NumericLiteral);
                 return;
             }
 
@@ -116,8 +120,7 @@ public sealed class TreeFormatter
                 if (nested > maxDepth)
                 {
                     using var _ = writer.Indent();
-                    writer.Write("..", ClassificationTypeNames.Punctuation);
-                    writer.Write("error", ClassificationTypeNames.Keyword);
+                    writer.Write("..error", ClassificationTypeNames.Keyword);
                     writer.Write(" = ", ClassificationTypeNames.Punctuation);
                     writer.Write($"maximum depth ({maxDepth}) reached", ClassificationTypeNames.StringLiteral);
                     writer.WriteLine();
