@@ -11,51 +11,46 @@ public sealed class TreeFormatter
     {
         const int maxDepth = 10;
 
-        var stack = new Stack<Work>();
         var writer = new Writer();
 
-        stack.Push(new() { Obj = obj, Depth = 0, Parents = [] });
+        format(obj: obj, depth: 0, parents: []);
 
-        var children = new List<Work>();
-
-        while (stack.TryPop(out var work))
+        void format(object? obj, int depth, ImmutableHashSet<object> parents, PropertyInfo? property = null)
         {
-            Debug.Assert(work.Depth >= 0 && work.Depth <= maxDepth);
+            Debug.Assert(depth >= 0 && depth <= maxDepth);
 
-            children.Clear();
+            writer.SetDepth(depth);
 
-            writer.SetDepth(work.Depth);
-
-            if (work.Property is { } property)
+            if (property != null)
             {
                 writer.Write(".", ClassificationTypeNames.Punctuation);
                 writer.Write(property.Name, ClassificationTypeNames.PropertyName);
                 writer.Write(" = ", ClassificationTypeNames.Punctuation);
             }
 
-            if (work.AddParent(out var newParents) == false)
+            if (addParent(out var newParents) == false)
             {
                 writer.Write("..", ClassificationTypeNames.Punctuation);
                 writer.Write("recursive", ClassificationTypeNames.Keyword);
                 writer.WriteLine();
-                continue;
+                return;
             }
 
-            if (SymbolDisplay.FormatPrimitive(work.Obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
+            if (SymbolDisplay.FormatPrimitive(obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
             {
                 writer.WriteLine(formatted, ClassificationTypeNames.Keyword);
-                continue;
+                return;
             }
 
-            Debug.Assert(work.Obj != null);
+            Debug.Assert(obj != null);
 
-            if (work.Obj is TextSpan textSpan)
+            if (obj is TextSpan textSpan)
             {
                 writer.WriteLine(textSpan.ToString(), ClassificationTypeNames.StringLiteral);
-                continue;
+                return;
             }
 
-            var type = work.Obj.GetType();
+            var type = obj.GetType();
             writer.WriteLine(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
 
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -65,44 +60,58 @@ public sealed class TreeFormatter
             {
                 if (!tryNest(out var nested))
                 {
-                    continue;
+                    return;
                 }
 
                 foreach (var p in properties)
                 {
-                    object? o; try { o = p.GetValue(work.Obj); } catch (Exception ex) { o = ex; }
-                    children.Add(new() { Property = p, Obj = o, Depth = nested, Parents = newParents });
+                    object? o; try { o = p.GetValue(obj); } catch (Exception ex) { o = ex; }
+                    format(o, nested, newParents, p);
                 }
             }
 
-            if (work.Obj is IEnumerable enumerable)
+            if (obj is IEnumerable enumerable)
             {
                 if (!tryNest(out var nested))
                 {
-                    continue;
+                    return;
                 }
 
                 try
                 {
                     foreach (var item in enumerable)
                     {
-                        children.Add(new() { Obj = item, Depth = nested, Parents = newParents });
+                        format(item, nested, newParents);
                     }
                 }
                 catch (Exception ex)
                 {
-                    children.Add(new() { Obj = ex, Depth = nested, Parents = newParents });
+                    format(ex, nested, newParents);
                 }
             }
 
-            for (int i = children.Count - 1; i >= 0; i--)
+            bool? addParent(out ImmutableHashSet<object> newParents)
             {
-                stack.Push(children[i]);
+                if (obj == null || obj.GetType().IsValueType)
+                {
+                    newParents = parents;
+                    return null;
+                }
+
+                newParents = parents.Add(obj);
+
+                if (newParents.Count != parents.Count)
+                {
+                    Debug.Assert(newParents.Count == parents.Count + 1);
+                    return true;
+                }
+
+                return false;
             }
 
             bool tryNest(out int nested)
             {
-                nested = work.Depth + 1;
+                nested = depth + 1;
 
                 if (nested > maxDepth)
                 {
@@ -209,33 +218,6 @@ public sealed class TreeFormatter
                 Debug.Assert(writer.depth == originalDepth + 1);
                 writer.SetDepth(originalDepth);
             }
-        }
-    }
-
-    private readonly struct Work
-    {
-        public PropertyInfo? Property { get; init; }
-        public required object? Obj { get; init; }
-        public required int Depth { get; init; }
-        public required ImmutableHashSet<object> Parents { get; init; }
-
-        public bool? AddParent(out ImmutableHashSet<object> newParents)
-        {
-            if (Obj == null || Obj.GetType().IsValueType)
-            {
-                newParents = Parents;
-                return null;
-            }
-
-            newParents = Parents.Add(Obj);
-
-            if (newParents.Count != Parents.Count)
-            {
-                Debug.Assert(newParents.Count == Parents.Count + 1);
-                return true;
-            }
-
-            return false;
         }
     }
 
