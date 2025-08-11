@@ -23,9 +23,7 @@ public sealed class TreeFormatter
 
             if (property != null)
             {
-                writer.Write(".", ClassificationTypeNames.Punctuation);
-                writer.Write(property.Name, ClassificationTypeNames.PropertyName);
-                writer.Write(" = ", ClassificationTypeNames.Punctuation);
+                writePropertyPrefix(property);
             }
 
             if (addParent(out var newParents) == false)
@@ -81,6 +79,16 @@ public sealed class TreeFormatter
 
                 foreach (var p in properties)
                 {
+                    if (p.PropertyType.IsByRefLike)
+                    {
+                        // Cannot obtain ref structs via reflection, so just write the type.
+                        using var _ = writer.Indent();
+                        writePropertyPrefix(p);
+                        writer.Write("ref struct ", ClassificationTypeNames.Keyword);
+                        writer.WriteLine(p.PropertyType.Name, ClassificationTypeNames.StructName);
+                        return;
+                    }
+
                     object? o; try { o = p.GetValue(obj); } catch (Exception ex) { o = ex; }
                     format(o, nested, newParents, p);
                 }
@@ -104,6 +112,13 @@ public sealed class TreeFormatter
                 {
                     format(ex, nested, newParents);
                 }
+            }
+
+            void writePropertyPrefix(PropertyInfo property)
+            {
+                writer.Write(".", ClassificationTypeNames.Punctuation);
+                writer.Write(property.Name, ClassificationTypeNames.PropertyName);
+                writer.Write(" = ", ClassificationTypeNames.Punctuation);
             }
 
             bool? addParent(out ImmutableHashSet<object> newParents)
