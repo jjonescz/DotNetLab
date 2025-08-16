@@ -1,4 +1,8 @@
-﻿/**
+﻿export function executeAction(editorId, actionId) {
+    window.blazorMonaco.editor.getEditor(editorId).getAction(actionId)?.run();
+}
+
+/**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters
  */

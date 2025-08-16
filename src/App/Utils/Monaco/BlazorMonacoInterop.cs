@@ -16,6 +16,9 @@ internal sealed partial class BlazorMonacoInterop
 
     private Task EnsureInitializedAsync() => initialize.Value;
 
+    [JSImport("executeAction", moduleName)]
+    private static partial JSObject ExecuteAction(string editorId, string actionId);
+
     [JSImport("registerCompletionProvider", moduleName)]
     private static partial JSObject RegisterCompletionProvider(
         string language,
@@ -134,6 +137,12 @@ internal sealed partial class BlazorMonacoInterop
         var provider = ((DotNetObjectReference<SignatureHelpProvider>)providerReference).Value;
         string? json = await provider.ProvideSignatureHelp(modelUri, positionJson, contextJson, ToCancellationToken(token, provider.Logger));
         return json;
+    }
+
+    public async Task ExecuteActionAsync(string editorId, string actionId)
+    {
+        await EnsureInitializedAsync();
+        ExecuteAction(editorId, actionId);
     }
 
     public async Task<IDisposable> RegisterCompletionProviderAsync(
