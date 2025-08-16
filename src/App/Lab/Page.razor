@@ -875,6 +875,14 @@
 
             await outputEditor.SetModel(state.Model);
             await outputEditor.RestoreViewStateAsync(state.ViewState, module);
+            await outputEditor.UpdateOptions(new()
+            {
+                StickyScroll = new()
+                {
+                    Enabled = language == CompiledAssembly.OutputLanguageId,
+                    MaxLineCount = 100,
+                },
+            });
         }
     }
 
