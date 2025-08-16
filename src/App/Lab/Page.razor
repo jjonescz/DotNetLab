@@ -866,23 +866,37 @@
                 }
             }
 
-            if (currentOutput is { } previousOutput)
+            bool saveViewState = currentOutput != state;
+
+            if (saveViewState && currentOutput is { } previousOutput)
             {
                 previousOutput.ViewState = await outputEditor.SaveViewStateAsync(module);
             }
 
             currentOutput = state;
 
+            bool isOutputLanguage = language == CompiledAssembly.OutputLanguageId;
+
             await outputEditor.SetModel(state.Model);
-            await outputEditor.RestoreViewStateAsync(state.ViewState, module);
             await outputEditor.UpdateOptions(new()
             {
                 StickyScroll = new()
                 {
-                    Enabled = language == CompiledAssembly.OutputLanguageId,
+                    Enabled = isOutputLanguage,
                     MaxLineCount = 100,
                 },
             });
+
+            if (saveViewState && !state.ViewState.IsEmpty)
+            {
+                await outputEditor.RestoreViewStateAsync(state.ViewState, module);                
+            }
+            else if (isOutputLanguage)
+            {
+                // Fold all recursively except the first level.
+                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
+                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
+            }
         }
     }
 
