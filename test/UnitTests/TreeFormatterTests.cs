@@ -10,6 +10,8 @@ public sealed class TreeFormatterTests(ITestOutputHelper output)
     public void SyntaxTree()
     {
         var tree = CSharpSyntaxTree.ParseText("""
+            #define TEST
+
             using System;
 
             class Program

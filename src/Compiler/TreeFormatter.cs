@@ -1,7 +1,9 @@
-﻿using Microsoft.CodeAnalysis.Classification;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
 
@@ -11,7 +13,13 @@ public sealed class TreeFormatter
     {
         var writer = new Writer();
 
-        format(obj: obj, parents: []);
+        format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
+
+        return new()
+        {
+            Text = writer.ToString(),
+            ClassifiedSpans = writer.GetClassifiedSpans(),
+        };
 
         void format(object? obj, ImmutableHashSet<object> parents)
         {
@@ -35,7 +43,7 @@ public sealed class TreeFormatter
                 }
             }
 
-            if (SymbolDisplay.FormatPrimitive(obj!, quoteStrings: true, useHexadecimalNumbers: false) is { } formatted)
+            if (formatPrimitive(obj) is { } formatted)
             {
                 writer.WriteLine(formatted,
                     formatted.StartsWith('"')
@@ -46,7 +54,13 @@ public sealed class TreeFormatter
                 return;
             }
 
-            Debug.Assert(type != null);
+            Debug.Assert(type != null && obj != null);
+
+            if (type.IsValueType && obj.Equals(RuntimeHelpers.GetUninitializedObject(type)))
+            {
+                writer.WriteLine("default", ClassificationTypeNames.Keyword);
+                return;
+            }
 
             if (obj is TextSpan textSpan)
             {
@@ -54,36 +68,75 @@ public sealed class TreeFormatter
                 return;
             }
 
-            writer.WriteLine(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
+            string? kindText = null;
 
-            using var _ = writer.TryNest(out bool success);
-            if (!success)
+            if (isKnownCollection(obj, type, out int length, out var propertyFilter))
+            {
+                writer.Write("[", ClassificationTypeNames.Punctuation);
+                writer.Write(length, ClassificationTypeNames.NumericLiteral);
+                writer.Write("]", ClassificationTypeNames.Punctuation);
+                writer.WriteLine();
+            }
+            else
+            {
+                writer.Write(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
+
+                // Display kind as part of the type.
+                if (type.IsValueType && (kindText = getKindText(obj, type)) != null)
+                {
+                    writer.Write("(", ClassificationTypeNames.Punctuation);
+                    writer.Write(kindText, ClassificationTypeNames.EnumMemberName);
+                    writer.Write(")", ClassificationTypeNames.Punctuation);
+                }
+
+                writer.WriteLine();
+            }
+
+            using var scope = writer.TryNest();
+            if (!scope.Success)
             {
                 return;
             }
 
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .Where(static p => p.GetIndexParameters().Length == 0).ToList();
+                .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
+                .Select(PropertyLike.Create)
+                .Concat(type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(m => propertyFilter(m.Name) &&
+                    m.Name is nameof(SyntaxTrivia.GetStructure) &&
+                    m.ReturnType != typeof(void) && m.GetParameters() is [])
+                .Select(PropertyLike.Create)).ToList();
 
             if (properties.Count != 0)
             {
-                foreach (var property in properties)
+                // Hide less interesting properties in a subgroup.
+                if (obj is SyntaxNode or SyntaxToken or SyntaxTrivia)
                 {
-                    writer.Write(".", ClassificationTypeNames.Punctuation);
-                    writer.Write(property.Name, ClassificationTypeNames.PropertyName);
-                    writer.Write(" = ", ClassificationTypeNames.Punctuation);
+                    var subgroup = new List<PropertyLike>();
 
-                    if (property.PropertyType.IsByRefLike)
+                    for (int i = properties.Count - 1; i >= 0; i--)
                     {
-                        // Cannot obtain ref structs via reflection, so just write the type.
-                        writer.Write("ref struct ", ClassificationTypeNames.Keyword);
-                        writer.WriteLine(property.PropertyType.Name, ClassificationTypeNames.StructName);
-                        continue;
+                        var property = properties[i];
+
+                        if (!isMoreInterestingProperty(type, property))
+                        {
+                            subgroup.Add(property);
+                            properties.RemoveAt(i);
+                        }
                     }
 
-                    object? o; try { o = property.GetValue(obj); } catch (Exception ex) { o = ex; }
-                    format(o, parents);
+                    if (subgroup.Count != 0)
+                    {
+                        writer.WriteLine("//", ClassificationTypeNames.Comment);
+                        using var scope2 = writer.TryNest();
+                        if (scope2.Success)
+                        {
+                            displayProperties(subgroup);
+                        }
+                    }
                 }
+
+                displayProperties(properties);
             }
 
             if (obj is IEnumerable enumerable)
@@ -120,19 +173,170 @@ public sealed class TreeFormatter
                 Debug.Assert(parents == newParents);
                 return false;
             }
+
+            void displayProperties(IEnumerable<PropertyLike> properties)
+            {
+                foreach (var property in properties)
+                {
+                    // Skip some uninteresting properties.
+                    if (
+                        // SyntaxTree is too verbose and repeated.
+                        property.Type.IsAssignableTo(typeof(SyntaxTree)) ||
+                        // The following basically contain the parent recursively.
+                        (obj is SyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
+                        (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)))
+                    {
+                        continue;
+                    }
+
+                    writer.Write(".", ClassificationTypeNames.Punctuation);
+
+                    if (property.IsMethod)
+                    {
+                        writer.Write(property.Name, ClassificationTypeNames.MethodName);
+                        writer.Write("()", ClassificationTypeNames.Punctuation);
+                    }
+                    else
+                    {
+                        writer.Write(property.Name, ClassificationTypeNames.PropertyName);
+                    }
+
+                    writer.Write(" = ", ClassificationTypeNames.Punctuation);
+
+                    if (property.Type.IsByRefLike)
+                    {
+                        // Cannot obtain ref structs via reflection, so just write the type.
+                        writer.Write("ref struct ", ClassificationTypeNames.Keyword);
+                        writer.WriteLine(property.Type.Name, ClassificationTypeNames.StructName);
+                        continue;
+                    }
+
+                    var value = property.Getter(obj);
+
+                    // Display RawKind as <number> "<kind text>".
+                    if (property.Name == nameof(SyntaxNode.RawKind) &&
+                        property.Type == typeof(int) &&
+                        (kindText ??= getKindText(obj, type)) != null)
+                    {
+                        writer.Write(formatPrimitive(value), ClassificationTypeNames.NumericLiteral);
+                        writer.Write(" ", ClassificationTypeNames.WhiteSpace);
+                        writer.Write(formatPrimitive(kindText), ClassificationTypeNames.StringLiteral);
+                        writer.WriteLine();
+                        continue;
+                    }
+
+                    format(value, parents);
+                }
+            }
         }
 
-        return new()
+        bool isKnownCollection(object obj, Type type, out int length, out Func<string, bool> propertyFilter)
         {
-            Text = writer.ToString(),
-            ClassifiedSpans = writer.GetClassifiedSpans(),
-        };
+            if (type.IsGenericType)
+            {
+                var definition = type.GetGenericTypeDefinition();
+
+                if (definition == typeof(ImmutableArray<>))
+                {
+                    // Note: `default` was handled previously, so this shouldn't crash.
+                    length = (int)type.GetProperty(nameof(ImmutableArray<>.Length))!.GetValue(obj)!;
+                    propertyFilter = static _ => false;
+                    return true;
+                }
+
+                if (definition == typeof(SyntaxList<>))
+                {
+                    length = (int)type.GetProperty(nameof(SyntaxList<>.Count))!.GetValue(obj)!;
+                    propertyFilter = static name => name != nameof(SyntaxList<>.Count);
+                    return true;
+                }
+            }
+            else // non-generic type
+            {
+                if (obj is SyntaxTriviaList triviaList)
+                {
+                    length = triviaList.Count;
+                    propertyFilter = length == 0
+                        ? static _ => false
+                        : static name => name != nameof(SyntaxTriviaList.Count);
+                    return true;
+                }
+            }
+
+            length = 0;
+            propertyFilter = static _ => true;
+            return false;
+        }
+
+        static string? formatPrimitive(object? value)
+        {
+            return SymbolDisplay.FormatPrimitive(value!, quoteStrings: true, useHexadecimalNumbers: false);
+        }
+
+        static string? getKindText(object obj, Type type)
+        {
+            if (getKindTextCore(obj, type) is { } kindText)
+            {
+                return kindText;
+            }
+
+            if ((getProperty(type, "Node") ?? getProperty(type, "UnderlyingNode")) is { } nodeProperty &&
+                Util.GetPropertyValueOrException(obj, nodeProperty) is { } node)
+            {
+                return getKindTextCore(node, node.GetType());
+            }
+
+            return null;
+
+            static string? getKindTextCore(object obj, Type type)
+            {
+                if (getProperty(type, "KindText") is { } kindTextProperty &&
+                    kindTextProperty.PropertyType == typeof(string) &&
+                    Util.GetPropertyValueOrException(obj, kindTextProperty) is string { Length: > 0 } kindText)
+                {
+                    return kindText;
+                }
+
+                return null;
+            }
+        }
+
+        static PropertyInfo? getProperty(Type type, string name)
+        {
+            return type.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        }
+
+        static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
+        {
+            if (property.Name is nameof(SyntaxToken.Text))
+            {
+                return true;
+            }
+
+            var type = property.Type;
+
+            if (type.IsValueType)
+            {
+                if (type.IsGenericType)
+                {
+                    var definition = type.GetGenericTypeDefinition();
+
+                    return definition == typeof(SyntaxList<>);
+                }
+
+                return type == typeof(SyntaxTrivia) ||
+                    type == typeof(SyntaxTriviaList) ||
+                    type == typeof(SyntaxToken);
+            }
+
+            return type.IsAssignableTo(typeof(SyntaxNode));
+        }
     }
 
     [NonCopyable]
     private struct Writer()
     {
-        private const int maxDepth = 10;
+        private const int maxDepth = 100;
         private const int indentSize = 2;
 
         private readonly StringBuilder sb = new();
@@ -141,22 +345,20 @@ public sealed class TreeFormatter
         private int depth;
 
         [UnscopedRef]
-        public Scope TryNest(out bool success)
+        public Scope TryNest()
         {
             var nested = depth + 1;
             if (nested > maxDepth)
             {
-                var scope = new Scope(ref this);
+                var scope = new Scope(ref this) { Success = false };
                 Write("..error", ClassificationTypeNames.Keyword);
                 Write(" = ", ClassificationTypeNames.Punctuation);
                 Write($"maximum depth ({maxDepth}) reached", ClassificationTypeNames.StringLiteral);
                 WriteLine();
-                success = false;
                 return scope;
             }
 
-            success = true;
-            return new Scope(ref this);
+            return new Scope(ref this) { Success = true };
         }
 
         private void SetDepth(int value)
@@ -173,18 +375,34 @@ public sealed class TreeFormatter
 
         public void Write(string? value, string classification)
         {
+            Write(value, classification, static (sb, value) => sb.Append(value));
+        }
+
+        public void Write(int value, string classification)
+        {
+            Write(value, classification, static (sb, value) => sb.Append(value));
+        }
+
+        private void Write<T>(T value, string classification, Action<StringBuilder, T> writer)
+        {
             if (needsIndent is { } indent)
             {
                 sb.Append(value: ' ', repeatCount: indent * indentSize);
                 needsIndent = null;
             }
 
-            sb.Append(value);
+            int start = sb.Length;
 
-            if (value != null)
+            writer(sb, value);
+
+            int end = sb.Length;
+            int length = end - start;
+            Debug.Assert(length >= 0);
+
+            if (length > 0)
             {
                 classifiedSpans.Add(new ClassifiedSpan(
-                    new TextSpan(sb.Length - value.Length, value.Length),
+                    new TextSpan(start, length),
                     classification));
             }
         }
@@ -218,6 +436,8 @@ public sealed class TreeFormatter
             private ref Writer writer;
             private readonly int originalDepth;
 
+            public required bool Success { get; init; }
+
             public Scope(ref Writer writer)
             {
                 this.writer = ref writer;
@@ -229,6 +449,55 @@ public sealed class TreeFormatter
             {
                 Debug.Assert(writer.depth == originalDepth + 1);
                 writer.SetDepth(originalDepth);
+            }
+        }
+    }
+
+    private readonly struct PropertyLike
+    {
+        public required string Name { get; init; }
+        public required Type Type { get; init; }
+        public required bool IsMethod { get; init; }
+        public required Func<object, object?> Getter { get; init; }
+
+        public static PropertyLike Create(PropertyInfo property) => new()
+        {
+            Name = property.Name,
+            Type = property.PropertyType,
+            IsMethod = false,
+            Getter = (obj) => Util.GetPropertyValueOrException(obj, property),
+        };
+
+        public static PropertyLike Create(MethodInfo simpleMethod) => new()
+        {
+            Name = simpleMethod.Name,
+            Type = simpleMethod.ReturnType,
+            IsMethod = true,
+            Getter = (obj) =>
+            {
+                try
+                {
+                    return simpleMethod.Invoke(obj, null);
+                }
+                catch (Exception ex)
+                {
+                    return ex;
+                }
+            },
+        };
+    }
+
+    private static class Util
+    {
+        public static object? GetPropertyValueOrException(object obj, PropertyInfo property)
+        {
+            try
+            {
+                return property.GetValue(obj);
+            }
+            catch (Exception ex)
+            {
+                return ex;
             }
         }
     }
