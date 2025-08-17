@@ -52,6 +52,15 @@ public static class CodeAnalysisUtil
         }
     }
 
+    extension(TextSpan span)
+    {
+        public StringSpan ToStringSpan() => new()
+        {
+            Start = span.Start,
+            Length = span.Length
+        };
+    }
+
     public static bool TryGetHostOutputSafe(
         this GeneratorRunResult result,
         string key,

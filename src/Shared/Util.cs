@@ -107,15 +107,15 @@ public static partial class Util
 
     extension<T>(ValueTask<T> task)
     {
-        public ValueTask<TResult> Select<TResult>(Func<T, TResult> selector)
+        public Task<TResult> SelectAsTask<TResult>(Func<T, TResult> selector)
         {
             if (task.IsCompletedSuccessfully)
             {
-                return new(selector(task.Result));
+                return Task.FromResult(selector(task.Result));
             }
 
-            return new(task.AsTask()
-                .ContinueWith(t => selector(t.Result), TaskContinuationOptions.OnlyOnRanToCompletion));
+            return task.AsTask()
+                .ContinueWith(t => selector(t.Result), TaskContinuationOptions.OnlyOnRanToCompletion);
         }
     }
 

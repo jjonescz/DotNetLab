@@ -2,7 +2,7 @@
 
 namespace DotNetLab;
 
-internal sealed class CompiledFileOutputMetadata
+internal sealed class CompiledFileOutputNonSerializedMetadata
 {
     public ImmutableArray<ClassifiedSpan> ClassifiedSpans { get; init; }
 }

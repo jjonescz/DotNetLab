@@ -245,10 +245,17 @@ public sealed class Compiler(
                         LazyTextAndMetadata = () =>
                         {
                             var formatted = treeFormatter.Format(syntaxTree.GetRoot());
-                            return new((formatted.Text, new CompiledFileOutputMetadata
-                            {
-                                ClassifiedSpans = formatted.ClassifiedSpans,
-                            }));
+                            return new((
+                                formatted.Text,
+                                new CompiledFileOutputMetadata
+                                {
+                                    InputToOutput = formatted.SourceToTree,
+                                    OutputToInput = formatted.TreeToSource,
+                                },
+                                new CompiledFileOutputNonSerializedMetadata
+                                {
+                                    ClassifiedSpans = formatted.ClassifiedSpans,
+                                }));
                         },
                     },
                     new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
@@ -914,7 +921,7 @@ public sealed class Compiler(
     {
         if (!CompiledAssembly.TryParseOutputModelUri(modelUri, out var outputType, out var inputFileName) ||
             LastResult is not { Output: var lastOutput } ||
-            lastOutput.CompiledAssembly.GetOutput(inputFileName, outputType) is not { EagerText: { } text, Metadata: CompiledFileOutputMetadata metadata })
+            lastOutput.CompiledAssembly.GetOutput(inputFileName, outputType) is not { Text: { } text, NonSerializedMetadata: CompiledFileOutputNonSerializedMetadata metadata })
         {
             logger.LogDebug("Cannot provide output semantic tokens for '{ModelUri}'.", modelUri);
             return SemanticTokensUtil.EmptyResponse;
