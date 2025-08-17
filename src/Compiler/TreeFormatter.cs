@@ -32,6 +32,11 @@ public sealed class TreeFormatter
                 return;
             }
 
+            if (obj is SyntaxNodeOrToken nodeOrToken)
+            {
+                obj = nodeOrToken.AsNode() ?? (object)nodeOrToken.AsToken();
+            }
+
             var type = obj?.GetType();
 
             if (type != null)
@@ -112,10 +117,17 @@ public sealed class TreeFormatter
                     m.ReturnType != typeof(void) && m.GetParameters() is [])
                 .Select(PropertyLike.Create)).ToList();
 
+            var enumerable = asCollection(obj, type);
+
             if (properties.Count != 0)
             {
                 // Hide less interesting properties in a subgroup.
-                if (obj is SyntaxNode or SyntaxToken or SyntaxTrivia)
+                if (enumerable != null)
+                {
+                    displaySubgroup(properties);
+                    properties = [];
+                }
+                else if (obj is SyntaxNode or SyntaxToken or SyntaxTrivia)
                 {
                     var subgroup = new List<PropertyLike>();
 
@@ -130,21 +142,13 @@ public sealed class TreeFormatter
                         }
                     }
 
-                    if (subgroup.Count != 0)
-                    {
-                        writer.WriteLine("//", ClassificationTypeNames.Comment);
-                        using var scope2 = writer.TryNest();
-                        if (scope2.Success)
-                        {
-                            displayProperties(subgroup);
-                        }
-                    }
+                    displaySubgroup(subgroup);
                 }
 
                 displayProperties(properties);
             }
 
-            if (obj is IEnumerable enumerable)
+            if (enumerable != null)
             {
                 try
                 {
@@ -177,6 +181,19 @@ public sealed class TreeFormatter
 
                 Debug.Assert(parents == newParents);
                 return false;
+            }
+
+            void displaySubgroup(IReadOnlyCollection<PropertyLike> properties)
+            {
+                if (properties.Count != 0)
+                {
+                    writer.WriteLine("//", ClassificationTypeNames.Comment);
+                    using var scope = writer.TryNest();
+                    if (scope.Success)
+                    {
+                        displayProperties(properties);
+                    }
+                }
             }
 
             void displayProperties(IEnumerable<PropertyLike> properties)
@@ -262,7 +279,7 @@ public sealed class TreeFormatter
             return default;
         }
 
-        bool isKnownCollection(object obj, Type type, out int length, out Func<string, bool> propertyFilter)
+        static bool isKnownCollection(object obj, Type type, out int length, out Func<string, bool> propertyFilter)
         {
             if (type.IsGenericType)
             {
@@ -300,6 +317,21 @@ public sealed class TreeFormatter
             return false;
         }
 
+        static IEnumerable? asCollection(object obj, Type type)
+        {
+            if (type.IsGenericType && type.IsValueType)
+            {
+                var definition = type.GetGenericTypeDefinition();
+                if (definition == typeof(SeparatedSyntaxList<>))
+                {
+                    return (IEnumerable)type.GetMethod(nameof(SeparatedSyntaxList<>.GetWithSeparators))!
+                        .Invoke(obj, [])!;
+                }
+            }
+
+            return obj as IEnumerable;
+        }
+
         static string? formatPrimitive(object? value)
         {
             return SymbolDisplay.FormatPrimitive(value!, quoteStrings: true, useHexadecimalNumbers: false);
@@ -312,7 +344,11 @@ public sealed class TreeFormatter
                 return kindText;
             }
 
-            if ((getProperty(type, "Node") ?? getProperty(type, "UnderlyingNode")) is { } nodeProperty &&
+            if ((type == typeof(SyntaxToken)
+                ? getProperty(type, "Node")
+                : type == typeof(SyntaxTrivia)
+                ? getProperty(type, "UnderlyingNode")
+                : null) is { } nodeProperty &&
                 Util.GetPropertyValueOrException(obj, nodeProperty) is { } node)
             {
                 return getKindTextCore(node, node.GetType());
@@ -353,7 +389,8 @@ public sealed class TreeFormatter
                 {
                     var definition = type.GetGenericTypeDefinition();
 
-                    return definition == typeof(SyntaxList<>);
+                    return definition == typeof(SyntaxList<>) ||
+                        definition == typeof(SeparatedSyntaxList<>);
                 }
 
                 return type == typeof(SyntaxTrivia) ||
