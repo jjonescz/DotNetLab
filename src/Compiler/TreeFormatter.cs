@@ -71,12 +71,12 @@ public sealed class TreeFormatter
 
             if (obj is TextSpan textSpan)
             {
-                using var localMap = writer.StartMap(textSpan);
+                using var localMap = writer.StartMap(shouldMap ? textSpan : default);
                 writer.WriteLine(textSpan.ToString(), ClassificationTypeNames.NumericLiteral);
                 return;
             }
 
-            using var _ = writer.StartMap(shouldMap ? getSpan(obj, type) : default);
+            using var map = writer.StartMap(shouldMap ? getSpan(obj, type) : default);
 
             string? kindText = null;
 
@@ -256,6 +256,11 @@ public sealed class TreeFormatter
 
         static TextSpan getSpan(object obj, Type type)
         {
+            if (obj is TextSpan span)
+            {
+                return span;
+            }
+
             if (obj is SyntaxNode node)
             {
                 return node.Span;
