@@ -19,9 +19,11 @@ public sealed class TreeFormatter
         {
             Text = writer.ToString(),
             ClassifiedSpans = writer.GetClassifiedSpans(),
+            SourceToTree = writer.GetSourceToTree(),
+            TreeToSource = writer.GetTreeToSource(),
         };
 
-        void format(object? obj, ImmutableHashSet<object> parents)
+        void format(object? obj, ImmutableHashSet<object> parents, bool shouldMap = true)
         {
             if (addParent() == false)
             {
@@ -64,9 +66,12 @@ public sealed class TreeFormatter
 
             if (obj is TextSpan textSpan)
             {
+                using var localMap = writer.StartMap(textSpan);
                 writer.WriteLine(textSpan.ToString(), ClassificationTypeNames.NumericLiteral);
                 return;
             }
+
+            using var _ = writer.StartMap(shouldMap ? getSpan(obj, type) : default);
 
             string? kindText = null;
 
@@ -189,6 +194,10 @@ public sealed class TreeFormatter
                         continue;
                     }
 
+                    var value = property.Getter(obj);
+
+                    using var map = writer.StartMap(value is null ? default : getSpan(value, value.GetType()));
+
                     writer.Write(".", ClassificationTypeNames.Punctuation);
 
                     if (property.IsMethod)
@@ -211,8 +220,6 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    var value = property.Getter(obj);
-
                     // Display RawKind as <number> "<kind text>".
                     if (property.Name == nameof(SyntaxNode.RawKind) &&
                         property.Type == typeof(int) &&
@@ -225,9 +232,34 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    format(value, parents);
+                    format(value, parents, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
+        }
+
+        static TextSpan getSpan(object obj, Type type)
+        {
+            if (obj is SyntaxNode node)
+            {
+                return node.FullSpan;
+            }
+
+            if (obj is SyntaxToken token)
+            {
+                return token.FullSpan;
+            }
+
+            if (obj is SyntaxTriviaList triviaList)
+            {
+                return triviaList.FullSpan;
+            }
+
+            if (type.IsGenericType && type.IsValueType && type.GetGenericTypeDefinition() == typeof(SyntaxList<>))
+            {
+                return (TextSpan)type.GetProperty(nameof(SyntaxList<>.FullSpan))!.GetValue(obj)!;
+            }
+
+            return default;
         }
 
         bool isKnownCollection(object obj, Type type, out int length, out Func<string, bool> propertyFilter)
@@ -341,8 +373,12 @@ public sealed class TreeFormatter
 
         private readonly StringBuilder sb = new();
         private readonly ImmutableArray<ClassifiedSpan>.Builder classifiedSpans = ImmutableArray.CreateBuilder<ClassifiedSpan>();
+        private readonly List<(StringSpan, StringSpan)> sourceToTree = [];
+        private readonly List<(StringSpan, StringSpan)> treeToSource = [];
         private int? needsIndent;
         private int depth;
+
+        private readonly int Position => sb.Length;
 
         [UnscopedRef]
         public Scope TryNest()
@@ -359,6 +395,12 @@ public sealed class TreeFormatter
             }
 
             return new Scope(ref this) { Success = true };
+        }
+
+        [UnscopedRef]
+        public SpanScope StartMap(TextSpan sourceSpan)
+        {
+            return new SpanScope(ref this, sourceSpan);
         }
 
         private void SetDepth(int value)
@@ -419,6 +461,12 @@ public sealed class TreeFormatter
             needsIndent = depth;
         }
 
+        private readonly void Map(TextSpan source, TextSpan tree)
+        {
+            sourceToTree.Add((source.ToStringSpan(), tree.ToStringSpan()));
+            treeToSource.Add((tree.ToStringSpan(), source.ToStringSpan()));
+        }
+
         public override readonly string ToString()
         {
             return sb.ToString();
@@ -429,6 +477,15 @@ public sealed class TreeFormatter
             return classifiedSpans.ToImmutable();
         }
 
+        public readonly string GetSourceToTree()
+        {
+            return new DocumentMapping(sourceToTree).Serialize();
+        }
+
+        public readonly string GetTreeToSource()
+        {
+            return new DocumentMapping(treeToSource).Serialize();
+        }
 
         [NonCopyable]
         public ref struct Scope
@@ -449,6 +506,35 @@ public sealed class TreeFormatter
             {
                 Debug.Assert(writer.depth == originalDepth + 1);
                 writer.SetDepth(originalDepth);
+            }
+        }
+
+        [NonCopyable]
+        public readonly ref struct SpanScope
+        {
+            private readonly ref Writer writer;
+            private readonly TextSpan sourceSpan;
+            private readonly int treeStartPosition;
+
+            public SpanScope(ref Writer writer, TextSpan sourceSpan)
+            {
+                this.writer = ref writer;
+                this.sourceSpan = sourceSpan;
+                treeStartPosition = writer.Position;
+            }
+
+            public void Dispose()
+            {
+                if (sourceSpan.IsEmpty)
+                {
+                    return;
+                }
+
+                var treeSpan = TextSpan.FromBounds(treeStartPosition, writer.Position);
+                if (!treeSpan.IsEmpty)
+                {
+                    writer.Map(sourceSpan, treeSpan);
+                }
             }
         }
     }
@@ -506,5 +592,7 @@ public sealed class TreeFormatter
     {
         public required string Text { get; init; }
         public required ImmutableArray<ClassifiedSpan> ClassifiedSpans { get; init; }
+        public required string SourceToTree { get; init; }
+        public required string TreeToSource { get; init; }
     }
 }

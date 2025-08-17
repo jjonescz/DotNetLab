@@ -33,7 +33,7 @@ public sealed class TemplateCacheTests
             string? value;
             try
             {
-                value = await output.GetTextAsync(outputFactory: null);
+                value = (await output.LoadAsync(outputFactory: null)).Text;
             }
             catch (Exception ex)
             {
@@ -42,7 +42,7 @@ public sealed class TemplateCacheTests
             }
 
             Assert.NotNull(value);
-            Assert.Equal(value, output.EagerText);
+            Assert.Equal(value, output.Text);
         }
 
         Assert.True(cache.TryGetOutput(SavedState.From(input), out _, out var expectedOutput));

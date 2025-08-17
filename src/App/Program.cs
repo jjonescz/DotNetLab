@@ -16,6 +16,7 @@ builder.Services.AddFluentUIComponents();
 
 builder.Services.AddScoped<WorkerController>();
 builder.Services.AddScoped<BlazorMonacoInterop>();
+builder.Services.AddScoped<CursorSynchronizer.Services>();
 builder.Services.AddScoped<LanguageServicesClient>();
 builder.Services.AddScoped<InputOutputCache>();
 builder.Services.AddScoped<TemplateCache>();

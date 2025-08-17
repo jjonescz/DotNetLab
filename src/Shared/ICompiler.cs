@@ -140,6 +140,18 @@ public sealed record CompiledAssembly(
         return GetGlobalOutput(outputType);
     }
 
+    public CompiledFileOutput GetRequiredOutput(string? inputFileName, string outputType)
+    {
+        if (inputFileName is not null)
+        {
+            return Files.TryGetValue(inputFileName, out var file)
+                ? file.GetRequiredOutput(outputType)
+                : throw new InvalidOperationException($"File '{inputFileName}' not found.");
+        }
+
+        return GetRequiredGlobalOutput(outputType);
+    }
+
     public static string GetOutputModelUri(string? inputFileName, string outputType)
     {
         return $"out/{Guid.CreateVersion7()}/{outputType}/{inputFileName}";
@@ -186,27 +198,14 @@ public sealed class CompiledFileOutput
     public required string Label { get; init; }
     public int Priority { get; init; }
     public string? Language { get; init; }
+    public string? Text { get; private set; }
+    public CompiledFileOutputMetadata? Metadata { get; private set; }
 
     [JsonIgnore]
-    public object? Metadata { get; private set; }
+    public object? NonSerializedMetadata { get; private set; }
 
-    public string? EagerText
+    public string EagerText
     {
-        get
-        {
-            if (text is string eagerText)
-            {
-                return eagerText;
-            }
-
-            if (text is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
-            {
-                text = taskResult;
-                return taskResult;
-            }
-
-            return null;
-        }
         init
         {
             text ??= value;
@@ -221,7 +220,7 @@ public sealed class CompiledFileOutput
         }
     }
 
-    public Func<ValueTask<(string Text, object Metadata)>> LazyTextAndMetadata
+    public Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata, object NonSerializedMetadata)>> LazyTextAndMetadata
     {
         init
         {
@@ -229,13 +228,16 @@ public sealed class CompiledFileOutput
         }
     }
 
-    public ValueTask<string> GetTextAsync(Func<ValueTask<string>>? outputFactory)
+    public Task<CompiledFileLazyResult> LoadAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
     {
-        if (EagerText is { } eagerText)
-        {
-            return new(eagerText);
-        }
+        var result = LoadCoreAsync(outputFactory);
+        text = result;
+        return result;
+    }
 
+    [SuppressMessage("Reliability", "CA2012: Use ValueTasks correctly", Justification = "Analyzer broken with extension members")]
+    private Task<CompiledFileLazyResult> LoadCoreAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
+    {
         if (text is null)
         {
             if (outputFactory is null)
@@ -243,33 +245,40 @@ public sealed class CompiledFileOutput
                 throw new InvalidOperationException($"For uncached lazy texts, {nameof(outputFactory)} must be provided.");
             }
 
-            var output = outputFactory();
-            text = output;
-            return output;
+            return outputFactory().SelectAsTask(output =>
+            {
+                Text = output.Text;
+                Metadata = output.Metadata;
+                return output;
+            });
         }
 
-        if (text is ValueTask<string> valueTask)
+        if (text is Task<CompiledFileLazyResult> task)
         {
-            return valueTask;
+            return task;
         }
 
         if (text is Func<ValueTask<string>> factory)
         {
-            var result = factory();
-            text = result;
-            return result;
+            return factory().SelectAsTask(t =>
+            {
+                Text = t;
+                return new CompiledFileLazyResult { Text = t };
+            });
         }
 
-        if (text is Func<ValueTask<(string Text, object Metadata)>> factoryWithMetadata)
+        if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata, object NonSerializedMetadata)>> factoryWithMetadata)
         {
-            var result = factoryWithMetadata();
-
-            return result.Select(t =>
+            return factoryWithMetadata().SelectAsTask(output =>
             {
-                var (text, metadata) = t;
-                Metadata = metadata;
-                this.text = text;
-                return text;
+                Text = output.Text;
+                Metadata = output.Metadata;
+                NonSerializedMetadata = output.NonSerializedMetadata;
+                return new CompiledFileLazyResult
+                {
+                    Text = output.Text,
+                    Metadata = output.Metadata,
+                };
             });
         }
 
@@ -278,6 +287,20 @@ public sealed class CompiledFileOutput
 
     internal void SetEagerText(string? value)
     {
-        text = value;
+        text = Task.CompletedTask;
+        Text = value;
+        Metadata = null;
     }
+}
+
+public readonly struct CompiledFileLazyResult
+{
+    public required string Text { get; init; }
+    public CompiledFileOutputMetadata? Metadata { get; init; }
+}
+
+public sealed class CompiledFileOutputMetadata
+{
+    public string? InputToOutput { get; init; }
+    public string? OutputToInput { get; init; }
 }
