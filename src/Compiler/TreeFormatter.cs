@@ -258,22 +258,22 @@ public sealed class TreeFormatter
         {
             if (obj is SyntaxNode node)
             {
-                return node.FullSpan;
+                return node.Span;
             }
 
             if (obj is SyntaxToken token)
             {
-                return token.FullSpan;
+                return token.Span;
             }
 
             if (obj is SyntaxTriviaList triviaList)
             {
-                return triviaList.FullSpan;
+                return triviaList.Span;
             }
 
             if (type.IsGenericType && type.IsValueType && type.GetGenericTypeDefinition() == typeof(SyntaxList<>))
             {
-                return (TextSpan)type.GetProperty(nameof(SyntaxList<>.FullSpan))!.GetValue(obj)!;
+                return (TextSpan)type.GetProperty(nameof(SyntaxList<>.Span))!.GetValue(obj)!;
             }
 
             return default;
