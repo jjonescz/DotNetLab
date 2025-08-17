@@ -71,20 +71,12 @@ public sealed class WorkerExecutor(
         }
     }
 
-    public async Task<string> HandleAsync(WorkerInputMessage.GetOutput message)
+    public async Task<CompiledFileLazyResult> HandleAsync(WorkerInputMessage.GetOutput message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var result = await compiler.CompileAsync(message.Input);
-        if (message.File is null)
-        {
-            return await result.GetRequiredGlobalOutput(message.OutputType).GetTextAsync(outputFactory: null);
-        }
-        else
-        {
-            return result.Files.TryGetValue(message.File, out var file)
-                ? await file.GetRequiredOutput(message.OutputType).GetTextAsync(outputFactory: null)
-                : throw new InvalidOperationException($"File '{message.File}' not found.");
-        }
+        var output = result.GetRequiredOutput(message.File, message.OutputType);
+        return await output.LoadAsync(outputFactory: null);
     }
 
     public Task<bool> HandleAsync(WorkerInputMessage.UseCompilerVersion message)

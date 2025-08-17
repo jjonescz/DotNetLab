@@ -2,6 +2,31 @@
     window.blazorMonaco.editor.getEditor(editorId).getAction(actionId)?.run();
 }
 
+export function onDidChangeCursorPosition(editorId, callback) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    return editor.onDidChangeCursorPosition((e) => {
+        if (e.reason === 3 /* explicit user gesture */) {
+            const model = editor.getModel();
+            if (model) {
+                const offset = model.getOffsetAt(e.position);
+                globalThis.DotNetLab.BlazorMonacoInterop.OnDidChangeCursorPositionCallback(callback, offset);
+            }
+        }
+    });
+}
+
+export function setSelection(editorId, start, end) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    const model = editor.getModel();
+    if (model) {
+        const startPosition = model.getPositionAt(start);
+        const endPosition = model.getPositionAt(end);
+        editor.setSelection(new monaco.Range(
+            startPosition.lineNumber, startPosition.column,
+            endPosition.lineNumber, endPosition.column));
+    }
+}
+
 /**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters

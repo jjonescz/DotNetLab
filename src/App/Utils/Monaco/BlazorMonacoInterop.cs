@@ -17,7 +17,15 @@ internal sealed partial class BlazorMonacoInterop
     private Task EnsureInitializedAsync() => initialize.Value;
 
     [JSImport("executeAction", moduleName)]
-    private static partial JSObject ExecuteAction(string editorId, string actionId);
+    private static partial void ExecuteAction(string editorId, string actionId);
+
+    [JSImport("onDidChangeCursorPosition", moduleName)]
+    private static partial JSObject OnDidChangeCursorPosition(
+        string editorId,
+        [JSMarshalAs<JSType.Any>] object callback);
+
+    [JSImport("setSelection", moduleName)]
+    public static partial void SetSelectionUnsafe(string editorId, int start, int end);
 
     [JSImport("registerCompletionProvider", moduleName)]
     private static partial JSObject RegisterCompletionProvider(
@@ -58,6 +66,14 @@ internal sealed partial class BlazorMonacoInterop
 
     [JSImport("onCancellationRequested", moduleName)]
     private static partial void OnCancellationRequested(JSObject token, [JSMarshalAs<JSType.Function>] Action callback);
+
+    [JSExport]
+    internal static void OnDidChangeCursorPositionCallback(
+        [JSMarshalAs<JSType.Any>] object callback, int offset)
+    {
+        var action = ((DotNetObjectReference<Action<int>>)callback).Value;
+        action(offset);
+    }
 
     [JSExport]
     internal static async Task<string> ProvideCompletionItemsAsync(
@@ -143,6 +159,15 @@ internal sealed partial class BlazorMonacoInterop
     {
         await EnsureInitializedAsync();
         ExecuteAction(editorId, actionId);
+    }
+
+    public async Task<IDisposable> OnDidChangeCursorPosition(string editorId, Action<int> callback)
+    {
+        await EnsureInitializedAsync();
+        JSObject disposable = OnDidChangeCursorPosition(
+            editorId,
+            DotNetObjectReference.Create(callback));
+        return new Disposable(disposable);
     }
 
     public async Task<IDisposable> RegisterCompletionProviderAsync(
