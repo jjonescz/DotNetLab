@@ -244,7 +244,8 @@ public sealed class Compiler(
                         Language = CompiledAssembly.OutputLanguageId,
                         LazyTextAndMetadata = () =>
                         {
-                            var formatted = treeFormatter.Format(syntaxTree.GetRoot());
+                            var model = finalCompilation.GetSemanticModel(syntaxTree);
+                            var formatted = treeFormatter.Format(model, syntaxTree.GetRoot());
                             return new((
                                 formatted.Text,
                                 new CompiledFileOutputMetadata

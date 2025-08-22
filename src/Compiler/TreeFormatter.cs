@@ -9,9 +9,10 @@ namespace DotNetLab;
 
 public sealed class TreeFormatter
 {
-    public Result Format(object? obj)
+    public Result Format(SemanticModel model, object? obj)
     {
         var writer = new Writer();
+        var seenOperations = new HashSet<IOperation>(ReferenceEqualityComparer.Instance);
 
         format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
 
@@ -108,14 +109,23 @@ public sealed class TreeFormatter
                 return;
             }
 
-            var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
-                .Select(PropertyLike.Create)
-                .Concat(type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                .Where(m => propertyFilter(m.Name) &&
-                    m.Name is nameof(SyntaxTrivia.GetStructure) &&
-                    m.ReturnType != typeof(void) && m.GetParameters() is [])
-                .Select(PropertyLike.Create)).ToList();
+            if (obj is IOperation operation && !seenOperations.Add(operation))
+            {
+                return;
+            }
+
+            List<PropertyLike> properties =
+            [
+                .. PropertyLike.CreateGetOperation(model, obj),
+                .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
+                    .Select(PropertyLike.Create),
+                .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(m => propertyFilter(m.Name) &&
+                        m.Name is nameof(SyntaxTrivia.GetStructure) &&
+                        m.ReturnType != typeof(void) && m.GetParameters() is [])
+                    .Select(PropertyLike.Create),
+            ];
 
             var enumerable = asCollection(obj, type);
 
@@ -127,7 +137,7 @@ public sealed class TreeFormatter
                     displaySubgroup(properties);
                     properties = [];
                 }
-                else if (obj is SyntaxNode or SyntaxToken or SyntaxTrivia)
+                else if (hasMoreInterestingProperties(obj))
                 {
                     var subgroup = new List<PropertyLike>();
 
@@ -204,9 +214,11 @@ public sealed class TreeFormatter
                     if (
                         // SyntaxTree is too verbose and repeated.
                         property.Type.IsAssignableTo(typeof(SyntaxTree)) ||
-                        // The following basically contain the parent recursively.
+                        // The following basically contain the parent recursively or duplicate children displayed elsewhere.
                         (obj is SyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
-                        (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)))
+                        (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
+                        (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) &&
+                            type.IsAssignableTo(typeof(IOperation))))
                     {
                         continue;
                     }
@@ -379,6 +391,11 @@ public sealed class TreeFormatter
             return type.GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         }
 
+        static bool hasMoreInterestingProperties(object obj)
+        {
+            return obj is SyntaxNode or SyntaxToken or SyntaxTrivia or IOperation;
+        }
+
         static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
         {
             if (property.Name is nameof(SyntaxToken.Text))
@@ -395,7 +412,9 @@ public sealed class TreeFormatter
                     var definition = type.GetGenericTypeDefinition();
 
                     return definition == typeof(SyntaxList<>) ||
-                        definition == typeof(SeparatedSyntaxList<>);
+                        definition == typeof(SeparatedSyntaxList<>) ||
+                        (definition == typeof(ImmutableArray<>) && type.GetGenericArguments() is [{ } arg] &&
+                            arg.IsAssignableTo(typeof(IOperation)));
                 }
 
                 return type == typeof(SyntaxTrivia) ||
@@ -403,7 +422,8 @@ public sealed class TreeFormatter
                     type == typeof(SyntaxToken);
             }
 
-            return type.IsAssignableTo(typeof(SyntaxNode));
+            return type.IsAssignableTo(typeof(IOperation)) ||
+                type.IsAssignableTo(typeof(SyntaxNode));
         }
     }
 
@@ -613,6 +633,35 @@ public sealed class TreeFormatter
                 }
             },
         };
+
+        public static IEnumerable<PropertyLike> CreateGetOperation(SemanticModel model, object obj)
+        {
+            if (obj is SyntaxNode node)
+            {
+                return
+                [
+                    new PropertyLike
+                    {
+                        Name = nameof(model.GetOperation),
+                        Type = typeof(IOperation),
+                        IsMethod = true,
+                        Getter = _ =>
+                        {
+                            try
+                            {
+                                return model.GetOperation(node);
+                            }
+                            catch (Exception ex)
+                            {
+                                return ex;
+                            }
+                        },
+                    },
+                ];
+            }
+
+            return [];
+        }
     }
 
     private static class Util
