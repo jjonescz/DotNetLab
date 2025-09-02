@@ -80,6 +80,9 @@ internal sealed record InitialCode
 
     // IMPORTANT: Keep in sync with `Compiler.Compile`.
     public static readonly InitialCode Configuration = new("Configuration.cs", """
+        // 💡 TIP: Instead of this, you can use directives in C# files directly, for example:
+        //   #:property Configuration=Debug
+
         Config.CSharpParseOptions(options => options
             .WithLanguageVersion(LanguageVersion.Preview)
             .WithPreprocessorSymbols("DEBUG")
