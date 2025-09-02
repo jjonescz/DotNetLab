@@ -308,8 +308,8 @@ public sealed class Compiler(
                                 throw new InvalidOperationException("Cannot find primary class.");
                             }
 
-                            var ns = primaryNamespace.Content;
-                            var cls = primaryClass.ClassName;
+                            var ns = primaryNamespace.GetNameSafe();
+                            var cls = primaryClass.GetNameSafe();
 
                             if (string.IsNullOrEmpty(cls))
                             {

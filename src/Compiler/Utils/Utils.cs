@@ -204,6 +204,22 @@ internal static class RazorUtil
         return document.GetDocumentDataSafe<DocumentIntermediateNode>("GetDocumentIntermediateNode", "GetDocumentNode");
     }
 
+    public static string? GetNameSafe(this NamespaceDeclarationIntermediateNode node)
+    {
+        // `Content` renamed to `Name` in https://github.com/dotnet/razor/commit/80ac8ef1b2c223b4fba1bc2df53d738b8ce7f8f6.
+        var type = node.GetType();
+        var property = type.GetProperty("Name") ?? type.GetProperty("Content");
+        return (string?)property!.GetValue(node);
+    }
+
+    public static string? GetNameSafe(this ClassDeclarationIntermediateNode node)
+    {
+        // `ClassName` renamed to `Name` in https://github.com/dotnet/razor/commit/dc0ec0f3c227b5220819c843dea4a9319c058744.
+        var type = node.GetType();
+        var property = type.GetProperty("Name") ?? type.GetProperty("ClassName");
+        return (string?)property!.GetValue(node);
+    }
+
     public static string GetGeneratedCode(this RazorCSharpDocument document)
     {
         // There can be either `string GeneratedCode` or `SourceText Text` property.
