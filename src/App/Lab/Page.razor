@@ -25,6 +25,10 @@
     </div>
 
     <div>
+        @* Copy URL button *@
+        <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+Q)"
+        IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
+
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
         Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
@@ -234,6 +238,7 @@
     private Input? currentInput;
     private EditorState? currentOutput;
     private string? selectedOutputType;
+    private bool urlCopied;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
     private bool outputLoading;
@@ -385,6 +390,19 @@
         RefreshCurrentSlug();
         await LoadStateFromUrlAsync();
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task CopyUrlToClipboardAsync()
+    {
+        await module.InvokeVoidAsync("copyUrlToClipboard");
+        urlCopied = true;
+        StateHasChanged();
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ =>
+        {
+            urlCopied = false;
+            StateHasChanged();
+        });
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
