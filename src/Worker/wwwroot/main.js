@@ -1,4 +1,11 @@
-﻿/** @type {import('./dotnet').ModuleAPI} */
+﻿// Avoid hot reload crashing due some browser APIs missing in web workers.
+globalThis.document = {
+    baseUri: '',
+    querySelector: () => null,
+};
+globalThis.window = globalThis;
+
+/** @type {import('./dotnet').ModuleAPI} */
 import { dotnet as dn } from '../../_framework/dotnet.js';
 import * as interop from './interop.js';
 
