@@ -7,7 +7,8 @@
             e.preventDefault();
 
             // Instead of just copying the URL directly in JavaScript,
-            // invoke the.NET method so the UI displays "copied" checkmark.
+            // invoke the.NET method so the URL is updated to reflect the current state and
+            // the UI displays "copied" checkmark afterwards.
             dotNetObj.invokeMethodAsync('CopyUrlToClipboardAsync');
         }
     };

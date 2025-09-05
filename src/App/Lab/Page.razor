@@ -396,6 +396,7 @@
     [JSInvokable]
     public async Task CopyUrlToClipboardAsync()
     {
+        await SaveStateToUrlAsync();
         await module.InvokeVoidAsync("copyUrlToClipboard");
         urlCopied = true;
         StateHasChanged();
