@@ -3,6 +3,13 @@
         if (e.ctrlKey && e.key === 's') {
             e.preventDefault();
             dotNetObj.invokeMethodAsync('CompileAndRenderAsync');
+        } else if (e.ctrlKey && e.key === ';') {
+            e.preventDefault();
+
+            // Instead of just copying the URL directly in JavaScript,
+            // invoke the.NET method so the URL is updated to reflect the current state and
+            // the UI displays "copied" checkmark afterwards.
+            dotNetObj.invokeMethodAsync('CopyUrlToClipboardAsync');
         }
     };
 
@@ -20,4 +27,8 @@ export function saveMonacoEditorViewState(editorId) {
 
 export function restoreMonacoEditorViewState(editorId, state) {
     blazorMonaco.editor.getEditor(editorId)?.restoreViewState(state);
+}
+
+export function copyUrlToClipboard() {
+    navigator.clipboard.writeText(window.location.href);
 }

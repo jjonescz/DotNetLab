@@ -25,6 +25,10 @@
     </div>
 
     <div>
+        @* Copy URL button *@
+        <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
+        IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
+
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
         Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
@@ -47,7 +51,7 @@
     <div style="flex-grow: 1">
         <div style="flex-grow: 1; min-width: 10rem">
             @* Outdated output info *@
-            @if (outputOutdated)
+            @if (IsOutputOutdated)
             {
                 <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
                 Style="font-size: 0.8rem; font-style: normal; width: auto"
@@ -57,7 +61,7 @@
                 </FluentStack>
             }
             @* Cached info *@
-            else if (compiled is (_, _, { } cacheInfo))
+            else if (compiled is { CacheInfo: { } cacheInfo })
             {
                 var title = cacheInfo.Timestamp.HasValue
                     ? "The currently displayed output has been fetched from a server cache."
@@ -234,10 +238,12 @@
     private Input? currentInput;
     private EditorState? currentOutput;
     private string? selectedOutputType;
+    private int urlCopiedToken;
+    private bool urlCopied;
     private bool compilationInProgress;
-    private bool outputOutdated;
+    private DateTimeOffset inputChanged;
     private bool outputLoading;
-    private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo)? compiled;
+    private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo, DateTimeOffset Start, DateTimeOffset End)? compiled;
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
@@ -317,6 +323,14 @@
         get => AllOutputs.Select(o => o.Type).JoinToString(",");
     }
 
+    /// <remarks>
+    /// We don't check equality of last compiled input and current input
+    /// because we might not have current input fully loaded
+    /// (parts can live only in the editor until Compile is clicked).
+    /// </remarks>
+    private bool IsOutputOutdated
+        => compiled is not { Start: var compileStart } || compileStart < inputChanged;
+
     protected override void OnInitialized()
     {
         NavigationManager.LocationChanged += OnLocationChanged;
@@ -377,6 +391,24 @@
         RefreshCurrentSlug();
         await LoadStateFromUrlAsync();
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task CopyUrlToClipboardAsync()
+    {
+        await SaveStateToUrlAsync();
+        await module.InvokeVoidAsync("copyUrlToClipboard");
+        urlCopied = true;
+        StateHasChanged();
+        var token = Interlocked.Increment(ref urlCopiedToken);
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ =>
+        {
+            if (token == urlCopiedToken)
+            {
+                urlCopied = false;
+                StateHasChanged();
+            }
+        });
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
@@ -656,10 +688,10 @@
         var state = await SaveStateToUrlAsync();
 
         // Compile.
+        var startTime = DateTimeOffset.Now;
         var input = state.ToCompilationInput();
         var output = await Worker.CompileAsync(input, languageServicesEnabled: LanguageServices.Enabled);
-        compiled = (input, output, null);
-        outputOutdated = false;
+        compiled = (input, output, CacheInfo: null, Start: startTime, End: DateTimeOffset.Now);
 
         await DisplaySquigglesAsync();
 
@@ -696,8 +728,17 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
-        LanguageServices.CancelDiagnostics();
+        if (LanguageServices.Enabled)
+        {
+            if (IsOutputOutdated)
+            {
+                // Avoid overwriting live diagnostics which are newer.
+                return;
+            }
+
+            // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
+            LanguageServices.CancelDiagnostics();
+        }
 
         foreach (var input in inputs)
         {
@@ -1007,13 +1048,13 @@
     private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
-        if (compiled is (var existingInput, _, null) && Equals(input, existingInput))
+        if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
         {
             return;
         }
 
-        compiled = (input, output, info);
-        outputOutdated = false;
+        var timestamp = DateTimeOffset.Now;
+        compiled = (input, output, info, Start: timestamp, End: timestamp);
         StateHasChanged();
         await DisplaySquigglesAsync();
 
@@ -1055,7 +1096,7 @@
     /// </summary>
     public Task OnWorkspaceChangedAsync()
     {
-        outputOutdated = true;
+        inputChanged = DateTimeOffset.Now;
 
         if (!LanguageServices.Enabled)
         {
@@ -1094,7 +1135,7 @@
 
     private void OnDidChangeModelContent(ModelContentChangedEvent args)
     {
-        outputOutdated = true;
+        inputChanged = DateTimeOffset.Now;
         LanguageServices.OnDidChangeModelContent(args);
     }
 
@@ -1111,7 +1152,7 @@
 
     public void OnSettingsInputChanged()
     {
-        outputOutdated = true;
+        inputChanged = DateTimeOffset.Now;
         StateHasChanged();
     }
 
