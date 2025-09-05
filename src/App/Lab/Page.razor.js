@@ -3,7 +3,7 @@
         if (e.ctrlKey && e.key === 's') {
             e.preventDefault();
             dotNetObj.invokeMethodAsync('CompileAndRenderAsync');
-        } else if (e.ctrlKey && e.key === 'q') {
+        } else if (e.ctrlKey && e.key === ';') {
             e.preventDefault();
 
             // Instead of just copying the URL directly in JavaScript,
