@@ -238,6 +238,7 @@
     private Input? currentInput;
     private EditorState? currentOutput;
     private string? selectedOutputType;
+    private int urlCopiedToken;
     private bool urlCopied;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
@@ -398,10 +399,14 @@
         await module.InvokeVoidAsync("copyUrlToClipboard");
         urlCopied = true;
         StateHasChanged();
+        var token = Interlocked.Increment(ref urlCopiedToken);
         _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ =>
         {
-            urlCopied = false;
-            StateHasChanged();
+            if (token == urlCopiedToken)
+            {
+                urlCopied = false;
+                StateHasChanged();
+            }
         });
     }
 
