@@ -26,7 +26,7 @@ internal sealed class AssemblyDownloader
             return FrozenDictionary<string, string>.Empty;
         }
 
-        return config.Resources.Assembly.Keys.ToFrozenDictionary(n => config.Resources.Fingerprinting[n], n => n);
+        return config.Resources.Assembly.ToFrozenDictionary(static a => a.VirtualPath, static a => a.Name);
     }
 
     public async Task<ImmutableArray<byte>> DownloadAsync(string assemblyFileNameWithoutExtension)
@@ -57,6 +57,11 @@ internal sealed class DotNetBootConfig
 
 internal sealed class DotNetBootConfigResources
 {
-    public required IReadOnlyDictionary<string, string> Fingerprinting { get; init; }
-    public required IReadOnlyDictionary<string, string> Assembly { get; init; }
+    public required ImmutableArray<DotNetBootConfigAssembly> Assembly { get; init; }
+}
+
+internal sealed class DotNetBootConfigAssembly
+{
+    public required string Name { get; init; }
+    public required string VirtualPath { get; init; }
 }
