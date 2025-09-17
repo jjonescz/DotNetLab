@@ -208,7 +208,7 @@ public sealed class CompiledFileOutput
     {
         init
         {
-            text ??= value;
+            SetEagerText(value);
         }
     }
 
@@ -285,9 +285,9 @@ public sealed class CompiledFileOutput
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
     }
 
-    internal void SetEagerText(string? value)
+    internal void SetEagerText(string value)
     {
-        text = Task.CompletedTask;
+        text = Task.FromResult(new CompiledFileLazyResult { Text = value });
         Text = value;
         Metadata = null;
     }
