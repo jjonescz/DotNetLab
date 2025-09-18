@@ -16,13 +16,7 @@ public sealed class TreeFormatter
 
         format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
 
-        return new()
-        {
-            Text = writer.ToString(),
-            ClassifiedSpans = writer.GetClassifiedSpans(),
-            SourceToTree = writer.GetSourceToTree(),
-            TreeToSource = writer.GetTreeToSource(),
-        };
+        return writer.Build();
 
         void format(object? obj, ImmutableHashSet<object> parents, bool shouldMap = true)
         {
@@ -529,24 +523,19 @@ public sealed class TreeFormatter
             treeToSource.Add((tree.ToStringSpan(), source.ToStringSpan()));
         }
 
-        public override readonly string ToString()
+        public Result Build()
         {
-            return sb.ToString();
-        }
-
-        public readonly ImmutableArray<ClassifiedSpan> GetClassifiedSpans()
-        {
-            return classifiedSpans.ToImmutable();
-        }
-
-        public readonly string GetSourceToTree()
-        {
-            return new DocumentMapping(sourceToTree).Serialize();
-        }
-
-        public readonly string GetTreeToSource()
-        {
-            return new DocumentMapping(treeToSource).Serialize();
+            var text = sb.ToString();
+            var sourceText = SourceText.From(text);
+            var semanticTokenBytes = MonacoConversions.ConvertToLspFormat(sourceText, classifiedSpans);
+            var semanticTokens = Convert.ToBase64String(semanticTokenBytes);
+            return new()
+            {
+                Text = text,
+                SemanticTokens = semanticTokens,
+                SourceToTree = new DocumentMapping(sourceToTree).Serialize(),
+                TreeToSource = new DocumentMapping(treeToSource).Serialize(),
+            };
         }
 
         [NonCopyable]
@@ -682,7 +671,7 @@ public sealed class TreeFormatter
     public readonly struct Result
     {
         public required string Text { get; init; }
-        public required ImmutableArray<ClassifiedSpan> ClassifiedSpans { get; init; }
+        public required string SemanticTokens { get; init; }
         public required string SourceToTree { get; init; }
         public required string TreeToSource { get; init; }
     }

@@ -475,13 +475,6 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
-    public Task<string?> ProvideOutputSemanticTokensAsync(string modelUri, bool debug)
-    {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideOutputSemanticTokens(modelUri, debug) { Id = messageId++ },
-            deserializeAs: default(string));
-    }
-
     public Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken)
     {
         return PostAndReceiveMessageAsync(

@@ -235,7 +235,6 @@ internal sealed class LanguageServices : ILanguageServices
         try
         {
             var (text, classifiedSpansMutable) = await factory(range);
-            var lines = text.Lines;
 
             classifiedSpansMutable.Sort(ClassifiedSpanComparer.Instance);
 
@@ -253,71 +252,16 @@ internal sealed class LanguageServices : ILanguageServices
                 converted = new(classifiedSpans.Count);
             }
 
-            // Convert to the data format documented at https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider.provideDocumentSemanticTokens.
-            var data = new List<int>(classifiedSpans.Count * 5);
-
-            int lastLineNumber = 0;
-            int lastStartCharacter = 0;
-
-            for (var currentClassifiedSpanIndex = 0; currentClassifiedSpanIndex < classifiedSpans.Count;)
-            {
-                var classifiedSpan = classifiedSpans[currentClassifiedSpanIndex];
-
-                var originalTextSpan = classifiedSpan.TextSpan;
-                var linePosition = lines.GetLinePosition(originalTextSpan.Start);
-
-                var lineNumber = linePosition.Line;
-                var deltaLine = lineNumber - lastLineNumber;
-                lastLineNumber = lineNumber;
-
-                var startCharacter = linePosition.Character;
-                var deltaStartCharacter = startCharacter;
-                if (deltaLine == 0)
-                {
-                    deltaStartCharacter -= lastStartCharacter;
-                }
-                lastStartCharacter = startCharacter;
-
-                var tokenType = -1;
-                var tokenModifiers = 0;
-
-                // Classified spans with the same text span should be combined into one token.
-                do
-                {
-                    if (SemanticTokensUtil.TokenModifiers.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var m))
-                    {
-                        tokenModifiers |= m;
-                    }
-                    else if (SemanticTokensUtil.TokenTypes.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var t))
-                    {
-                        tokenType = t;
-                    }
-                }
-                while (++currentClassifiedSpanIndex < classifiedSpans.Count &&
-                    (classifiedSpan = classifiedSpans[currentClassifiedSpanIndex]).TextSpan == originalTextSpan);
-
-                if (tokenType < 0)
-                {
-                    continue;
-                }
-
-                converted?.Add($"{SemanticTokensUtil.TokenTypes.LspValues[tokenType]}[{text.ToString(originalTextSpan)}]");
-
-                data.Add(deltaLine);
-                data.Add(deltaStartCharacter);
-                data.Add(originalTextSpan.Length);
-                data.Add(tokenType);
-                data.Add(tokenModifiers);
-            }
+            var bytes = Classifier.ConvertToLspFormat(text, classifiedSpans, converted);
 
             if (converted != null)
             {
                 logger.LogDebug("Converted semantic tokens: {Tokens}", converted.JoinToString(", "));
             }
 
-            string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
+            string result = Convert.ToBase64String(bytes);
 
-            logger.LogDebug("Got semantic tokens ({Count}) for {DocPath}{Range} in {Milliseconds} ms", data.Count / 5, docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Got semantic tokens ({Bytes} bytes) for {DocPath}{Range} in {Milliseconds} ms", bytes.Length.SeparateThousands(), docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             return result;
         }

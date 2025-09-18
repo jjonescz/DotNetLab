@@ -877,6 +877,7 @@
             }
 
             currentOutput = state;
+            LanguageServices.CurrentMetadata = (state.Model.Uri, result.Metadata);
 
             bool isOutputLanguage = language == CompiledAssembly.OutputLanguageId;
 
@@ -963,7 +964,7 @@
     {
         if (TryLoadEagerOutputText(outputInfo, out var output, out var file, out var eagerText))
         {
-            return (new() { Text = eagerText }, false);
+            return (new() { Text = eagerText, Metadata = output?.Metadata }, false);
         }
 
         if (!outputLoading)
