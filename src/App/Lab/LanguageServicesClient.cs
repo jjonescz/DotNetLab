@@ -26,6 +26,8 @@ internal sealed class LanguageServicesClient(
 
     public bool Enabled => completionProvider != null;
 
+    public (string ModelUri, CompiledFileOutputMetadata? Metadata)? CurrentMetadata { get; set; }
+
     private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
@@ -84,7 +86,17 @@ internal sealed class LanguageServicesClient(
                 TokenTypes = SemanticTokensUtil.TokenTypes.LspValues,
                 TokenModifiers = SemanticTokensUtil.TokenModifiers.LspValues,
             },
-            ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) => worker.ProvideOutputSemanticTokensAsync(modelUri, debug),
+            ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) =>
+            {
+                if (CurrentMetadata is { } m
+                    && m.ModelUri == modelUri
+                    && m.Metadata?.SemanticTokens != null)
+                {
+                    return Task.FromResult<string?>(m.Metadata.SemanticTokens);
+                }
+
+                return Task.FromResult<string?>(string.Empty);
+            },
             RegisterRangeProvider = false,
         });
     }

@@ -11,8 +11,6 @@ public interface ICompiler
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc);
-
-    Task<string?> ProvideSemanticTokensAsync(string modelUri, bool debug);
 }
 
 public sealed record CompilationInput
@@ -201,9 +199,6 @@ public sealed class CompiledFileOutput
     public string? Text { get; private set; }
     public CompiledFileOutputMetadata? Metadata { get; private set; }
 
-    [JsonIgnore]
-    public object? NonSerializedMetadata { get; private set; }
-
     public string EagerText
     {
         init
@@ -220,7 +215,7 @@ public sealed class CompiledFileOutput
         }
     }
 
-    public Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata, object NonSerializedMetadata)>> LazyTextAndMetadata
+    public Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> LazyTextAndMetadata
     {
         init
         {
@@ -267,13 +262,12 @@ public sealed class CompiledFileOutput
             });
         }
 
-        if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata, object NonSerializedMetadata)>> factoryWithMetadata)
+        if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> factoryWithMetadata)
         {
             return factoryWithMetadata().SelectAsTask(output =>
             {
                 Text = output.Text;
                 Metadata = output.Metadata;
-                NonSerializedMetadata = output.NonSerializedMetadata;
                 return new CompiledFileLazyResult
                 {
                     Text = output.Text,
@@ -301,6 +295,7 @@ public readonly struct CompiledFileLazyResult
 
 public sealed class CompiledFileOutputMetadata
 {
+    public string? SemanticTokens { get; init; }
     public string? InputToOutput { get; init; }
     public string? OutputToInput { get; init; }
 }

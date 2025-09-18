@@ -250,12 +250,9 @@ public sealed class Compiler(
                                 formatted.Text,
                                 new CompiledFileOutputMetadata
                                 {
+                                    SemanticTokens = formatted.SemanticTokens,
                                     InputToOutput = formatted.SourceToTree,
                                     OutputToInput = formatted.TreeToSource,
-                                },
-                                new CompiledFileOutputNonSerializedMetadata
-                                {
-                                    ClassifiedSpans = formatted.ClassifiedSpans,
                                 }));
                         },
                     },
@@ -913,23 +910,6 @@ public sealed class Compiler(
 
             return builder.ToImmutable();
         }
-    }
-
-    /// <summary>
-    /// Similar to <see cref="LanguageServices.ProvideSemanticTokensAsync"/> but for <see cref="CompiledAssembly.OutputLanguageId"/>.
-    /// </summary>
-    public Task<string?> ProvideSemanticTokensAsync(string modelUri, bool debug)
-    {
-        if (!CompiledAssembly.TryParseOutputModelUri(modelUri, out var outputType, out var inputFileName) ||
-            LastResult is not { Output: var lastOutput } ||
-            lastOutput.CompiledAssembly.GetOutput(inputFileName, outputType) is not { Text: { } text, NonSerializedMetadata: CompiledFileOutputNonSerializedMetadata metadata })
-        {
-            logger.LogDebug("Cannot provide output semantic tokens for '{ModelUri}'.", modelUri);
-            return SemanticTokensUtil.EmptyResponse;
-        }
-
-        return LanguageServices.ConvertSemanticTokensAsync(logger, docPath: $"out/{outputType}/{inputFileName}", rangeJson: null, debug,
-            _ => new((SourceText.From(text), metadata.ClassifiedSpans.ToList())));
     }
 
     public static CSharpParseOptions CreateDefaultParseOptions()

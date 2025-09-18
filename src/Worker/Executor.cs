@@ -133,12 +133,6 @@ public sealed class WorkerExecutor(
         return await languageServices.ProvideSemanticTokensAsync(message.ModelUri, message.RangeJson, message.Debug, cancellationToken);
     }
 
-    public async Task<string?> HandleAsync(WorkerInputMessage.ProvideOutputSemanticTokens message)
-    {
-        var compiler = await services.GetRequiredService<CompilerProxy>().GetCompilerAsync();
-        return await compiler.ProvideSemanticTokensAsync(message.ModelUri, message.Debug);
-    }
-
     public async Task<string?> HandleAsync(WorkerInputMessage.ProvideCodeActions message)
     {
         using var _ = GetCancellationToken(message, out var cancellationToken);
