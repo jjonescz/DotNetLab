@@ -21,9 +21,11 @@ export function setSelection(editorId, start, end) {
     if (model) {
         const startPosition = model.getPositionAt(start);
         const endPosition = model.getPositionAt(end);
-        editor.setSelection(new monaco.Range(
+        const range = new monaco.Range(
             startPosition.lineNumber, startPosition.column,
-            endPosition.lineNumber, endPosition.column));
+            endPosition.lineNumber, endPosition.column);
+        editor.setSelection(range);
+        editor.revealRangeInCenter(range);
     }
 }
 
