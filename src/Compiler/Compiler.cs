@@ -454,7 +454,8 @@ public sealed class Compiler(
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            Executor.InvokeEntryPointAsync(entryPoint);
+            var result = Executor.InvokeEntryPointAsync(entryPoint);
+            Debug.Assert(result.IsCompletedSuccessfully);
 
             return true;
         }

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using System.Threading.Tasks;
 
 namespace DotNetLab;
 
@@ -49,7 +48,7 @@ public static class Executor
 
     public static async Task<int> InvokeEntryPointAsync(MethodInfo entryPoint)
     {
-        entryPoint = GetEntryPoint(entryPoint);
+        entryPoint = getEntryPoint(entryPoint);
         var parameters = entryPoint.GetParameters().Length == 0
             ? null
             : new object[] { Array.Empty<string>() };
@@ -72,7 +71,10 @@ public static class Executor
                 break;
         }
         return @return is int e ? e : 0;
-        static MethodInfo GetEntryPoint(MethodInfo main)
+
+        // Obtains the async Main method if available because we cannot run the synchronous Main method
+        // (because it uses Task.Wait which is unsupported in browser wasm).
+        static MethodInfo getEntryPoint(MethodInfo main)
         {
             try
             {
