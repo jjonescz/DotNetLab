@@ -10,7 +10,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [Theory]
     [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
-    [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
+    [InlineData("main", "-ci (<developer build>)", Skip = "Moved extension APIs")] // a branch can be downloaded
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -199,6 +199,44 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
         output.WriteLine(htmlText);
         Assert.Equal("<div>42</div>", htmlText);
+    }
+
+    [Fact]
+    public async Task AsyncMain()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        string code = """
+            using System;
+            using System.Threading.Tasks;
+            class Program
+            {
+                async static Task<int> Main()
+                {
+                    Console.Write("Hello.");
+                    await Task.Delay(1);
+                    return 42;
+                }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(outputFactory: null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 42
+            Stdout:
+            Hello.
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), runText);
     }
 
     [Fact]

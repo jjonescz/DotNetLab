@@ -366,12 +366,12 @@ public sealed class Compiler(
                 {
                     Type = "run",
                     Label = "Run",
-                    LazyText = () =>
+                    LazyText = async () =>
                     {
                         string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
-                            ? Executor.Execute(emitStream, references.Assemblies)
+                            ? await Executor.ExecuteAsync(emitStream, references.Assemblies)
                             : error;
-                        return new(output);
+                        return output;
                     },
                     Priority = 1,
                 },
@@ -454,7 +454,8 @@ public sealed class Compiler(
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            Executor.InvokeEntryPoint(entryPoint);
+            var result = Executor.InvokeEntryPointAsync(entryPoint);
+            Debug.Assert(result.IsCompletedSuccessfully);
 
             return true;
         }
