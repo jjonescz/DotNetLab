@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using System.Threading.Tasks;
 
 namespace DotNetLab;
 
@@ -118,7 +119,7 @@ public static partial class Util
         }
     }
 
-    public static void CaptureConsoleOutput(Action action, out string stdout, out string stderr)
+    public static async Task<(string stdout, string stderr)> CaptureConsoleOutputAsync(Func<Task> action)
     {
         using var stdoutWriter = new StringWriter();
         using var stderrWriter = new StringWriter();
@@ -128,15 +129,16 @@ public static partial class Util
         Console.SetError(stderrWriter);
         try
         {
-            action();
+            await action();
         }
         finally
         {
-            stdout = stdoutWriter.ToString();
-            stderr = stderrWriter.ToString();
             Console.SetOut(originalOut);
             Console.SetError(originalError);
         }
+        var stdout = stdoutWriter.ToString();
+        var stderr = stderrWriter.ToString();
+        return (stdout, stderr);
     }
 
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)
