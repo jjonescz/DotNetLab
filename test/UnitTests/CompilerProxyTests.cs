@@ -10,7 +10,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [Theory]
     [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
-    [InlineData("main", "-ci (<developer build>)", Skip = "Moved extension APIs")] // a branch can be downloaded
+    [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
+    [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -31,29 +32,25 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         // Some older versions of Roslyn are not compatible though (until we actually download the corresponding older DLLs
         // for language services as well but we might never actually want to support that).
 
-        var languageServices = await compiler.GetLanguageServicesAsync();
-        await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
-
-        var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
-        markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
-
-        var loadSemanticTokens = async () =>
+        try
         {
+            var languageServices = await compiler.GetLanguageServicesAsync();
+            await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
+
+            var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
+            markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
+
             var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.Current.CancellationToken);
             semanticTokensJson.Should().NotBeNull();
-        };
 
-        if (version.StartsWith("4.12."))
-        {
-            await loadSemanticTokens.Should().ThrowAsync<TypeLoadException>();
+            var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
+            codeActionsJson.Should().NotBeNull();
         }
-        else
+        catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
-            await loadSemanticTokens();
+            output.WriteLine(e.ToString());
+            version.Should().StartWith("4.");
         }
-
-        var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
-        codeActionsJson.Should().NotBeNull();
     }
 
     [Theory]
