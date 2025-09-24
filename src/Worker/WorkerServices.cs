@@ -67,7 +67,6 @@ public static class WorkerServices
         services.AddScoped<CompilerLoaderServices>();
         services.AddScoped<AssemblyDownloader>();
         services.AddScoped<CompilerProxy>();
-        services.AddScoped<TreeFormatter>();
         services.AddScoped<DependencyRegistry>();
         services.AddScoped(sp => new Lazy<NuGetDownloader>(() => ActivatorUtilities.CreateInstance<NuGetDownloader>(sp)));
         services.AddScoped<SdkDownloader>();

@@ -1,5 +1,4 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetLab;
 
@@ -25,7 +24,7 @@ public sealed class TreeFormatterTests(ITestOutputHelper output)
         var compilation = CSharpCompilation.Create("Test", [tree], RefAssemblyMetadata.All);
         var model = compilation.GetSemanticModel(tree);
         var root = tree.GetRoot(TestContext.Current.CancellationToken);
-        var formatter = WorkerServices.CreateTest().GetRequiredService<TreeFormatter>();
+        var formatter = new TreeFormatter();
         var formatted = formatter.Format(model, root).Text;
         output.WriteLine($"""
             ---

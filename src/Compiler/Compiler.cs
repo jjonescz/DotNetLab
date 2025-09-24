@@ -20,8 +20,7 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger,
-    TreeFormatter treeFormatter)
+    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger)
     : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -38,6 +37,8 @@ public sealed class Compiler(
         global using Microsoft.CodeAnalysis.Emit;
         global using System;
         """;
+
+    private readonly TreeFormatter treeFormatter = new();
 
     /// <summary>
     /// Reused for incremental source generation.
