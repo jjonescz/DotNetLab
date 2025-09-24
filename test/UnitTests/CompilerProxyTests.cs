@@ -220,12 +220,12 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(outputFactory: null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 42
