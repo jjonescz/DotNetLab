@@ -201,17 +201,17 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Equal("<div>42</div>", htmlText);
     }
 
-    [Fact]
-    public async Task AsyncMain()
+    [Theory, CombinatorialData]
+    public async Task AsyncMain(bool args)
     {
         var services = WorkerServices.CreateTest(output);
 
-        string code = """
+        string code = $$"""
             using System;
             using System.Threading.Tasks;
             class Program
             {
-                async static Task<int> Main()
+                async static Task<int> Main({{(args ? "string[] args" : "")}})
                 {
                     Console.Write("Hello.");
                     await Task.Delay(1);
