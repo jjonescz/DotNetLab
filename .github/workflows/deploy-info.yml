@@ -1,6 +1,10 @@
-name: Deploy cleanup
+name: Deploy info
 
-# NOTE: This workflow triggers the `deploy-cleanup-run.yml` workflow.
+# If there is a PR from a fork which has been approved to run GitHub Actions,
+# this action will push the PR's head to a branch directly in the repo (not the fork),
+# so it's deployed by Cloudflare Pages as a branch preview.
+
+# NOTE: This workflow triggers the `deploy-info-run.yml` workflow.
 
 on:
   workflow_dispatch:
@@ -8,11 +12,10 @@ on:
       simulate_fork_pr:
         description: 'Simulate fork for this PR number'
   pull_request:
-    types: [ closed ]
     branches: [ main ]
 
 jobs:
-  deploy-cleanup:
+  deploy-info:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
