@@ -16,7 +16,7 @@
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.2.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="ICSharpCode.Decompiler" Version="10.0.0.8079-preview1" />
+    <PackageVersion Include="ICSharpCode.Decompiler" Version="10.0.0.8176-preview2" />
     <PackageVersion Include="Knapcode.MiniZip" Version="0.21.1" />
     <PackageVersion Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
     <PackageVersion Include="Microsoft.AspNetCore.App.Ref" Version="$(AspNetCoreVersion)" />
