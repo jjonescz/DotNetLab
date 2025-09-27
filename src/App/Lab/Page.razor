@@ -7,6 +7,7 @@
 @inject InputOutputCache Cache
 @inject TemplateCache TemplateCache
 @inject BlazorMonacoInterop BlazorMonacoInterop
+@inject ILocalStorageService LocalStorage
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -208,8 +209,33 @@
                 <div slot="end">
                     @* Output loading indicator *@
                     <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
+
+                    @* Output preferences toggle *@
+                    @if (OutputHasPreferences)
+                    {
+                        <FluentButton Title="Preferences" OnClick="() => { showOutputPreferences = !showOutputPreferences; }">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Color="Color.Neutral" />
+                        </FluentButton>
+                    }
                 </div>
             </FluentTabs>
+
+            @* Output preferences *@
+            @if (showOutputPreferences && OutputHasPreferences)
+            {
+                <div style="margin: 0.5em 0.5em 0.7em 0.5em">
+                    @switch (selectedOutputType)
+                    {
+                        case "il":
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { DecodeCustomAttributeBlobs = v })"
+                                Label="Decode custom attribute blobs" />
+                            }
+                            break;
+                    }
+                </div>
+            }
 
             @* Output editor *@
             <div style="flex-grow: 1">
@@ -242,6 +268,7 @@
     private bool urlCopied;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
+    private bool showOutputPreferences;
     private bool outputLoading;
     private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo, DateTimeOffset Start, DateTimeOffset End)? compiled;
     private Settings settings = null!;
@@ -330,6 +357,9 @@
     /// </remarks>
     private bool IsOutputOutdated
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
+
+    private bool OutputHasPreferences
+        => selectedOutputType is "il";
 
     protected override void OnInitialized()
     {
@@ -1147,7 +1177,13 @@
 
     private static Orientation GetAutoOrientation()
     {
-        return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal; ;
+        return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal;
+    }
+
+    private Task ChangePreferencesAsync(Func<SavedState, SavedState> updater)
+    {
+        inputChanged = DateTimeOffset.Now;
+        return SaveStateToUrlAsync(updater, savePreferences: true);
     }
 
     public void OnSettingsInputChanged()

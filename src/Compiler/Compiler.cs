@@ -733,6 +733,7 @@ public sealed class Compiler(
             var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default)
             {
                 AssemblyResolver = getAssemblyResolver(),
+                DecodeCustomAttributeBlobs = compilationInput.Preferences.DecodeCustomAttributeBlobs,
             };
             disassembler.WriteModuleContents(peFile);
             return output.ToString();

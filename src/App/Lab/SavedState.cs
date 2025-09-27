@@ -49,7 +49,7 @@ partial class Page
 
         var state = slug switch
         {
-            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
+            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial.WithPreferences(await loadPreferencesAsync()),
             _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => wellKnownState,
             _ => Compressor.Uncompress(slug),
         };
@@ -139,6 +139,13 @@ partial class Page
 
         // Load settings.
         await settings.LoadFromStateAsync(savedState);
+
+        async Task<CompilationPreferences> loadPreferencesAsync()
+        {
+            return await LocalStorage.ContainKeyAsync(nameof(CompilationPreferences))
+                ? (await LocalStorage.GetItemAsync<CompilationPreferences>(nameof(CompilationPreferences)) ?? CompilationPreferences.Default)
+                : CompilationPreferences.Default;
+        }
     }
 
     private bool NavigateToSlug(string slug)
@@ -153,7 +160,7 @@ partial class Page
         return false;
     }
 
-    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
+    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null, bool savePreferences = false)
     {
         // Always save the current editor texts.
         var inputsToSave = await getInputsAsync();
@@ -171,6 +178,12 @@ partial class Page
             {
                 savedState = updater(savedState);
             }
+        }
+
+        if (savePreferences)
+        {
+            var preferences = savedState.GetPreferences();
+            await LocalStorage.SetItemAsync(nameof(CompilationPreferences), preferences);
         }
 
         var newSlug = Compressor.Compress(savedState);
@@ -257,6 +270,9 @@ internal sealed record SavedState
 
     public RazorStrategy RazorStrategy { get; init; }
 
+    [ProtoMember(13)]
+    public bool DecodeCustomAttributeBlobs { get; init; }
+
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
 
@@ -317,17 +333,35 @@ internal sealed record SavedState
             Configuration = Configuration,
             RazorToolchain = RazorToolchain,
             RazorStrategy = RazorStrategy,
+            Preferences = GetPreferences(),
+        };
+    }
+
+    public CompilationPreferences GetPreferences()
+    {
+        return new()
+        {
+            DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
+        };
+    }
+
+    public SavedState WithPreferences(CompilationPreferences preferences)
+    {
+        return this with
+        {
+            DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
         };
     }
 
     public static SavedState From(CompilationInput input)
     {
-        return new()
+        return new SavedState()
         {
             Inputs = input.Inputs,
             Configuration = input.Configuration,
             RazorToolchain = input.RazorToolchain,
             RazorStrategy = input.RazorStrategy,
-        };
+        }
+        .WithPreferences(input.Preferences);
     }
 }
