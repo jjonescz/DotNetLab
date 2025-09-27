@@ -722,7 +722,7 @@ public sealed class Compiler(
                 : null;
         }
 
-        static string getIl(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        string getIl(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
         {
             if (peFile is null)
             {
@@ -730,7 +730,10 @@ public sealed class Compiler(
             }
 
             var output = new ICSharpCode.Decompiler.PlainTextOutput() { IndentationString = "    " };
-            var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default);
+            var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default)
+            {
+                AssemblyResolver = getAssemblyResolver(),
+            };
             disassembler.WriteModuleContents(peFile);
             return output.ToString();
         }
@@ -820,8 +823,13 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies),
+                getAssemblyResolver(),
                 DefaultCSharpDecompilerSettings);
+        }
+
+        ICSharpCode.Decompiler.Metadata.IAssemblyResolver getAssemblyResolver()
+        {
+            return new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies);
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()
