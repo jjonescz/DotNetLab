@@ -231,6 +231,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { DecodeCustomAttributeBlobs = v })"
                                 Label="Decode custom attribute blobs" />
+                                <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
+                                Label="Show sequence points" />
                             }
                             break;
                     }

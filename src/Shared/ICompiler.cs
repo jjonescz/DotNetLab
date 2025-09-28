@@ -36,6 +36,7 @@ public sealed record CompilationPreferences
     public static CompilationPreferences Default { get; } = new();
 
     public bool DecodeCustomAttributeBlobs { get; init; }
+    public bool ShowSequencePoints { get; init; }
 }
 
 public enum RazorToolchain

@@ -273,6 +273,9 @@ internal sealed record SavedState
     [ProtoMember(13)]
     public bool DecodeCustomAttributeBlobs { get; init; }
 
+    [ProtoMember(14)]
+    public bool ShowSequencePoints { get; init; }
+
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
 
@@ -342,6 +345,7 @@ internal sealed record SavedState
         return new()
         {
             DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
+            ShowSequencePoints = ShowSequencePoints,
         };
     }
 
@@ -350,6 +354,7 @@ internal sealed record SavedState
         return this with
         {
             DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
+            ShowSequencePoints = preferences.ShowSequencePoints,
         };
     }
 
