@@ -52,6 +52,7 @@ public sealed class Compiler(
         AutomaticEvents = false,
         DecimalConstants = false,
         DoWhileStatement = false,
+        ExpandParamsArguments = false,
         FixedBuffers = false,
         ForEachStatement = false,
         ForStatement = false,
