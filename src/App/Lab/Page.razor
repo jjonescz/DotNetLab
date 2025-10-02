@@ -1060,9 +1060,20 @@
 
     private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
     {
-        if (TemplateCache.TryGetOutput(state, out var input, out var output))
+        // Load template with default preferences even if user's preferences differ.
+        var preferencesDiffer = state.GetPreferences() != CompilationPreferences.Default;
+        var stateWithoutPreferences = state.WithPreferences(CompilationPreferences.Default);
+
+        if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
             await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
+
+            // Mark as outdated if we loaded with different preferences.
+            if (preferencesDiffer)
+            {
+                inputChanged = DateTimeOffset.Now;
+            }
+
             return true;
         }
 
