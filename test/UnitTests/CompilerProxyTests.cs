@@ -95,10 +95,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal($"""
-            // /Input.cs(1,8): error CS1029: #error: 'version'
+            // (1,8): error CS1029: #error: 'version'
             // #error version
             Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-            // /Input.cs(1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
+            // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
             // #error version
             Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
             """.ReplaceLineEndings(), diagnosticsText);
@@ -423,7 +423,7 @@ public class C
         if (old)
         {
             Assert.Equal("""
-                // /Input.cs(2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                // (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
                 // class C<T> where T : allows ref struct;
                 Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
                 """.ReplaceLineEndings(), diagnosticsText);
@@ -462,7 +462,7 @@ public class C
         if (fx)
         {
             Assert.Equal("""
-                // /Input.cs(7,16): warning CS8603: Possible null reference return.
+                // (7,16): warning CS8603: Possible null reference return.
                 //         return x;
                 Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
                 """.ReplaceLineEndings(), diagnosticsText);
@@ -635,7 +635,7 @@ public class C
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal("""
-            // /Input.cs(2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+            // (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
             // #:package Microsoft.CodeAnalysis@1000
             Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
             """.ReplaceLineEndings(), diagnosticsText);
