@@ -16,7 +16,8 @@
     <div style="flex-grow: 1; justify-content: start">
         @* Logo *@
         @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
-        <a href="/#csharp" style="text-decoration: none" @onclick="@(() => OnLocationChanged("csharp"))">@*
+        @* Empty slug is used to go to "initial state + loaded user preferences". *@
+        <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
