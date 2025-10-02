@@ -31,6 +31,13 @@ partial class Page
     private SavedState savedState = SavedState.Initial;
     private string? currentSlug;
 
+    /// <summary>
+    /// Only if this is true, edits to user preferences inside <see cref="savedState"/> will be preserved.
+    /// This is true in initial clean state (when user preferences are loaded from local storage).
+    /// This is false when loading a state from URL (so the shared snippet's settings don't override user preferences).
+    /// </summary>
+    private bool editingUserPreferences;
+
     [MemberNotNull(nameof(currentSlug))]
     private void RefreshCurrentSlug()
     {
@@ -47,11 +54,11 @@ partial class Page
 
         var slug = currentSlug;
 
-        var state = slug switch
+        var (state, loadPreferences) = slug switch
         {
-            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial.WithPreferences(await loadPreferencesAsync()),
-            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => wellKnownState,
-            _ => Compressor.Uncompress(slug),
+            _ when string.IsNullOrWhiteSpace(slug) => (SavedState.Initial, true),
+            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => (wellKnownState, false),
+            _ => (Compressor.Uncompress(slug), false),
         };
 
         // Sanitize the state to avoid crashes if possible
@@ -62,7 +69,13 @@ partial class Page
             state = state with { Inputs = [] };
         }
 
+        if (loadPreferences)
+        {
+            state = state.WithPreferences(await loadPreferencesAsync());
+        }
+
         savedState = state;
+        editingUserPreferences = loadPreferences;
 
         // Dispose old inputs.
         foreach (var input in inputs)
@@ -180,7 +193,7 @@ partial class Page
             }
         }
 
-        if (savePreferences)
+        if (savePreferences && editingUserPreferences)
         {
             var preferences = savedState.GetPreferences();
             await LocalStorage.SetItemAsync(nameof(CompilationPreferences), preferences);
