@@ -33,10 +33,14 @@ public sealed record CompilationInput
 /// </summary>
 public sealed record CompilationPreferences
 {
-    public static CompilationPreferences Default { get; } = new();
+    public static CompilationPreferences Default { get; } = new()
+    {
+        ExcludeSingleFileNameInDiagnostics = true,
+    };
 
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
+    public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 }
 
 public enum RazorToolchain
@@ -104,7 +108,7 @@ public sealed record CompiledAssembly(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ConfigDiagnosticCount { get; init; }
 
-    public static readonly string DiagnosticsOutputType = "errors";
+    public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
 
     public static CompiledAssembly Fail(string output)

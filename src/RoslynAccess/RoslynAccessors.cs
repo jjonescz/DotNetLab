@@ -87,14 +87,25 @@ public static class RoslynAccessors
         return new CSharpCompilerDiagnosticAnalyzer();
     }
 
-    public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual)
+    public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual, bool excludeFileName = false)
     {
         var sb = new StringBuilder();
         var e = actual.GetEnumerator();
         for (int i = 0; e.MoveNext(); i++)
         {
             Diagnostic d = e.Current;
-            string message = ((IFormattable)d).ToString(null, CultureInfo.InvariantCulture);
+            ReadOnlySpan<char> message = ((IFormattable)d).ToString(null, CultureInfo.InvariantCulture);
+
+            // Remove file name to resemble Roslyn test output.
+            var l = d.Location;
+            if (excludeFileName && l.IsInSource)
+            {
+                var parenIndex = message.IndexOf('(');
+                if (parenIndex > 0)
+                {
+                    message = message[parenIndex..];
+                }
+            }
 
             if (i > 0)
             {
@@ -102,8 +113,8 @@ public static class RoslynAccessors
             }
 
             sb.Append("// ");
-            sb.AppendLine(message);
-            var l = d.Location;
+            sb.Append(message);
+            sb.AppendLine();
             if (l.IsInSource)
             {
                 sb.Append("// ");

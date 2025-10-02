@@ -237,6 +237,13 @@
                                 Label="Show sequence points" />
                             }
                             break;
+                        case CompiledAssembly.DiagnosticsOutputType:
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.ExcludeSingleFileNameInDiagnostics"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
+                                Label="Exclude single file name" />
+                            }
+                            break;
                     }
                 </div>
             }
@@ -363,7 +370,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasPreferences
-        => selectedOutputType is "il";
+        => selectedOutputType is "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override void OnInitialized()
     {

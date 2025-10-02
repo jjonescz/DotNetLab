@@ -233,10 +233,11 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
-    private static readonly SavedState defaults = new()
+    private static readonly SavedState defaults = new SavedState()
     {
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi,
-    };
+    }
+    .WithPreferences(CompilationPreferences.Default);
 
     public static SavedState Initial => CSharp;
 
@@ -288,6 +289,9 @@ internal sealed record SavedState
 
     [ProtoMember(14)]
     public bool ShowSequencePoints { get; init; }
+
+    [ProtoMember(15)]
+    public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
@@ -359,6 +363,7 @@ internal sealed record SavedState
         {
             DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
             ShowSequencePoints = ShowSequencePoints,
+            ExcludeSingleFileNameInDiagnostics = ExcludeSingleFileNameInDiagnostics,
         };
     }
 
@@ -368,6 +373,7 @@ internal sealed record SavedState
         {
             DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
             ShowSequencePoints = preferences.ShowSequencePoints,
+            ExcludeSingleFileNameInDiagnostics = preferences.ExcludeSingleFileNameInDiagnostics,
         };
     }
 
