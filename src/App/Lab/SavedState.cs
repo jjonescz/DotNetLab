@@ -78,12 +78,12 @@ partial class Page
         editingUserPreferences = loadPreferences;
 
         // Dispose old inputs.
-        foreach (var input in inputs)
+        var oldInputs = inputs.ToArray();
+        inputs.Clear();
+        foreach (var input in oldInputs)
         {
             await input.DisposeAsync();
         }
-
-        inputs.Clear();
 
         // Load inputs.
         activeInputTabId = IndexToInputTabId(0);
