@@ -366,7 +366,7 @@ public sealed class TreeFormatter
                     return true;
                 }
 
-                if (obj is ImmutableArray<byte> { IsDefault: false } byteImmutableArray)
+                if (obj is ImmutableArray<byte> { IsDefaultOrEmpty: false } byteImmutableArray)
                 {
                     enumerable = null;
                     compact = "0x" + Convert.ToHexStringLower(ImmutableCollectionsMarshal.AsArray(byteImmutableArray)!);
