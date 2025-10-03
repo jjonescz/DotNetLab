@@ -13,7 +13,7 @@ public sealed class TreeFormatter
     public Result Format(SemanticModel model, object? obj)
     {
         var writer = new Writer();
-        var seenObjects = new Dictionary<object, TextSpan>(ReferenceEqualityComparer.Instance);
+        var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
 
         format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
 
@@ -123,15 +123,13 @@ public sealed class TreeFormatter
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                    // Explicitly implemented properties of public interfaces
+                    .Concat(type.GetInterfaces()
+                        .Where(t => t.IsPublic)
+                        .SelectMany(i => i.GetProperties()))
+                    .DistinctBy(p => p.Name, StringComparer.Ordinal)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
                     .Select(PropertyLike.Create),
-
-                // Explicitly implemented properties of public interfaces
-                .. type.GetInterfaces()
-                    .Where(t => t.IsPublic)
-                    .SelectMany(i => i.GetProperties()
-                        .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
-                        .Select(PropertyLike.Create)),
 
                 // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -183,7 +181,7 @@ public sealed class TreeFormatter
                 }
                 catch (Exception ex)
                 {
-                    format(ex, parents);
+                    format(Util.UnwrapException(ex), parents);
                 }
             }
 
@@ -227,16 +225,25 @@ public sealed class TreeFormatter
 
             void displayProperties(IEnumerable<PropertyLike> properties)
             {
+                var isException = obj is Exception;
+                var isSyntaxTrivia = !isException && obj is SyntaxTrivia;
+
                 foreach (var property in properties)
                 {
                     // Skip some uninteresting properties.
                     if (
-                        // SyntaxTree is too verbose and repeated.
+                        // Only display message of exceptions.
+                        (isException && property.Name is not nameof(Exception.Message)) ||
+                        // SyntaxTree and SemanticModel is too verbose and repeated.
                         property.Type.IsAssignableTo(typeof(SyntaxTree)) ||
+                        property.Type.IsAssignableTo(typeof(SemanticModel)) ||
+                        // Name lists are too verbose.
+                        (property.Type == typeof(ICollection<string>) && property.Name is nameof(IAssemblySymbol.TypeNames) or nameof(IAssemblySymbol.NamespaceNames)) ||
+                        (property.Type == typeof(IEnumerable<string>) && property.Name is nameof(INamedTypeSymbol.MemberNames)) ||
                         // The following basically contain the parent recursively or duplicate children displayed elsewhere.
-                        (obj is SyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
+                        (isSyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
                         (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
-                        (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) &&
+                        (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) or "Children" &&
                             type.IsAssignableTo(typeof(IOperation))))
                     {
                         continue;
@@ -443,7 +450,8 @@ public sealed class TreeFormatter
 
                     return definition == typeof(SyntaxList<>) ||
                         definition == typeof(SeparatedSyntaxList<>) ||
-                        (definition == typeof(ImmutableArray<>) && type.GetGenericArguments() is [{ } arg] &&
+                        (definition == typeof(ImmutableArray<>) &&
+                            type.GetGenericArguments() is [{ } arg] &&
                             arg.IsAssignableTo(typeof(IOperation)));
                 }
 
@@ -453,7 +461,8 @@ public sealed class TreeFormatter
             }
 
             return type.IsAssignableTo(typeof(IOperation)) ||
-                type.IsAssignableTo(typeof(SyntaxNode));
+                type.IsAssignableTo(typeof(SyntaxNode)) ||
+                type.IsAssignableTo(typeof(ISymbol));
         }
     }
 
@@ -696,7 +705,7 @@ public sealed class TreeFormatter
                 }
                 catch (Exception ex)
                 {
-                    return ex;
+                    return Util.UnwrapException(ex);
                 }
             },
         };
@@ -720,7 +729,7 @@ public sealed class TreeFormatter
                             }
                             catch (Exception ex)
                             {
-                                return ex;
+                                return Util.UnwrapException(ex);
                             }
                         },
                     },
@@ -741,8 +750,44 @@ public sealed class TreeFormatter
             }
             catch (Exception ex)
             {
-                return ex;
+                return UnwrapException(ex);
             }
+        }
+
+        public static Exception UnwrapException(Exception ex) => ex switch
+        {
+            TargetInvocationException { InnerException: { } inner } => inner,
+            _ => ex,
+        };
+    }
+
+    private sealed class ObjectEqualityComparer : IEqualityComparer<object>
+    {
+        private static readonly SymbolEqualityComparer symbolComparer = SymbolEqualityComparer.Default;
+        private static readonly ReferenceEqualityComparer objectComparer = ReferenceEqualityComparer.Instance;
+
+        public static ObjectEqualityComparer Instance { get; } = new();
+
+        private ObjectEqualityComparer() { }
+
+        public new bool Equals(object? x, object? y)
+        {
+            if (x is ISymbol xSymbol && y is ISymbol ySymbol)
+            {
+                return symbolComparer.Equals(xSymbol, ySymbol);
+            }
+
+            return objectComparer.Equals(x, y);
+        }
+
+        public int GetHashCode(object obj)
+        {
+            if (obj is ISymbol symbol)
+            {
+                return symbolComparer.GetHashCode(symbol);
+            }
+
+            return objectComparer.GetHashCode(obj);
         }
     }
 
