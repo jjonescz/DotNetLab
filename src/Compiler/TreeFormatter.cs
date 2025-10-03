@@ -13,7 +13,7 @@ public sealed class TreeFormatter
     public Result Format(SemanticModel model, object? obj)
     {
         var writer = new Writer();
-        var seenOperations = new HashSet<IOperation>(ReferenceEqualityComparer.Instance);
+        var seenObjects = new Dictionary<object, TextSpan>(ReferenceEqualityComparer.Instance);
 
         format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
 
@@ -76,6 +76,8 @@ public sealed class TreeFormatter
 
             string? kindText = null;
 
+            var headline = writer.StartMeasurement();
+
             if (isKnownCollection(obj, type, out int length, out var propertyFilter))
             {
                 writer.Write("[", ClassificationTypeNames.Punctuation);
@@ -98,16 +100,21 @@ public sealed class TreeFormatter
                 writer.WriteLine();
             }
 
+            var headlineSpan = headline.GetSpan();
+
             using var scope = writer.TryNest();
             if (!scope.Success)
             {
                 return;
             }
 
-            if (obj is IOperation operation && !seenOperations.Add(operation))
+            if (seenObjects.TryGetValue(obj, out var existingSpan))
             {
+                writer.GoToDefinition(headlineSpan, existingSpan);
                 return;
             }
+
+            seenObjects.Add(obj, headlineSpan);
 
             List<PropertyLike> properties =
             [
@@ -461,6 +468,7 @@ public sealed class TreeFormatter
         private readonly ImmutableArray<ClassifiedSpan>.Builder classifiedSpans = ImmutableArray.CreateBuilder<ClassifiedSpan>();
         private readonly List<(StringSpan, StringSpan)> sourceToTree = [];
         private readonly List<(StringSpan, StringSpan)> treeToSource = [];
+        private readonly List<(StringSpan, StringSpan)> treeToTree = [];
         private int? needsIndent;
         private int depth;
 
@@ -497,6 +505,12 @@ public sealed class TreeFormatter
         public SpanScope StartMap(TextSpan sourceSpan)
         {
             return new SpanScope(ref this, sourceSpan);
+        }
+
+        [UnscopedRef]
+        public Measurement StartMeasurement()
+        {
+            return new Measurement(ref this);
         }
 
         private void SetDepth(int value)
@@ -563,6 +577,11 @@ public sealed class TreeFormatter
             treeToSource.Add((tree.ToStringSpan(), source.ToStringSpan()));
         }
 
+        public readonly void GoToDefinition(TextSpan link, TextSpan definition)
+        {
+            treeToTree.Add((link.ToStringSpan(), definition.ToStringSpan()));
+        }
+
         public Result Build()
         {
             var text = sb.ToString();
@@ -575,6 +594,7 @@ public sealed class TreeFormatter
                 SemanticTokens = semanticTokens,
                 SourceToTree = new DocumentMapping(sourceToTree).Serialize(),
                 TreeToSource = new DocumentMapping(treeToSource).Serialize(),
+                TreeToTree = new DocumentMapping(treeToTree).Serialize(),
             };
         }
 
@@ -626,6 +646,24 @@ public sealed class TreeFormatter
                 {
                     writer.Map(sourceSpan, treeSpan);
                 }
+            }
+        }
+
+        [NonCopyable]
+        public readonly ref struct Measurement
+        {
+            private readonly ref Writer writer;
+            private readonly int treeStartPosition;
+
+            public Measurement(ref Writer writer)
+            {
+                this.writer = ref writer;
+                treeStartPosition = writer.Position;
+            }
+
+            public TextSpan GetSpan()
+            {
+                return TextSpan.FromBounds(treeStartPosition, writer.Position);
             }
         }
     }
@@ -714,5 +752,6 @@ public sealed class TreeFormatter
         public required string SemanticTokens { get; init; }
         public required string SourceToTree { get; init; }
         public required string TreeToSource { get; init; }
+        public required string TreeToTree { get; init; }
     }
 }
