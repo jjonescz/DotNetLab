@@ -425,6 +425,7 @@ public sealed class TreeFormatter
     private struct Writer()
     {
         private const int maxDepth = 100;
+        private const int maxLength = 100_000_000;
         private const int indentSize = 2;
 
         private readonly StringBuilder sb = new();
@@ -446,6 +447,16 @@ public sealed class TreeFormatter
                 Write("..error", ClassificationTypeNames.Keyword);
                 Write(" = ", ClassificationTypeNames.Punctuation);
                 Write($"maximum depth ({maxDepth}) reached", ClassificationTypeNames.StringLiteral);
+                WriteLine();
+                return scope;
+            }
+
+            if (Position > maxLength)
+            {
+                var scope = new Scope(ref this) { Success = false };
+                Write("..error", ClassificationTypeNames.Keyword);
+                Write(" = ", ClassificationTypeNames.Punctuation);
+                Write($"maximum length ({maxLength:N0}) reached", ClassificationTypeNames.StringLiteral);
                 WriteLine();
                 return scope;
             }
