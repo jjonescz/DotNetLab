@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -133,12 +134,12 @@ public sealed class TreeFormatter
                     .Select(PropertyLike.Create),
             ];
 
-            var enumerable = asCollection(obj, type);
+            var isCollection = asCollection(obj, type, out var enumerable, out var compactCollection);
 
             if (properties.Count != 0)
             {
                 // Hide less interesting properties in a subgroup.
-                if (enumerable != null)
+                if (isCollection)
                 {
                     displaySubgroup(properties);
                     properties = [];
@@ -177,6 +178,11 @@ public sealed class TreeFormatter
                 {
                     format(ex, parents);
                 }
+            }
+
+            if (compactCollection != null)
+            {
+                writer.WriteLine(compactCollection, ClassificationTypeNames.NumericLiteral);
             }
 
             bool? addParent()
@@ -340,19 +346,30 @@ public sealed class TreeFormatter
             return false;
         }
 
-        static IEnumerable? asCollection(object obj, Type type)
+        static bool asCollection(object obj, Type type, out IEnumerable? enumerable, out string? compact)
         {
             if (type.IsGenericType && type.IsValueType)
             {
                 var definition = type.GetGenericTypeDefinition();
                 if (definition == typeof(SeparatedSyntaxList<>))
                 {
-                    return (IEnumerable)type.GetMethod(nameof(SeparatedSyntaxList<>.GetWithSeparators))!
+                    enumerable = (IEnumerable)type.GetMethod(nameof(SeparatedSyntaxList<>.GetWithSeparators))!
                         .Invoke(obj, [])!;
+                    compact = null;
+                    return true;
+                }
+
+                if (obj is ImmutableArray<byte> { IsDefault: false } byteImmutableArray)
+                {
+                    enumerable = null;
+                    compact = "0x" + Convert.ToHexStringLower(ImmutableCollectionsMarshal.AsArray(byteImmutableArray)!);
+                    return true;
                 }
             }
 
-            return obj as IEnumerable;
+            enumerable = obj as IEnumerable;
+            compact = null;
+            return enumerable != null;
         }
 
         static string? formatPrimitive(object? value)
