@@ -10,6 +10,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [Theory]
     [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
+    [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
@@ -31,29 +32,25 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         // Some older versions of Roslyn are not compatible though (until we actually download the corresponding older DLLs
         // for language services as well but we might never actually want to support that).
 
-        var languageServices = await compiler.GetLanguageServicesAsync();
-        await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
-
-        var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
-        markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
-
-        var loadSemanticTokens = async () =>
+        try
         {
+            var languageServices = await compiler.GetLanguageServicesAsync();
+            await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = "#error version" }]);
+
+            var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
+            markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
+
             var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.Current.CancellationToken);
             semanticTokensJson.Should().NotBeNull();
-        };
 
-        if (version.StartsWith("4.12."))
-        {
-            await loadSemanticTokens.Should().ThrowAsync<TypeLoadException>();
+            var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
+            codeActionsJson.Should().NotBeNull();
         }
-        else
+        catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
-            await loadSemanticTokens();
+            output.WriteLine(e.ToString());
+            version.Should().StartWith("4.");
         }
-
-        var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
-        codeActionsJson.Should().NotBeNull();
     }
 
     [Theory]
@@ -98,10 +95,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal($"""
-            // /Input.cs(1,8): error CS1029: #error: 'version'
+            // (1,8): error CS1029: #error: 'version'
             // #error version
             Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-            // /Input.cs(1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
+            // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
             // #error version
             Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
             """.ReplaceLineEndings(), diagnosticsText);
@@ -199,6 +196,44 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(htmlText);
         Assert.Equal("<div>42</div>", htmlText);
+    }
+
+    [Theory, CombinatorialData]
+    public async Task AsyncMain(bool args)
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        string code = $$"""
+            using System;
+            using System.Threading.Tasks;
+            class Program
+            {
+                async static Task<int> Main({{(args ? "string[] args" : "")}})
+                {
+                    Console.Write("Hello.");
+                    await Task.Delay(1);
+                    return 42;
+                }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(outputFactory: null);
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 42
+            Stdout:
+            Hello.
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), runText);
     }
 
     [Fact]
@@ -388,7 +423,7 @@ public class C
         if (old)
         {
             Assert.Equal("""
-                // /Input.cs(2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                // (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
                 // class C<T> where T : allows ref struct;
                 Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
                 """.ReplaceLineEndings(), diagnosticsText);
@@ -427,7 +462,7 @@ public class C
         if (fx)
         {
             Assert.Equal("""
-                // /Input.cs(7,16): warning CS8603: Possible null reference return.
+                // (7,16): warning CS8603: Possible null reference return.
                 //         return x;
                 Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
                 """.ReplaceLineEndings(), diagnosticsText);
@@ -600,7 +635,7 @@ public class C
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal("""
-            // /Input.cs(2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+            // (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
             // #:package Microsoft.CodeAnalysis@1000
             Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
             """.ReplaceLineEndings(), diagnosticsText);

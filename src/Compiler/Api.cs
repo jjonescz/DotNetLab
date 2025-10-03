@@ -25,6 +25,7 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
     private readonly List<Func<RefAssemblyList>> additionalReferences = new();
 
+    public bool EmitPdb { get; set; } = true;
     public bool HasParseOptions => cSharpParseOptions.Count > 0;
     public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
     public bool HasEmitOptions => emitOptions.Count > 0;
@@ -96,6 +97,8 @@ internal sealed class ConfigCollector : IConfig
 
 internal interface IConfig
 {
+    bool EmitPdb { get; set; }
+
     void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure);
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);

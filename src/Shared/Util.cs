@@ -8,6 +8,8 @@ namespace DotNetLab;
 
 public static partial class Util
 {
+    private static Guid? tupleElementNames, dynamicLocalVariables;
+
     [GeneratedRegex("""\s+""")]
     public static partial Regex Whitespace { get; }
 
@@ -20,6 +22,12 @@ public static partial class Util
         {
             return AsyncEnumerable.Repeat(item, 1);
         }
+    }
+
+    extension(Guid)
+    {
+        public static Guid TupleElementNames => tupleElementNames ??= new("ED9FDF71-8879-4747-8ED3-FE5EDE3CE710");
+        public static Guid DynamicLocalVariables => dynamicLocalVariables ??= new("83C563C4-B4F3-47D5-B824-BA5441477EA8");
     }
 
     extension<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
@@ -135,7 +143,7 @@ public static partial class Util
         }
     }
 
-    public static void CaptureConsoleOutput(Action action, out string stdout, out string stderr)
+    public static async Task<(string stdout, string stderr)> CaptureConsoleOutputAsync(Func<Task> action)
     {
         using var stdoutWriter = new StringWriter();
         using var stderrWriter = new StringWriter();
@@ -145,15 +153,16 @@ public static partial class Util
         Console.SetError(stderrWriter);
         try
         {
-            action();
+            await action();
         }
         finally
         {
-            stdout = stdoutWriter.ToString();
-            stderr = stderrWriter.ToString();
             Console.SetOut(originalOut);
             Console.SetError(originalError);
         }
+        var stdout = stdoutWriter.ToString();
+        var stderr = stderrWriter.ToString();
+        return (stdout, stderr);
     }
 
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)

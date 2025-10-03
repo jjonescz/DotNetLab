@@ -31,6 +31,13 @@ partial class Page
     private SavedState savedState = SavedState.Initial;
     private string? currentSlug;
 
+    /// <summary>
+    /// Only if this is true, edits to user preferences inside <see cref="savedState"/> will be preserved.
+    /// This is true in initial clean state (when user preferences are loaded from local storage).
+    /// This is false when loading a state from URL (so the shared snippet's settings don't override user preferences).
+    /// </summary>
+    private bool editingUserPreferences;
+
     [MemberNotNull(nameof(currentSlug))]
     private void RefreshCurrentSlug()
     {
@@ -47,11 +54,11 @@ partial class Page
 
         var slug = currentSlug;
 
-        var state = slug switch
+        var (state, loadPreferences) = slug switch
         {
-            _ when string.IsNullOrWhiteSpace(slug) => SavedState.Initial,
-            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => wellKnownState,
-            _ => Compressor.Uncompress(slug),
+            _ when string.IsNullOrWhiteSpace(slug) => (SavedState.Initial, true),
+            _ when WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState) => (wellKnownState, false),
+            _ => (Compressor.Uncompress(slug), false),
         };
 
         // Sanitize the state to avoid crashes if possible
@@ -62,15 +69,21 @@ partial class Page
             state = state with { Inputs = [] };
         }
 
+        if (loadPreferences)
+        {
+            state = state.WithPreferences(await loadPreferencesAsync());
+        }
+
         savedState = state;
+        editingUserPreferences = loadPreferences;
 
         // Dispose old inputs.
-        foreach (var input in inputs)
+        var oldInputs = inputs.ToArray();
+        inputs.Clear();
+        foreach (var input in oldInputs)
         {
             await input.DisposeAsync();
         }
-
-        inputs.Clear();
 
         // Load inputs.
         activeInputTabId = IndexToInputTabId(0);
@@ -139,6 +152,13 @@ partial class Page
 
         // Load settings.
         await settings.LoadFromStateAsync(savedState);
+
+        async Task<CompilationPreferences> loadPreferencesAsync()
+        {
+            return await LocalStorage.ContainKeyAsync(nameof(CompilationPreferences))
+                ? (await LocalStorage.GetItemAsync<CompilationPreferences>(nameof(CompilationPreferences)) ?? CompilationPreferences.Default)
+                : CompilationPreferences.Default;
+        }
     }
 
     private bool NavigateToSlug(string slug)
@@ -153,7 +173,7 @@ partial class Page
         return false;
     }
 
-    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null)
+    internal async Task<SavedState> SaveStateToUrlAsync(Func<SavedState, SavedState>? updater = null, bool savePreferences = false)
     {
         // Always save the current editor texts.
         var inputsToSave = await getInputsAsync();
@@ -171,6 +191,12 @@ partial class Page
             {
                 savedState = updater(savedState);
             }
+        }
+
+        if (savePreferences && editingUserPreferences)
+        {
+            var preferences = savedState.GetPreferences();
+            await LocalStorage.SetItemAsync(nameof(CompilationPreferences), preferences);
         }
 
         var newSlug = Compressor.Compress(savedState);
@@ -207,10 +233,11 @@ partial class Page
 [ProtoContract]
 internal sealed record SavedState
 {
-    private static readonly SavedState defaults = new()
+    private static readonly SavedState defaults = new SavedState()
     {
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi,
-    };
+    }
+    .WithPreferences(CompilationPreferences.Default);
 
     public static SavedState Initial => CSharp;
 
@@ -256,6 +283,18 @@ internal sealed record SavedState
     public RazorToolchain RazorToolchain { get; init; }
 
     public RazorStrategy RazorStrategy { get; init; }
+
+    [ProtoMember(13)]
+    public bool DecodeCustomAttributeBlobs { get; init; }
+
+    [ProtoMember(14)]
+    public bool ShowSequencePoints { get; init; }
+
+    [ProtoMember(16)]
+    public bool FullIl { get; init; }
+
+    [ProtoMember(15)]
+    public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
@@ -317,17 +356,41 @@ internal sealed record SavedState
             Configuration = Configuration,
             RazorToolchain = RazorToolchain,
             RazorStrategy = RazorStrategy,
+            Preferences = GetPreferences(),
+        };
+    }
+
+    public CompilationPreferences GetPreferences()
+    {
+        return new()
+        {
+            DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
+            ShowSequencePoints = ShowSequencePoints,
+            FullIl = FullIl,
+            ExcludeSingleFileNameInDiagnostics = ExcludeSingleFileNameInDiagnostics,
+        };
+    }
+
+    public SavedState WithPreferences(CompilationPreferences preferences)
+    {
+        return this with
+        {
+            DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
+            ShowSequencePoints = preferences.ShowSequencePoints,
+            FullIl = preferences.FullIl,
+            ExcludeSingleFileNameInDiagnostics = preferences.ExcludeSingleFileNameInDiagnostics,
         };
     }
 
     public static SavedState From(CompilationInput input)
     {
-        return new()
+        return new SavedState()
         {
             Inputs = input.Inputs,
             Configuration = input.Configuration,
             RazorToolchain = input.RazorToolchain,
             RazorStrategy = input.RazorStrategy,
-        };
+        }
+        .WithPreferences(input.Preferences);
     }
 }

@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
+using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
@@ -20,7 +21,7 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILogger<DecompilerAssemblyResolver> decompilerAssemblyResolverLogger,
+    ILoggerFactory loggerFactory,
     TreeFormatter treeFormatter)
     : ICompiler
 {
@@ -53,6 +54,7 @@ public sealed class Compiler(
         AutomaticEvents = false,
         DecimalConstants = false,
         DoWhileStatement = false,
+        ExpandParamsArguments = false,
         FixedBuffers = false,
         ForEachStatement = false,
         ForStatement = false,
@@ -217,14 +219,19 @@ public sealed class Compiler(
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
 
-        ICSharpCode.Decompiler.Metadata.PEFile? peFile = getPeFile(finalCompilation, out var emitDiagnostics);
+        // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
+        // which would require monitor waiting which is unsupported in browser wasm.
+        await Task.Yield();
+
+        var peFile = getPeFile(finalCompilation, emitPdb: Config.Instance.EmitPdb, out var emitDiagnostics);
 
         IEnumerable<Diagnostic> diagnostics = configDiagnostics
             .Concat(processDirectiveDiagnostics())
             .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
             .Where(filterDiagnostic);
-        string diagnosticsText = diagnostics.GetDiagnosticsText();
+        string diagnosticsText = diagnostics.GetDiagnosticsText(
+            excludeFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics && finalCompilation.SyntaxTrees is [CSharpSyntaxTree]);
         int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
         ImmutableArray<DiagnosticData> diagnosticData = diagnostics
@@ -339,8 +346,8 @@ public sealed class Compiler(
 
                             var componentTypeName = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
 
-                            ValueTask<string> result = tryGetEmitStream(finalCompilation, out var emitStream, out var error)
-                                ? new(Executor.RenderComponentToHtmlAsync(emitStream, componentTypeName))
+                            ValueTask<string> result = tryGetEmitStreams(finalCompilation, emitPdb: false, out var emitStreams, out var error)
+                                ? new(Executor.RenderComponentToHtmlAsync(emitStreams.Value.PeStream, componentTypeName))
                                 : new(error);
                             return result;
                         },
@@ -387,12 +394,12 @@ public sealed class Compiler(
                 {
                     Type = "run",
                     Label = "Run",
-                    LazyText = () =>
+                    LazyText = async () =>
                     {
-                        string output = tryGetEmitStream(getExecutableCompilation(), out var emitStream, out var error)
-                            ? Executor.Execute(emitStream, references.Assemblies)
+                        string output = tryGetEmitStreams(getExecutableCompilation(), emitPdb: false, out var emitStreams, out var error)
+                            ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies)
                             : error;
-                        return new(output);
+                        return output;
                     },
                     Priority = 1,
                 },
@@ -443,9 +450,9 @@ public sealed class Compiler(
                 ],
                 options: CreateConfigurationCompilationOptions());
 
-            var emitStream = getEmitStream(configCompilation, out diagnostics);
+            var emitStreams = getEmitStreams(configCompilation, emitPdb: false, out diagnostics);
 
-            if (emitStream != null)
+            if (emitStreams != null)
             {
                 compilerAssembliesUsed = assemblies;
             }
@@ -457,25 +464,26 @@ public sealed class Compiler(
                     ..references.Metadata,
                     ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
                 ]);
-                emitStream = getEmitStream(configCompilationWithBuiltInReferences, out var diagnosticsWithBuiltInReferences);
-                if (emitStream != null)
+                emitStreams = getEmitStreams(configCompilationWithBuiltInReferences, emitPdb: false, out var diagnosticsWithBuiltInReferences);
+                if (emitStreams != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
                     compilerAssembliesUsed = builtInAssemblies;
                 }
             }
 
-            if (emitStream == null)
+            if (emitStreams == null)
             {
                 return false;
             }
 
-            var configAssembly = alc.LoadFromStream(emitStream);
+            var configAssembly = alc.LoadFromStream(emitStreams.Value.PeStream);
 
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            Executor.InvokeEntryPoint(entryPoint);
+            var result = Executor.InvokeEntryPointAsync(entryPoint);
+            Debug.Assert(result.IsCompletedSuccessfully);
 
             return true;
         }
@@ -704,27 +712,29 @@ public sealed class Compiler(
                 : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
         }
 
-        MemoryStream? getEmitStream(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
+        (MemoryStream PeStream, MemoryStream? PdbStream)? getEmitStreams(CSharpCompilation compilation, bool emitPdb, out ImmutableArray<Diagnostic> diagnostics)
         {
-            var stream = new MemoryStream();
-            var emitResult = compilation.Emit(stream, options: emitOptions);
+            var peStream = new MemoryStream();
+            var pdbStream = emitPdb ? new MemoryStream() : null;
+            var emitResult = compilation.Emit(peStream, pdbStream, options: emitOptions);
             if (!emitResult.Success)
             {
                 diagnostics = emitResult.Diagnostics;
                 return null;
             }
 
-            stream.Position = 0;
+            peStream.Position = 0;
+            pdbStream?.Position = 0;
             diagnostics = compilation.GetDiagnostics();
-            return stream;
+            return (peStream, pdbStream);
         }
 
-        bool tryGetEmitStream(CSharpCompilation compilation,
-            [NotNullWhen(returnValue: true)] out MemoryStream? emitStream,
+        bool tryGetEmitStreams(CSharpCompilation compilation, bool emitPdb,
+            [NotNullWhen(returnValue: true)] out (MemoryStream PeStream, MemoryStream? PdbStream)? emitStreams,
             [NotNullWhen(returnValue: false)] out string? error)
         {
-            emitStream = getEmitStream(compilation, out var diagnostics);
-            if (emitStream is null)
+            emitStreams = getEmitStreams(compilation, emitPdb, out var diagnostics);
+            if (emitStreams is null)
             {
                 error = "Cannot execute due to compilation errors:" + Environment.NewLine +
                     diagnostics.JoinToString(Environment.NewLine);
@@ -735,14 +745,22 @@ public sealed class Compiler(
             return true;
         }
 
-        ICSharpCode.Decompiler.Metadata.PEFile? getPeFile(CSharpCompilation compilation, out ImmutableArray<Diagnostic> diagnostics)
+        PeFileWithPdbStream? getPeFile(CSharpCompilation compilation, bool emitPdb, out ImmutableArray<Diagnostic> diagnostics)
         {
-            return getEmitStream(compilation, out diagnostics) is { } stream
-                ? new(compilation.AssemblyName ?? "", stream)
-                : null;
+            try
+            {
+                return getEmitStreams(compilation, emitPdb, out diagnostics) is { } emitStreams
+                    ? new(exception: null, new(compilation.AssemblyName ?? "", emitStreams.PeStream), emitStreams.PdbStream)
+                    : null;
+            }
+            catch (Exception ex)
+            {
+                diagnostics = [];
+                return new PeFileWithPdbStream(ExceptionDispatchInfo.Capture(ex), null, null);
+            }
         }
 
-        static string getIl(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        string getIl(PeFileWithPdbStream? peFile)
         {
             if (peFile is null)
             {
@@ -750,20 +768,43 @@ public sealed class Compiler(
             }
 
             var output = new ICSharpCode.Decompiler.PlainTextOutput() { IndentationString = "    " };
-            var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default);
-            disassembler.WriteModuleContents(peFile);
+            var disassembler = new ICSharpCode.Decompiler.Disassembler.ReflectionDisassembler(output, cancellationToken: default)
+            {
+                AssemblyResolver = getAssemblyResolver(),
+                DecodeCustomAttributeBlobs = compilationInput.Preferences.DecodeCustomAttributeBlobs,
+                ShowSequencePoints = compilationInput.Preferences.ShowSequencePoints,
+                DebugInfo = peFile.PdbStream != null
+                    ? new DebugInfoProvider(loggerFactory.CreateLogger<DebugInfoProvider>(), peFile.PdbStream)
+                    : null,
+            };
+
+            if (compilationInput.Preferences.FullIl)
+            {
+                disassembler.WriteAssemblyHeader(peFile.PeFile);
+                output.WriteLine();
+            }
+
+            disassembler.WriteModuleContents(peFile.PeFile);
+
+            if (compilationInput.Preferences.FullIl)
+            {
+                output.Write("// references");
+                output.WriteLine();
+                disassembler.WriteAssemblyReferences(peFile.PeFile.Metadata);
+            }
+
             return output.ToString();
         }
 
         // Inspired by https://github.com/icsharpcode/ILSpy/pull/1040.
-        async Task<string> getSequencePoints(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getSequencePoints(PeFileWithPdbStream? peFile)
         {
             if (peFile is null)
             {
                 return "";
             }
 
-            var typeSystem = await getCSharpDecompilerTypeSystemAsync(peFile);
+            var typeSystem = await getCSharpDecompilerTypeSystemAsync(peFile.PeFile);
             var settings = DefaultCSharpDecompilerSettings;
             var decompiler = new ICSharpCode.Decompiler.CSharp.CSharpDecompiler(typeSystem, settings);
 
@@ -818,14 +859,14 @@ public sealed class Compiler(
             return result.ToString();
         }
 
-        async Task<string> getCSharpAsync(ICSharpCode.Decompiler.Metadata.PEFile? peFile)
+        async Task<string> getCSharpAsync(PeFileWithPdbStream? peFile)
         {
             if (peFile is null)
             {
                 return "";
             }
 
-            var decompiler = await getCSharpDecompilerAsync(peFile);
+            var decompiler = await getCSharpDecompilerAsync(peFile.PeFile);
             return decompiler.DecompileWholeModuleAsString();
         }
 
@@ -840,8 +881,13 @@ public sealed class Compiler(
         {
             return await ICSharpCode.Decompiler.TypeSystem.DecompilerTypeSystem.CreateAsync(
                 peFile,
-                new DecompilerAssemblyResolver(decompilerAssemblyResolverLogger, references.Assemblies),
+                getAssemblyResolver(),
                 DefaultCSharpDecompilerSettings);
+        }
+
+        ICSharpCode.Decompiler.Metadata.IAssemblyResolver getAssemblyResolver()
+        {
+            return new DecompilerAssemblyResolver(loggerFactory.CreateLogger<DecompilerAssemblyResolver>(), references.Assemblies);
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()
@@ -959,7 +1005,7 @@ public sealed class Compiler(
     }
 }
 
-public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
+internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
 {
     public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
     {
@@ -990,6 +1036,249 @@ public sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolve
     {
         logger.LogError("Module resolving not implemented ({ModuleName}).", moduleName);
         return null;
+    }
+}
+
+/// <summary>
+/// Inspired by <see href="https://github.com/icsharpcode/ILSpy/blob/61f82d0c2dd9b77a4b5d76767637e24eaa4ee73f/ICSharpCode.ILSpyX/PdbProvider/PortableDebugInfoProvider.cs"/>.
+/// </summary>
+internal sealed class DebugInfoProvider : ICSharpCode.Decompiler.DebugInfo.IDebugInfoProvider
+{
+    private readonly ILogger<DebugInfoProvider> logger;
+    private readonly MetadataReader? reader;
+
+    public DebugInfoProvider(ILogger<DebugInfoProvider> logger, Stream pdbStream)
+    {
+        this.logger = logger;
+
+        try
+        {
+            var readerProvider = MetadataReaderProvider.FromPortablePdbStream(pdbStream);
+            reader = readerProvider.GetMetadataReader();
+        }
+        catch (BadImageFormatException ex)
+        {
+            logger.LogError(ex, "Cannot create PDB reader.");
+        }
+    }
+
+    public string Description => "";
+
+    public string SourceFileName => "_";
+
+    public IList<ICSharpCode.Decompiler.DebugInfo.SequencePoint> GetSequencePoints(MethodDefinitionHandle method)
+    {
+        if (reader is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            var debugInfo = reader.GetMethodDebugInformation(method);
+            var points = debugInfo.GetSequencePoints();
+            var result = new List<ICSharpCode.Decompiler.DebugInfo.SequencePoint>();
+
+            foreach (var point in points)
+            {
+                string documentFileName;
+                if (point.Document.IsNil)
+                {
+                    documentFileName = "";
+                }
+                else
+                {
+                    var document = reader.GetDocument(point.Document);
+                    documentFileName = reader.GetString(document.Name);
+                }
+
+                result.Add(new()
+                {
+                    Offset = point.Offset,
+                    StartLine = point.StartLine,
+                    StartColumn = point.StartColumn,
+                    EndLine = point.EndLine,
+                    EndColumn = point.EndColumn,
+                    DocumentUrl = documentFileName,
+                });
+            }
+
+            return result;
+        }
+        catch (BadImageFormatException ex)
+        {
+            logger.LogError(ex, "Cannot read sequence points.");
+            return [];
+        }
+    }
+
+    public IList<ICSharpCode.Decompiler.DebugInfo.Variable> GetVariables(MethodDefinitionHandle method)
+    {
+        if (reader is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            var variables = new List<ICSharpCode.Decompiler.DebugInfo.Variable>();
+
+            foreach (var (_, local) in EnumerateLocals(method))
+            {
+                variables.Add(new(local.Index, reader.GetString(local.Name)));
+            }
+
+            return variables;
+        }
+        catch (BadImageFormatException ex)
+        {
+            logger.LogError(ex, "Cannot read variables.");
+            return [];
+        }
+    }
+
+    public bool TryGetExtraTypeInfo(MethodDefinitionHandle method, int index, out ICSharpCode.Decompiler.DebugInfo.PdbExtraTypeInfo extraTypeInfo)
+    {
+        if (reader is not null)
+        {
+            try
+            {
+                foreach (var (localHandle, local) in EnumerateLocals(method))
+                {
+                    if (local.Index == index)
+                    {
+                        extraTypeInfo = new();
+
+                        foreach (var h in reader.CustomDebugInformation)
+                        {
+                            var cdi = reader.GetCustomDebugInformation(h);
+
+                            if (cdi.Parent.IsNil || cdi.Parent.Kind != HandleKind.LocalVariable ||
+                                localHandle != (LocalVariableHandle)cdi.Parent ||
+                                cdi.Value.IsNil || cdi.Kind.IsNil)
+                            {
+                                continue;
+                            }
+
+                            var kind = reader.GetGuid(cdi.Kind);
+                            if (kind == Guid.TupleElementNames && extraTypeInfo.TupleElementNames is null)
+                            {
+                                var blobReader = reader.GetBlobReader(cdi.Value);
+                                var list = new List<string?>();
+
+                                while (blobReader.RemainingBytes > 0)
+                                {
+                                    // Read a UTF8 null-terminated string.
+                                    int length = blobReader.IndexOf(0);
+                                    string s = blobReader.ReadUTF8(length);
+
+                                    // Skip null terminator.
+                                    blobReader.ReadByte();
+
+                                    list.Add(string.IsNullOrWhiteSpace(s) ? null : s);
+                                }
+
+                                extraTypeInfo.TupleElementNames = list.ToArray();
+                            }
+                            else if (kind == Guid.DynamicLocalVariables && extraTypeInfo.DynamicFlags is null)
+                            {
+                                var blobReader = reader.GetBlobReader(cdi.Value);
+                                extraTypeInfo.DynamicFlags = new bool[blobReader.Length * 8];
+                                for (int j = 0; blobReader.RemainingBytes > 0;)
+                                {
+                                    int b = blobReader.ReadByte();
+                                    for (int i = 1; i < 0x100; i <<= 1)
+                                    {
+                                        extraTypeInfo.DynamicFlags[j++] = (b & i) != 0;
+                                    }
+                                }
+                            }
+
+                            if (extraTypeInfo.TupleElementNames != null && extraTypeInfo.DynamicFlags != null)
+                            {
+                                break;
+                            }
+                        }
+
+                        return extraTypeInfo.TupleElementNames != null || extraTypeInfo.DynamicFlags != null;
+                    }
+                }
+            }
+            catch (BadImageFormatException ex)
+            {
+                logger.LogError(ex, "Cannot get extra type info.");
+            }
+        }
+
+        extraTypeInfo = default;
+        return false;
+    }
+
+    public bool TryGetName(MethodDefinitionHandle method, int index, out string? name)
+    {
+        if (reader is not null)
+        {
+            try
+            {
+                foreach (var (_, local) in EnumerateLocals(method))
+                {
+                    if (local.Index == index)
+                    {
+                        name = reader.GetString(local.Name);
+                        return true;
+                    }
+                }
+            }
+            catch (BadImageFormatException ex)
+            {
+                logger.LogError(ex, "Cannot get variable name.");
+            }
+        }
+
+        name = null;
+        return false;
+    }
+
+    private IEnumerable<(LocalVariableHandle, LocalVariable)> EnumerateLocals(MethodDefinitionHandle method)
+    {
+        if (reader is null)
+        {
+            yield break;
+        }
+
+        foreach (var scopeHandle in reader.GetLocalScopes(method))
+        {
+            var scope = reader.GetLocalScope(scopeHandle);
+            foreach (var variableHandle in scope.GetLocalVariables())
+            {
+                yield return (variableHandle, reader.GetLocalVariable(variableHandle));
+            }
+        }
+    }
+}
+
+/// <summary>
+/// This can throw an exception lazily to prevent the whole compilation from failing
+/// which allows inspecting stuff that doesn't depend on the compilation like syntax trees.
+/// </summary>
+internal sealed class PeFileWithPdbStream(ExceptionDispatchInfo? exception, ICSharpCode.Decompiler.Metadata.PEFile? peFile, MemoryStream? pdbStream)
+{
+    public ICSharpCode.Decompiler.Metadata.PEFile PeFile
+    {
+        get
+        {
+            exception?.Throw();
+            return peFile!;
+        }
+    }
+
+    public MemoryStream? PdbStream
+    {
+        get
+        {
+            exception?.Throw();
+            return pdbStream;
+        }
     }
 }
 

@@ -24,6 +24,24 @@ public sealed record CompilationInput
     public string? Configuration { get; init; }
     public RazorToolchain RazorToolchain { get; init; }
     public RazorStrategy RazorStrategy { get; init; }
+    public CompilationPreferences Preferences { get; init; } = CompilationPreferences.Default;
+}
+
+/// <summary>
+/// These can be saved locally as user's preferences and
+/// also are saved with the input as they affect the output.
+/// </summary>
+public sealed record CompilationPreferences
+{
+    public static CompilationPreferences Default { get; } = new()
+    {
+        ExcludeSingleFileNameInDiagnostics = true,
+    };
+
+    public bool DecodeCustomAttributeBlobs { get; init; }
+    public bool ShowSequencePoints { get; init; }
+    public bool FullIl { get; init; }
+    public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 }
 
 public enum RazorToolchain
@@ -91,7 +109,7 @@ public sealed record CompiledAssembly(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ConfigDiagnosticCount { get; init; }
 
-    public static readonly string DiagnosticsOutputType = "errors";
+    public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
     public static readonly string CSharpLanguageId = "csharp";
     public static readonly string OutputLanguageId = "output";

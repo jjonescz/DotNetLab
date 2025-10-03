@@ -489,7 +489,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(result));
                     },
                     lowercase: false),
-                Create<DebugInformationFormat>(
+                Create<DebugInformationFormat?>(
                     "DebugType",
                     static (value, out result) =>
                     {
@@ -512,14 +512,25 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             return true;
                         }
 
+                        if ("none".Equals(value.Span, StringComparison.OrdinalIgnoreCase))
+                        {
+                            result = null;
+                            return true;
+                        }
+
                         result = default;
                         return false;
                     },
                     static (context, result) =>
                     {
-                        context.Config.EmitOptions(options => options.WithDebugInformationFormat(result));
+                        context.Config.EmitPdb = result != null;
+
+                        if (result is { } format)
+                        {
+                            context.Config.EmitOptions(options => options.WithDebugInformationFormat(format));
+                        }
                     },
-                    Constant(["full", "pdbonly", "portable", "embedded"])),
+                    Constant(["full", "pdbonly", "portable", "embedded", "none"])),
                 Create(
                     "DefineConstants",
                     static (context, info, value) =>
