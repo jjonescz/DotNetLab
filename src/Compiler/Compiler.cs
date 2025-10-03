@@ -756,7 +756,22 @@ public sealed class Compiler(
                     ? new DebugInfoProvider(loggerFactory.CreateLogger<DebugInfoProvider>(), peFile.PdbStream)
                     : null,
             };
+
+            if (compilationInput.Preferences.FullIl)
+            {
+                disassembler.WriteAssemblyHeader(peFile.PeFile);
+                output.WriteLine();
+            }
+
             disassembler.WriteModuleContents(peFile.PeFile);
+
+            if (compilationInput.Preferences.FullIl)
+            {
+                output.Write("// references");
+                output.WriteLine();
+                disassembler.WriteAssemblyReferences(peFile.PeFile.Metadata);
+            }
+
             return output.ToString();
         }
 

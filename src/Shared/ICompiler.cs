@@ -40,6 +40,7 @@ public sealed record CompilationPreferences
 
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
+    public bool FullIl { get; init; }
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 }
 

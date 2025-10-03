@@ -235,6 +235,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
                                 Label="Show sequence points" />
+                                <FluentCheckbox @bind-Value:get="savedState.FullIl"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
+                                Label="Full IL" />
                             }
                             break;
                         case CompiledAssembly.DiagnosticsOutputType:

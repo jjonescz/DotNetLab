@@ -290,6 +290,9 @@ internal sealed record SavedState
     [ProtoMember(14)]
     public bool ShowSequencePoints { get; init; }
 
+    [ProtoMember(16)]
+    public bool FullIl { get; init; }
+
     [ProtoMember(15)]
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 
@@ -363,6 +366,7 @@ internal sealed record SavedState
         {
             DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
             ShowSequencePoints = ShowSequencePoints,
+            FullIl = FullIl,
             ExcludeSingleFileNameInDiagnostics = ExcludeSingleFileNameInDiagnostics,
         };
     }
@@ -373,6 +377,7 @@ internal sealed record SavedState
         {
             DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
             ShowSequencePoints = preferences.ShowSequencePoints,
+            FullIl = preferences.FullIl,
             ExcludeSingleFileNameInDiagnostics = preferences.ExcludeSingleFileNameInDiagnostics,
         };
     }
