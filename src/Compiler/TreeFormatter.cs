@@ -110,10 +110,22 @@ public sealed class TreeFormatter
 
             List<PropertyLike> properties =
             [
+                // .GetOperation()
                 .. PropertyLike.CreateGetOperation(model, obj),
+
+                // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
                     .Select(PropertyLike.Create),
+
+                // Explicitly implemented properties of public interfaces
+                .. type.GetInterfaces()
+                    .Where(t => t.IsPublic)
+                    .SelectMany(i => i.GetProperties()
+                        .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
+                        .Select(PropertyLike.Create)),
+
+                // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
                     .Where(m => propertyFilter(m.Name) &&
                         m.Name is nameof(SyntaxTrivia.GetStructure) &&
