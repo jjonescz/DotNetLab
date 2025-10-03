@@ -8,6 +8,8 @@ namespace DotNetLab;
 
 public static partial class Util
 {
+    private static Guid? tupleElementNames, dynamicLocalVariables;
+
     [GeneratedRegex("""\s+""")]
     public static partial Regex Whitespace { get; }
 
@@ -17,6 +19,12 @@ public static partial class Util
         {
             return AsyncEnumerable.Repeat(item, 1);
         }
+    }
+
+    extension(Guid)
+    {
+        public static Guid TupleElementNames => tupleElementNames ??= new("ED9FDF71-8879-4747-8ED3-FE5EDE3CE710");
+        public static Guid DynamicLocalVariables => dynamicLocalVariables ??= new("83C563C4-B4F3-47D5-B824-BA5441477EA8");
     }
 
     extension<TKey, TValue>(IDictionary<TKey, TValue> dictionary)

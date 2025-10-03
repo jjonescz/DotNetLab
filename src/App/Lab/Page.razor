@@ -7,6 +7,7 @@
 @inject InputOutputCache Cache
 @inject TemplateCache TemplateCache
 @inject BlazorMonacoInterop BlazorMonacoInterop
+@inject ILocalStorageService LocalStorage
 @inject ILogger<Page> Logger
 
 <PageTitle>.NET Lab</PageTitle>
@@ -15,7 +16,8 @@
     <div style="flex-grow: 1; justify-content: start">
         @* Logo *@
         @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
-        <a href="/#csharp" style="text-decoration: none" @onclick="@(() => OnLocationChanged("csharp"))">@*
+        @* Empty slug is used to go to "initial state + loaded user preferences". *@
+        <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>@*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
 
@@ -205,11 +207,49 @@
                     </FluentTab>
                 }
 
-                <div slot="end">
+                <div slot="end" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em">
                     @* Output loading indicator *@
                     <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
+
+                    @* Output preferences toggle *@
+                    @if (OutputHasPreferences)
+                    {
+                        <FluentButton Title="Preferences" OnClick="() => { showOutputPreferences = !showOutputPreferences; }">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Color="Color.Neutral" />
+                        </FluentButton>
+                    }
                 </div>
             </FluentTabs>
+
+            @* Output preferences *@
+            @if (showOutputPreferences && OutputHasPreferences)
+            {
+                <div style="margin: 0.5em 0.5em 0.7em 0.5em">
+                    @switch (selectedOutputType)
+                    {
+                        case "il":
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { DecodeCustomAttributeBlobs = v })"
+                                Label="Decode custom attribute blobs" />
+                                <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
+                                Label="Show sequence points" />
+                                <FluentCheckbox @bind-Value:get="savedState.FullIl"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
+                                Label="Full IL" />
+                            }
+                            break;
+                        case CompiledAssembly.DiagnosticsOutputType:
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.ExcludeSingleFileNameInDiagnostics"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
+                                Label="Exclude single file name" />
+                            }
+                            break;
+                    }
+                </div>
+            }
 
             @* Output editor *@
             <div style="flex-grow: 1">
@@ -242,6 +282,7 @@
     private bool urlCopied;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
+    private bool showOutputPreferences;
     private bool outputLoading;
     private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo, DateTimeOffset Start, DateTimeOffset End)? compiled;
     private Settings settings = null!;
@@ -330,6 +371,9 @@
     /// </remarks>
     private bool IsOutputOutdated
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
+
+    private bool OutputHasPreferences
+        => selectedOutputType is "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override void OnInitialized()
     {
@@ -1026,9 +1070,20 @@
 
     private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
     {
-        if (TemplateCache.TryGetOutput(state, out var input, out var output))
+        // Load template with default preferences even if user's preferences differ.
+        var preferencesDiffer = state.GetPreferences() != CompilationPreferences.Default;
+        var stateWithoutPreferences = state.WithPreferences(CompilationPreferences.Default);
+
+        if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
             await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
+
+            // Mark as outdated if we loaded with different preferences.
+            if (preferencesDiffer)
+            {
+                inputChanged = DateTimeOffset.Now;
+            }
+
             return true;
         }
 
@@ -1147,7 +1202,13 @@
 
     private static Orientation GetAutoOrientation()
     {
-        return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal; ;
+        return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal;
+    }
+
+    private Task ChangePreferencesAsync(Func<SavedState, SavedState> updater)
+    {
+        inputChanged = DateTimeOffset.Now;
+        return SaveStateToUrlAsync(updater, savePreferences: true);
     }
 
     public void OnSettingsInputChanged()
