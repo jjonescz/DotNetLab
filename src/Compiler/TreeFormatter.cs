@@ -133,7 +133,13 @@ public sealed class TreeFormatter
             List<PropertyLike> properties =
             [
                 // .GetOperation()
-                .. PropertyLike.CreateGetOperation(model, obj),
+                .. PropertyLike.CreateFromModel(model, obj, nameof(model.GetOperation), static (m, n) => m.GetOperation(n)),
+
+                // .GetDeclaredSymbol()
+                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetDeclaredSymbol), static (m, n) => m.GetDeclaredSymbol(n)),
+
+                // .GetSymbolInfo()
+                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetSymbolInfo), static (m, n) => m.GetSymbolInfo(n)),
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -464,7 +470,8 @@ public sealed class TreeFormatter
 
                 return type == typeof(SyntaxTrivia) ||
                     type == typeof(SyntaxTriviaList) ||
-                    type == typeof(SyntaxToken);
+                    type == typeof(SyntaxToken) ||
+                    type == typeof(SymbolInfo);
             }
 
             return type.IsAssignableTo(typeof(IOperation)) ||
@@ -723,7 +730,7 @@ public sealed class TreeFormatter
             },
         };
 
-        public static IEnumerable<PropertyLike> CreateGetOperation(SemanticModel model, object obj)
+        public static IEnumerable<PropertyLike> CreateFromModel<T>(SemanticModel model, object obj, string name, Func<SemanticModel, SyntaxNode, T> getter)
         {
             if (obj is SyntaxNode node)
             {
@@ -731,14 +738,14 @@ public sealed class TreeFormatter
                 [
                     new PropertyLike
                     {
-                        Name = nameof(model.GetOperation),
-                        Type = typeof(IOperation),
+                        Name = name,
+                        Type = typeof(T),
                         IsMethod = true,
                         Getter = _ =>
                         {
                             try
                             {
-                                return model.GetOperation(node);
+                                return getter(model, node);
                             }
                             catch (Exception ex)
                             {
