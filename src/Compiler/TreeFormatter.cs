@@ -497,6 +497,11 @@ public sealed class TreeFormatter
 
         private readonly int Position => sb.Length;
 
+        private readonly int GetPositionAfterIndent()
+        {
+            return Position + ((needsIndent * indentSize) ?? 0);
+        }
+
         [UnscopedRef]
         public Scope TryNest()
         {
@@ -682,7 +687,7 @@ public sealed class TreeFormatter
             public Measurement(ref Writer writer)
             {
                 this.writer = ref writer;
-                treeStartPosition = writer.Position;
+                treeStartPosition = writer.GetPositionAfterIndent();
             }
 
             public void Stop()
