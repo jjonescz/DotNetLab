@@ -15,19 +15,12 @@ public sealed class TreeFormatter
         var writer = new Writer();
         var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
 
-        format(obj: obj, parents: ImmutableHashSet.Create<object>(ReferenceEqualityComparer.Instance, []));
+        format(obj);
 
         return writer.Build();
 
-        void format(object? obj, ImmutableHashSet<object> parents, bool shouldMap = true)
+        void format(object? obj, bool shouldMap = true)
         {
-            if (addParent() == false)
-            {
-                writer.Write("..recursive", ClassificationTypeNames.Keyword);
-                writer.WriteLine();
-                return;
-            }
-
             if (obj is SyntaxNodeOrToken nodeOrToken)
             {
                 obj = nodeOrToken.AsNode() ?? (object)nodeOrToken.AsToken();
@@ -108,13 +101,16 @@ public sealed class TreeFormatter
                 return;
             }
 
-            if (seenObjects.TryGetValue(obj, out var existingSpan))
+            if (!type.IsValueType)
             {
-                writer.GoToDefinition(headlineSpan, existingSpan);
-                return;
-            }
+                if (seenObjects.TryGetValue(obj, out var existingSpan))
+                {
+                    writer.GoToDefinition(headlineSpan, existingSpan);
+                    return;
+                }
 
-            seenObjects.Add(obj, headlineSpan);
+                seenObjects.Add(obj, headlineSpan);
+            }
 
             List<PropertyLike> properties =
             [
@@ -176,38 +172,18 @@ public sealed class TreeFormatter
                 {
                     foreach (var item in enumerable)
                     {
-                        format(item, parents);
+                        format(item);
                     }
                 }
                 catch (Exception ex)
                 {
-                    format(Util.UnwrapException(ex), parents);
+                    format(Util.UnwrapException(ex));
                 }
             }
 
             if (compactCollection != null)
             {
                 writer.WriteLine(compactCollection, ClassificationTypeNames.NumericLiteral);
-            }
-
-            bool? addParent()
-            {
-                if (obj == null || obj.GetType().IsValueType)
-                {
-                    return null;
-                }
-
-                var newParents = parents.Add(obj);
-
-                if (newParents.Count != parents.Count)
-                {
-                    Debug.Assert(newParents.Count == parents.Count + 1);
-                    parents = newParents;
-                    return true;
-                }
-
-                Debug.Assert(parents == newParents);
-                return false;
             }
 
             void displaySubgroup(IReadOnlyCollection<PropertyLike> properties)
@@ -287,7 +263,7 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    format(value, parents, shouldMap: false /* we are already mapping the whole property */);
+                    format(value, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
         }
