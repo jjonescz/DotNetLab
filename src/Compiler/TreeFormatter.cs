@@ -234,12 +234,18 @@ public sealed class TreeFormatter
                     if (
                         // Only display message of exceptions.
                         (isException && property.Name is not nameof(Exception.Message)) ||
-                        // SyntaxTree and SemanticModel is too verbose and repeated.
+                        // Global compilation objects are too verbose and repeated.
+                        property.Type.IsAssignableTo(typeof(Compilation)) ||
                         property.Type.IsAssignableTo(typeof(SyntaxTree)) ||
                         property.Type.IsAssignableTo(typeof(SemanticModel)) ||
                         // Name lists are too verbose.
                         (property.Type == typeof(ICollection<string>) && property.Name is nameof(IAssemblySymbol.TypeNames) or nameof(IAssemblySymbol.NamespaceNames)) ||
                         (property.Type == typeof(IEnumerable<string>) && property.Name is nameof(INamedTypeSymbol.MemberNames)) ||
+                        // Verbose properties.
+                        property.Type == typeof(ImmutableArray<Location>) ||
+                        property.Type == typeof(ImmutableArray<SyntaxReference>) ||
+                        property.Type == typeof(ImmutableArray<AssemblyIdentity>) ||
+                        property.Type == typeof(ImmutableArray<IAssemblySymbol>) ||
                         // The following basically contain the parent recursively or duplicate children displayed elsewhere.
                         (isSyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
                         (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
