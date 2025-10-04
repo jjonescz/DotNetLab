@@ -1,5 +1,6 @@
 ﻿using AwesomeAssertions;
 using DotNetLab.Lab;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
@@ -50,7 +51,9 @@ public sealed class TemplateCacheTests
         // Code generation depends on system new line sequence, so continue only on systems where new line is '\n'.
         if (Environment.NewLine is not "\n")
         {
-            return;
+            Assert.Skip($"""
+                Only "\n" is supported, got {SymbolDisplay.FormatPrimitive(Environment.NewLine, quoteStrings: true, useHexadecimalNumbers: false)}.
+                """);
         }
 
         // Compare JSONs (do this early so when templates are updated,
