@@ -269,8 +269,6 @@ public sealed class Compiler(
                                 }));
                         },
                     },
-                    new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
-                    new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
             }).Concat(additionalSources.Select((input) =>
