@@ -25,7 +25,7 @@ public sealed class TreeFormatterTests(ITestOutputHelper output)
         var model = compilation.GetSemanticModel(tree);
         var root = tree.GetRoot(TestContext.Current.CancellationToken);
         var formatter = new TreeFormatter();
-        var formatted = formatter.Format(model, root).Text;
+        var formatted = formatter.Format(model, root, TreeFormatter.Options.Default).Text;
         output.WriteLine($"""
             ---
             {formatted}

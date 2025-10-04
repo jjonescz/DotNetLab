@@ -10,7 +10,14 @@ namespace DotNetLab;
 
 public sealed class TreeFormatter
 {
-    public Result Format(SemanticModel model, object? obj)
+    public sealed record Options
+    {
+        public static Options Default { get; } = new();
+
+        public bool DisplayPropertiesWithDefaultValue { get; init; }
+    }
+
+    public Result Format(SemanticModel model, object? obj, Options options)
     {
         var writer = new Writer();
         var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
@@ -52,7 +59,7 @@ public sealed class TreeFormatter
 
             Debug.Assert(type != null && obj != null);
 
-            if (type.IsValueType && obj.Equals(RuntimeHelpers.GetUninitializedObject(type)))
+            if (isDefaultValueTypeInstance(obj, type))
             {
                 writer.WriteLine("default", ClassificationTypeNames.Keyword);
                 return;
@@ -233,6 +240,13 @@ public sealed class TreeFormatter
 
                     var value = property.Getter(obj);
 
+                    if (!options.DisplayPropertiesWithDefaultValue &&
+                        (value is null || isDefaultValueTypeInstance(value, value.GetType()) ||
+                        (isKnownCollection(value, value.GetType(), out var length, out _) && length == 0)))
+                    {
+                        continue;
+                    }
+
                     using var map = writer.StartMap(value is null ? default : getSpan(value, value.GetType()));
 
                     writer.Write(".", ClassificationTypeNames.Punctuation);
@@ -272,6 +286,11 @@ public sealed class TreeFormatter
                     format(value, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
+        }
+
+        static bool isDefaultValueTypeInstance(object obj, Type type)
+        {
+            return type.IsValueType && obj.Equals(RuntimeHelpers.GetUninitializedObject(type));
         }
 
         static TextSpan getSpan(object obj, Type type)
