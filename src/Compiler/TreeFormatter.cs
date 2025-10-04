@@ -15,6 +15,8 @@ public sealed class TreeFormatter
         public static Options Default { get; } = new();
 
         public bool DisplayPropertiesWithDefaultValue { get; init; }
+        public bool ExcludeSymbols { get; init; }
+        public bool ExcludeOperations { get; init; }
     }
 
     public Result Format(SemanticModel model, object? obj, Options options)
@@ -250,7 +252,10 @@ public sealed class TreeFormatter
                         (isSyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
                         (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
                         (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) or "Children" &&
-                            type.IsAssignableTo(typeof(IOperation))))
+                            type.IsAssignableTo(typeof(IOperation))) ||
+                        // Preferences.
+                        (options.ExcludeSymbols && (property.Type == typeof(SymbolInfo) || property.Type.IsAssignableTo(typeof(ISymbol)))) ||
+                        (options.ExcludeOperations && property.Type.IsAssignableTo(typeof(IOperation))))
                     {
                         continue;
                     }

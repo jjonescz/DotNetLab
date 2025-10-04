@@ -38,6 +38,8 @@ public sealed record CompilationPreferences
         ExcludeSingleFileNameInDiagnostics = true,
     };
 
+    public bool ShowSymbols { get; init; }
+    public bool ShowOperations { get; init; }
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }

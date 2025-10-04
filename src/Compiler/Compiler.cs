@@ -253,7 +253,11 @@ public sealed class Compiler(
                         LazyTextAndMetadata = () =>
                         {
                             var model = finalCompilation.GetSemanticModel(syntaxTree);
-                            var formatted = treeFormatter.Format(model, syntaxTree.GetRoot(), TreeFormatter.Options.Default);
+                            var formatted = treeFormatter.Format(model, syntaxTree.GetRoot(), TreeFormatter.Options.Default with
+                            {
+                                ExcludeSymbols = !compilationInput.Preferences.ShowSymbols,
+                                ExcludeOperations = !compilationInput.Preferences.ShowOperations,
+                            });
                             return new((
                                 formatted.Text,
                                 new CompiledFileOutputMetadata

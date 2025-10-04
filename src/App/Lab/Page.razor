@@ -228,6 +228,16 @@
                 <div style="margin: 0.5em 0.5em 0.7em 0.5em">
                     @switch (selectedOutputType)
                     {
+                        case "tree":
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
+                                Label="Show symbols" />
+                                <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
+                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
+                                Label="Show operations" />
+                            }
+                            break;
                         case "il":
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
@@ -375,7 +385,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasPreferences
-        => selectedOutputType is "il" or CompiledAssembly.DiagnosticsOutputType;
+        => selectedOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override void OnInitialized()
     {
