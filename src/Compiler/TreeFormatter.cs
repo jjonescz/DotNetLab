@@ -90,6 +90,12 @@ public sealed class TreeFormatter
                     writer.Write(")", ClassificationTypeNames.Punctuation);
                 }
 
+                if (obj is ISymbol { Name: { } symbolName })
+                {
+                    writer.Write(" ", ClassificationTypeNames.WhiteSpace);
+                    writer.Write(formatPrimitive(symbolName), ClassificationTypeNames.StringLiteral);
+                }
+
                 writer.WriteLine();
             }
 
@@ -406,7 +412,7 @@ public sealed class TreeFormatter
 
         static bool hasMoreInterestingProperties(object obj)
         {
-            return obj is SyntaxNode or SyntaxToken or SyntaxTrivia or IOperation;
+            return obj is SyntaxNode or SyntaxToken or SyntaxTrivia or IOperation or ISymbol;
         }
 
         static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
@@ -428,7 +434,8 @@ public sealed class TreeFormatter
                         definition == typeof(SeparatedSyntaxList<>) ||
                         (definition == typeof(ImmutableArray<>) &&
                             type.GetGenericArguments() is [{ } arg] &&
-                            arg.IsAssignableTo(typeof(IOperation)));
+                            (arg.IsAssignableTo(typeof(IOperation)) ||
+                            arg.IsAssignableTo(typeof(ISymbol))));
                 }
 
                 return type == typeof(SyntaxTrivia) ||
