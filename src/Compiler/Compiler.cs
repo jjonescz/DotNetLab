@@ -261,6 +261,7 @@ public sealed class Compiler(
                                     SemanticTokens = formatted.SemanticTokens,
                                     InputToOutput = formatted.SourceToTree,
                                     OutputToInput = formatted.TreeToSource,
+                                    OutputToOutput = formatted.TreeToTree,
                                 }));
                         },
                     },

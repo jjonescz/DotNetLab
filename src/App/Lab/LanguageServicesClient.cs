@@ -23,6 +23,7 @@ internal sealed class LanguageServicesClient(
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
     private CancellationTokenSource diagnosticsCts = new();
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
+    private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
 
     public bool Enabled => completionProvider != null;
 
@@ -98,6 +99,31 @@ internal sealed class LanguageServicesClient(
                 return Task.FromResult<string?>(string.Empty);
             },
             RegisterRangeProvider = false,
+        });
+
+        await blazorMonacoInterop.RegisterDefinitionProviderAsync(outputLanguageSelector, new(loggerFactory)
+        {
+            ProvideDefinition = (modelUri, offset) =>
+            {
+                if (CurrentMetadata is { } m
+                    && m.ModelUri == modelUri
+                    && m.Metadata?.OutputToOutput != null)
+                {
+                    if (outputCache is not { Metadata: var metadata, OutputToOutput: var mapping } ||
+                        metadata != m.Metadata)
+                    {
+                        mapping = DocumentMapping.Deserialize(m.Metadata.OutputToOutput);
+                        outputCache = (m.Metadata, mapping);
+                    }
+
+                    if (mapping.TryFind(offset, out var sourceSpan, out var targetSpan))
+                    {
+                        return targetSpan;
+                    }
+                }
+
+                return null;
+            },
         });
     }
 

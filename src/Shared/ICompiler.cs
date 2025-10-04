@@ -316,4 +316,5 @@ public sealed class CompiledFileOutputMetadata
     public string? SemanticTokens { get; init; }
     public string? InputToOutput { get; init; }
     public string? OutputToInput { get; init; }
+    public string? OutputToOutput { get; init; }
 }

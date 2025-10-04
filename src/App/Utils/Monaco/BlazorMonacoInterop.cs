@@ -48,6 +48,11 @@ internal sealed partial class BlazorMonacoInterop
         string language,
         [JSMarshalAs<JSType.Any>] object provider);
 
+    [JSImport("registerDefinitionProvider", moduleName)]
+    private static partial JSObject RegisterDefinitionProvider(
+        string language,
+        [JSMarshalAs<JSType.Any>] object provider);
+
     [JSImport("registerHoverProvider", moduleName)]
     private static partial JSObject RegisterHoverProvider(
         string language,
@@ -131,6 +136,17 @@ internal sealed partial class BlazorMonacoInterop
     }
 
     [JSExport]
+    internal static string? ProvideDefinition(
+        [JSMarshalAs<JSType.Any>] object providerReference,
+        string modelUri,
+        int offset)
+    {
+        var provider = ((DotNetObjectReference<DefinitionProvider>)providerReference).Value;
+        var span = provider.ProvideDefinition(modelUri, offset);
+        return span is { } value ? $"{value.Start};{value.End}" : null;
+    }
+
+    [JSExport]
     internal static async Task<string?> ProvideHoverAsync(
         [JSMarshalAs<JSType.Any>] object providerReference,
         string modelUri,
@@ -207,6 +223,17 @@ internal sealed partial class BlazorMonacoInterop
     {
         await EnsureInitializedAsync();
         JSObject disposable = RegisterCodeActionProvider(
+            JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
+            DotNetObjectReference.Create(provider));
+        return new Disposable(disposable);
+    }
+
+    public async Task<IDisposable> RegisterDefinitionProviderAsync(
+        LanguageSelector language,
+        DefinitionProvider provider)
+    {
+        await EnsureInitializedAsync();
+        JSObject disposable = RegisterDefinitionProvider(
             JsonSerializer.Serialize(language, BlazorMonacoJsonContext.Default.LanguageSelector),
             DotNetObjectReference.Create(provider));
         return new Disposable(disposable);

@@ -169,6 +169,32 @@ export function registerCodeActionProvider(language, codeActionProvider) {
     });
 }
 
+export function registerDefinitionProvider(language, definitionProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDefinitionProvider.html
+    return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
+        provideDefinition: (model, position, token) => {
+            const offset = model.getOffsetAt(position);
+            const result = globalThis.DotNetLab.BlazorMonacoInterop.ProvideDefinition(
+                definitionProvider, decodeURI(model.uri.toString()), offset);
+
+            if (result === null) {
+                return null;
+            }
+
+            const [start, end] = result.split(';');
+            const startPosition = model.getPositionAt(start);
+            const endPosition = model.getPositionAt(end);
+            const range = new monaco.Range(
+                startPosition.lineNumber, startPosition.column,
+                endPosition.lineNumber, endPosition.column);
+            return {
+                uri: model.uri,
+                range,
+            };
+        },
+    });
+}
+
 export function registerHoverProvider(language, hoverProvider) {
     // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
     return monaco.languages.registerHoverProvider(JSON.parse(language), {
