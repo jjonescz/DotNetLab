@@ -63,6 +63,9 @@ internal sealed partial class BlazorMonacoInterop
         string language,
         [JSMarshalAs<JSType.Any>] object provider);
 
+    [JSImport("underlineLinks", moduleName)]
+    public static partial void UnderlineLinksUnsafe(string editorId, int[] offsets);
+
     [JSImport("registerLanguage", moduleName)]
     private static partial void RegisterLanguage(string languageId);
 

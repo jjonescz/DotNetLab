@@ -249,6 +249,31 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
     });
 }
 
+/**
+ * @param {string} editorId
+ * @param {number[]} offsets - start,end,start,end,...
+ */
+export function underlineLinks(editorId, offsets) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    const model = editor.getModel();
+    if (model) {
+        const ranges = [];
+        for (let i = 0; i <= offsets.length; i += 2) {
+            const startPosition = model.getPositionAt(offsets[i]);
+            const endPosition = model.getPositionAt(offsets[i + 1]);
+            const range = new monaco.Range(
+                startPosition.lineNumber, startPosition.column,
+                endPosition.lineNumber, endPosition.column);
+            ranges.push(range);
+        }
+
+        editor.createDecorationsCollection(ranges.map(range => ({
+            range,
+            options: { inlineClassName: 'underline' },
+        })));
+    }
+}
+
 export function registerLanguage(languageId) {
     monaco.languages.register({ id: languageId });
 }

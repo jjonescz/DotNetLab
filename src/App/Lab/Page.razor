@@ -944,6 +944,21 @@
                 // Fold all recursively except the first level.
                 await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
                 await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
+
+                // Underline links.
+                if (result.Metadata != null &&
+                    LanguageServices.TryGetOutputToOutputMapping(result.Metadata, out var mapping))
+                {
+                    var offsets = new int[mapping.Values.Count * 2];
+                    var i = 0;
+                    foreach (var (span, _) in mapping.Values)
+                    {
+                        offsets[i++] = span.Start;
+                        offsets[i++] = span.End;
+                    }
+
+                    BlazorMonacoInterop.UnderlineLinksUnsafe(outputEditor.Id, offsets);
+                }
             }
 
             cursorSynchronizer?.Enable(result.Metadata);

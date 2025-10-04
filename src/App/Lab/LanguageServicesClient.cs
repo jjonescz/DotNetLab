@@ -29,6 +29,25 @@ internal sealed class LanguageServicesClient(
 
     public (string ModelUri, CompiledFileOutputMetadata? Metadata)? CurrentMetadata { get; set; }
 
+    public bool TryGetOutputToOutputMapping(CompiledFileOutputMetadata metadata, out DocumentMapping result)
+    {
+        if (metadata.OutputToOutput == null)
+        {
+            result = default;
+            return false;
+        }
+
+        if (outputCache is not { Metadata: var m, OutputToOutput: var mapping } ||
+            metadata != m)
+        {
+            mapping = DocumentMapping.Deserialize(metadata.OutputToOutput);
+            outputCache = (metadata, mapping);
+        }
+
+        result = mapping;
+        return true;
+    }
+
     private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
@@ -89,9 +108,9 @@ internal sealed class LanguageServicesClient(
             },
             ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) =>
             {
-                if (CurrentMetadata is { } m
-                    && m.ModelUri == modelUri
-                    && m.Metadata?.SemanticTokens != null)
+                if (CurrentMetadata is { } m &&
+                    m.ModelUri == modelUri &&
+                    m.Metadata?.SemanticTokens != null)
                 {
                     return Task.FromResult<string?>(m.Metadata.SemanticTokens);
                 }
@@ -105,21 +124,13 @@ internal sealed class LanguageServicesClient(
         {
             ProvideDefinition = (modelUri, offset) =>
             {
-                if (CurrentMetadata is { } m
-                    && m.ModelUri == modelUri
-                    && m.Metadata?.OutputToOutput != null)
+                if (CurrentMetadata is { } m &&
+                    m.ModelUri == modelUri &&
+                    m.Metadata != null &&
+                    TryGetOutputToOutputMapping(m.Metadata, out var mapping) &&
+                    mapping.TryFind(offset, out var sourceSpan, out var targetSpan))
                 {
-                    if (outputCache is not { Metadata: var metadata, OutputToOutput: var mapping } ||
-                        metadata != m.Metadata)
-                    {
-                        mapping = DocumentMapping.Deserialize(m.Metadata.OutputToOutput);
-                        outputCache = (m.Metadata, mapping);
-                    }
-
-                    if (mapping.TryFind(offset, out var sourceSpan, out var targetSpan))
-                    {
-                        return targetSpan;
-                    }
+                    return targetSpan;
                 }
 
                 return null;

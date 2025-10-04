@@ -3,9 +3,9 @@
 /// <summary>
 /// Maps <see cref="StringSpan"/>s to <see cref="StringSpan"/>s.
 /// </summary>
-public readonly struct DocumentMapping(IEnumerable<(StringSpan, StringSpan)> values)
+public readonly struct DocumentMapping(IReadOnlyList<(StringSpan, StringSpan)> values)
 {
-    public readonly IEnumerable<(StringSpan Source, StringSpan Target)> Values = values;
+    public readonly IReadOnlyList<(StringSpan Source, StringSpan Target)> Values = values;
 
     public bool IsDefault => Values is null;
 
@@ -76,7 +76,7 @@ public readonly struct DocumentMapping(IEnumerable<(StringSpan, StringSpan)> val
                     Length = reader.Read7BitEncodedInt(),
                 }));
         }
-        return new(builder.ToImmutable());
+        return new(builder.ToArray());
     }
 
     public static DocumentMapping Deserialize(string serialized)
