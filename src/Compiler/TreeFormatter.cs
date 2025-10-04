@@ -83,11 +83,16 @@ public sealed class TreeFormatter
                 writer.Write("[", ClassificationTypeNames.Punctuation);
                 writer.Write(length, ClassificationTypeNames.NumericLiteral);
                 writer.Write("]", ClassificationTypeNames.Punctuation);
+
+                headline.Stop();
+
                 writer.WriteLine();
             }
             else
             {
                 writer.Write(type.Name, type.IsValueType ? ClassificationTypeNames.StructName : ClassificationTypeNames.ClassName);
+
+                headline.Stop();
 
                 // Display kind as part of the type.
                 if (type.IsValueType && (kindText = getKindText(obj, type)) != null)
@@ -661,10 +666,11 @@ public sealed class TreeFormatter
         }
 
         [NonCopyable]
-        public readonly ref struct Measurement
+        public ref struct Measurement
         {
             private readonly ref Writer writer;
             private readonly int treeStartPosition;
+            private int? treeStopPosition;
 
             public Measurement(ref Writer writer)
             {
@@ -672,9 +678,14 @@ public sealed class TreeFormatter
                 treeStartPosition = writer.Position;
             }
 
-            public TextSpan GetSpan()
+            public void Stop()
             {
-                return TextSpan.FromBounds(treeStartPosition, writer.Position);
+                treeStopPosition = writer.Position;
+            }
+
+            public readonly TextSpan GetSpan()
+            {
+                return TextSpan.FromBounds(treeStartPosition, treeStopPosition ?? writer.Position);
             }
         }
     }
