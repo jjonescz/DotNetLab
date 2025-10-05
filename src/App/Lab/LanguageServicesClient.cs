@@ -1,6 +1,7 @@
 ﻿using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.JSInterop;
+using System.IO.Compression;
 using System.Runtime.Versioning;
 
 namespace DotNetLab.Lab;
@@ -110,9 +111,10 @@ internal sealed class LanguageServicesClient(
             {
                 if (CurrentMetadata is { } m &&
                     m.ModelUri == modelUri &&
-                    m.Metadata?.SemanticTokens != null)
+                    m.Metadata?.SemanticTokens is { } semanticTokens)
                 {
-                    return Task.FromResult<string?>(m.Metadata.SemanticTokens);
+                    var decompressed = GZipStream.Decompress(Convert.FromBase64String(semanticTokens));
+                    return Task.FromResult<string?>(Convert.ToBase64String(decompressed));
                 }
 
                 return Task.FromResult<string?>(string.Empty);
@@ -178,7 +180,7 @@ internal sealed class LanguageServicesClient(
 
         hoverProvider = await blazorMonacoInterop.RegisterHoverProviderAsync(cSharpLanguageSelector, new(loggerFactory)
         {
-            ProvideHover = worker.ProvideHoverAsync, 
+            ProvideHover = worker.ProvideHoverAsync,
         });
 
         signatureHelpProvider = await blazorMonacoInterop.RegisterSignatureHelpProviderAsync(cSharpLanguageSelector, new(loggerFactory)

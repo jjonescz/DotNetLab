@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections;
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -625,8 +626,9 @@ public sealed class TreeFormatter
         {
             var text = sb.ToString();
             var sourceText = SourceText.From(text);
-            var semanticTokenBytes = MonacoConversions.ConvertToLspFormat(sourceText, classifiedSpans);
-            var semanticTokens = Convert.ToBase64String(semanticTokenBytes);
+            var semanticTokenBytes = MonacoConversions.ConvertToLspFormat(sourceText, classifiedSpans); ;
+            var compressed = GZipStream.Compress(semanticTokenBytes);
+            var semanticTokens = Convert.ToBase64String(compressed);
             return new()
             {
                 Text = text,

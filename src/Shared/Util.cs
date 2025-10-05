@@ -1,6 +1,8 @@
 using System.Collections;
+using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -28,6 +30,42 @@ public static partial class Util
     {
         public static Guid TupleElementNames => tupleElementNames ??= new("ED9FDF71-8879-4747-8ED3-FE5EDE3CE710");
         public static Guid DynamicLocalVariables => dynamicLocalVariables ??= new("83C563C4-B4F3-47D5-B824-BA5441477EA8");
+    }
+
+    extension(GZipStream)
+    {
+        public static byte[] Compress(ReadOnlySpan<byte> bytes)
+        {
+            using var compressed = new MemoryStream();
+            using (var gzip = new GZipStream(compressed, CompressionMode.Compress))
+            {
+                gzip.Write(bytes);
+                gzip.Flush();
+            }
+            return compressed.ToArray();
+        }
+
+        public static byte[] Compress(Stream source)
+        {
+            using var compressed = new MemoryStream();
+            using (var gzip = new GZipStream(compressed, CompressionMode.Compress))
+            {
+                source.CopyTo(gzip);
+                gzip.Flush();
+            }
+            return compressed.ToArray();
+        }
+
+        public static byte[] Decompress(byte[] bytes)
+        {
+            using var decompressed = new MemoryStream();
+            using (var compressed = new MemoryStream(bytes))
+            using (var gzip = new GZipStream(compressed, CompressionMode.Decompress))
+            {
+                gzip.CopyTo(decompressed);
+            }
+            return decompressed.ToArray();
+        }
     }
 
     extension<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
@@ -490,4 +528,51 @@ public static partial class Util
 public readonly ref struct R
 {
     public void Dispose() { }
+}
+
+[UnsupportedOSPlatform("browser")]
+public readonly ref struct BrotliCompressor(ReadOnlySpan<byte> bytes)
+{
+    private readonly ReadOnlySpan<byte> bytes = bytes;
+
+    public int BufferLength => sizeof(int) + BrotliEncoder.GetMaxCompressedLength(bytes.Length);
+
+    public ReadOnlySpan<byte> Compress(Span<byte> buffer)
+    {
+        Debug.Assert(buffer.Length == BufferLength);
+
+        if (!BitConverter.TryWriteBytes(buffer, bytes.Length))
+        {
+            throw new InvalidOperationException("Failed to write length prefix for Brotli compression.");
+        }
+
+        if (!BrotliEncoder.TryCompress(bytes, buffer[sizeof(int)..], out int bytesWritten))
+        {
+            throw new InvalidOperationException("Brotli compression failed.");
+        }
+
+        return buffer[..(sizeof(int) + bytesWritten)];
+    }
+}
+
+[UnsupportedOSPlatform("browser")]
+public readonly ref struct BrotliDecompressor(ReadOnlySpan<byte> compressed)
+{
+    private readonly ReadOnlySpan<byte> compressed = compressed;
+
+    public int BufferLength => BitConverter.ToInt32(compressed);
+
+    public ReadOnlySpan<byte> Decompress(Span<byte> buffer)
+    {
+        Debug.Assert(buffer.Length == BufferLength);
+
+        if (!BrotliDecoder.TryDecompress(compressed[sizeof(int)..], buffer, out int bytesWritten))
+        {
+            throw new InvalidOperationException("Brotli decompression failed.");
+        }
+
+        Debug.Assert(bytesWritten == BufferLength);
+
+        return buffer[..bytesWritten];
+    }
 }
