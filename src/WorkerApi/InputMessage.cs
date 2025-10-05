@@ -74,9 +74,9 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record GetOutput(CompilationInput Input, string? File, string OutputType) : WorkerInputMessage<string>
+    public sealed record GetOutput(CompilationInput Input, string? File, string OutputType) : WorkerInputMessage<CompiledFileLazyResult>
     {
-        public override Task<string> HandleAsync(IExecutor executor)
+        public override Task<CompiledFileLazyResult> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -199,7 +199,7 @@ public abstract record WorkerInputMessage
         Task<NoOutput> HandleAsync(Ping message);
         Task<NoOutput> HandleAsync(Cancel message);
         Task<CompiledAssembly> HandleAsync(Compile message);
-        Task<string> HandleAsync(GetOutput message);
+        Task<CompiledFileLazyResult> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<PackageDependencyInfo> HandleAsync(GetCompilerDependencyInfo message);
         Task<List<SdkVersionInfo>> HandleAsync(GetSdkVersions message);

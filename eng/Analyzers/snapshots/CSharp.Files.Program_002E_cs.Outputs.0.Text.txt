@@ -1,0 +1,1438 @@
+﻿CompilationUnitSyntax
+  //
+    .Span = [0..313)
+    .FullSpan = [0..313)
+    .RawKind = 8840 "CompilationUnit"
+    .Language = "C#"
+  .Usings = [8]
+    //
+      .FullSpan = [0..222)
+      .Span = [0..221)
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .Span = [0..13)
+        .FullSpan = [0..14)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = IdentifierNameSyntax
+        //
+          .SpanStart = 6
+          .Span = [6..12)
+          .FullSpan = [6..12)
+          .RawKind = 8616 "IdentifierName"
+          .Language = "C#"
+        .Identifier = SyntaxToken(IdentifierToken)
+          //
+            .ValueText = "System"
+            .Value = "System"
+            .FullSpan = [6..12)
+            .SpanStart = 6
+            .Span = [6..12)
+            .Language = "C#"
+            .RawKind = 8508 "IdentifierToken"
+          .Text = "System"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [0..6)
+          .Span = [0..5)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [5..6)
+            .Span = [5..6)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [5..6)
+              .SpanStart = 5
+              .Span = [5..6)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = IdentifierNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [12..14)
+          .SpanStart = 12
+          .Span = [12..13)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [13..14)
+            .Span = [13..14)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [13..14)
+              .SpanStart = 13
+              .Span = [13..14)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 14
+        .Span = [14..47)
+        .FullSpan = [14..48)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 20
+          .Span = [20..46)
+          .FullSpan = [20..46)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = QualifiedNameSyntax
+          //
+            .SpanStart = 20
+            .Span = [20..38)
+            .FullSpan = [20..38)
+            .RawKind = 8617 "QualifiedName"
+            .Language = "C#"
+          .Left = IdentifierNameSyntax
+            //
+              .SpanStart = 20
+              .Span = [20..26)
+              .FullSpan = [20..26)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "System"
+                .Value = "System"
+                .FullSpan = [20..26)
+                .SpanStart = 20
+                .Span = [20..26)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "System"
+          .DotToken = SyntaxToken(DotToken)
+            //
+              .ValueText = "."
+              .Value = "."
+              .FullSpan = [26..27)
+              .SpanStart = 26
+              .Span = [26..27)
+              .Language = "C#"
+              .RawKind = 8218 "DotToken"
+            .Text = "."
+          .Right = IdentifierNameSyntax
+            //
+              .SpanStart = 27
+              .Span = [27..38)
+              .FullSpan = [27..38)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "Collections"
+                .Value = "Collections"
+                .FullSpan = [27..38)
+                .SpanStart = 27
+                .Span = [27..38)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "Collections"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [38..39)
+            .SpanStart = 38
+            .Span = [38..39)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 39
+            .Span = [39..46)
+            .FullSpan = [39..46)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Generic"
+              .Value = "Generic"
+              .FullSpan = [39..46)
+              .SpanStart = 39
+              .Span = [39..46)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Generic"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [14..20)
+          .SpanStart = 14
+          .Span = [14..19)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [19..20)
+            .Span = [19..20)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [19..20)
+              .SpanStart = 19
+              .Span = [19..20)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [46..48)
+          .SpanStart = 46
+          .Span = [46..47)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [47..48)
+            .Span = [47..48)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [47..48)
+              .SpanStart = 47
+              .Span = [47..48)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 48
+        .Span = [48..83)
+        .FullSpan = [48..84)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 54
+          .Span = [54..82)
+          .FullSpan = [54..82)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = QualifiedNameSyntax
+          //
+            .SpanStart = 54
+            .Span = [54..72)
+            .FullSpan = [54..72)
+            .RawKind = 8617 "QualifiedName"
+            .Language = "C#"
+          .Left = IdentifierNameSyntax
+            //
+              .SpanStart = 54
+              .Span = [54..60)
+              .FullSpan = [54..60)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "System"
+                .Value = "System"
+                .FullSpan = [54..60)
+                .SpanStart = 54
+                .Span = [54..60)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "System"
+          .DotToken = SyntaxToken(DotToken)
+            //
+              .ValueText = "."
+              .Value = "."
+              .FullSpan = [60..61)
+              .SpanStart = 60
+              .Span = [60..61)
+              .Language = "C#"
+              .RawKind = 8218 "DotToken"
+            .Text = "."
+          .Right = IdentifierNameSyntax
+            //
+              .SpanStart = 61
+              .Span = [61..72)
+              .FullSpan = [61..72)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "Collections"
+                .Value = "Collections"
+                .FullSpan = [61..72)
+                .SpanStart = 61
+                .Span = [61..72)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "Collections"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [72..73)
+            .SpanStart = 72
+            .Span = [72..73)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 73
+            .Span = [73..82)
+            .FullSpan = [73..82)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Immutable"
+              .Value = "Immutable"
+              .FullSpan = [73..82)
+              .SpanStart = 73
+              .Span = [73..82)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Immutable"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [48..54)
+          .SpanStart = 48
+          .Span = [48..53)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [53..54)
+            .Span = [53..54)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [53..54)
+              .SpanStart = 53
+              .Span = [53..54)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [82..84)
+          .SpanStart = 82
+          .Span = [82..83)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [83..84)
+            .Span = [83..84)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [83..84)
+              .SpanStart = 83
+              .Span = [83..84)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 84
+        .Span = [84..109)
+        .FullSpan = [84..110)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 90
+          .Span = [90..108)
+          .FullSpan = [90..108)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = IdentifierNameSyntax
+          //
+            .SpanStart = 90
+            .Span = [90..96)
+            .FullSpan = [90..96)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "System"
+              .Value = "System"
+              .FullSpan = [90..96)
+              .SpanStart = 90
+              .Span = [90..96)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "System"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [96..97)
+            .SpanStart = 96
+            .Span = [96..97)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 97
+            .Span = [97..108)
+            .FullSpan = [97..108)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Diagnostics"
+              .Value = "Diagnostics"
+              .FullSpan = [97..108)
+              .SpanStart = 97
+              .Span = [97..108)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Diagnostics"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [84..90)
+          .SpanStart = 84
+          .Span = [84..89)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [89..90)
+            .Span = [89..90)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [89..90)
+              .SpanStart = 89
+              .Span = [89..90)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [108..110)
+          .SpanStart = 108
+          .Span = [108..109)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [109..110)
+            .Span = [109..110)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [109..110)
+              .SpanStart = 109
+              .Span = [109..110)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 110
+        .Span = [110..148)
+        .FullSpan = [110..149)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 116
+          .Span = [116..147)
+          .FullSpan = [116..147)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = QualifiedNameSyntax
+          //
+            .SpanStart = 116
+            .Span = [116..134)
+            .FullSpan = [116..134)
+            .RawKind = 8617 "QualifiedName"
+            .Language = "C#"
+          .Left = IdentifierNameSyntax
+            //
+              .SpanStart = 116
+              .Span = [116..122)
+              .FullSpan = [116..122)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "System"
+                .Value = "System"
+                .FullSpan = [116..122)
+                .SpanStart = 116
+                .Span = [116..122)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "System"
+          .DotToken = SyntaxToken(DotToken)
+            //
+              .ValueText = "."
+              .Value = "."
+              .FullSpan = [122..123)
+              .SpanStart = 122
+              .Span = [122..123)
+              .Language = "C#"
+              .RawKind = 8218 "DotToken"
+            .Text = "."
+          .Right = IdentifierNameSyntax
+            //
+              .SpanStart = 123
+              .Span = [123..134)
+              .FullSpan = [123..134)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "Diagnostics"
+                .Value = "Diagnostics"
+                .FullSpan = [123..134)
+                .SpanStart = 123
+                .Span = [123..134)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "Diagnostics"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [134..135)
+            .SpanStart = 134
+            .Span = [134..135)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 135
+            .Span = [135..147)
+            .FullSpan = [135..147)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "CodeAnalysis"
+              .Value = "CodeAnalysis"
+              .FullSpan = [135..147)
+              .SpanStart = 135
+              .Span = [135..147)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "CodeAnalysis"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [110..116)
+          .SpanStart = 110
+          .Span = [110..115)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [115..116)
+            .Span = [115..116)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [115..116)
+              .SpanStart = 115
+              .Span = [115..116)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [147..149)
+          .SpanStart = 147
+          .Span = [147..148)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [148..149)
+            .Span = [148..149)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [148..149)
+              .SpanStart = 148
+              .Span = [148..149)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 149
+        .Span = [149..167)
+        .FullSpan = [149..168)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 155
+          .Span = [155..166)
+          .FullSpan = [155..166)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = IdentifierNameSyntax
+          //
+            .SpanStart = 155
+            .Span = [155..161)
+            .FullSpan = [155..161)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "System"
+              .Value = "System"
+              .FullSpan = [155..161)
+              .SpanStart = 155
+              .Span = [155..161)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "System"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [161..162)
+            .SpanStart = 161
+            .Span = [161..162)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 162
+            .Span = [162..166)
+            .FullSpan = [162..166)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Linq"
+              .Value = "Linq"
+              .FullSpan = [162..166)
+              .SpanStart = 162
+              .Span = [162..166)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Linq"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [149..155)
+          .SpanStart = 149
+          .Span = [149..154)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [154..155)
+            .Span = [154..155)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [154..155)
+              .SpanStart = 154
+              .Span = [154..155)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [166..168)
+          .SpanStart = 166
+          .Span = [166..167)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [167..168)
+            .Span = [167..168)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [167..168)
+              .SpanStart = 167
+              .Span = [167..168)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 168
+        .Span = [168..191)
+        .FullSpan = [168..192)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 174
+          .Span = [174..190)
+          .FullSpan = [174..190)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = IdentifierNameSyntax
+          //
+            .SpanStart = 174
+            .Span = [174..180)
+            .FullSpan = [174..180)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "System"
+              .Value = "System"
+              .FullSpan = [174..180)
+              .SpanStart = 174
+              .Span = [174..180)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "System"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [180..181)
+            .SpanStart = 180
+            .Span = [180..181)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 181
+            .Span = [181..190)
+            .FullSpan = [181..190)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Threading"
+              .Value = "Threading"
+              .FullSpan = [181..190)
+              .SpanStart = 181
+              .Span = [181..190)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Threading"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [168..174)
+          .SpanStart = 168
+          .Span = [168..173)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [173..174)
+            .Span = [173..174)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [173..174)
+              .SpanStart = 173
+              .Span = [173..174)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [190..192)
+          .SpanStart = 190
+          .Span = [190..191)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [191..192)
+            .Span = [191..192)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [191..192)
+              .SpanStart = 191
+              .Span = [191..192)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+    UsingDirectiveSyntax
+      //
+        .HasTrailingTrivia = true
+        .SpanStart = 192
+        .Span = [192..221)
+        .FullSpan = [192..222)
+        .RawKind = 8843 "UsingDirective"
+        .Language = "C#"
+      .Name = QualifiedNameSyntax
+        //
+          .SpanStart = 198
+          .Span = [198..220)
+          .FullSpan = [198..220)
+          .RawKind = 8617 "QualifiedName"
+          .Language = "C#"
+        .Left = QualifiedNameSyntax
+          //
+            .SpanStart = 198
+            .Span = [198..214)
+            .FullSpan = [198..214)
+            .RawKind = 8617 "QualifiedName"
+            .Language = "C#"
+          .Left = IdentifierNameSyntax
+            //
+              .SpanStart = 198
+              .Span = [198..204)
+              .FullSpan = [198..204)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "System"
+                .Value = "System"
+                .FullSpan = [198..204)
+                .SpanStart = 198
+                .Span = [198..204)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "System"
+          .DotToken = SyntaxToken(DotToken)
+            //
+              .ValueText = "."
+              .Value = "."
+              .FullSpan = [204..205)
+              .SpanStart = 204
+              .Span = [204..205)
+              .Language = "C#"
+              .RawKind = 8218 "DotToken"
+            .Text = "."
+          .Right = IdentifierNameSyntax
+            //
+              .SpanStart = 205
+              .Span = [205..214)
+              .FullSpan = [205..214)
+              .RawKind = 8616 "IdentifierName"
+              .Language = "C#"
+            .Identifier = SyntaxToken(IdentifierToken)
+              //
+                .ValueText = "Threading"
+                .Value = "Threading"
+                .FullSpan = [205..214)
+                .SpanStart = 205
+                .Span = [205..214)
+                .Language = "C#"
+                .RawKind = 8508 "IdentifierToken"
+              .Text = "Threading"
+        .DotToken = SyntaxToken(DotToken)
+          //
+            .ValueText = "."
+            .Value = "."
+            .FullSpan = [214..215)
+            .SpanStart = 214
+            .Span = [214..215)
+            .Language = "C#"
+            .RawKind = 8218 "DotToken"
+          .Text = "."
+        .Right = IdentifierNameSyntax
+          //
+            .SpanStart = 215
+            .Span = [215..220)
+            .FullSpan = [215..220)
+            .RawKind = 8616 "IdentifierName"
+            .Language = "C#"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Tasks"
+              .Value = "Tasks"
+              .FullSpan = [215..220)
+              .SpanStart = 215
+              .Span = [215..220)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Tasks"
+      .UsingKeyword = SyntaxToken(UsingKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "using"
+          .Value = "using"
+          .FullSpan = [192..198)
+          .SpanStart = 192
+          .Span = [192..197)
+          .Language = "C#"
+          .RawKind = 8373 "UsingKeyword"
+        .Text = "using"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [197..198)
+            .Span = [197..198)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [197..198)
+              .SpanStart = 197
+              .Span = [197..198)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .NamespaceOrType = QualifiedNameSyntax
+      .SemicolonToken = SyntaxToken(SemicolonToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = ";"
+          .Value = ";"
+          .FullSpan = [220..222)
+          .SpanStart = 220
+          .Span = [220..221)
+          .Language = "C#"
+          .RawKind = 8212 "SemicolonToken"
+        .Text = ";"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [221..222)
+            .Span = [221..222)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [221..222)
+              .SpanStart = 221
+              .Span = [221..222)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+  .Members = [1]
+    //
+      .FullSpan = [222..313)
+      .Span = [223..312)
+    ClassDeclarationSyntax
+      //
+        .HasTrailingTrivia = true
+        .HasLeadingTrivia = true
+        .SpanStart = 223
+        .Span = [223..312)
+        .FullSpan = [222..313)
+        .RawKind = 8855 "ClassDeclaration"
+        .Language = "C#"
+      .Keyword = SyntaxToken(ClassKeyword)
+        //
+          .HasTrailingTrivia = true
+          .HasLeadingTrivia = true
+          .ValueText = "class"
+          .Value = "class"
+          .FullSpan = [222..229)
+          .SpanStart = 223
+          .Span = [223..228)
+          .Language = "C#"
+          .RawKind = 8374 "ClassKeyword"
+        .Text = "class"
+        .LeadingTrivia = [1]
+          //
+            .FullSpan = [222..223)
+            .Span = [222..223)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [222..223)
+              .SpanStart = 222
+              .Span = [222..223)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [228..229)
+            .Span = [228..229)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [228..229)
+              .SpanStart = 228
+              .Span = [228..229)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .Identifier = SyntaxToken(IdentifierToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "Program"
+          .Value = "Program"
+          .FullSpan = [229..237)
+          .SpanStart = 229
+          .Span = [229..236)
+          .Language = "C#"
+          .RawKind = 8508 "IdentifierToken"
+        .Text = "Program"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [236..237)
+            .Span = [236..237)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [236..237)
+              .SpanStart = 236
+              .Span = [236..237)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+      .OpenBraceToken = SyntaxToken(OpenBraceToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "{"
+          .Value = "{"
+          .FullSpan = [237..239)
+          .SpanStart = 237
+          .Span = [237..238)
+          .Language = "C#"
+          .RawKind = 8205 "OpenBraceToken"
+        .Text = "{"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [238..239)
+            .Span = [238..239)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [238..239)
+              .SpanStart = 238
+              .Span = [238..239)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+      .Members = [1]
+        //
+          .FullSpan = [239..311)
+          .Span = [243..310)
+        MethodDeclarationSyntax
+          //
+            .HasTrailingTrivia = true
+            .HasLeadingTrivia = true
+            .SpanStart = 243
+            .Span = [243..310)
+            .FullSpan = [239..311)
+            .RawKind = 8875 "MethodDeclaration"
+            .Language = "C#"
+            .Modifiers = SyntaxTokenList
+              //
+                .Count = 1
+                .FullSpan = [239..250)
+                .Span = [243..249)
+              SyntaxToken(StaticKeyword)
+                //
+                  .HasTrailingTrivia = true
+                  .HasLeadingTrivia = true
+                  .ValueText = "static"
+                  .Value = "static"
+                  .FullSpan = [239..250)
+                  .SpanStart = 243
+                  .Span = [243..249)
+                  .Language = "C#"
+                  .RawKind = 8347 "StaticKeyword"
+                .Text = "static"
+                .LeadingTrivia = [1]
+                  //
+                    .FullSpan = [239..243)
+                    .Span = [239..243)
+                  SyntaxTrivia(WhitespaceTrivia)
+                    //
+                      .FullSpan = [239..243)
+                      .SpanStart = 239
+                      .Span = [239..243)
+                      .Language = "C#"
+                      .RawKind = 8540 "WhitespaceTrivia"
+                .TrailingTrivia = [1]
+                  //
+                    .FullSpan = [249..250)
+                    .Span = [249..250)
+                  SyntaxTrivia(WhitespaceTrivia)
+                    //
+                      .FullSpan = [249..250)
+                      .SpanStart = 249
+                      .Span = [249..250)
+                      .Language = "C#"
+                      .RawKind = 8540 "WhitespaceTrivia"
+          .ReturnType = PredefinedTypeSyntax
+            //
+              .HasTrailingTrivia = true
+              .SpanStart = 250
+              .Span = [250..254)
+              .FullSpan = [250..255)
+              .RawKind = 8621 "PredefinedType"
+              .Language = "C#"
+            .Keyword = SyntaxToken(VoidKeyword)
+              //
+                .HasTrailingTrivia = true
+                .ValueText = "void"
+                .Value = "void"
+                .FullSpan = [250..255)
+                .SpanStart = 250
+                .Span = [250..254)
+                .Language = "C#"
+                .RawKind = 8318 "VoidKeyword"
+              .Text = "void"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [254..255)
+                  .Span = [254..255)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [254..255)
+                    .SpanStart = 254
+                    .Span = [254..255)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "Main"
+              .Value = "Main"
+              .FullSpan = [255..259)
+              .SpanStart = 255
+              .Span = [255..259)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "Main"
+          .ParameterList = ParameterListSyntax
+            //
+              .HasTrailingTrivia = true
+              .SpanStart = 259
+              .Span = [259..261)
+              .FullSpan = [259..262)
+              .RawKind = 8906 "ParameterList"
+              .Language = "C#"
+            .OpenParenToken = SyntaxToken(OpenParenToken)
+              //
+                .ValueText = "("
+                .Value = "("
+                .FullSpan = [259..260)
+                .SpanStart = 259
+                .Span = [259..260)
+                .Language = "C#"
+                .RawKind = 8200 "OpenParenToken"
+              .Text = "("
+            .CloseParenToken = SyntaxToken(CloseParenToken)
+              //
+                .HasTrailingTrivia = true
+                .ValueText = ")"
+                .Value = ")"
+                .FullSpan = [260..262)
+                .SpanStart = 260
+                .Span = [260..261)
+                .Language = "C#"
+                .RawKind = 8201 "CloseParenToken"
+              .Text = ")"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [261..262)
+                  .Span = [261..262)
+                SyntaxTrivia(EndOfLineTrivia)
+                  //
+                    .FullSpan = [261..262)
+                    .SpanStart = 261
+                    .Span = [261..262)
+                    .Language = "C#"
+                    .RawKind = 8539 "EndOfLineTrivia"
+          .Body = BlockSyntax
+            //
+              .HasTrailingTrivia = true
+              .HasLeadingTrivia = true
+              .SpanStart = 266
+              .Span = [266..310)
+              .FullSpan = [262..311)
+              .RawKind = 8792 "Block"
+              .Language = "C#"
+            .OpenBraceToken = SyntaxToken(OpenBraceToken)
+              //
+                .HasTrailingTrivia = true
+                .HasLeadingTrivia = true
+                .ValueText = "{"
+                .Value = "{"
+                .FullSpan = [262..268)
+                .SpanStart = 266
+                .Span = [266..267)
+                .Language = "C#"
+                .RawKind = 8205 "OpenBraceToken"
+              .Text = "{"
+              .LeadingTrivia = [1]
+                //
+                  .FullSpan = [262..266)
+                  .Span = [262..266)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [262..266)
+                    .SpanStart = 262
+                    .Span = [262..266)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [267..268)
+                  .Span = [267..268)
+                SyntaxTrivia(EndOfLineTrivia)
+                  //
+                    .FullSpan = [267..268)
+                    .SpanStart = 267
+                    .Span = [267..268)
+                    .Language = "C#"
+                    .RawKind = 8539 "EndOfLineTrivia"
+            .Statements = [1]
+              //
+                .FullSpan = [268..305)
+                .Span = [276..304)
+              ExpressionStatementSyntax
+                //
+                  .HasTrailingTrivia = true
+                  .HasLeadingTrivia = true
+                  .SpanStart = 276
+                  .Span = [276..304)
+                  .FullSpan = [268..305)
+                  .RawKind = 8797 "ExpressionStatement"
+                  .Language = "C#"
+                .Expression = InvocationExpressionSyntax
+                  //
+                    .HasLeadingTrivia = true
+                    .SpanStart = 276
+                    .Span = [276..303)
+                    .FullSpan = [268..303)
+                    .RawKind = 8634 "InvocationExpression"
+                    .Language = "C#"
+                  .Expression = MemberAccessExpressionSyntax
+                    //
+                      .HasLeadingTrivia = true
+                      .SpanStart = 276
+                      .Span = [276..293)
+                      .FullSpan = [268..293)
+                      .RawKind = 8689 "SimpleMemberAccessExpression"
+                      .Language = "C#"
+                    .Expression = IdentifierNameSyntax
+                      //
+                        .HasLeadingTrivia = true
+                        .SpanStart = 276
+                        .Span = [276..283)
+                        .FullSpan = [268..283)
+                        .RawKind = 8616 "IdentifierName"
+                        .Language = "C#"
+                      .Identifier = SyntaxToken(IdentifierToken)
+                        //
+                          .HasLeadingTrivia = true
+                          .ValueText = "Console"
+                          .Value = "Console"
+                          .FullSpan = [268..283)
+                          .SpanStart = 276
+                          .Span = [276..283)
+                          .Language = "C#"
+                          .RawKind = 8508 "IdentifierToken"
+                        .Text = "Console"
+                        .LeadingTrivia = [1]
+                          //
+                            .FullSpan = [268..276)
+                            .Span = [268..276)
+                          SyntaxTrivia(WhitespaceTrivia)
+                            //
+                              .FullSpan = [268..276)
+                              .SpanStart = 268
+                              .Span = [268..276)
+                              .Language = "C#"
+                              .RawKind = 8540 "WhitespaceTrivia"
+                    .OperatorToken = SyntaxToken(DotToken)
+                      //
+                        .ValueText = "."
+                        .Value = "."
+                        .FullSpan = [283..284)
+                        .SpanStart = 283
+                        .Span = [283..284)
+                        .Language = "C#"
+                        .RawKind = 8218 "DotToken"
+                      .Text = "."
+                    .Name = IdentifierNameSyntax
+                      //
+                        .SpanStart = 284
+                        .Span = [284..293)
+                        .FullSpan = [284..293)
+                        .RawKind = 8616 "IdentifierName"
+                        .Language = "C#"
+                      .Identifier = SyntaxToken(IdentifierToken)
+                        //
+                          .ValueText = "WriteLine"
+                          .Value = "WriteLine"
+                          .FullSpan = [284..293)
+                          .SpanStart = 284
+                          .Span = [284..293)
+                          .Language = "C#"
+                          .RawKind = 8508 "IdentifierToken"
+                        .Text = "WriteLine"
+                  .ArgumentList = ArgumentListSyntax
+                    //
+                      .SpanStart = 293
+                      .Span = [293..303)
+                      .FullSpan = [293..303)
+                      .RawKind = 8636 "ArgumentList"
+                      .Language = "C#"
+                    .OpenParenToken = SyntaxToken(OpenParenToken)
+                      //
+                        .ValueText = "("
+                        .Value = "("
+                        .FullSpan = [293..294)
+                        .SpanStart = 293
+                        .Span = [293..294)
+                        .Language = "C#"
+                        .RawKind = 8200 "OpenParenToken"
+                      .Text = "("
+                    .Arguments = SeparatedSyntaxList`1
+                      //
+                        .Count = 1
+                        .FullSpan = [294..302)
+                        .Span = [294..302)
+                      ArgumentSyntax
+                        //
+                          .SpanStart = 294
+                          .Span = [294..302)
+                          .FullSpan = [294..302)
+                          .RawKind = 8638 "Argument"
+                          .Language = "C#"
+                        .Expression = LiteralExpressionSyntax
+                          //
+                            .SpanStart = 294
+                            .Span = [294..302)
+                            .FullSpan = [294..302)
+                            .RawKind = 8750 "StringLiteralExpression"
+                            .Language = "C#"
+                          .Token = SyntaxToken(StringLiteralToken)
+                            //
+                              .ValueText = "Hello."
+                              .Value = "Hello."
+                              .FullSpan = [294..302)
+                              .SpanStart = 294
+                              .Span = [294..302)
+                              .Language = "C#"
+                              .RawKind = 8511 "StringLiteralToken"
+                            .Text = "\"Hello.\""
+                    .CloseParenToken = SyntaxToken(CloseParenToken)
+                      //
+                        .ValueText = ")"
+                        .Value = ")"
+                        .FullSpan = [302..303)
+                        .SpanStart = 302
+                        .Span = [302..303)
+                        .Language = "C#"
+                        .RawKind = 8201 "CloseParenToken"
+                      .Text = ")"
+                .SemicolonToken = SyntaxToken(SemicolonToken)
+                  //
+                    .HasTrailingTrivia = true
+                    .ValueText = ";"
+                    .Value = ";"
+                    .FullSpan = [303..305)
+                    .SpanStart = 303
+                    .Span = [303..304)
+                    .Language = "C#"
+                    .RawKind = 8212 "SemicolonToken"
+                  .Text = ";"
+                  .TrailingTrivia = [1]
+                    //
+                      .FullSpan = [304..305)
+                      .Span = [304..305)
+                    SyntaxTrivia(EndOfLineTrivia)
+                      //
+                        .FullSpan = [304..305)
+                        .SpanStart = 304
+                        .Span = [304..305)
+                        .Language = "C#"
+                        .RawKind = 8539 "EndOfLineTrivia"
+            .CloseBraceToken = SyntaxToken(CloseBraceToken)
+              //
+                .HasTrailingTrivia = true
+                .HasLeadingTrivia = true
+                .ValueText = "}"
+                .Value = "}"
+                .FullSpan = [305..311)
+                .SpanStart = 309
+                .Span = [309..310)
+                .Language = "C#"
+                .RawKind = 8206 "CloseBraceToken"
+              .Text = "}"
+              .LeadingTrivia = [1]
+                //
+                  .FullSpan = [305..309)
+                  .Span = [305..309)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [305..309)
+                    .SpanStart = 305
+                    .Span = [305..309)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [310..311)
+                  .Span = [310..311)
+                SyntaxTrivia(EndOfLineTrivia)
+                  //
+                    .FullSpan = [310..311)
+                    .SpanStart = 310
+                    .Span = [310..311)
+                    .Language = "C#"
+                    .RawKind = 8539 "EndOfLineTrivia"
+      .CloseBraceToken = SyntaxToken(CloseBraceToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "}"
+          .Value = "}"
+          .FullSpan = [311..313)
+          .SpanStart = 311
+          .Span = [311..312)
+          .Language = "C#"
+          .RawKind = 8206 "CloseBraceToken"
+        .Text = "}"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [312..313)
+            .Span = [312..313)
+          SyntaxTrivia(EndOfLineTrivia)
+            //
+              .FullSpan = [312..313)
+              .SpanStart = 312
+              .Span = [312..313)
+              .Language = "C#"
+              .RawKind = 8539 "EndOfLineTrivia"
+  .EndOfFileToken = SyntaxToken(EndOfFileToken)
+    //
+      .ValueText = ""
+      .Value = ""
+      .FullSpan = [313..313)
+      .SpanStart = 313
+      .Span = [313..313)
+      .Language = "C#"
+      .RawKind = 8496 "EndOfFileToken"
+    .Text = ""

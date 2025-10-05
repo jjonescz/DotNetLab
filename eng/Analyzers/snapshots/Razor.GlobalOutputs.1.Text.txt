@@ -1,0 +1,14 @@
+﻿get_Param(IL_0000-IL_0007 31:5-31:35): return <Param>k__BackingField;
+set_Param(IL_0000-IL_0007 36:5-36:36): <Param>k__BackingField = value;
+set_Param(IL_0007-IL_0008 37:4-37:5): }
+BuildRenderTree(IL_0000-IL_0001 41:3-41:4): {
+BuildRenderTree(IL_0001-IL_000d 42:4-42:36): __builder.OpenElement(0, "div");
+BuildRenderTree(IL_000d-IL_0020 43:4-43:35): __builder.AddContent(1, Param);
+BuildRenderTree(IL_0020-IL_0027 44:4-44:29): __builder.CloseElement();
+BuildRenderTree(IL_0027-IL_0032 45:4-45:19): if (Param == 0)
+BuildRenderTree(IL_0035-IL_003d 47:5-47:47): __builder.OpenComponent<TestComponent>(2);
+BuildRenderTree(IL_003d-IL_0055 48:5-48:127): __builder.AddComponentParameter(3, "Param", Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck(1));
+BuildRenderTree(IL_0055-IL_005c 49:5-49:32): __builder.CloseComponent();
+BuildRenderTree(IL_005d-IL_005f 51:3-51:4): }
+Execute(IL_0000-IL_0001 56:3-56:4): {
+Execute(IL_0001-IL_0002 57:3-57:4): }

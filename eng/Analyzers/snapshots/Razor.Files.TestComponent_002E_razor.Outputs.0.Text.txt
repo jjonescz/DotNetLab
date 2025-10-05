@@ -1,0 +1,111 @@
+﻿RazorDocument - [0..129) - Width: 129 - [<div>@Param</div>LF@if (Param == 0)LF{LF    <TestComponent Param="1" />LF}LFLF@code {LF    [Parameter] public int Param { get; set; }LF}LF]
+    MarkupBlock - [0..129) - Width: 129
+        MarkupElement - [0..17) - Width: 17
+            MarkupStartTag - [0..5) - Width: 5 - [<div>] - Gen<Markup>
+                OpenAngle;[<];
+                Text;[div];
+                CloseAngle;[>];
+            CSharpCodeBlock - [5..11) - Width: 6
+                CSharpImplicitExpression - [5..11) - Width: 6
+                    CSharpTransition - [5..6) - Width: 1 - Gen<None>
+                        Transition;[@];
+                    CSharpImplicitExpressionBody - [6..11) - Width: 5
+                        CSharpCodeBlock - [6..11) - Width: 5
+                            CSharpExpressionLiteral - [6..11) - Width: 5 - [Param] - Gen<Expr>
+                                Identifier;[Param];
+            MarkupEndTag - [11..17) - Width: 6 - [</div>] - Gen<Markup>
+                OpenAngle;[<];
+                ForwardSlash;[/];
+                Text;[div];
+                CloseAngle;[>];
+        MarkupTextLiteral - [17..18) - Width: 1 - [LF] - Gen<Markup>
+            NewLine;[LF];
+        CSharpCodeBlock - [18..71) - Width: 53
+            CSharpTransition - [18..19) - Width: 1 - Gen<None>
+                Transition;[@];
+            CSharpStatementLiteral - [19..37) - Width: 18 - [if (Param == 0)LF{LF] - Gen<Stmt>
+                Keyword;[if];
+                Whitespace;[ ];
+                LeftParenthesis;[(];
+                Identifier;[Param];
+                Whitespace;[ ];
+                CSharpOperator;[==];
+                Whitespace;[ ];
+                NumericLiteral;[0];
+                RightParenthesis;[)];
+                NewLine;[LF];
+                LeftBrace;[{];
+                NewLine;[LF];
+            MarkupBlock - [37..69) - Width: 32
+                MarkupTextLiteral - [37..41) - Width: 4 - [    ] - Gen<Markup>
+                    Whitespace;[    ];
+                MarkupTagHelperElement - [41..68) - Width: 27 - TestComponent[SelfClosing] - TestComponent
+                    MarkupTagHelperStartTag - [41..68) - Width: 27 - [<TestComponent Param="1" />] - Gen<Markup>
+                        OpenAngle;[<];
+                        Text;[TestComponent];
+                        MarkupTagHelperAttribute - [55..65) - Width: 10 - Param - DoubleQuotes - Bound - [ Param="1"]
+                            MarkupTextLiteral - [55..56) - Width: 1 - [ ] - Gen<Markup>
+                                Whitespace;[ ];
+                            MarkupTextLiteral - [56..61) - Width: 5 - [Param] - Gen<Markup>
+                                Text;[Param];
+                            Equals;[=];
+                            MarkupTextLiteral - [62..63) - Width: 1 - ["] - Gen<Markup>
+                                DoubleQuote;["];
+                            MarkupTagHelperAttributeValue - [63..64) - Width: 1
+                                CSharpExpressionLiteral - [63..64) - Width: 1 - [1] - Gen<None>
+                                    Text;[1];
+                            MarkupTextLiteral - [64..65) - Width: 1 - ["] - Gen<Markup>
+                                DoubleQuote;["];
+                        MarkupMiscAttributeContent - [65..66) - Width: 1
+                            MarkupTextLiteral - [65..66) - Width: 1 - [ ] - Gen<Markup>
+                                Whitespace;[ ];
+                        ForwardSlash;[/];
+                        CloseAngle;[>];
+                MarkupTextLiteral - [68..69) - Width: 1 - [LF] - Gen<Markup>
+                    NewLine;[LF];
+            CSharpStatementLiteral - [69..71) - Width: 2 - [}LF] - Gen<Stmt>
+                RightBrace;[}];
+                NewLine;[LF];
+        MarkupTextLiteral - [71..72) - Width: 1 - [LF] - Gen<Markup>
+            NewLine;[LF];
+        CSharpCodeBlock - [72..129) - Width: 57
+            RazorDirective - [72..128) - Width: 56 - Directive:{code;CodeBlock;Unrestricted}
+                CSharpTransition - [72..73) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [73..128) - Width: 55
+                    RazorMetaCode - [73..77) - Width: 4 - Gen<None>
+                        Identifier;[code];
+                    CSharpCodeBlock - [77..128) - Width: 51
+                        UnclassifiedTextLiteral - [77..78) - Width: 1 - [ ] - Gen<None>
+                            Whitespace;[ ];
+                        RazorMetaCode - [78..79) - Width: 1 - Gen<None>
+                            LeftBrace;[{];
+                        CSharpCodeBlock - [79..127) - Width: 48
+                            CSharpStatementLiteral - [79..127) - Width: 48 - [LF    [Parameter] public int Param { get; set; }LF] - Gen<Stmt>
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                LeftBracket;[[];
+                                Identifier;[Parameter];
+                                RightBracket;[]];
+                                Whitespace;[ ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Keyword;[int];
+                                Whitespace;[ ];
+                                Identifier;[Param];
+                                Whitespace;[ ];
+                                LeftBrace;[{];
+                                Whitespace;[ ];
+                                Keyword;[get];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                Keyword;[set];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                RightBrace;[}];
+                                NewLine;[LF];
+                        RazorMetaCode - [127..128) - Width: 1 - Gen<None>
+                            RightBrace;[}];
+            RazorMetaCode - [128..129) - Width: 1 - Gen<None>
+                NewLine;[LF];
+    EndOfFile;[];

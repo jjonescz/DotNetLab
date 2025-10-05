@@ -1,6 +1,7 @@
 ﻿using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.JSInterop;
+using System.IO.Compression;
 using System.Runtime.Versioning;
 
 namespace DotNetLab.Lab;
@@ -13,16 +14,40 @@ internal sealed class LanguageServicesClient(
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
 {
-    private readonly LanguageSelector cSharpLanguageSelector = new("csharp");
+    private readonly LanguageSelector cSharpLanguageSelector = new(CompiledAssembly.CSharpLanguageId);
+    private readonly LanguageSelector outputLanguageSelector = new(CompiledAssembly.OutputLanguageId);
     private Dictionary<string, string> modelUrlToFileName = [];
     private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
+    private int outputRegistered;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
     private CancellationTokenSource diagnosticsCts = new();
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
+    private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
 
     public bool Enabled => completionProvider != null;
+
+    public (string ModelUri, CompiledFileOutputMetadata? Metadata)? CurrentMetadata { get; set; }
+
+    public bool TryGetOutputToOutputMapping(CompiledFileOutputMetadata metadata, out DocumentMapping result)
+    {
+        if (metadata.OutputToOutput == null)
+        {
+            result = default;
+            return false;
+        }
+
+        if (outputCache is not { Metadata: var m, OutputToOutput: var mapping } ||
+            metadata != m)
+        {
+            mapping = DocumentMapping.Deserialize(metadata.OutputToOutput);
+            outputCache = (metadata, mapping);
+        }
+
+        result = mapping;
+        return true;
+    }
 
     private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
     {
@@ -52,17 +77,67 @@ internal sealed class LanguageServicesClient(
         }
     }
 
-    public Task EnableAsync(bool enable)
+    public async Task EnableAsync(bool enable)
     {
+        // Output language services are "static" (provided directly from our compiler
+        // and don't need to react to live changes) and hence are always enabled.
+        await RegisterOutputAsync();
+
         if (enable)
         {
-            return RegisterAsync();
+            await RegisterAsync();
         }
         else
         {
             Unregister();
-            return Task.CompletedTask;
         }
+    }
+
+    private async Task RegisterOutputAsync()
+    {
+        if (Interlocked.CompareExchange(ref outputRegistered, 1, 0) != 0)
+        {
+            return;
+        }
+
+        await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(outputLanguageSelector, new(loggerFactory)
+        {
+            Legend = new SemanticTokensLegend
+            {
+                TokenTypes = SemanticTokensUtil.TokenTypes.LspValues,
+                TokenModifiers = SemanticTokensUtil.TokenModifiers.LspValues,
+            },
+            ProvideSemanticTokens = (modelUri, rangeJson, debug, cancellationToken) =>
+            {
+                if (CurrentMetadata is { } m &&
+                    m.ModelUri == modelUri &&
+                    m.Metadata?.SemanticTokens is { } semanticTokens)
+                {
+                    var decompressed = GZipStream.Decompress(Convert.FromBase64String(semanticTokens));
+                    return Task.FromResult<string?>(Convert.ToBase64String(decompressed));
+                }
+
+                return Task.FromResult<string?>(string.Empty);
+            },
+            RegisterRangeProvider = false,
+        });
+
+        await blazorMonacoInterop.RegisterDefinitionProviderAsync(outputLanguageSelector, new(loggerFactory)
+        {
+            ProvideDefinition = (modelUri, offset) =>
+            {
+                if (CurrentMetadata is { } m &&
+                    m.ModelUri == modelUri &&
+                    m.Metadata != null &&
+                    TryGetOutputToOutputMapping(m.Metadata, out var mapping) &&
+                    mapping.TryFind(offset, out var sourceSpan, out var targetSpan))
+                {
+                    return targetSpan;
+                }
+
+                return null;
+            },
+        });
     }
 
     private async Task RegisterAsync()
@@ -105,7 +180,7 @@ internal sealed class LanguageServicesClient(
 
         hoverProvider = await blazorMonacoInterop.RegisterHoverProviderAsync(cSharpLanguageSelector, new(loggerFactory)
         {
-            ProvideHover = worker.ProvideHoverAsync, 
+            ProvideHover = worker.ProvideHoverAsync,
         });
 
         signatureHelpProvider = await blazorMonacoInterop.RegisterSignatureHelpProviderAsync(cSharpLanguageSelector, new(loggerFactory)

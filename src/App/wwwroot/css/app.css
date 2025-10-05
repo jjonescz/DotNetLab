@@ -119,3 +119,7 @@ code {
     width: 99%;
     height: 99%;
 }
+
+.underline {
+    text-decoration: underline;
+}

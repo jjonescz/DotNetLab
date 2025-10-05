@@ -1,0 +1,59 @@
+﻿Document "mvc.1.0.razor-page" { DocumentKind: "mvc.1.0.razor-page" }
+  RazorCompiledItemAttribute { Identifier: "/TestPage.cshtml", Kind: "mvc.1.0.razor-page", TypeName: "AspNetCoreGeneratedDocument._TestPage" }
+  NamespaceDeclaration "AspNetCoreGeneratedDocument" { Name: "AspNetCoreGeneratedDocument" }
+    UsingDirective "global::System" { Content: "global::System" }
+    UsingDirective "global::System.Collections.Generic" { Content: "global::System.Collections.Generic" }
+    UsingDirective "global::System.Linq" { Content: "global::System.Linq" }
+    UsingDirective "global::System.Threading.Tasks" { Content: "global::System.Threading.Tasks" }
+    UsingDirective "global::Microsoft.AspNetCore.Mvc" { Content: "global::Microsoft.AspNetCore.Mvc" }
+    UsingDirective "global::Microsoft.AspNetCore.Mvc.Rendering" { Content: "global::Microsoft.AspNetCore.Mvc.Rendering" }
+    UsingDirective "global::Microsoft.AspNetCore.Mvc.ViewFeatures" { Content: "global::Microsoft.AspNetCore.Mvc.ViewFeatures" }
+    UsingDirective "System.ComponentModel.DataAnnotations" { Content: "System.ComponentModel.DataAnnotations" }
+    RazorCompiledItemMetadataAttribute { Key: "Identifier", Value: "/TestPage.cshtml" }
+    CreateNewOnMetadataUpdateAttribute
+    ClassDeclaration "_TestPage" { Name: "_TestPage", Interfaces: "", Modifiers: "internal, sealed", TypeParameters: "" }
+      PreallocatedTagHelperPropertyValue "method" { AttributeName: "method", AttributeStructure: "DoubleQuotes", Value: "post", VariableName: "__tagHelperAttribute_0" }
+      DefaultTagHelperRuntime
+      FieldDeclaration "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper" { Name: "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper", Type: "global::Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper", Modifiers: "private" }
+      FieldDeclaration "__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper" { Name: "__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper", Type: "global::Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper", Modifiers: "private" }
+      FieldDeclaration "__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper" { Name: "__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper", Type: "global::Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper", Modifiers: "private" }
+      MethodDeclaration "ExecuteAsync" { Name: "ExecuteAsync", Modifiers: "public, async, override", Parameters: "", ReturnType: "global::System.Threading.Tasks.Task" }
+        HtmlContent "\n"
+          HtmlIntermediateToken "\n" { Content: "\n" }
+        TagHelper "form" { TagHelpers: "Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper, Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper", TagMode: "StartTagAndEndTag", TagName: "form" }
+          DefaultTagHelperBody
+            HtmlContent "\n    Name:\n    "
+              HtmlIntermediateToken "\n    Name:\n    " { Content: "\n    Name:\n    " }
+            TagHelper "input" { TagHelpers: "Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper", TagMode: "SelfClosing", TagName: "input" }
+              DefaultTagHelperBody
+              DefaultTagHelperCreate "Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper" { FieldName: "__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper", TagHelper: "Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper", TypeName: "Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper" }
+              DefaultTagHelperProperty "asp-for" { AttributeName: "asp-for", AttributeStructure: "DoubleQuotes", BoundAttribute: "Microsoft.AspNetCore.Mvc.ViewFeatures.ModelExpression Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper.For", FieldName: "__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper", IsIndexerNameMatch: "False", PropertyName: "For", TagHelper: "Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper" }
+                CSharpExpression "ModelExpressionProvider.CreateModelExpression(ViewData, __model => __model.Customer.Name)"
+                  CSharpIntermediateToken "ModelExpressionProvider.CreateModelExpression(ViewData, __model => " { Content: "ModelExpressionProvider.CreateModelExpression(ViewData, __model => " }
+                  CSharpIntermediateToken "__model." { Content: "__model." }
+                  CSharpIntermediateToken "Customer.Name" { Content: "Customer.Name" }
+                  CSharpIntermediateToken ")" { Content: ")" }
+              DefaultTagHelperExecute
+            HtmlContent "\n    <input type="submit" />\n"
+              HtmlIntermediateToken "\n    " { Content: "\n    " }
+              HtmlIntermediateToken "<input" { Content: "<input" }
+              HtmlIntermediateToken " type="submit"" { Content: " type="submit"" }
+              HtmlIntermediateToken " " { Content: " " }
+              HtmlIntermediateToken "/>" { Content: "/>" }
+              HtmlIntermediateToken "\n" { Content: "\n" }
+          DefaultTagHelperCreate "Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper" { FieldName: "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper", TagHelper: "Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper", TypeName: "Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper" }
+          DefaultTagHelperCreate "Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper" { FieldName: "__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper", TagHelper: "Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper", TypeName: "Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper" }
+          PreallocatedTagHelperProperty "method" { AttributeName: "method", AttributeStructure: "DoubleQuotes", BoundAttribute: "string Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper.Method", FieldName: "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper", IsIndexerNameMatch: "False", PropertyName: "Method", TagHelper: "Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper", VariableName: "__tagHelperAttribute_0" }
+          DefaultTagHelperExecute
+        HtmlContent "\n\n"
+          HtmlIntermediateToken "\n\n" { Content: "\n\n" }
+      CSharpCode "\n    public class PageModel\n    {\n        public Customer Customer { get; set; } = new();\n    }\n\n    public class Customer\n    {\n        public int Id { get; set; }\n\n        [Required, StringLength(10)]\n        public string Name { get; set; } = "";\n    }\n"
+        CSharpIntermediateToken "\n    public class PageModel\n    {\n        public Customer Customer { get; set; } = new();\n    }\n\n    public class Customer\n    {\n        public int Id { get; set; }\n\n        [Required, StringLength(10)]\n        public string Name { get; set; } = "";\n    }\n" { Content: "\n    public class PageModel\n    {\n        public Customer Customer { get; set; } = new();\n    }\n\n    public class Customer\n    {\n        public int Id { get; set; }\n\n        [Required, StringLength(10)]\n        public string Name { get; set; } = "";\n    }\n" }
+      Inject "ModelExpressionProvider" { MemberName: "ModelExpressionProvider", TypeName: "global::Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider", IsMalformed: "False" }
+      Inject "Url" { MemberName: "Url", TypeName: "global::Microsoft.AspNetCore.Mvc.IUrlHelper", IsMalformed: "False" }
+      Inject "Component" { MemberName: "Component", TypeName: "global::Microsoft.AspNetCore.Mvc.IViewComponentHelper", IsMalformed: "False" }
+      Inject "Json" { MemberName: "Json", TypeName: "global::Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper", IsMalformed: "False" }
+      Inject "Html" { MemberName: "Html", TypeName: "global::Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper<PageModel>", IsMalformed: "False" }
+      CSharpCode "#nullable restore\r\npublic global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel> ViewData => (global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel>)PageContext?.ViewData!;\r\n#nullable disable"
+        CSharpIntermediateToken "#nullable restore\r\npublic global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel> ViewData => (global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel>)PageContext?.ViewData!;\r\n#nullable disable" { Content: "#nullable restore\r\npublic global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel> ViewData => (global::Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<PageModel>)PageContext?.ViewData!;\r\n#nullable disable" }
+      PropertyDeclaration

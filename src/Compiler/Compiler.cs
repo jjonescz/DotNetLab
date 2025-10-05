@@ -21,7 +21,8 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILoggerFactory loggerFactory) : ICompiler
+    ILoggerFactory loggerFactory)
+    : ICompiler
 {
     private const string ToolchainHelpText = """
 
@@ -37,6 +38,8 @@ public sealed class Compiler(
         global using Microsoft.CodeAnalysis.Emit;
         global using System;
         """;
+
+    private readonly TreeFormatter treeFormatter = new();
 
     /// <summary>
     /// Reused for incremental source generation.
@@ -126,7 +129,7 @@ public sealed class Compiler(
                         {
                             Type = CompiledAssembly.DiagnosticsOutputType,
                             Label = CompiledAssembly.DiagnosticsOutputLabel,
-                            Language = "csharp",
+                            Language = CompiledAssembly.CSharpLanguageId,
                             EagerText = configDiagnosticsText,
                         },
                     ],
@@ -238,12 +241,34 @@ public sealed class Compiler(
 
         var result = new CompiledAssembly(
             BaseDirectory: directory,
-            Files: cSharpSources.Select(static (cSharpSource) =>
+            Files: cSharpSources.Select((cSharpSource) =>
             {
                 var syntaxTree = cSharpSource.SyntaxTree;
                 var compiledFile = new CompiledFile([
-                    new() { Type = "syntax", Label = "Syntax", EagerText = syntaxTree.GetRoot().Dump() },
-                    new() { Type = "syntaxTrivia", Label = "Trivia", EagerText = syntaxTree.GetRoot().DumpExtended() },
+                    new()
+                    {
+                        Type = "tree",
+                        Label = "Tree",
+                        Language = CompiledAssembly.OutputLanguageId,
+                        LazyTextAndMetadata = () =>
+                        {
+                            var model = finalCompilation.GetSemanticModel(syntaxTree);
+                            var formatted = treeFormatter.Format(model, syntaxTree.GetRoot(), TreeFormatter.Options.Default with
+                            {
+                                ExcludeSymbols = !compilationInput.Preferences.ShowSymbols,
+                                ExcludeOperations = !compilationInput.Preferences.ShowOperations,
+                            });
+                            return new((
+                                formatted.Text,
+                                new CompiledFileOutputMetadata
+                                {
+                                    SemanticTokens = formatted.SemanticTokens,
+                                    InputToOutput = formatted.SourceToTree,
+                                    OutputToInput = formatted.TreeToSource,
+                                    OutputToOutput = formatted.TreeToTree,
+                                }));
+                        },
+                    },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
             }).Concat(additionalSources.Select((input) =>
@@ -269,7 +294,7 @@ public sealed class Compiler(
                     {
                         Type = "ir",
                         Label = "IR",
-                        Language = "csharp",
+                        Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNodeSafe().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
@@ -286,7 +311,7 @@ public sealed class Compiler(
                     {
                         Type = "gcs",
                         Label = "C#",
-                        Language = "csharp",
+                        Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe().GetGeneratedCode() ?? "").Serialize(),
                         Priority = 1,
                     },
@@ -344,7 +369,7 @@ public sealed class Compiler(
                 {
                     Type = "il",
                     Label = "IL",
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     LazyText = () =>
                     {
                         return new(getIl(peFile));
@@ -363,7 +388,7 @@ public sealed class Compiler(
                 {
                     Type = "cs",
                     Label = "C#",
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     LazyText = () =>
                     {
                         return new(getCSharpAsync(peFile));
@@ -386,7 +411,7 @@ public sealed class Compiler(
                 {
                     Type = CompiledAssembly.DiagnosticsOutputType,
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
-                    Language = "csharp",
+                    Language = CompiledAssembly.CSharpLanguageId,
                     EagerText = diagnosticsText,
                     Priority = numErrors > 0 ? 2 : 0,
                 },

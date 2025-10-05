@@ -1,4 +1,5 @@
-﻿global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
+﻿global using Environment = System.Environment;
+global using MonacoCompletionContext = BlazorMonaco.Languages.CompletionContext;
 global using MonacoCompletionTriggerKind = BlazorMonaco.Languages.CompletionTriggerKind;
 global using MonacoRange = BlazorMonaco.Range;
 global using RoslynCodeAction = Microsoft.CodeAnalysis.CodeActions.CodeAction;
@@ -7,8 +8,6 @@ global using RoslynCompletionList = Microsoft.CodeAnalysis.Completion.Completion
 global using RoslynCompletionRules = Microsoft.CodeAnalysis.Completion.CompletionRules;
 global using RoslynCompletionTrigger = Microsoft.CodeAnalysis.Completion.CompletionTrigger;
 global using RoslynCompletionTriggerKind = Microsoft.CodeAnalysis.Completion.CompletionTriggerKind;
-global using Environment = System.Environment;
-
 using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
@@ -17,6 +16,7 @@ using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -138,6 +138,71 @@ public static class MonacoConversions
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Converts to the data format documented at <see href="https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider.provideDocumentSemanticTokens"/>.
+        /// </summary>
+        public static ReadOnlySpan<byte> ConvertToLspFormat(SourceText text, IReadOnlyList<ClassifiedSpan> classifiedSpans, List<string>? converted = null)
+        {
+            var lines = text.Lines;
+            var data = new List<int>(classifiedSpans.Count * 5);
+
+            int lastLineNumber = 0;
+            int lastStartCharacter = 0;
+
+            for (var currentClassifiedSpanIndex = 0; currentClassifiedSpanIndex < classifiedSpans.Count;)
+            {
+                var classifiedSpan = classifiedSpans[currentClassifiedSpanIndex];
+
+                var originalTextSpan = classifiedSpan.TextSpan;
+                var linePosition = lines.GetLinePosition(originalTextSpan.Start);
+
+                var lineNumber = linePosition.Line;
+                var deltaLine = lineNumber - lastLineNumber;
+                lastLineNumber = lineNumber;
+
+                var startCharacter = linePosition.Character;
+                var deltaStartCharacter = startCharacter;
+                if (deltaLine == 0)
+                {
+                    deltaStartCharacter -= lastStartCharacter;
+                }
+                lastStartCharacter = startCharacter;
+
+                var tokenType = -1;
+                var tokenModifiers = 0;
+
+                // Classified spans with the same text span should be combined into one token.
+                do
+                {
+                    if (SemanticTokensUtil.TokenModifiers.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var m))
+                    {
+                        tokenModifiers |= m;
+                    }
+                    else if (SemanticTokensUtil.TokenTypes.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var t))
+                    {
+                        tokenType = t;
+                    }
+                }
+                while (++currentClassifiedSpanIndex < classifiedSpans.Count &&
+                    (classifiedSpan = classifiedSpans[currentClassifiedSpanIndex]).TextSpan == originalTextSpan);
+
+                if (tokenType < 0)
+                {
+                    continue;
+                }
+
+                converted?.Add($"{SemanticTokensUtil.TokenTypes.LspValues[tokenType]}[{text.ToString(originalTextSpan)}]");
+
+                data.Add(deltaLine);
+                data.Add(deltaStartCharacter);
+                data.Add(originalTextSpan.Length);
+                data.Add(tokenType);
+                data.Add(tokenModifiers);
+            }
+
+            return MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data));
         }
     }
 

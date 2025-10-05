@@ -7,6 +7,13 @@ public static class SemanticTokensUtil
     private static readonly Lazy<LspIndexedMap> tokenTypes = new(CreateTokenTypes);
     private static readonly Lazy<LspIndexedMap> tokenModifiers = new(CreateTokenModifiers);
 
+    public static readonly Task<string?> EmptyResponse = Task.FromResult<string?>(string.Empty);
+
+    /// <summary>
+    /// This is transformed into an exception at the front end.
+    /// </summary>
+    public static readonly string? CancelledResponse = null;
+
     public static LspIndexedMap TokenTypes => tokenTypes.Value;
 
     public static LspIndexedMap TokenModifiers => tokenModifiers.Value;

@@ -1,4 +1,35 @@
-﻿/**
+﻿export function executeAction(editorId, actionId) {
+    window.blazorMonaco.editor.getEditor(editorId).getAction(actionId)?.run();
+}
+
+export function onDidChangeCursorPosition(editorId, callback) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    return editor.onDidChangeCursorPosition((e) => {
+        if (e.reason === 3 /* explicit user gesture */) {
+            const model = editor.getModel();
+            if (model) {
+                const offset = model.getOffsetAt(e.position);
+                globalThis.DotNetLab.BlazorMonacoInterop.OnDidChangeCursorPositionCallback(callback, offset);
+            }
+        }
+    });
+}
+
+export function setSelection(editorId, start, end) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    const model = editor.getModel();
+    if (model) {
+        const startPosition = model.getPositionAt(start);
+        const endPosition = model.getPositionAt(end);
+        const range = new monaco.Range(
+            startPosition.lineNumber, startPosition.column,
+            endPosition.lineNumber, endPosition.column);
+        editor.setSelection(range);
+        editor.revealRangeInCenter(range);
+    }
+}
+
+/**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters
  */
@@ -33,22 +64,23 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
 let debugSemanticTokens = false;
 
-export function enableSemanticHighlighting(editorId) {
-    const editor = window.blazorMonaco.editors.find((e) => e.id === editorId).editor;
-    editor.updateOptions({
-        'semanticHighlighting.enabled': true,
-    });
-    editor.addAction({
-        id: 'debug-semantic-token',
-        label: 'Debug Semantic Tokens (See Browser Console)',
-        run: () => {
-            debugSemanticTokens = !debugSemanticTokens;
-            console.log('Debugging semantic tokens ' + (debugSemanticTokens ? 'enabled' : 'disabled'));
-        },
-    });
+export function enableSemanticHighlighting() {
+    for (const editor of window.blazorMonaco.editors.map(x => x.editor)) {
+        editor.updateOptions({
+            'semanticHighlighting.enabled': true,
+        });
+        editor.addAction({
+            id: 'debug-semantic-token',
+            label: 'Debug Semantic Tokens (See Browser Console)',
+            run: () => {
+                debugSemanticTokens = !debugSemanticTokens;
+                console.log('Debugging semantic tokens ' + (debugSemanticTokens ? 'enabled' : 'disabled'));
+            },
+        });
+    }
 }
 
-export function registerSemanticTokensProvider(language, legend, provider) {
+export function registerSemanticTokensProvider(language, legend, provider, registerRangeProvider) {
     const disposables = new DisposableList();
     const languageParsed = JSON.parse(language);
     const legendParsed = JSON.parse(legend);
@@ -66,15 +98,18 @@ export function registerSemanticTokensProvider(language, legend, provider) {
         },
     }));
 
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
-    disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
-        getLegend: () => legendParsed,
-        provideDocumentRangeSemanticTokens: async (model, range, token) => {
-            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
-                provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, token);
-            return decodeResult(result, legendParsed);
-        },
-    }));
+    if (registerRangeProvider) {
+        // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
+        disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
+            getLegend: () => legendParsed,
+            provideDocumentRangeSemanticTokens: async (model, range, token) => {
+                const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
+                    provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, token);
+                return decodeResult(result, legendParsed);
+            },
+        }));
+    }
+
     return disposables;
 
     function decodeResult(result, legend) {
@@ -134,6 +169,32 @@ export function registerCodeActionProvider(language, codeActionProvider) {
     });
 }
 
+export function registerDefinitionProvider(language, definitionProvider) {
+    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDefinitionProvider.html
+    return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
+        provideDefinition: (model, position, token) => {
+            const offset = model.getOffsetAt(position);
+            const result = globalThis.DotNetLab.BlazorMonacoInterop.ProvideDefinition(
+                definitionProvider, decodeURI(model.uri.toString()), offset);
+
+            if (result === null) {
+                return null;
+            }
+
+            const [start, end] = result.split(';');
+            const startPosition = model.getPositionAt(start);
+            const endPosition = model.getPositionAt(end);
+            const range = new monaco.Range(
+                startPosition.lineNumber, startPosition.column,
+                endPosition.lineNumber, endPosition.column);
+            return {
+                uri: model.uri,
+                range,
+            };
+        },
+    });
+}
+
 export function registerHoverProvider(language, hoverProvider) {
     // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
     return monaco.languages.registerHoverProvider(JSON.parse(language), {
@@ -186,6 +247,35 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
             };
         },
     });
+}
+
+/**
+ * @param {string} editorId
+ * @param {number[]} offsets - start,end,start,end,...
+ */
+export function underlineLinks(editorId, offsets) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    const model = editor.getModel();
+    if (model) {
+        const ranges = [];
+        for (let i = 0; i <= offsets.length; i += 2) {
+            const startPosition = model.getPositionAt(offsets[i]);
+            const endPosition = model.getPositionAt(offsets[i + 1]);
+            const range = new monaco.Range(
+                startPosition.lineNumber, startPosition.column,
+                endPosition.lineNumber, endPosition.column);
+            ranges.push(range);
+        }
+
+        editor.createDecorationsCollection(ranges.map(range => ({
+            range,
+            options: { inlineClassName: 'underline' },
+        })));
+    }
+}
+
+export function registerLanguage(languageId) {
+    monaco.languages.register({ id: languageId });
 }
 
 /**

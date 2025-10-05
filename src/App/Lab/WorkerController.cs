@@ -401,11 +401,11 @@ internal sealed class WorkerController : IAsyncDisposable
             fallback: CompiledAssembly.Fail);
     }
 
-    public Task<string> GetOutputAsync(CompilationInput input, string? file, string outputType)
+    public Task<CompiledFileLazyResult> GetOutputAsync(CompilationInput input, string? file, string outputType)
     {
         return PostAndReceiveMessageAsync(
             new WorkerInputMessage.GetOutput(input, file, outputType) { Id = messageId++ },
-            deserializeAs: default(string));
+            deserializeAs: default(CompiledFileLazyResult));
     }
 
     /// <summary>

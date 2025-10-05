@@ -1,0 +1,18 @@
+﻿Document "component.1.0" { DocumentKind: "component.1.0" }
+  NamespaceDeclaration "TestNamespace" { Name: "TestNamespace" }
+    UsingDirective "global::System" { Content: "global::System" }
+    UsingDirective "global::System.Collections.Generic" { Content: "global::System.Collections.Generic" }
+    UsingDirective "global::System.Linq" { Content: "global::System.Linq" }
+    UsingDirective "global::System.Threading.Tasks" { Content: "global::System.Threading.Tasks" }
+    UsingDirective "global::Microsoft.AspNetCore.Components" { Content: "global::Microsoft.AspNetCore.Components" }
+    UsingDirective "System.Net.Http" { Content: "System.Net.Http" }
+    UsingDirective "System.Net.Http.Json" { Content: "System.Net.Http.Json" }
+    UsingDirective "Microsoft.AspNetCore.Components.Authorization" { Content: "Microsoft.AspNetCore.Components.Authorization" }
+    UsingDirective "Microsoft.AspNetCore.Components.Forms" { Content: "Microsoft.AspNetCore.Components.Forms" }
+    UsingDirective "Microsoft.AspNetCore.Components.Routing" { Content: "Microsoft.AspNetCore.Components.Routing" }
+    UsingDirective "Microsoft.AspNetCore.Components.Web" { Content: "Microsoft.AspNetCore.Components.Web" }
+    UsingDirective "static Microsoft.AspNetCore.Components.Web.RenderMode" { Content: "static Microsoft.AspNetCore.Components.Web.RenderMode" }
+    UsingDirective "Microsoft.AspNetCore.Components.Web.Virtualization" { Content: "Microsoft.AspNetCore.Components.Web.Virtualization" }
+    UsingDirective "Microsoft.JSInterop" { Content: "Microsoft.JSInterop" }
+    ClassDeclaration "_Imports" { Name: "_Imports", Interfaces: "", Modifiers: "public, partial", TypeParameters: "" }
+      MethodDeclaration "Execute" { Name: "Execute", Modifiers: "protected", Parameters: "", ReturnType: "void" }

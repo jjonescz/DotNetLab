@@ -22,7 +22,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Contains(expectedDiagnostic, diagnosticsText);
@@ -91,7 +91,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                     """,
             });
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal($"""
@@ -123,33 +123,33 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = "test" }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine("Diagnostics:");
         output.WriteLine(diagnosticsText);
         output.WriteLine(string.Empty);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
         output.WriteLine("C#:");
         output.WriteLine(cSharpText);
         output.WriteLine(string.Empty);
         Assert.Contains("class TestComponent", cSharpText);
 
-        var syntaxText = await compiled.Files.First().Value.GetOutput("syntax")!.GetTextAsync(outputFactory: null);
+        var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync(outputFactory: null)).Text;
         output.WriteLine("Syntax:");
         output.WriteLine(syntaxText);
         output.WriteLine(string.Empty);
         Assert.Contains("RazorDocument", syntaxText);
 
-        var irText = await compiled.Files.First().Value.GetOutput("ir")!.GetTextAsync(outputFactory: null);
+        var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync(outputFactory: null)).Text;
         output.WriteLine("IR:");
         output.WriteLine(irText);
         output.WriteLine(string.Empty);
         Assert.Contains("""component.1.0""", irText);
         Assert.Contains("TestComponent", irText);
 
-        var htmlText = await compiled.Files.First().Value.GetOutput("html")!.GetTextAsync(outputFactory: null);
+        var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync(outputFactory: null)).Text;
         output.WriteLine("HTML:");
         output.WriteLine(htmlText);
         output.WriteLine(string.Empty);
@@ -183,17 +183,17 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                 RazorStrategy = strategy,
             });
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
         Assert.Contains("AddComponentParameter", cSharpText);
 
-        var htmlText = await compiled.Files.Single().Value.GetRequiredOutput("html").GetTextAsync(outputFactory: null);
+        var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(htmlText);
         Assert.Equal("<div>42</div>", htmlText);
     }
@@ -220,12 +220,12 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(outputFactory: null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 42
@@ -251,12 +251,12 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(outputFactory: null);
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
         output.WriteLine(cSharpText);
         Assert.Contains("[Extension]", cSharpText);
     }
@@ -336,7 +336,7 @@ public class C
 
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Program.cs", Text = code }])));
 
-        string ilText = await compiled.GetRequiredGlobalOutput("il").GetTextAsync(outputFactory: null);
+        string ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync(outputFactory: null)).Text;
         Assert.DoesNotContain("\t", ilText);
 
         // Verify that the IL contains expected content
@@ -392,12 +392,12 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var ilText = await compiled.GetRequiredGlobalOutput("il").GetTextAsync(null);
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync(null)).Text;
         output.WriteLine(ilText);
         Action<string, string> assert = debug ? Assert.Contains : Assert.DoesNotContain;
         assert("nop", ilText);
@@ -416,7 +416,7 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
 
@@ -454,7 +454,7 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
 
@@ -488,12 +488,12 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -522,12 +522,12 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -562,12 +562,12 @@ public class C
                 new() { FileName = "Input.razor", Text = razorSource },
             ])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var csText = await compiled.GetRequiredGlobalOutput("cs").GetTextAsync(null);
+        var csText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(null)).Text;
         output.WriteLine(csText);
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
@@ -597,12 +597,12 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -631,7 +631,7 @@ public class C
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).EagerText;
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.NotNull(diagnosticsText);
         output.WriteLine(diagnosticsText);
         Assert.Equal("""
@@ -640,7 +640,7 @@ public class C
             Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
             """.ReplaceLineEndings(), diagnosticsText);
 
-        var runText = await compiled.GetRequiredGlobalOutput("run").GetTextAsync(null);
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0

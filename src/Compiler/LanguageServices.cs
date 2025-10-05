@@ -211,21 +211,30 @@ internal sealed class LanguageServices : ILanguageServices
     /// For inspiration, see <see href="https://github.com/dotnet/vscode-csharp/blob/4a83d86909df71ce209b3945e3f4696132cd3d45/src/omnisharp/features/semanticTokensProvider.ts#L161"/>
     /// and <see href="https://github.com/dotnet/roslyn/blob/7c625024a1984d9f04f317940d518402f5898758/src/LanguageServer/Protocol/Handler/SemanticTokens/SemanticTokensHelpers.cs#L22"/>.
     /// </remarks>
-    public async Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
+    public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
     {
         if (!TryGetDocument(modelUri, out var document))
         {
-            return string.Empty;
+            return SemanticTokensUtil.EmptyResponse;
         }
 
-        var sw = Stopwatch.StartNew();
-        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
-        try
+        return ConvertSemanticTokensAsync(logger, docPath: $"in/{document.FilePath}", rangeJson: rangeJson, debug, async (range) =>
         {
             var text = await document.GetTextAsync(cancellationToken);
             var lines = text.Lines;
             var span = range is null ? text.FullRange : range.ToSpan(lines);
             var classifiedSpansMutable = (await Classifier.GetClassifiedSpansAsync(document, span, cancellationToken)).AsList();
+            return (text, classifiedSpansMutable);
+        });
+    }
+
+    public static async Task<string?> ConvertSemanticTokensAsync(ILogger logger, string? docPath, string? rangeJson, bool debug, Func<MonacoRange?, ValueTask<(SourceText, IList<ClassifiedSpan>)>> factory)
+    {
+        var sw = Stopwatch.StartNew();
+        var range = rangeJson is null ? null : JsonSerializer.Deserialize(rangeJson, BlazorMonacoJsonContext.Default.Range);
+        try
+        {
+            var (text, classifiedSpansMutable) = await factory(range);
 
             classifiedSpansMutable.Sort(ClassifiedSpanComparer.Instance);
 
@@ -243,80 +252,24 @@ internal sealed class LanguageServices : ILanguageServices
                 converted = new(classifiedSpans.Count);
             }
 
-            // Convert to the data format documented at https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider.provideDocumentSemanticTokens.
-            var data = new List<int>(classifiedSpans.Count * 5);
-
-            int lastLineNumber = 0;
-            int lastStartCharacter = 0;
-
-            for (var currentClassifiedSpanIndex = 0; currentClassifiedSpanIndex < classifiedSpans.Count;)
-            {
-                var classifiedSpan = classifiedSpans[currentClassifiedSpanIndex];
-
-                var originalTextSpan = classifiedSpan.TextSpan;
-                var linePosition = lines.GetLinePosition(originalTextSpan.Start);
-
-                var lineNumber = linePosition.Line;
-                var deltaLine = lineNumber - lastLineNumber;
-                lastLineNumber = lineNumber;
-
-                var startCharacter = linePosition.Character;
-                var deltaStartCharacter = startCharacter;
-                if (deltaLine == 0)
-                {
-                    deltaStartCharacter -= lastStartCharacter;
-                }
-                lastStartCharacter = startCharacter;
-
-                var tokenType = -1;
-                var tokenModifiers = 0;
-
-                // Classified spans with the same text span should be combined into one token.
-                do
-                {
-                    if (SemanticTokensUtil.TokenModifiers.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var m))
-                    {
-                        tokenModifiers |= m;
-                    }
-                    else if (SemanticTokensUtil.TokenTypes.RoslynToLspIndexMap.TryGetValue(classifiedSpan.ClassificationType, out var t))
-                    {
-                        tokenType = t;
-                    }
-                }
-                while (++currentClassifiedSpanIndex < classifiedSpans.Count &&
-                    (classifiedSpan = classifiedSpans[currentClassifiedSpanIndex]).TextSpan == originalTextSpan);
-
-                if (tokenType < 0)
-                {
-                    continue;
-                }
-
-                converted?.Add($"{SemanticTokensUtil.TokenTypes.LspValues[tokenType]}[{text.ToString(originalTextSpan)}]");
-
-                data.Add(deltaLine);
-                data.Add(deltaStartCharacter);
-                data.Add(originalTextSpan.Length);
-                data.Add(tokenType);
-                data.Add(tokenModifiers);
-            }
+            var bytes = Classifier.ConvertToLspFormat(text, classifiedSpans, converted);
 
             if (converted != null)
             {
                 logger.LogDebug("Converted semantic tokens: {Tokens}", converted.JoinToString(", "));
             }
 
-            string result = Convert.ToBase64String(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
+            string result = Convert.ToBase64String(bytes);
 
-            logger.LogDebug("Got semantic tokens ({Count}) for {Range} in {Milliseconds} ms", data.Count / 5, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Got semantic tokens ({Bytes} bytes) for {DocPath}{Range} in {Milliseconds} ms", bytes.Length.SeparateThousands(), docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             return result;
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Canceled completions for {Range} in {Time} ms", range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
+            logger.LogDebug("Canceled completions for {DocPath}{Range} in {Time} ms", docPath, range.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
-            // `null` will be transformed into an exception at the front end.
-            return null;
+            return SemanticTokensUtil.CancelledResponse;
         }
     }
 

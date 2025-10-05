@@ -1,0 +1,59 @@
+﻿using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Security;
+using System.Security.Permissions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.CompilerServices;
+using Microsoft.AspNetCore.Components.Rendering;
+
+[assembly: CompilationRelaxations(8)]
+[assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
+[assembly: Debuggable(DebuggableAttribute.DebuggingModes.Default | DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints | DebuggableAttribute.DebuggingModes.EnableEditAndContinue | DebuggableAttribute.DebuggingModes.DisableOptimizations)]
+[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+[assembly: AssemblyVersion("0.0.0.0")]
+[module: UnverifiableCode]
+[module: RefSafetyRules(11)]
+namespace TestNamespace
+{
+	public class TestComponent : ComponentBase
+	{
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private int <Param>k__BackingField;
+
+		[Parameter]
+		public int Param
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <Param>k__BackingField;
+			}
+			[CompilerGenerated]
+			set
+			{
+				<Param>k__BackingField = value;
+			}
+		}
+
+		protected override void BuildRenderTree(RenderTreeBuilder __builder)
+		{
+			__builder.OpenElement(0, "div");
+			__builder.AddContent(1, Param);
+			__builder.CloseElement();
+			if (Param == 0)
+			{
+				__builder.OpenComponent<TestComponent>(2);
+				__builder.AddComponentParameter(3, "Param", Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck(1));
+				__builder.CloseComponent();
+			}
+		}
+	}
+	public class _Imports
+	{
+		protected void Execute()
+		{
+		}
+	}
+}

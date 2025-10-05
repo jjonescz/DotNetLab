@@ -1,0 +1,3 @@
+﻿Main(IL_0000-IL_0001 18:2-18:3): {
+Main(IL_0001-IL_000b 19:3-19:31): Console.WriteLine("Hello.");
+Main(IL_000b-IL_000d 20:2-20:3): }

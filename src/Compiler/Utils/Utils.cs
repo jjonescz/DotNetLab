@@ -44,6 +44,23 @@ public static class CodeAnalysisUtil
 #pragma warning restore RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental
     }
 
+    extension(string text)
+    {
+        public string ToString(TextSpan span)
+        {
+            return text[span.Start..span.End];
+        }
+    }
+
+    extension(TextSpan span)
+    {
+        public StringSpan ToStringSpan() => new()
+        {
+            Start = span.Start,
+            Length = span.Length
+        };
+    }
+
     public static bool TryGetHostOutputSafe(
         this GeneratorRunResult result,
         string key,

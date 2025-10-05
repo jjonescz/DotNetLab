@@ -38,6 +38,8 @@ public sealed record CompilationPreferences
         ExcludeSingleFileNameInDiagnostics = true,
     };
 
+    public bool ShowSymbols { get; init; }
+    public bool ShowOperations { get; init; }
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }
@@ -111,6 +113,8 @@ public sealed record CompiledAssembly(
 
     public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
+    public static readonly string CSharpLanguageId = "csharp";
+    public static readonly string OutputLanguageId = "output";
 
     public static CompiledAssembly Fail(string output)
     {
@@ -141,6 +145,53 @@ public sealed record CompiledAssembly(
         return GetGlobalOutput(type)
             ?? throw new InvalidOperationException($"Global output of type '{type}' not found.");
     }
+
+    public CompiledFileOutput? GetOutput(string? inputFileName, string outputType)
+    {
+        if (inputFileName is not null)
+        {
+            return Files.TryGetValue(inputFileName, out var file)
+                ? file.GetOutput(outputType)
+                : null;
+        }
+
+        return GetGlobalOutput(outputType);
+    }
+
+    public CompiledFileOutput GetRequiredOutput(string? inputFileName, string outputType)
+    {
+        if (inputFileName is not null)
+        {
+            return Files.TryGetValue(inputFileName, out var file)
+                ? file.GetRequiredOutput(outputType)
+                : throw new InvalidOperationException($"File '{inputFileName}' not found.");
+        }
+
+        return GetRequiredGlobalOutput(outputType);
+    }
+
+    public static string GetOutputModelUri(string? inputFileName, string outputType)
+    {
+        return $"out/{Guid.CreateVersion7()}/{outputType}/{inputFileName}";
+    }
+
+    public static bool TryParseOutputModelUri(string modelUri,
+        [NotNullWhen(returnValue: true)] out string? outputType,
+        out string? inputFileName)
+    {
+        if (Util.OutputModelUri.Match(modelUri) is { Success: true } match)
+        {
+            outputType = match.Groups["type"].Value;
+            inputFileName = match.Groups["input"].ValueSpan is ['/', .. var input]
+                ? input.ToString()
+                : null;
+            return true;
+        }
+
+        outputType = null;
+        inputFileName = null;
+        return false;
+    }
 }
 
 public sealed record CompiledFile(ImmutableArray<CompiledFileOutput> Outputs)
@@ -166,26 +217,32 @@ public sealed class CompiledFileOutput
     public int Priority { get; init; }
     public string? Language { get; init; }
 
+    /// <remarks>
+    /// <see cref="JsonIncludeAttribute"/> is explicitly needed because of the non-public setter
+    /// (which needs to be internal so the source generator can see it).
+    /// </remarks>
+    [JsonInclude]
+    public string? Text { get; internal set; }
+
+    /// <remarks>
+    /// <see cref="JsonIncludeAttribute"/> is explicitly needed because of the non-public setter
+    /// (which needs to be internal so the source generator can see it).
+    /// </remarks>
+    [JsonInclude]
+    public CompiledFileOutputMetadata? Metadata { get; internal set; }
+
+    /// <remarks>
+    /// This needs to allow <see langword="null"/> which was historically allowed in cached snippets
+    /// (and we want to support deserializing old cached snippets).
+    /// </remarks>
     public string? EagerText
     {
-        get
-        {
-            if (text is string eagerText)
-            {
-                return eagerText;
-            }
-
-            if (text is ValueTask<string> { IsCompletedSuccessfully: true, Result: var taskResult })
-            {
-                text = taskResult;
-                return taskResult;
-            }
-
-            return null;
-        }
         init
         {
-            text ??= value;
+            if (value != null)
+            {
+                SetEagerText(value);
+            }
         }
     }
 
@@ -197,13 +254,24 @@ public sealed class CompiledFileOutput
         }
     }
 
-    public ValueTask<string> GetTextAsync(Func<ValueTask<string>>? outputFactory)
+    public Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> LazyTextAndMetadata
     {
-        if (EagerText is { } eagerText)
+        init
         {
-            return new(eagerText);
+            text ??= value;
         }
+    }
 
+    public Task<CompiledFileLazyResult> LoadAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
+    {
+        var result = LoadCoreAsync(outputFactory);
+        text = result;
+        return result;
+    }
+
+    [SuppressMessage("Reliability", "CA2012: Use ValueTasks correctly", Justification = "Analyzer broken with extension members")]
+    private Task<CompiledFileLazyResult> LoadCoreAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
+    {
         if (text is null)
         {
             if (outputFactory is null)
@@ -211,28 +279,63 @@ public sealed class CompiledFileOutput
                 throw new InvalidOperationException($"For uncached lazy texts, {nameof(outputFactory)} must be provided.");
             }
 
-            var output = outputFactory();
-            text = output;
-            return output;
+            return outputFactory().SelectAsTask(output =>
+            {
+                Text = output.Text;
+                Metadata = output.Metadata;
+                return output;
+            });
         }
 
-        if (text is ValueTask<string> valueTask)
+        if (text is Task<CompiledFileLazyResult> task)
         {
-            return valueTask;
+            return task;
         }
 
         if (text is Func<ValueTask<string>> factory)
         {
-            var result = factory();
-            text = result;
-            return result;
+            return factory().SelectAsTask(t =>
+            {
+                Text = t;
+                return new CompiledFileLazyResult { Text = t };
+            });
+        }
+
+        if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> factoryWithMetadata)
+        {
+            return factoryWithMetadata().SelectAsTask(output =>
+            {
+                Text = output.Text;
+                Metadata = output.Metadata;
+                return new CompiledFileLazyResult
+                {
+                    Text = output.Text,
+                    Metadata = output.Metadata,
+                };
+            });
         }
 
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
     }
 
-    internal void SetEagerText(string? value)
+    internal void SetEagerText(string value)
     {
-        text = value;
+        text = Task.FromResult(new CompiledFileLazyResult { Text = value });
+        Text = value;
+        Metadata = null;
     }
+}
+
+public readonly struct CompiledFileLazyResult
+{
+    public required string Text { get; init; }
+    public CompiledFileOutputMetadata? Metadata { get; init; }
+}
+
+public sealed class CompiledFileOutputMetadata
+{
+    public string? SemanticTokens { get; init; }
+    public string? InputToOutput { get; init; }
+    public string? OutputToInput { get; init; }
+    public string? OutputToOutput { get; init; }
 }
