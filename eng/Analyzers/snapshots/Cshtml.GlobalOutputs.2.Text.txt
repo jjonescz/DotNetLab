@@ -1,0 +1,557 @@
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Security;
+using System.Security.Permissions;
+using System.Text.Encodings.Web;
+using System.Threading.Tasks;
+using AspNetCoreGeneratedDocument;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor.Internal;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.TagHelpers;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Razor.Hosting;
+using Microsoft.AspNetCore.Razor.Runtime.TagHelpers;
+using Microsoft.AspNetCore.Razor.TagHelpers;
+
+[assembly: CompilationRelaxations(8)]
+[assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
+[assembly: Debuggable(DebuggableAttribute.DebuggingModes.Default | DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints | DebuggableAttribute.DebuggingModes.EnableEditAndContinue | DebuggableAttribute.DebuggingModes.DisableOptimizations)]
+[assembly: RazorCompiledItem(typeof(_TestPage), "mvc.1.0.razor-page", "/TestPage.cshtml")]
+[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+[assembly: AssemblyVersion("0.0.0.0")]
+[module: UnverifiableCode]
+[module: RefSafetyRules(11)]
+namespace AspNetCoreGeneratedDocument
+{
+	[NullableContext(1)]
+	[Nullable(0)]
+	[RazorCompiledItemMetadata("Identifier", "/TestPage.cshtml")]
+	[CreateNewOnMetadataUpdate]
+	internal sealed class _TestPage : Page
+	{
+		[Nullable(0)]
+		public class PageModel
+		{
+			[CompilerGenerated]
+			[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+			private Customer <Customer>k__BackingField = new Customer();
+
+			public Customer Customer
+			{
+				[CompilerGenerated]
+				get
+				{
+					return <Customer>k__BackingField;
+				}
+				[CompilerGenerated]
+				set
+				{
+					<Customer>k__BackingField = value;
+				}
+			}
+		}
+
+		[Nullable(0)]
+		public class Customer
+		{
+			[CompilerGenerated]
+			[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+			private int <Id>k__BackingField;
+
+			[CompilerGenerated]
+			[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+			private string <Name>k__BackingField = "";
+
+			public int Id
+			{
+				[CompilerGenerated]
+				get
+				{
+					return <Id>k__BackingField;
+				}
+				[CompilerGenerated]
+				set
+				{
+					<Id>k__BackingField = value;
+				}
+			}
+
+			[Required]
+			[StringLength(10)]
+			public string Name
+			{
+				[CompilerGenerated]
+				get
+				{
+					return <Name>k__BackingField;
+				}
+				[CompilerGenerated]
+				set
+				{
+					<Name>k__BackingField = value;
+				}
+			}
+		}
+
+		[CompilerGenerated]
+		private sealed class <<ExecuteAsync>b__10_0>d : IAsyncStateMachine
+		{
+			public int <>1__state;
+
+			public AsyncTaskMethodBuilder <>t__builder;
+
+			[Nullable(0)]
+			public _TestPage <>4__this;
+
+			private TaskAwaiter <>u__1;
+
+			private void MoveNext()
+			{
+				int num = <>1__state;
+				try
+				{
+					TaskAwaiter awaiter;
+					TaskAwaiter awaiter2;
+					if (num != 0)
+					{
+						if (num == 1)
+						{
+							awaiter = <>u__1;
+							<>u__1 = default(TaskAwaiter);
+							num = (<>1__state = -1);
+							goto IL_023e;
+						}
+						<>4__this.WriteLiteral("\n    Name:\n    ");
+						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("input", TagMode.SelfClosing, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93585", <>c.<>9__10_1 ?? (<>c.<>9__10_1 = new Func<Task>(<>c.<>9.<ExecuteAsync>b__10_1)));
+						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.CreateTagHelper<InputTagHelper>();
+						<>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper);
+						InputTagHelper _Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper;
+						IModelExpressionProvider modelExpressionProvider = <>4__this.ModelExpressionProvider;
+						ViewDataDictionary<PageModel> viewData = <>4__this.ViewData;
+						ParameterExpression parameterExpression = Expression.Parameter(typeof(PageModel), "__model");
+						MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/)), (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/));
+						ParameterExpression[] array = new ParameterExpression[1];
+						array[0] = parameterExpression;
+						_Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For = modelExpressionProvider.CreateModelExpression(viewData, Expression.Lambda<Func<PageModel, string>>(body, array));
+						<>4__this.__tagHelperExecutionContext.AddTagHelperAttribute("asp-for", <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For, HtmlAttributeValueStyle.DoubleQuotes);
+						awaiter2 = <>4__this.__tagHelperRunner.RunAsync(<>4__this.__tagHelperExecutionContext).GetAwaiter();
+						if (!awaiter2.IsCompleted)
+						{
+							num = (<>1__state = 0);
+							<>u__1 = awaiter2;
+							<<ExecuteAsync>b__10_0>d stateMachine = this;
+							<>t__builder.AwaitUnsafeOnCompleted(ref awaiter2, ref stateMachine);
+							return;
+						}
+					}
+					else
+					{
+						awaiter2 = <>u__1;
+						<>u__1 = default(TaskAwaiter);
+						num = (<>1__state = -1);
+					}
+					awaiter2.GetResult();
+					if (!<>4__this.__tagHelperExecutionContext.Output.IsContentModified)
+					{
+						awaiter = <>4__this.__tagHelperExecutionContext.SetOutputContentAsync().GetAwaiter();
+						if (!awaiter.IsCompleted)
+						{
+							num = (<>1__state = 1);
+							<>u__1 = awaiter;
+							<<ExecuteAsync>b__10_0>d stateMachine = this;
+							<>t__builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+							return;
+						}
+						goto IL_023e;
+					}
+					goto IL_0247;
+					IL_023e:
+					awaiter.GetResult();
+					goto IL_0247;
+					IL_0247:
+					<>4__this.Write(<>4__this.__tagHelperExecutionContext.Output);
+					<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.End();
+					<>4__this.WriteLiteral("\n    <input type=\"submit\" />\n");
+				}
+				catch (Exception exception)
+				{
+					<>1__state = -2;
+					<>t__builder.SetException(exception);
+					return;
+				}
+				<>1__state = -2;
+				<>t__builder.SetResult();
+			}
+
+			void IAsyncStateMachine.MoveNext()
+			{
+				//ILSpy generated this explicit interface implementation from .override directive in MoveNext
+				this.MoveNext();
+			}
+
+			[DebuggerHidden]
+			private void SetStateMachine(IAsyncStateMachine stateMachine)
+			{
+			}
+
+			void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
+			{
+				//ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
+				this.SetStateMachine(stateMachine);
+			}
+		}
+
+		[Serializable]
+		[CompilerGenerated]
+		private sealed class <>c
+		{
+			private sealed class <<ExecuteAsync>b__10_1>d : IAsyncStateMachine
+			{
+				public int <>1__state;
+
+				public AsyncTaskMethodBuilder <>t__builder;
+
+				[Nullable(0)]
+				public <>c <>4__this;
+
+				private void MoveNext()
+				{
+					int num = <>1__state;
+					try
+					{
+					}
+					catch (Exception exception)
+					{
+						<>1__state = -2;
+						<>t__builder.SetException(exception);
+						return;
+					}
+					<>1__state = -2;
+					<>t__builder.SetResult();
+				}
+
+				void IAsyncStateMachine.MoveNext()
+				{
+					//ILSpy generated this explicit interface implementation from .override directive in MoveNext
+					this.MoveNext();
+				}
+
+				[DebuggerHidden]
+				private void SetStateMachine(IAsyncStateMachine stateMachine)
+				{
+				}
+
+				void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
+				{
+					//ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
+					this.SetStateMachine(stateMachine);
+				}
+			}
+
+			[Nullable(0)]
+			public static readonly <>c <>9 = new <>c();
+
+			[Nullable(0)]
+			public static Func<Task> <>9__10_1;
+
+			[NullableContext(0)]
+			[AsyncStateMachine(typeof(<<ExecuteAsync>b__10_1>d))]
+			[DebuggerStepThrough]
+			internal Task <ExecuteAsync>b__10_1()
+			{
+				<<ExecuteAsync>b__10_1>d stateMachine = new <<ExecuteAsync>b__10_1>d();
+				stateMachine.<>t__builder = AsyncTaskMethodBuilder.Create();
+				stateMachine.<>4__this = this;
+				stateMachine.<>1__state = -1;
+				stateMachine.<>t__builder.Start(ref stateMachine);
+				return stateMachine.<>t__builder.Task;
+			}
+		}
+
+		[CompilerGenerated]
+		private sealed class <ExecuteAsync>d__10 : IAsyncStateMachine
+		{
+			public int <>1__state;
+
+			public AsyncTaskMethodBuilder <>t__builder;
+
+			[Nullable(0)]
+			public _TestPage <>4__this;
+
+			private TaskAwaiter <>u__1;
+
+			private void MoveNext()
+			{
+				int num = <>1__state;
+				try
+				{
+					TaskAwaiter awaiter;
+					TaskAwaiter awaiter2;
+					if (num != 0)
+					{
+						if (num == 1)
+						{
+							awaiter = <>u__1;
+							<>u__1 = default(TaskAwaiter);
+							num = (<>1__state = -1);
+							goto IL_01f6;
+						}
+						<>4__this.WriteLiteral("\n");
+						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("form", TagMode.StartTagAndEndTag, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93316", new Func<Task>(<>4__this.<ExecuteAsync>b__10_0));
+						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper = <>4__this.CreateTagHelper<FormTagHelper>();
+						<>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper);
+						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper = <>4__this.CreateTagHelper<RenderAtEndOfFormTagHelper>();
+						<>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper);
+						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper.Method = (string)__tagHelperAttribute_0.Value;
+						<>4__this.__tagHelperExecutionContext.AddTagHelperAttribute(__tagHelperAttribute_0);
+						awaiter2 = <>4__this.__tagHelperRunner.RunAsync(<>4__this.__tagHelperExecutionContext).GetAwaiter();
+						if (!awaiter2.IsCompleted)
+						{
+							num = (<>1__state = 0);
+							<>u__1 = awaiter2;
+							<ExecuteAsync>d__10 stateMachine = this;
+							<>t__builder.AwaitUnsafeOnCompleted(ref awaiter2, ref stateMachine);
+							return;
+						}
+					}
+					else
+					{
+						awaiter2 = <>u__1;
+						<>u__1 = default(TaskAwaiter);
+						num = (<>1__state = -1);
+					}
+					awaiter2.GetResult();
+					if (!<>4__this.__tagHelperExecutionContext.Output.IsContentModified)
+					{
+						awaiter = <>4__this.__tagHelperExecutionContext.SetOutputContentAsync().GetAwaiter();
+						if (!awaiter.IsCompleted)
+						{
+							num = (<>1__state = 1);
+							<>u__1 = awaiter;
+							<ExecuteAsync>d__10 stateMachine = this;
+							<>t__builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+							return;
+						}
+						goto IL_01f6;
+					}
+					goto IL_01ff;
+					IL_01f6:
+					awaiter.GetResult();
+					goto IL_01ff;
+					IL_01ff:
+					<>4__this.Write(<>4__this.__tagHelperExecutionContext.Output);
+					<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.End();
+					<>4__this.WriteLiteral("\n\n");
+				}
+				catch (Exception exception)
+				{
+					<>1__state = -2;
+					<>t__builder.SetException(exception);
+					return;
+				}
+				<>1__state = -2;
+				<>t__builder.SetResult();
+			}
+
+			void IAsyncStateMachine.MoveNext()
+			{
+				//ILSpy generated this explicit interface implementation from .override directive in MoveNext
+				this.MoveNext();
+			}
+
+			[DebuggerHidden]
+			private void SetStateMachine(IAsyncStateMachine stateMachine)
+			{
+			}
+
+			void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
+			{
+				//ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
+				this.SetStateMachine(stateMachine);
+			}
+		}
+
+		[Nullable(0)]
+		private static readonly TagHelperAttribute __tagHelperAttribute_0 = new TagHelperAttribute("method", "post", HtmlAttributeValueStyle.DoubleQuotes);
+
+		[Nullable(0)]
+		private TagHelperExecutionContext __tagHelperExecutionContext;
+
+		[Nullable(0)]
+		private TagHelperRunner __tagHelperRunner = new TagHelperRunner();
+
+		[Nullable(0)]
+		private string __tagHelperStringValueBuffer;
+
+		[Nullable(0)]
+		private TagHelperScopeManager __backed__tagHelperScopeManager = null;
+
+		[Nullable(0)]
+		private FormTagHelper __Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper;
+
+		[Nullable(0)]
+		private RenderAtEndOfFormTagHelper __Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper;
+
+		[Nullable(0)]
+		private InputTagHelper __Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper;
+
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private IModelExpressionProvider <ModelExpressionProvider>k__BackingField = null;
+
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private IUrlHelper <Url>k__BackingField = null;
+
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private IViewComponentHelper <Component>k__BackingField = null;
+
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private IJsonHelper <Json>k__BackingField = null;
+
+		[CompilerGenerated]
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		private IHtmlHelper<PageModel> <Html>k__BackingField = null;
+
+		[Nullable(0)]
+		private TagHelperScopeManager __tagHelperScopeManager
+		{
+			[NullableContext(0)]
+			get
+			{
+				if (__backed__tagHelperScopeManager == null)
+				{
+					__backed__tagHelperScopeManager = new TagHelperScopeManager(new Action<HtmlEncoder>(base.StartTagHelperWritingScope), new Func<TagHelperContent>(base.EndTagHelperWritingScope));
+				}
+				return __backed__tagHelperScopeManager;
+			}
+		}
+
+		[RazorInject]
+		public IModelExpressionProvider ModelExpressionProvider
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <ModelExpressionProvider>k__BackingField;
+			}
+			[CompilerGenerated]
+			private set
+			{
+				<ModelExpressionProvider>k__BackingField = value;
+			}
+		}
+
+		[RazorInject]
+		public IUrlHelper Url
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <Url>k__BackingField;
+			}
+			[CompilerGenerated]
+			private set
+			{
+				<Url>k__BackingField = value;
+			}
+		}
+
+		[RazorInject]
+		public IViewComponentHelper Component
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <Component>k__BackingField;
+			}
+			[CompilerGenerated]
+			private set
+			{
+				<Component>k__BackingField = value;
+			}
+		}
+
+		[RazorInject]
+		public IJsonHelper Json
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <Json>k__BackingField;
+			}
+			[CompilerGenerated]
+			private set
+			{
+				<Json>k__BackingField = value;
+			}
+		}
+
+		[RazorInject]
+		public IHtmlHelper<PageModel> Html
+		{
+			[CompilerGenerated]
+			get
+			{
+				return <Html>k__BackingField;
+			}
+			[CompilerGenerated]
+			private set
+			{
+				<Html>k__BackingField = value;
+			}
+		}
+
+		public ViewDataDictionary<PageModel> ViewData
+		{
+			get
+			{
+				PageContext pageContext = base.PageContext;
+				return (ViewDataDictionary<PageModel>)((pageContext != null) ? pageContext.ViewData : null);
+			}
+		}
+
+		public PageModel Model
+		{
+			get
+			{
+				return ViewData.Model;
+			}
+		}
+
+		[NullableContext(0)]
+		[AsyncStateMachine(typeof(<ExecuteAsync>d__10))]
+		[DebuggerStepThrough]
+		public override Task ExecuteAsync()
+		{
+			<ExecuteAsync>d__10 stateMachine = new <ExecuteAsync>d__10();
+			stateMachine.<>t__builder = AsyncTaskMethodBuilder.Create();
+			stateMachine.<>4__this = this;
+			stateMachine.<>1__state = -1;
+			stateMachine.<>t__builder.Start(ref stateMachine);
+			return stateMachine.<>t__builder.Task;
+		}
+
+		[NullableContext(0)]
+		[AsyncStateMachine(typeof(<<ExecuteAsync>b__10_0>d))]
+		[DebuggerStepThrough]
+		[CompilerGenerated]
+		private Task <ExecuteAsync>b__10_0()
+		{
+			<<ExecuteAsync>b__10_0>d stateMachine = new <<ExecuteAsync>b__10_0>d();
+			stateMachine.<>t__builder = AsyncTaskMethodBuilder.Create();
+			stateMachine.<>4__this = this;
+			stateMachine.<>1__state = -1;
+			stateMachine.<>t__builder.Start(ref stateMachine);
+			return stateMachine.<>t__builder.Task;
+		}
+	}
+}

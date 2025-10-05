@@ -1,0 +1,44 @@
+﻿get_Customer(IL_0000-IL_0007 50:6-50:39): return <Customer>k__BackingField;
+set_Customer(IL_0000-IL_0007 55:6-55:40): <Customer>k__BackingField = value;
+set_Customer(IL_0007-IL_0008 56:5-56:6): }
+get_Id(IL_0000-IL_0007 76:6-76:33): return <Id>k__BackingField;
+set_Id(IL_0000-IL_0007 81:6-81:34): <Id>k__BackingField = value;
+set_Id(IL_0007-IL_0008 82:5-82:6): }
+get_Name(IL_0000-IL_0007 92:6-92:35): return <Name>k__BackingField;
+set_Name(IL_0000-IL_0007 97:6-97:36): <Name>k__BackingField = value;
+set_Name(IL_0007-IL_0008 98:5-98:6): }
+MoveNext(IL_0000-IL_0007 116:5-116:26): int num = <>1__state;
+MoveNext(IL_0007-IL_000a 121:6-121:19): if (num != 0)
+MoveNext(IL_000a-IL_0010 123:7-123:20): if (num == 1)
+MoveNext(IL_001c-IL_002d 130:7-130:51): <>4__this.WriteLiteral("\n    Name:\n    ");
+MoveNext(IL_002d-IL_0052 131:7-131:247): <>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("input", TagMode.SelfClosing, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93585", <>c.<>9__10_1 ?? (<>c.<>9__10_1 = new Func<Task>(<>c.<>9.<ExecuteAsync>b__10_1)));
+MoveNext(IL_0052-IL_0089 132:7-132:116): <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.CreateTagHelper<InputTagHelper>();
+MoveNext(IL_0089-IL_00a4 133:7-133:113): <>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper);
+MoveNext(IL_00a4-IL_00b0 134:7-134:139): InputTagHelper _Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper;
+MoveNext(IL_00b0-IL_00bb 135:7-135:92): IModelExpressionProvider modelExpressionProvider = <>4__this.ModelExpressionProvider;
+MoveNext(IL_00bb-IL_00c6 136:7-136:67): ViewDataDictionary<PageModel> viewData = <>4__this.ViewData;
+MoveNext(IL_00c6-IL_00db 137:7-137:100): ParameterExpression parameterExpression = Expression.Parameter(typeof(PageModel), "__model");
+MoveNext(IL_00db-IL_0104 138:7-138:305): MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/)), (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/));
+MoveNext(IL_0104-IL_010a 139:7-139:64): ParameterExpression[] array = new ParameterExpression[1];
+MoveNext(IL_010a-IL_010e 140:7-140:38): array[0] = parameterExpression;
+MoveNext(IL_010e-IL_011d 141:7-141:178): _Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For = modelExpressionProvider.CreateModelExpression(viewData, Expression.Lambda<Func<PageModel, string>>(body, array));
+MoveNext(IL_011d-IL_0144 142:7-142:184): <>4__this.__tagHelperExecutionContext.AddTagHelperAttribute("asp-for", <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For, HtmlAttributeValueStyle.DoubleQuotes);
+MoveNext(IL_0144-IL_0166 143:7-143:107): awaiter2 = <>4__this.__tagHelperRunner.RunAsync(<>4__this.__tagHelperExecutionContext).GetAwaiter();
+MoveNext(IL_0166-IL_016f 144:7-144:33): if (!awaiter2.IsCompleted)
+MoveNext(IL_016f-IL_0178 146:8-146:31): num = (<>1__state = 0);
+MoveNext(IL_0178-IL_017f 147:8-147:26): <>u__1 = awaiter2;
+MoveNext(IL_017f-IL_0181 148:8-148:53): <<ExecuteAsync>b__10_0>d stateMachine = this;
+MoveNext(IL_0181-IL_0190 149:8-149:76): <>t__builder.AwaitUnsafeOnCompleted(ref awaiter2, ref stateMachine);
+MoveNext(IL_0190-IL_0196 150:8-150:15): return;
+MoveNext(IL_0196-IL_019d 155:7-155:25): awaiter2 = <>u__1;
+MoveNext(IL_019d-IL_01a9 156:7-156:37): <>u__1 = default(TaskAwaiter);
+MoveNext(IL_01a9-IL_01b2 157:7-157:31): num = (<>1__state = -1);
+MoveNext(IL_01b2-IL_01b9 159:6-159:27): awaiter2.GetResult();
+MoveNext(IL_01b9-IL_01d4 160:6-160:74): if (!<>4__this.__tagHelperExecutionContext.Output.IsContentModified)
+MoveNext(IL_01d8-IL_01f0 162:7-162:92): awaiter = <>4__this.__tagHelperExecutionContext.SetOutputContentAsync().GetAwaiter();
+MoveNext(IL_01f0-IL_01f9 163:7-163:32): if (!awaiter.IsCompleted)
+MoveNext(IL_01f9-IL_0202 165:8-165:31): num = (<>1__state = 1);
+MoveNext(IL_0202-IL_020a 166:8-166:25): <>u__1 = awaiter;
+MoveNext(IL_020a-IL_020c 167:8-167:53): <<ExecuteAsync>b__10_0>d stateMachine = this;
+MoveNext(IL_020c-IL_021b 168:8-168:75): <>t__builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+MoveNext(IL_021b-IL_0221 169:8-169:15): return;

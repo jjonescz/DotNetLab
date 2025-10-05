@@ -1,0 +1,30 @@
+﻿Document "component.1.0" { DocumentKind: "component.1.0" }
+  NamespaceDeclaration "TestNamespace" { Name: "TestNamespace" }
+    UsingDirective "global::System" { Content: "global::System" }
+    UsingDirective "global::System.Collections.Generic" { Content: "global::System.Collections.Generic" }
+    UsingDirective "global::System.Linq" { Content: "global::System.Linq" }
+    UsingDirective "global::System.Threading.Tasks" { Content: "global::System.Threading.Tasks" }
+    UsingDirective "global::Microsoft.AspNetCore.Components" { Content: "global::Microsoft.AspNetCore.Components" }
+    UsingDirective "System.Net.Http" { Content: "System.Net.Http" }
+    UsingDirective "System.Net.Http.Json" { Content: "System.Net.Http.Json" }
+    UsingDirective "Microsoft.AspNetCore.Components.Authorization" { Content: "Microsoft.AspNetCore.Components.Authorization" }
+    UsingDirective "Microsoft.AspNetCore.Components.Forms" { Content: "Microsoft.AspNetCore.Components.Forms" }
+    UsingDirective "Microsoft.AspNetCore.Components.Routing" { Content: "Microsoft.AspNetCore.Components.Routing" }
+    UsingDirective "Microsoft.AspNetCore.Components.Web" { Content: "Microsoft.AspNetCore.Components.Web" }
+    UsingDirective "static Microsoft.AspNetCore.Components.Web.RenderMode" { Content: "static Microsoft.AspNetCore.Components.Web.RenderMode" }
+    UsingDirective "Microsoft.AspNetCore.Components.Web.Virtualization" { Content: "Microsoft.AspNetCore.Components.Web.Virtualization" }
+    UsingDirective "Microsoft.JSInterop" { Content: "Microsoft.JSInterop" }
+    ClassDeclaration "TestComponent" { Name: "TestComponent", Interfaces: "", Modifiers: "public, partial", TypeParameters: "" }
+      MethodDeclaration "BuildRenderTree" { Name: "BuildRenderTree", Modifiers: "protected, override", Parameters: "global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder", ReturnType: "void" }
+        MarkupElement "div" { TagName: "div" }
+          CSharpExpression "Param"
+            CSharpIntermediateToken "Param" { Content: "Param" }
+        CSharpCode "if (Param == 0)\n{\n"
+          CSharpIntermediateToken "if (Param == 0)\n{\n" { Content: "if (Param == 0)\n{\n" }
+        Component "TestComponent" { Component: "TestNamespace.TestComponent", TagName: "TestComponent" }
+          ComponentAttribute "Param" { AttributeName: "Param", AttributeStructure: "DoubleQuotes", BoundAttribute: "int TestNamespace.TestComponent.Param", PropertyName: "Param", TagHelper: "TestNamespace.TestComponent", TypeName: "System.Int32" }
+            CSharpIntermediateToken "1" { Content: "1" }
+        CSharpCode "}\n"
+          CSharpIntermediateToken "}\n" { Content: "}\n" }
+      CSharpCode "\n    [Parameter] public int Param { get; set; }\n"
+        CSharpIntermediateToken "\n    [Parameter] public int Param { get; set; }\n" { Content: "\n    [Parameter] public int Param { get; set; }\n" }

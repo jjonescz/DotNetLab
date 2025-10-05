@@ -1,0 +1,275 @@
+﻿RazorDocument - [0..498) - Width: 498 - [@pageLF@using System.ComponentModel.DataAnnotationsLF@model PageModelLF@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpersLFLF<form method="post">LF    Name:LF    <input asp-for="Customer.Name" />LF    <input type="submit" />LF</form>LFLF@functions {LF    public class PageModelLF    {LF        public Customer Customer { get; set; } = new();LF    }LFLF    public class CustomerLF    {LF        public int Id { get; set; }LFLF        [Required, StringLength(10)]LF        public string Name { get; set; } = "";LF    }LF}LF]
+    MarkupBlock - [0..498) - Width: 498
+        MarkupTextLiteral - [0..0) - Width: 0 - [] - Gen<Markup>
+            Marker;[];
+        CSharpCodeBlock - [0..6) - Width: 6
+            RazorDirective - [0..6) - Width: 6 - Directive:{page;SingleLine;FileScopedSinglyOccurring}
+                CSharpTransition - [0..1) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [1..6) - Width: 5
+                    RazorMetaCode - [1..5) - Width: 4 - Gen<None>
+                        Identifier;[page];
+                    CSharpCodeBlock - [5..6) - Width: 1
+                        MarkupEphemeralTextLiteral - [5..6) - Width: 1 - [LF] - Gen<None>
+                            NewLine;[LF];
+        MarkupTextLiteral - [6..6) - Width: 0 - [] - Gen<Markup>
+            Marker;[];
+        CSharpCodeBlock - [6..51) - Width: 45
+            RazorDirective - [6..50) - Width: 44
+                CSharpTransition - [6..7) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [7..50) - Width: 43
+                    CSharpStatementLiteral - [7..50) - Width: 43 - [using System.ComponentModel.DataAnnotations] - Gen<Import: System.ComponentModel.DataAnnotations;>
+                        Keyword;[using];
+                        Whitespace;[ ];
+                        Identifier;[System];
+                        Dot;[.];
+                        Identifier;[ComponentModel];
+                        Dot;[.];
+                        Identifier;[DataAnnotations];
+            RazorMetaCode - [50..51) - Width: 1 - Gen<None>
+                NewLine;[LF];
+        CSharpCodeBlock - [51..68) - Width: 17
+            RazorDirective - [51..68) - Width: 17 - Directive:{model;SingleLine;FileScopedSinglyOccurring}
+                CSharpTransition - [51..52) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [52..68) - Width: 16
+                    RazorMetaCode - [52..57) - Width: 5 - Gen<None>
+                        Identifier;[model];
+                    CSharpCodeBlock - [57..68) - Width: 11
+                        CSharpStatementLiteral - [57..58) - Width: 1 - [ ] - Gen<None>
+                            Whitespace;[ ];
+                        CSharpStatementLiteral - [58..67) - Width: 9 - [PageModel] - Gen<DirectiveToken {TypeName;Type;Opt:False}>
+                            Identifier;[PageModel];
+                        MarkupEphemeralTextLiteral - [67..68) - Width: 1 - [LF] - Gen<None>
+                            NewLine;[LF];
+        MarkupTextLiteral - [68..68) - Width: 0 - [] - Gen<Markup>
+            Marker;[];
+        CSharpCodeBlock - [68..121) - Width: 53
+            RazorDirective - [68..121) - Width: 53
+                CSharpTransition - [68..69) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [69..121) - Width: 52
+                    RazorMetaCode - [69..81) - Width: 12 - Gen<None>
+                        Identifier;[addTagHelper];
+                    CSharpCodeBlock - [81..121) - Width: 40
+                        MarkupTextLiteral - [81..82) - Width: 1 - [ ] - Gen<None>
+                            Whitespace;[ ];
+                        CSharpStatementLiteral - [82..121) - Width: 39 - [*, Microsoft.AspNetCore.Mvc.TagHelpersLF] - Gen<AddTagHelper:{*, Microsoft.AspNetCore.Mvc.TagHelpers;*, Microsoft.AspNetCore.Mvc.TagHelpers;*;Microsoft.AspNetCore.Mvc.TagHelpers}>
+                            CSharpOperator;[*];
+                            Comma;[,];
+                            Whitespace;[ ];
+                            Identifier;[Microsoft];
+                            Dot;[.];
+                            Identifier;[AspNetCore];
+                            Dot;[.];
+                            Identifier;[Mvc];
+                            Dot;[.];
+                            Identifier;[TagHelpers];
+                            NewLine;[LF];
+        MarkupTextLiteral - [121..122) - Width: 1 - [LF] - Gen<Markup>
+            NewLine;[LF];
+        MarkupTagHelperElement - [122..226) - Width: 104 - form[StartTagAndEndTag] - FormTagHelper - RenderAtEndOfFormTagHelper
+            MarkupTagHelperStartTag - [122..142) - Width: 20 - [<form method="post">] - Gen<Markup>
+                OpenAngle;[<];
+                Text;[form];
+                MarkupTagHelperAttribute - [127..141) - Width: 14 - method - DoubleQuotes - Bound - [ method="post"]
+                    MarkupTextLiteral - [127..128) - Width: 1 - [ ] - Gen<Markup>
+                        Whitespace;[ ];
+                    MarkupTextLiteral - [128..134) - Width: 6 - [method] - Gen<Markup>
+                        Text;[method];
+                    Equals;[=];
+                    MarkupTextLiteral - [135..136) - Width: 1 - ["] - Gen<Markup>
+                        DoubleQuote;["];
+                    MarkupTagHelperAttributeValue - [136..140) - Width: 4
+                        MarkupTextLiteral - [136..140) - Width: 4 - [post] - Gen<Markup>
+                            Text;[post];
+                    MarkupTextLiteral - [140..141) - Width: 1 - ["] - Gen<Markup>
+                        DoubleQuote;["];
+                CloseAngle;[>];
+            MarkupTextLiteral - [142..157) - Width: 15 - [LF    Name:LF    ] - Gen<Markup>
+                NewLine;[LF];
+                Whitespace;[    ];
+                Text;[Name:];
+                NewLine;[LF];
+                Whitespace;[    ];
+            MarkupTagHelperElement - [157..190) - Width: 33 - input[SelfClosing] - InputTagHelper
+                MarkupTagHelperStartTag - [157..190) - Width: 33 - [<input asp-for="Customer.Name" />] - Gen<Markup>
+                    OpenAngle;[<];
+                    Text;[input];
+                    MarkupTagHelperAttribute - [163..187) - Width: 24 - asp-for - DoubleQuotes - Bound - [ asp-for="Customer.Name"]
+                        MarkupTextLiteral - [163..164) - Width: 1 - [ ] - Gen<Markup>
+                            Whitespace;[ ];
+                        MarkupTextLiteral - [164..171) - Width: 7 - [asp-for] - Gen<Markup>
+                            Text;[asp-for];
+                        Equals;[=];
+                        MarkupTextLiteral - [172..173) - Width: 1 - ["] - Gen<Markup>
+                            DoubleQuote;["];
+                        MarkupTagHelperAttributeValue - [173..186) - Width: 13
+                            CSharpExpressionLiteral - [173..186) - Width: 13 - [Customer.Name] - Gen<None>
+                                Text;[Customer.Name];
+                        MarkupTextLiteral - [186..187) - Width: 1 - ["] - Gen<Markup>
+                            DoubleQuote;["];
+                    MarkupMiscAttributeContent - [187..188) - Width: 1
+                        MarkupTextLiteral - [187..188) - Width: 1 - [ ] - Gen<Markup>
+                            Whitespace;[ ];
+                    ForwardSlash;[/];
+                    CloseAngle;[>];
+            MarkupTextLiteral - [190..195) - Width: 5 - [LF    ] - Gen<Markup>
+                NewLine;[LF];
+                Whitespace;[    ];
+            MarkupElement - [195..218) - Width: 23
+                MarkupStartTag - [195..218) - Width: 23 - [<input type="submit" />] - Gen<Markup>
+                    OpenAngle;[<];
+                    Text;[input];
+                    MarkupAttributeBlock - [201..215) - Width: 14 - [ type="submit"]
+                        MarkupTextLiteral - [201..202) - Width: 1 - [ ] - Gen<Markup>
+                            Whitespace;[ ];
+                        MarkupTextLiteral - [202..206) - Width: 4 - [type] - Gen<Markup>
+                            Text;[type];
+                        Equals;[=];
+                        MarkupTextLiteral - [207..208) - Width: 1 - ["] - Gen<Markup>
+                            DoubleQuote;["];
+                        GenericBlock - [208..214) - Width: 6
+                            MarkupLiteralAttributeValue - [208..214) - Width: 6 - [submit]
+                                MarkupTextLiteral - [208..214) - Width: 6 - [submit] - Gen<Markup>
+                                    Text;[submit];
+                        MarkupTextLiteral - [214..215) - Width: 1 - ["] - Gen<Markup>
+                            DoubleQuote;["];
+                    MarkupMiscAttributeContent - [215..216) - Width: 1
+                        MarkupTextLiteral - [215..216) - Width: 1 - [ ] - Gen<Markup>
+                            Whitespace;[ ];
+                    ForwardSlash;[/];
+                    CloseAngle;[>];
+            MarkupTextLiteral - [218..219) - Width: 1 - [LF] - Gen<Markup>
+                NewLine;[LF];
+            MarkupTagHelperEndTag - [219..226) - Width: 7 - [</form>]
+                OpenAngle;[<];
+                ForwardSlash;[/];
+                Text;[form];
+                CloseAngle;[>];
+        MarkupTextLiteral - [226..228) - Width: 2 - [LFLF] - Gen<Markup>
+            NewLine;[LF];
+            NewLine;[LF];
+        CSharpCodeBlock - [228..498) - Width: 270
+            RazorDirective - [228..497) - Width: 269 - Directive:{functions;CodeBlock;Unrestricted}
+                CSharpTransition - [228..229) - Width: 1 - Gen<None>
+                    Transition;[@];
+                RazorDirectiveBody - [229..497) - Width: 268
+                    RazorMetaCode - [229..238) - Width: 9 - Gen<None>
+                        Identifier;[functions];
+                    CSharpCodeBlock - [238..497) - Width: 259
+                        UnclassifiedTextLiteral - [238..239) - Width: 1 - [ ] - Gen<None>
+                            Whitespace;[ ];
+                        RazorMetaCode - [239..240) - Width: 1 - Gen<None>
+                            LeftBrace;[{];
+                        CSharpCodeBlock - [240..496) - Width: 256
+                            CSharpStatementLiteral - [240..496) - Width: 256 - [LF    public class PageModelLF    {LF        public Customer Customer { get; set; } = new();LF    }LFLF    public class CustomerLF    {LF        public int Id { get; set; }LFLF        [Required, StringLength(10)]LF        public string Name { get; set; } = "";LF    }LF] - Gen<Stmt>
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Keyword;[class];
+                                Whitespace;[ ];
+                                Identifier;[PageModel];
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                LeftBrace;[{];
+                                NewLine;[LF];
+                                Whitespace;[        ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Identifier;[Customer];
+                                Whitespace;[ ];
+                                Identifier;[Customer];
+                                Whitespace;[ ];
+                                LeftBrace;[{];
+                                Whitespace;[ ];
+                                Keyword;[get];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                Keyword;[set];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                RightBrace;[}];
+                                Whitespace;[ ];
+                                Assign;[=];
+                                Whitespace;[ ];
+                                Keyword;[new];
+                                LeftParenthesis;[(];
+                                RightParenthesis;[)];
+                                Semicolon;[;];
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                RightBrace;[}];
+                                NewLine;[LF];
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Keyword;[class];
+                                Whitespace;[ ];
+                                Identifier;[Customer];
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                LeftBrace;[{];
+                                NewLine;[LF];
+                                Whitespace;[        ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Keyword;[int];
+                                Whitespace;[ ];
+                                Identifier;[Id];
+                                Whitespace;[ ];
+                                LeftBrace;[{];
+                                Whitespace;[ ];
+                                Keyword;[get];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                Keyword;[set];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                RightBrace;[}];
+                                NewLine;[LF];
+                                NewLine;[LF];
+                                Whitespace;[        ];
+                                LeftBracket;[[];
+                                Identifier;[Required];
+                                Comma;[,];
+                                Whitespace;[ ];
+                                Identifier;[StringLength];
+                                LeftParenthesis;[(];
+                                NumericLiteral;[10];
+                                RightParenthesis;[)];
+                                RightBracket;[]];
+                                NewLine;[LF];
+                                Whitespace;[        ];
+                                Keyword;[public];
+                                Whitespace;[ ];
+                                Keyword;[string];
+                                Whitespace;[ ];
+                                Identifier;[Name];
+                                Whitespace;[ ];
+                                LeftBrace;[{];
+                                Whitespace;[ ];
+                                Keyword;[get];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                Keyword;[set];
+                                Semicolon;[;];
+                                Whitespace;[ ];
+                                RightBrace;[}];
+                                Whitespace;[ ];
+                                Assign;[=];
+                                Whitespace;[ ];
+                                StringLiteral;[""];
+                                Semicolon;[;];
+                                NewLine;[LF];
+                                Whitespace;[    ];
+                                RightBrace;[}];
+                                NewLine;[LF];
+                        RazorMetaCode - [496..497) - Width: 1 - Gen<None>
+                            RightBrace;[}];
+            RazorMetaCode - [497..498) - Width: 1 - Gen<None>
+                NewLine;[LF];
+    EndOfFile;[];

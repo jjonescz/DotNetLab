@@ -2,6 +2,7 @@
   <Folder Name="/eng/">
     <File Path="eng/build.sh" />
     <File Path="eng/CopyDotNetDTs.targets" />
+    <Project Path="eng/Analyzers/Analyzers.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/App/App.csproj" />
@@ -23,6 +24,7 @@
     <File Path=".gitignore" />
     <File Path=".globalconfig" />
     <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />
     <File Path="nuget.config" />
