@@ -20,7 +20,7 @@ internal sealed record InitialCode
             }
         }
 
-        """);
+        """.ReplaceLineEndings());
 
     public static readonly InitialCode Razor = new("TestComponent.razor", """
         <div>@Param</div>
