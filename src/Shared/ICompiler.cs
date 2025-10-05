@@ -231,11 +231,18 @@ public sealed class CompiledFileOutput
     [JsonInclude]
     public CompiledFileOutputMetadata? Metadata { get; internal set; }
 
-    public string EagerText
+    /// <remarks>
+    /// This needs to allow <see langword="null"/> which was historically allowed in cached snippets
+    /// (and we want to support deserializing old cached snippets).
+    /// </remarks>
+    public string? EagerText
     {
         init
         {
-            SetEagerText(value);
+            if (value != null)
+            {
+                SetEagerText(value);
+            }
         }
     }
 
