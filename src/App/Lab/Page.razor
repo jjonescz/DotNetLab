@@ -211,19 +211,11 @@
                 <div slot="end" style="display: flex; flex-direction: row; align-items: center; gap: 0.5em">
                     @* Output loading indicator *@
                     <FluentProgressRing title="Output is loading" Visible="outputLoading" Width="1em" Style="margin-right: 0.2em" />
-
-                    @* Output preferences toggle *@
-                    @if (OutputHasPreferences)
-                    {
-                        <FluentButton Title="Preferences" OnClick="() => { showOutputPreferences = !showOutputPreferences; }">
-                            <FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Color="Color.Neutral" />
-                        </FluentButton>
-                    }
                 </div>
             </FluentTabs>
 
             @* Output preferences *@
-            @if (showOutputPreferences && OutputHasPreferences)
+            @if (OutputHasPreferences)
             {
                 <div style="margin: 0.5em 0.5em 0.7em 0.5em">
                     @switch (selectedOutputType)
@@ -294,7 +286,6 @@
     private bool urlCopied;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
-    private bool showOutputPreferences;
     private bool outputLoading;
     private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo, DateTimeOffset Start, DateTimeOffset End)? compiled;
     private Settings settings = null!;
