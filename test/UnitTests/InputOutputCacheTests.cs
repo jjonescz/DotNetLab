@@ -17,11 +17,19 @@ public sealed class InputOutputCacheTests
         var output = JsonSerializer.Deserialize(response, WorkerJsonContext.Default.CompiledAssembly);
         var serialized = JsonSerializer.Serialize(output, WorkerJsonContext.Default.CompiledAssembly);
 
-        // Back-compat breaking changes:
-        // 2025-03-15: DesignTimeText has been removed from the output (it is now an input option instead).
-        //  This makes it possible to use Razor SG or internal APIs depending on the run/design-time strategy
-        //  instead of needing to use both SG and internal API at the same time leading to bad perf.
-        response = response.Replace(""","DesignTimeText":null""", null);
+        // Back-compat changes:
+        response = response
+            // 2025-03-15: DesignTimeText has been removed from the output (it is now an input option instead).
+            //  This makes it possible to use Razor SG or internal APIs depending on the run/design-time strategy
+            //  instead of needing to use both SG and internal API at the same time leading to bad perf.
+            //  This change just means that new app versions ignore design-time text from old caches.
+            .Replace(""","DesignTimeText":null""", null)
+            // 2025-10-05: EagerText has been renamed to Text but it can still be deserialized as EagerText.
+            .Replace(""","EagerText":""", ""","Text":""");
+
+        serialized = serialized
+            // 2025-10-05: There is a new (optional) Metadata property.
+            .Replace(""","Metadata":null""", null);
 
         serialized.Should().Be(response);
     }
