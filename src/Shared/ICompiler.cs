@@ -216,8 +216,20 @@ public sealed class CompiledFileOutput
     public required string Label { get; init; }
     public int Priority { get; init; }
     public string? Language { get; init; }
-    public string? Text { get; private set; }
-    public CompiledFileOutputMetadata? Metadata { get; private set; }
+
+    /// <remarks>
+    /// <see cref="JsonIncludeAttribute"/> is explicitly needed because of the non-public setter
+    /// (which needs to be internal so the source generator can see it).
+    /// </remarks>
+    [JsonInclude]
+    public string? Text { get; internal set; }
+
+    /// <remarks>
+    /// <see cref="JsonIncludeAttribute"/> is explicitly needed because of the non-public setter
+    /// (which needs to be internal so the source generator can see it).
+    /// </remarks>
+    [JsonInclude]
+    public CompiledFileOutputMetadata? Metadata { get; internal set; }
 
     public string EagerText
     {
