@@ -296,9 +296,17 @@ internal sealed class CompilerLoader(
                 return loaded;
             }
 
-            services.Logger.LogDebug("➖ {AssemblyName}", assemblyName);
+            try
+            {
+                loaded = Default.LoadFromAssemblyName(assemblyName);
+            }
+            catch (FileNotFoundException)
+            {
+                services.Logger.LogDebug("❌ {AssemblyName}", assemblyName);
+                return null;
+            }
 
-            loaded = Default.LoadFromAssemblyName(assemblyName);
+            services.Logger.LogDebug("➖ {AssemblyName}", assemblyName);
             loadedAssemblies.Add(name, loaded);
             return loaded;
         }

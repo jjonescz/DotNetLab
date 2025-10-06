@@ -104,6 +104,54 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
+    /// <summary>
+    /// <see href="https://github.com/jjonescz/DotNetLab/issues/102"/>
+    /// </summary>
+    [Theory]
+    [InlineData("5.0.0-2.25451.107", "2db1f5ee")]
+    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
+    {
+        var culture = new CultureInfo("cs");
+        var previousDefaultThreadCulture = CultureInfo.DefaultThreadCurrentCulture;
+        var previousDefaultThreadUiCulture = CultureInfo.DefaultThreadCurrentUICulture;
+        var previousCulture = CultureInfo.CurrentCulture;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+
+            var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+
+            await services.GetRequiredService<CompilerDependencyProvider>()
+                .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+            var compiled = await services.GetRequiredService<CompilerProxy>()
+                .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
+
+            var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+            Assert.NotNull(diagnosticsText);
+            output.WriteLine(diagnosticsText);
+            Assert.Equal($"""
+                // (1,8): error CS1029: #error: 'version'
+                // #error version
+                Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
+                // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
+                // #error version
+                Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "preview").WithLocation(1, 8)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        finally
+        {
+            CultureInfo.DefaultThreadCurrentCulture = previousDefaultThreadCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = previousDefaultThreadUiCulture;
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
+    }
+
     [Theory]
     [InlineData("9.0.0-preview.24413.5")]
     [InlineData("9.0.0-preview.25128.1")]
