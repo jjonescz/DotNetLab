@@ -26,8 +26,17 @@ internal static class NuGetUtil
         public bool IsNuGetOrg => packageSource.SourceUri.Host == "api.nuget.org";
     }
 
+    private static readonly VersionRange anyVersionRange = VersionRange.Parse("*-*");
+
     extension(VersionRange range)
     {
+        /// <summary>
+        /// This is like <see cref="VersionRange.AllFloating"/> (floating is required
+        /// for <see cref="VersionRange.FindBestMatch"/> to find the latest in a list of similar versions)
+        /// but not deprecated and with nicer <see cref="VersionRange.OriginalString"/>.
+        /// </summary>
+        public static VersionRange Any => anyVersionRange;
+
         public bool IsExact([NotNullWhen(returnValue: true)] out NuGetVersion? exactVersion)
         {
             if (range.HasLowerAndUpperBounds &&
@@ -563,7 +572,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     {
         if (specifier is CompilerVersionSpecifier.NuGetLatest)
         {
-            return await DownloadAsync(info.PackageId, VersionRange.All, new CompilerNuGetDllFilter(info.PackageFolder));
+            return await DownloadAsync(info.PackageId, VersionRange.Any, new CompilerNuGetDllFilter(info.PackageFolder));
         }
         else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
         {

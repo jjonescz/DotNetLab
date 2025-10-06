@@ -12,6 +12,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
     [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
+    [InlineData("latest", "4.14.0-3.25262.10 (8edf7bcd)")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -49,7 +50,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
             output.WriteLine(e.ToString());
-            version.Should().StartWith("4.");
+            expectedDiagnostic.Should().StartWith("4.");
         }
     }
 
@@ -161,6 +162,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("10.0.0-preview.25314.101")]
     [InlineData("10.0.0-preview.25429.2")]
     [InlineData("main")] // test that we can download a branch
+    [InlineData("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
