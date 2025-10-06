@@ -21,12 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\eng\Analyzers\Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\eng\BuildTools\BuildTools.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Worker\Worker.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="..\..\eng\Analyzers\snapshots\*" LinkBase="snapshots" />
+    <AdditionalFiles Include="..\..\eng\BuildTools\snapshots\*" LinkBase="snapshots" />
   </ItemGroup>
 
   <ItemGroup>

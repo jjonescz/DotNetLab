@@ -27,7 +27,7 @@ The recommended startup app for development is `src/Server`.
 
 To hit breakpoints, it is recommended to turn off the worker (in app settings).
 
-- `eng/Analyzers`: build-time tools.
+- `eng/BuildTools`: build-time tools.
 - `src/App`: the WebAssembly app.
   - `cd src/App; dotnet watch` - `src/Server` is better for development though.
 - `src/Compiler`: self-contained project referencing Roslyn/Razor.
