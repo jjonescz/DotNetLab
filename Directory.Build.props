@@ -9,6 +9,7 @@
     <Features>$(Features);use-roslyn-tokenizer=true</Features>
     <CompressionEnabled>false</CompressionEnabled>
     <LangVersion>preview</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!--
         Needed to get diagnostics inside XML doc comments.

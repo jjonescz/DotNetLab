@@ -10,3 +10,6 @@ dotnet_diagnostic.CA2016.severity = warning
 
 # CA2025: Do not pass 'IDisposable' instances into unawaited tasks
 dotnet_diagnostic.CA2025.severity = suggestion
+
+# IDE0052: Remove unread private members
+dotnet_diagnostic.IDE0052.severity = warning

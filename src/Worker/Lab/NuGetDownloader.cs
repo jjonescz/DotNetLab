@@ -140,7 +140,6 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly ILogger<NuGetDownloader> logger;
     private readonly SourceCacheContext cacheContext;
-    private readonly PackageDownloadContext downloadContext;
     private readonly ImmutableArray<SourceRepository> repositories;
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
@@ -182,10 +181,6 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 GeneratedTempFolder = Directory.CreateTempSubdirectory().FullName,
             }
             : new SourceCacheContext();
-        downloadContext = new PackageDownloadContext(
-            cacheContext, 
-            directDownloadDirectory: noCache ? Directory.CreateTempSubdirectory().FullName : null,
-            directDownload: noCache);
 
         httpClient = new HttpClient(corsClientHandler);
         httpZipProvider = new HttpZipProvider(httpClient);
