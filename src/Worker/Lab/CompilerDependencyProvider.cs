@@ -12,13 +12,22 @@ internal sealed class CompilerDependencyProvider(
     BuiltInCompilerProvider builtInProvider,
     IEnumerable<ICompilerDependencyResolver> resolvers)
 {
-    private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, PackageDependency Loaded)> loaded = new();
+    private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, PackageDependency? Loaded)> loaded = new();
 
-    public async Task<PackageDependencyInfo> GetLoadedInfoAsync(CompilerKind compilerKind)
+    /// <returns>
+    /// <see langword="null"/> if last load failed.
+    /// </returns>
+    public async Task<PackageDependencyInfo?> GetLoadedInfoAsync(CompilerKind compilerKind)
     {
         var dependency = loaded.TryGetValue(compilerKind, out var result)
             ? result.Loaded
             : builtInProvider.GetBuiltInDependency(compilerKind);
+
+        if (dependency is null)
+        {
+            return null;
+        }
+
         return await dependency.Info.Value;
     }
 
@@ -53,53 +62,64 @@ internal sealed class CompilerDependencyProvider(
 
         async Task<PackageDependency> findOrThrowAsync()
         {
-            bool any = false;
-            List<string>? errors = null;
-            PackageDependency? found = await findAsync();
-
-            if (!any)
-            {
-                throw new InvalidOperationException($"Nothing could be parsed out of the specified version '{version}'.");
-            }
-
-            if (found is null)
-            {
-                throw new InvalidOperationException($"Specified version was not found.\n{errors?.JoinToString("\n")}");
-            }
-
             var userInput = new CompilerDependencyUserInput
             {
                 Version = version,
                 Configuration = configuration,
             };
 
-            loaded[compilerKind] = (userInput, found);
-
-            return found;
-
-            async Task<PackageDependency?> findAsync()
+            try
             {
-                foreach (var specifier in CompilerVersionSpecifier.Parse(version))
+                bool any = false;
+                List<string>? errors = null;
+                PackageDependency? found = await findAsync();
+
+                if (!any)
                 {
-                    any = true;
-                    foreach (var plugin in resolvers)
-                    {
-                        try
-                        {
-                            if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
-                            {
-                                return dependency;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            errors ??= new();
-                            errors.Add($"{plugin.GetType().Name}: {ex.Message}");
-                        }
-                    }
+                    throw new InvalidOperationException($"Nothing could be parsed out of the specified version '{version}'.");
                 }
 
-                return null;
+                if (found is null)
+                {
+                    throw new InvalidOperationException($"Specified version was not found.\n{errors?.JoinToString("\n")}");
+                }
+
+                loaded[compilerKind] = (userInput, found);
+
+                return found;
+
+                async Task<PackageDependency?> findAsync()
+                {
+                    foreach (var specifier in CompilerVersionSpecifier.Parse(version))
+                    {
+                        any = true;
+                        foreach (var plugin in resolvers)
+                        {
+                            try
+                            {
+                                if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
+                                {
+                                    return dependency;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                errors ??= new();
+                                errors.Add($"{plugin.GetType().Name}: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    return null;
+                }
+            }
+            catch
+            {
+                // Remember that we did not find anything, so the next call to this method
+                // won't incorrectly bail early thinking the version is already successfully loaded.
+                loaded[compilerKind] = (userInput, null);
+
+                throw;
             }
         }
     }

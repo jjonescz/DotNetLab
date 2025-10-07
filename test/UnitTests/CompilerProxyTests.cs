@@ -67,6 +67,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         var info = await dependencyProvider.GetLoadedInfoAsync(CompilerKind.Roslyn);
 
+        info.Should().NotBeNull();
         info.Version.Should().Be(expectedVersion);
         info.Commit.Hash.Should().Be(expectedCommit);
         info.Commit.RepoUrl.Should().Be("https://github.com/dotnet/roslyn");
