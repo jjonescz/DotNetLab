@@ -23,7 +23,8 @@
       which might depend on methods unreferenced at compile time.
     -->
     <PublishTrimmed>false</PublishTrimmed>
-    <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+
+    <EnableDiagnostics>true</EnableDiagnostics>
   </PropertyGroup>
 
   <ItemGroup>

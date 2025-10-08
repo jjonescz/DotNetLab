@@ -1,0 +1,37 @@
+﻿@implements IDisposable
+@inject IJSRuntime JSRuntime
+@using Humanizer
+
+<FluentStack Style="font-size: 0.8rem; font-style: normal; width: auto"
+HorizontalAlignment="HorizontalAlignment.Center"
+VerticalAlignment="VerticalAlignment.Center">
+    <span title="@tooltip (click to refresh)" @onclick="Refresh">@text</span>
+    <FluentButton IconStart="new Icons.Regular.Size20.ArrowDownload()" Title="Download .nettrace file" OnClick="DownloadProfileAsync" />
+</FluentStack>
+
+@code {
+    private readonly System.Timers.Timer timer = new(TimeSpan.FromSeconds(1)) { AutoReset = true };
+    private string? text, tooltip;
+
+    protected override void OnInitialized()
+    {
+        timer.Elapsed += (s, e) => { Refresh(); };
+        timer.Start();
+    }
+
+    public void Dispose() => timer.Dispose();
+
+    private void Refresh()
+    {
+        long total = GC.GetTotalMemory(false);
+        var info = GC.GetGCMemoryInfo();
+        text = total.Bytes().Humanize();
+        tooltip = $"[{DateTimeOffset.Now}] Managed={total.Bytes().Humanize()} | HeapSize={info.HeapSizeBytes.Bytes().Humanize()} | Fragmented={info.FragmentedBytes.Bytes().Humanize()}";
+        StateHasChanged();
+    }
+
+    private async Task DownloadProfileAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", "globalThis.getDotnetRuntime(0).collectGcDump();");
+    }
+}

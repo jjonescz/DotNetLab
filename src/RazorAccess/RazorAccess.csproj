@@ -12,7 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\Microsoft.CodeAnalysis.Razor.Compiler.dll" />
+    <_RazorCompilerDll Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\*.dll" />
+    <Reference Include="@(_RazorCompilerDll)" />
+    <None Include="@(_RazorCompilerDll)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 
 </Project>
