@@ -16,8 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\eng\Analyzers\Analyzers.csproj" />
     <ProjectReference Include="..\..\src\App\App.csproj" />
+    <ProjectReference Include="..\..\eng\BuildTools\BuildTools.csproj" />
   </ItemGroup>
 
   <ItemGroup>

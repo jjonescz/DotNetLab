@@ -60,7 +60,7 @@ public sealed class TemplateCacheTests(ITestOutputHelper output)
         }
 
         var snapshotDirectory = Path.GetFullPath(Path.Join(TestContext.Current.TestAssembly!.AssemblyPath,
-            "..", "..", "..", "..", "..", "..", "eng", "Analyzers", "snapshots"));
+            "..", "..", "..", "..", "..", "eng", "BuildTools", "snapshots"));
 
         // Compare on-disk snapshot with expected snapshot from memory.
         var actualNode = JsonSerializer.SerializeToNode(actualOutput, WorkerJsonContext.Default.CompiledAssembly)!.AsObject();

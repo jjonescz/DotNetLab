@@ -4,7 +4,7 @@ namespace DotNetLab;
 
 public static partial class VersionUtil
 {
-    private static readonly Lazy<string?> _currentCommitHash = new(GetCurrentCommitHash);
+    private static readonly Lazy<string?> currentCommitHash = new(GetCurrentCommitHash);
 
     [GeneratedRegex(@"^(https?://)?(www\.)?github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)(/|$)", RegexOptions.IgnoreCase)]
     private static partial Regex GitHubUrlPattern { get; }
@@ -15,7 +15,7 @@ public static partial class VersionUtil
     public static CommitLink CurrentCommit => field ??= new()
     {
         RepoUrl = "https://github.com/jjonescz/DotNetLab",
-        Hash = GetCurrentCommitHash() ?? string.Empty,
+        Hash = currentCommitHash.Value ?? string.Empty,
     };
 
     public static string GetCommitUrl(string repoUrl, string commitHash)

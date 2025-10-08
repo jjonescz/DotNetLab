@@ -85,7 +85,7 @@ public sealed class WorkerExecutor(
         return compilerDependencyProvider.UseAsync(message.CompilerKind, message.Version, message.Configuration);
     }
 
-    public Task<PackageDependencyInfo> HandleAsync(WorkerInputMessage.GetCompilerDependencyInfo message)
+    public Task<PackageDependencyInfo?> HandleAsync(WorkerInputMessage.GetCompilerDependencyInfo message)
     {
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
         return compilerDependencyProvider.GetLoadedInfoAsync(message.CompilerKind);

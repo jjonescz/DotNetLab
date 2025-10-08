@@ -2,7 +2,7 @@
   <Folder Name="/eng/">
     <File Path="eng/build.sh" />
     <File Path="eng/CopyDotNetDTs.targets" />
-    <Project Path="eng/Analyzers/Analyzers.csproj" />
+    <Project Path="eng/BuildTools/BuildTools.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/App/App.csproj" />

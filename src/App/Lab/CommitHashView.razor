@@ -163,7 +163,8 @@ title="@GetTitle()">@Commit.ShortHash</a>
             request.Headers.Accept.Add(new("application/json"));
             var tagsResponse = await Client.SendAsync(request);
             var tagsObj = await tagsResponse.Content.ReadFromJsonAsync(SettingsJsonContext.Default.GitHubBranchCommitsResponse);
-            version = tagsObj?.Tags is [{ Length: > 0 } tag] ? tag : null;
+            // One commit can be part of multiple version tags, the last one should be the first one (the oldest one).
+            version = tagsObj?.Tags is [.., { Length: > 0 } tag] ? tag : null;
         }
         catch (HttpRequestException) { }
         catch (JsonException) { }

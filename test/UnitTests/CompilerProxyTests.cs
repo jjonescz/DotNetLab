@@ -12,6 +12,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
     [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
+    [InlineData("latest", "4.14.0-3.25262.10 (8edf7bcd)")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
@@ -49,7 +50,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
             output.WriteLine(e.ToString());
-            version.Should().StartWith("4.");
+            expectedDiagnostic.Should().StartWith("4.");
         }
     }
 
@@ -66,6 +67,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         var info = await dependencyProvider.GetLoadedInfoAsync(CompilerKind.Roslyn);
 
+        info.Should().NotBeNull();
         info.Version.Should().Be(expectedVersion);
         info.Commit.Hash.Should().Be(expectedCommit);
         info.Commit.RepoUrl.Should().Be("https://github.com/dotnet/roslyn");
@@ -104,6 +106,54 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
+    /// <summary>
+    /// <see href="https://github.com/jjonescz/DotNetLab/issues/102"/>
+    /// </summary>
+    [Theory]
+    [InlineData("5.0.0-2.25451.107", "2db1f5ee")]
+    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
+    {
+        var culture = new CultureInfo("cs");
+        var previousDefaultThreadCulture = CultureInfo.DefaultThreadCurrentCulture;
+        var previousDefaultThreadUiCulture = CultureInfo.DefaultThreadCurrentUICulture;
+        var previousCulture = CultureInfo.CurrentCulture;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+
+            var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+
+            await services.GetRequiredService<CompilerDependencyProvider>()
+                .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+            var compiled = await services.GetRequiredService<CompilerProxy>()
+                .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
+
+            var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+            Assert.NotNull(diagnosticsText);
+            output.WriteLine(diagnosticsText);
+            Assert.Equal($"""
+                // (1,8): error CS1029: #error: 'version'
+                // #error version
+                Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
+                // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
+                // #error version
+                Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "preview").WithLocation(1, 8)
+                """.ReplaceLineEndings(), diagnosticsText);
+        }
+        finally
+        {
+            CultureInfo.DefaultThreadCurrentCulture = previousDefaultThreadCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = previousDefaultThreadUiCulture;
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
+    }
+
     [Theory]
     [InlineData("9.0.0-preview.24413.5")]
     [InlineData("9.0.0-preview.25128.1")]
@@ -113,6 +163,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("10.0.0-preview.25314.101")]
     [InlineData("10.0.0-preview.25429.2")]
     [InlineData("main")] // test that we can download a branch
+    [InlineData("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
