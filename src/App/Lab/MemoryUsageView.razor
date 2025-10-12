@@ -12,7 +12,7 @@ VerticalAlignment="VerticalAlignment.Center">
 
 @code {
     private readonly System.Timers.Timer timer = new(TimeSpan.FromSeconds(1)) { AutoReset = true };
-    private string? text, tooltip;
+    private string? text = "...", tooltip;
 
     protected override void OnInitialized()
     {
