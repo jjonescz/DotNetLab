@@ -13,7 +13,7 @@ export function createWorker(scriptUrl, messageHandler, errorHandler) {
         if (e.data?.type === 'collect-gc-dump') {
             downloadCollectGcDumpResult('worker', e.data.result);
         } else {
-            console.error('Unrecognized side message', ev);
+            console.error('Unrecognized side message', e);
         }
     });
     sideChannel.port2.start();
