@@ -50,9 +50,9 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record Ping : WorkerInputMessage<NoOutput>
+    public sealed record Ping : WorkerInputMessage<PingResult>
     {
-        public override Task<NoOutput> HandleAsync(IExecutor executor)
+        public override Task<PingResult> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -196,7 +196,7 @@ public abstract record WorkerInputMessage
 
     public interface IExecutor
     {
-        Task<NoOutput> HandleAsync(Ping message);
+        Task<PingResult> HandleAsync(Ping message);
         Task<NoOutput> HandleAsync(Cancel message);
         Task<CompiledAssembly> HandleAsync(Compile message);
         Task<CompiledFileLazyResult> HandleAsync(GetOutput message);

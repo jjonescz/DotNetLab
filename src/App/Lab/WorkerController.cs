@@ -37,6 +37,8 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public bool Disabled { get; set; }
 
+    public PingResult? LastPingResult { get; private set; }
+
     public async ValueTask DisposeAsync()
     {
         await DisposeWorkerAsync();
@@ -173,10 +175,9 @@ internal sealed class WorkerController : IAsyncDisposable
             dispatcher.InvokeAsync(async () =>
             {
                 pingTimer.Enabled = false;
-                await PostMessageAsync(new WorkerInputMessage.Ping
-                {
-                    Id = messageId++,
-                });
+                LastPingResult = await PostAndReceiveMessageAsync(
+                    new WorkerInputMessage.Ping { Id = messageId++ },
+                    deserializeAs: default(PingResult));
                 pingTimer.Enabled = true;
             });
         };

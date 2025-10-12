@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" />
+    <PackageReference Include="Humanizer.Core" />
     <PackageReference Include="NuGet.Versioning" />
   </ItemGroup>
 

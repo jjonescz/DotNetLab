@@ -1,11 +1,12 @@
 ﻿@implements IDisposable
 @inject IJSRuntime JSRuntime
+@inject WorkerController Worker
 @using Humanizer
 
 <FluentStack Style="font-size: 0.8rem; font-style: normal; width: auto"
 HorizontalAlignment="HorizontalAlignment.Center"
 VerticalAlignment="VerticalAlignment.Center">
-    <span title="@tooltip (click to refresh)" @onclick="Refresh">@text</span>
+    <span title="@tooltip" @onclick="Refresh">@text</span>
     <FluentButton IconStart="new Icons.Regular.Size20.ArrowDownload()" Title="Download .nettrace file" OnClick="DownloadProfileAsync" />
 </FluentStack>
 
@@ -23,10 +24,11 @@ VerticalAlignment="VerticalAlignment.Center">
 
     private void Refresh()
     {
-        long total = GC.GetTotalMemory(false);
-        var info = GC.GetGCMemoryInfo();
+        var appInfo = MemoryUsage.Capture();
+        var workerInfo = Worker.LastPingResult?.MemoryUsage;
+        long total = appInfo.TotalMemory + (workerInfo?.TotalMemory ?? 0);
         text = total.Bytes().Humanize();
-        tooltip = $"[{DateTimeOffset.Now}] Managed={total.Bytes().Humanize()} | HeapSize={info.HeapSizeBytes.Bytes().Humanize()} | Fragmented={info.FragmentedBytes.Bytes().Humanize()}";
+        tooltip = $"App: {appInfo.Info} (click to refresh)\nWorker: {(workerInfo?.Info ?? "N/A")}";
         StateHasChanged();
     }
 

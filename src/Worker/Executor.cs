@@ -28,9 +28,9 @@ public sealed class WorkerExecutor(
         }
     }
 
-    public Task<NoOutput> HandleAsync(WorkerInputMessage.Ping message)
+    public Task<PingResult> HandleAsync(WorkerInputMessage.Ping message)
     {
-        return NoOutput.AsyncInstance;
+        return Task.FromResult(new PingResult(MemoryUsage.Capture()));
     }
 
     public Task<NoOutput> HandleAsync(WorkerInputMessage.Cancel message)
