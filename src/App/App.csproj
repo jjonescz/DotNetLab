@@ -10,9 +10,10 @@
     <PackageReference Include="BlazorMonaco" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
-    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset">
+    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" GeneratePathProperty="true">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -23,6 +24,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\eng\BuildTools\BuildTools.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Worker\Worker.csproj" />
+  </ItemGroup>
+
+  <!--
+    @(Reference) items from other projects are not transitively included in the published output,
+    so we include them here manually. https://github.com/dotnet/runtime/issues/112405
+  -->
+  <ItemGroup>
+    <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CodeStyle.dll" />
+    <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.CodeStyle.dll" />
+    <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\*.dll" />
   </ItemGroup>
 
   <ItemGroup>

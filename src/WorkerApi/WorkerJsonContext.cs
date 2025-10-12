@@ -12,4 +12,5 @@ namespace DotNetLab;
 [JsonSerializable(typeof(List<SdkVersionInfo>))]
 [JsonSerializable(typeof(SdkInfo))]
 [JsonSerializable(typeof(ImmutableArray<MarkerData>))]
+[JsonSerializable(typeof(PingResult))]
 public sealed partial class WorkerJsonContext : JsonSerializerContext;

@@ -12,7 +12,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
     [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [InlineData("latest", "4.14.0-3.25262.10 (8edf7bcd)")] // `latest` works
+    [InlineData("latest", "5.0.0")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));

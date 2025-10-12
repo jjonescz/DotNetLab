@@ -3,6 +3,7 @@ using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Runtime.InteropServices.JavaScript;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Channels;
 using Timer = System.Timers.Timer;
@@ -22,6 +23,9 @@ internal sealed class WorkerController : IAsyncDisposable
     private Task<WorkerInstance?>? worker;
     private int messageId;
 
+    [SupportedOSPlatform("browser")]
+    private readonly Lazy<Task> initializeInteropScript = new(() => JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js"));
+
     public WorkerController(
         ILogger<WorkerController> logger,
         IWebAssemblyHostEnvironment hostEnvironment)
@@ -37,10 +41,15 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public bool Disabled { get; set; }
 
+    public PingResult? LastPingResult { get; private set; }
+
     public async ValueTask DisposeAsync()
     {
         await DisposeWorkerAsync();
     }
+
+    [SupportedOSPlatform("browser")]
+    private Task EnsureInteropScriptInitializedAsync() => initializeInteropScript.Value;
 
     private IServiceProvider CreateWorkerServices()
     {
@@ -141,10 +150,12 @@ internal sealed class WorkerController : IAsyncDisposable
         if (worker == null)
         {
             // One-time initialization.
-            await JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js?v=4");
+            await EnsureInteropScriptInitializedAsync();
         }
         else
         {
+            Debug.Assert(initializeInteropScript.IsValueCreated);
+
             // Dispose previous worker.
             await DisposeWorkerNoLockAsync();
         }
@@ -173,18 +184,17 @@ internal sealed class WorkerController : IAsyncDisposable
             dispatcher.InvokeAsync(async () =>
             {
                 pingTimer.Enabled = false;
-                await PostMessageAsync(new WorkerInputMessage.Ping
-                {
-                    Id = messageId++,
-                });
+                LastPingResult = await PostAndReceiveMessageAsync(
+                    new WorkerInputMessage.Ping { Id = messageId++ },
+                    deserializeAs: default(PingResult));
                 pingTimer.Enabled = true;
             });
         };
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, Logging.LogLevel.ToString()]),
-            void (string data) =>
+            scriptUrl: getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, Logging.LogLevel.ToString()]),
+            messageHandler: void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>
                 {
@@ -210,7 +220,7 @@ internal sealed class WorkerController : IAsyncDisposable
                     }
                 });
             },
-            void (string error) =>
+            errorHandler: void (string error) =>
             {
                 logger.LogError("Worker error: {Error}", error);
                 pingTimer.Stop();
@@ -225,6 +235,8 @@ internal sealed class WorkerController : IAsyncDisposable
                 });
             });
         await workerReady.Task;
+
+        WorkerControllerInterop.WorkerReady(worker);
 
         pingTimer.Start();
 
@@ -244,6 +256,27 @@ internal sealed class WorkerController : IAsyncDisposable
                 sb.Append(Uri.EscapeDataString(arg));
             }
             return sb.ToString();
+        }
+    }
+
+    [SupportedOSPlatform("browser")]
+    public async Task CollectAndDownloadGcDumpAsync()
+    {
+        await EnsureInteropScriptInitializedAsync();
+
+        // Download app's GC dump.
+        WorkerControllerInterop.CollectAndDownloadGcDump();
+
+        // Download worker's GC dump.
+        if (!Disabled)
+        {
+            JSObject? worker = (await GetWorkerAsync())?.Handle;
+            if (worker == null)
+            {
+                return;
+            }
+
+            WorkerControllerInterop.PostSideMessage(worker, "collect-gc-dump");
         }
     }
 
@@ -535,11 +568,20 @@ internal static partial class WorkerControllerInterop
         [JSMarshalAs<JSType.Function<JSType.String>>]
         Action<string> errorHandler);
 
+    [JSImport("workerReady", nameof(WorkerController))]
+    public static partial void WorkerReady(JSObject workerSetup);
+
     [JSImport("postMessage", nameof(WorkerController))]
-    public static partial void PostMessage(JSObject worker, string message);
+    public static partial void PostMessage(JSObject workerSetup, string message);
+
+    [JSImport("postSideMessage", nameof(WorkerController))]
+    public static partial void PostSideMessage(JSObject workerSetup, string message);
 
     [JSImport("disposeWorker", nameof(WorkerController))]
-    public static partial void DisposeWorker(JSObject worker);
+    public static partial void DisposeWorker(JSObject workerSetup);
+
+    [JSImport("collectAndDownloadGcDump", nameof(WorkerController))]
+    public static partial void CollectAndDownloadGcDump();
 }
 
 internal sealed class WorkerException(WorkerOutputMessage.Failure failure)

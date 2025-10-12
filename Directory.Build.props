@@ -23,7 +23,17 @@
       which might depend on methods unreferenced at compile time.
     -->
     <PublishTrimmed>false</PublishTrimmed>
-    <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+    <WasmNativeStrip>false</WasmNativeStrip>
+
+    <!-- Needed to allow collecting GC traces. -->
+    <EnableDiagnostics>true</EnableDiagnostics>
+
+    <!--
+      Suppress a warning like this one https://github.com/dotnet/runtime/issues/119317.
+      Should be fine since we don't call that method which causes the warning.
+      See also https://github.com/dotnet/runtime/issues/110870.
+    -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);WASM0001</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>

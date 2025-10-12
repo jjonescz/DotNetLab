@@ -16,11 +16,10 @@ var services = WorkerServices.Create(
     baseUrl: args[0],
     logLevel: Enum.Parse<LogLevel>(args[1]));
 
-Imports.RegisterOnMessage(async e =>
+Imports.RegisterOnMessage(async data =>
 {
     try
     {
-        var data = e.GetPropertyAsString("data") ?? string.Empty;
         var incoming = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerInputMessage);
         var executor = services.GetRequiredService<WorkerInputMessage.IExecutor>();
         PostMessage(await incoming!.HandleAndGetOutputAsync(executor));

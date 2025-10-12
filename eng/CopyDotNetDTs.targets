@@ -1,7 +1,8 @@
 <Project>
 
   <ItemGroup>
-    <Content Remove="**\*.d.ts" />
+    <Content Remove="wwwroot\dotnet.d.ts" />
+    <None Include="wwwroot\dotnet.d.ts" />
   </ItemGroup>
 
   <Target Name="PrepareCopyDotNetDTs"

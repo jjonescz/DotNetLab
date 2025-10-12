@@ -85,6 +85,12 @@
             }
         </div>
 
+        @* Memory usage info *@
+        @if (enableMemoryUsageView)
+        {
+            <MemoryUsageView />
+        }
+
         <div>
             @* Orientation button *@
             @if (orientation == Orientation.Horizontal)
@@ -106,7 +112,7 @@
 </FluentHeader>
 
 <CascadingValue IsFixed="true" Value="this">
-    <Settings @ref="settings" InputEditor="inputEditor" OutputEditor="outputEditor" @bind-WordWrap="wordWrap" @bind-UseVim="useVim" />
+    <Settings @ref="settings" InputEditor="inputEditor" OutputEditor="outputEditor" @bind-WordWrap="wordWrap" @bind-UseVim="useVim" @bind-EnableMemoryUsageView="enableMemoryUsageView" />
 </CascadingValue>
 
 @* Input / output panels *@
@@ -291,6 +297,7 @@
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
+    private bool enableMemoryUsageView;
     private Orientation orientation = GetAutoOrientation();
     private string? workerError;
 
