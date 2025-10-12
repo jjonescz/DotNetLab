@@ -34,6 +34,6 @@ VerticalAlignment="VerticalAlignment.Center">
 
     private async Task DownloadProfileAsync()
     {
-        await JSRuntime.InvokeVoidAsync("eval", "globalThis.getDotnetRuntime(0).collectGcDump();");
+        await Worker.CollectAndDownloadGcDumpAsync();
     }
 }

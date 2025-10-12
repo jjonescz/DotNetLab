@@ -20,10 +20,33 @@ const instance = await dotnet
     .create();
 
 instance.setModuleImports('worker-imports.js', {
-    registerOnMessage: (handler) => self.addEventListener('message', handler),
+    registerOnMessage: (handler) => self.addEventListener('message', (ev) => {
+        if (ev.data?.type === 'init-ports') {
+            /** @type {Record<string, MessagePort>} */
+            const { side } = ev.data.ports;
+            side.onmessage = (ev) => {
+                if (ev.data === 'collect-gc-dump') {
+                    handleCollectGcDump(side);
+                } else {
+                    console.error('Unrecognized side message', ev);
+                }
+            };
+            side.start();
+        } else {
+            handler(ev.data ?? '');
+        }
+    }),
     postMessage: (message) => self.postMessage(message),
 });
 
 instance.setModuleImports('worker-interop.js', interop);
 
 await instance.runMainAndExit('DotNetLab.Worker.wasm');
+
+/**
+ * @param {MessagePort} port
+ */
+async function handleCollectGcDump(port) {
+    const result = await instance.collectGcDump({ skipDownload: true });
+    port.postMessage({ type: 'collect-gc-dump', result });
+}
