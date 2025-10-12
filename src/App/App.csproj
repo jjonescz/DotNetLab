@@ -33,7 +33,7 @@
   <ItemGroup>
     <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CodeStyle.dll" />
     <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.CodeStyle.dll" />
-    <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\Microsoft.CodeAnalysis.Razor.Compiler.dll" />
+    <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\*.dll" />
   </ItemGroup>
 
   <ItemGroup>
