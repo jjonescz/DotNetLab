@@ -485,6 +485,7 @@ $RECYCLE.BIN/
 
 /output/
 /dotnet/
+/.dotnet/
 /dotnet-install.sh
 
 jslib.js*

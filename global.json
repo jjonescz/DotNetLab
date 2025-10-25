@@ -1,7 +1,7 @@
 {
   "sdk": {
-    "version": "10.0.100-rc.2.25502.107",
-    "workloadVersion": "10.0.100-rc.2.25513.4"
+    "version": "10.0.100-rtm.25523.113",
+    "paths": ["./.dotnet"]
   },
   "test": {
     "runner": "Microsoft.Testing.Platform"
