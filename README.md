@@ -29,7 +29,12 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 
 - `eng/BuildTools`: build-time tools.
 - `src/App`: the WebAssembly app.
-  - `cd src/App; dotnet watch` - `src/Server` is better for development though.
+  - `cd src/App; dotnet watch` (`src/Server` might be better for development though).
+  - Trying out published version locally:
+    ```ps1
+    dotnet tool install -g dotnet-serve
+    dotnet publish .\src\App\ && dotnet serve -d .\artifacts\publish\App\release\wwwroot\ -o -q
+    ```
 - `src/Compiler`: self-contained project referencing Roslyn/Razor.
   It's reloaded at runtime with a user-chosen version of Roslyn/Razor.
   It should be small (for best reloading perf). It can reference shared code
