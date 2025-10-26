@@ -287,6 +287,40 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             """.ReplaceLineEndings("\n"), runText);
     }
 
+    [Theory, CombinatorialData]
+    public async Task AsyncMain_TopLevel(bool script)
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        string code = $$"""
+            using System;
+            using System.Threading.Tasks;
+            Console.Write("Hello.");
+            await Task.Delay(1);
+            return 42;
+            """;
+
+        string ext = script ? "csx" : "cs";
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = $"Input.{ext}", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null)).Text;
+        output.WriteLine(runText);
+        Assert.Equal("""
+            Exit code: 42
+            Stdout:
+            Hello.
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), runText);
+    }
+
     [Fact]
     public async Task DecompileExtension()
     {
