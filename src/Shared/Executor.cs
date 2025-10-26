@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Reflection.Emit;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -81,6 +82,7 @@ public static class Executor
                 var bytes = main.GetMethodBody()?.GetILAsByteArray();
                 var method = bytes switch
                 {
+                    // Patterns for async Main method with arguments
                     [
                         (byte)ILOpCode.Ldarg_0,
                         (byte)ILOpCode.Call, _, _, _, _,
@@ -90,6 +92,7 @@ public static class Executor
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
                     ] => main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4))),
+                    // Patterns for async Main method without arguments
                     [
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Callvirt, _, _, _, _,
@@ -98,8 +101,31 @@ public static class Executor
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
                     ] => main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))),
+                    // Patterns for async Script Main method
+                    [
+                        (byte)ILOpCode.Newobj, _, _, _, _,
+                        (byte)ILOpCode.Callvirt, _, _, _, _,
+                        (byte)ILOpCode.Callvirt, _, _, _, _,
+                        (byte)ILOpCode.Stloc_0,
+                        (byte)ILOpCode.Ldloca_s, 0,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Pop,
+                        (byte)ILOpCode.Ret
+                    ] => CreateScriptMain(main, bytes),
                     _ => null,
                 };
+                static DynamicMethod? CreateScriptMain(MethodInfo main, byte[] bytes)
+                {
+                    ConstructorInfo? constructor = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))) as ConstructorInfo;
+                    MethodInfo? initialize = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(6, 4))) as MethodInfo;
+                    if (constructor == null || initialize == null) { return null; }
+                    DynamicMethod method = new(main.Name, initialize.ReturnType, [], main.Module);
+                    ILGenerator generator = method.GetILGenerator();
+                    generator.Emit(OpCodes.Newobj, constructor);
+                    generator.Emit(OpCodes.Callvirt, initialize);
+                    generator.Emit(OpCodes.Ret);
+                    return method;
+                }
                 if (method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))
                 {
                     return info;
