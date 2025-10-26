@@ -1,6 +1,2 @@
 <Project>
-  <PropertyGroup>
-    <!-- Force use of the Roslyn bridge task so the core compiler (from the toolset package) is used even on netfx hosts. -->
-    <RoslynTasksAssembly Condition="'$(MSBuildRuntimeType)' != 'Core'">$(_RoslynTasksDirectory)..\netcore\binfx\Microsoft.Build.Tasks.CodeAnalysis.Sdk.dll</RoslynTasksAssembly>
-  </PropertyGroup>
 </Project>
