@@ -55,4 +55,4 @@ jobs:
         run: |
           pr_number=$(cat "${{ runner.temp }}/artifacts/pr_number")
           git fetch origin ${{ github.event.workflow_run.head_sha }}
-          git push origin ${{ github.event.workflow_run.head_sha }}:refs/heads/deploy/${pr_number}
+          git push origin ${{ github.event.workflow_run.head_sha }}:refs/heads/deploy/${pr_number} --force
