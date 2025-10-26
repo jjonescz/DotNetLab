@@ -59,6 +59,9 @@ public static class Executor
             case Task<int> taskInt:
                 @return = await taskInt.ConfigureAwait(false);
                 break;
+            case Task<object> taskObject:
+                @return = await taskObject.ConfigureAwait(false);
+                break;
             case Task task:
                 await task.ConfigureAwait(false);
                 @return = 0;
