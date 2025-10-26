@@ -48,15 +48,18 @@ public static class Executor
 
     public static async Task<int> InvokeEntryPointAsync(MethodInfo entryPoint)
     {
-        entryPoint = getEntryPoint(entryPoint);
+        (object? target, entryPoint) = getEntryPoint(entryPoint);
         var parameters = entryPoint.GetParameters().Length == 0
             ? null
             : new object[] { Array.Empty<string>() };
-        var @return = entryPoint.Invoke(null, parameters);
+        var @return = entryPoint.Invoke(target, parameters);
         switch (@return)
         {
             case Task<int> taskInt:
                 @return = await taskInt.ConfigureAwait(false);
+                break;
+            case Task<object> taskObject:
+                @return = await taskObject.ConfigureAwait(false);
                 break;
             case Task task:
                 await task.ConfigureAwait(false);
@@ -74,13 +77,14 @@ public static class Executor
 
         // Obtains the async Main method if available because we cannot run the synchronous Main method
         // (because it uses Task.Wait which is unsupported in browser wasm).
-        static MethodInfo getEntryPoint(MethodInfo main)
+        static (object? Target, MethodInfo Method) getEntryPoint(MethodInfo main)
         {
             try
             {
                 var bytes = main.GetMethodBody()?.GetILAsByteArray();
-                var method = bytes switch
+                (object? Target, MethodBase? Method) invoke = bytes switch
                 {
+                    // Patterns for async Main method with arguments
                     [
                         (byte)ILOpCode.Ldarg_0,
                         (byte)ILOpCode.Call, _, _, _, _,
@@ -89,7 +93,8 @@ public static class Executor
                         (byte)ILOpCode.Ldloca_s, 0,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4))),
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4)))),
+                    // Patterns for async Main method without arguments
                     [
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Callvirt, _, _, _, _,
@@ -97,16 +102,35 @@ public static class Executor
                         (byte)ILOpCode.Ldloca_s, 0,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))),
-                    _ => null,
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
+                    // Patterns for async Script Main method
+                    [
+                        (byte)ILOpCode.Newobj, _, _, _, _,
+                        (byte)ILOpCode.Callvirt, _, _, _, _,
+                        (byte)ILOpCode.Callvirt, _, _, _, _,
+                        (byte)ILOpCode.Stloc_0,
+                        (byte)ILOpCode.Ldloca_s, 0,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Pop,
+                        (byte)ILOpCode.Ret
+                    ] => CreateScriptMain(main, bytes),
+                    _ => (null, null),
                 };
-                if (method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))
+                static (object? Target, MethodInfo? Method) CreateScriptMain(MethodInfo main, byte[] bytes)
                 {
-                    return info;
+                    ConstructorInfo? constructor = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))) as ConstructorInfo;
+                    MethodInfo? initialize = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(6, 4))) as MethodInfo;
+                    if (constructor == null || initialize == null) { return (null, null); }
+                    object instance = constructor.Invoke(null);
+                    return (instance, initialize);
+                }
+                if (invoke.Method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))
+                {
+                    return (invoke.Target, info);
                 }
             }
             catch { }
-            return main;
+            return (null, main);
         }
     }
 
