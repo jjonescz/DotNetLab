@@ -17,225 +17,336 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
     </FluentDialogHeader>
 
     <FluentDialogBody>
-        <FluentStack Orientation="Orientation.Vertical">
-            @* Open config file *@
-            <FluentStack VerticalAlignment="VerticalAlignment.Center">
-                C# version, feature flags, and more:
-                <FluentButton OnClick="GoToConfigurationAsync" Appearance="Appearance.Lightweight"
-                IconStart="@(new Icons.Regular.Size16.DocumentSettings())">Open Configuration</FluentButton>
-            </FluentStack>
+		<SettingsGroup Style="margin-top: -1rem">
+			<Header>
+				<h2 id="csharp" class="unset">
+					@* Open config file *@
+					<FluentStack VerticalAlignment="VerticalAlignment.Center">
+						<span style="flex: 1">C# version, feature flags, and more:</span>
+						<FluentButton OnClick="GoToConfigurationAsync" Appearance="Appearance.Lightweight"
+						IconStart="@(new Icons.Regular.Size16.DocumentSettings())">Open Configuration</FluentButton>
+					</FluentStack>
+				</h2>
+			</Header>
+			<ChildContent>
+				@* Word wrap check box *@
+				<SettingsCard Class="settings-nowarp">
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.TextWrap()" />
+					</Icon>
+					<Header>
+						<h3 id="csharp-wrap" class="unset">Word Wrap</h3>
+					</Header>
+					<Description>
+						Wrap the word.
+					</Description>
+					<ActionContent>
+						<FluentSwitch @bind-Value="WordWrap" @bind-Value:after="OnWordWrapChanged">
+							@(WordWrap? "On" : "Off")
+						</FluentSwitch>
+					</ActionContent>
+				</SettingsCard>
 
-            @* Word wrap check box *@
-            <FluentCheckbox @bind-Value="WordWrap" @bind-Value:after="OnWordWrapChanged" Label="Word wrap" />
+				@* Use VIM check box *@
+				<SettingsCard Class="settings-nowarp">
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Keyboard()" />
+					</Icon>
+					<Header>
+						<h3 id="csharp-vim" class="unset">Use VIM</h3>
+					</Header>
+					<Description>
+						Use the VIM mode.
+					</Description>
+					<ActionContent>
+						<FluentSwitch @bind-Value="UseVim" @bind-Value:after="OnVimChanged">
+							@(UseVim? "On" : "Off")
+						</FluentSwitch>
+					</ActionContent>
+				</SettingsCard>
 
-            @* Use VIM check box *@
-            <FluentCheckbox @bind-Value="UseVim" @bind-Value:after="OnVimChanged" Label="Use VIM" />
+				@* Advanced options (should not be changed often by users) *@
+				<SettingsExpander>
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DeveloperBoard()" />
+					</Icon>
+					<Header>
+						<h3 id="csharp-advanced" class="unset">Advanced</h3>
+					</Header>
+					<Description>
+						The advanced options.
+					</Description>
+					<ChildContent>
+						<FluentStack Class="setting-expander-content-grid" Orientation="Orientation.Vertical">
+							@* Language services check box *@
+							<FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
+							title="Completions, live diagnostics (currently uses only the built-in compiler and default configuration)"
+							Label="Language services" />
 
-            @* Advanced options (should not be changed often by users) *@
-            <FluentAccordion Style="width: 100%">
-                <FluentAccordionItem Heading="Advanced" HeadingLevel="5">
-                    <FluentStack Orientation="Orientation.Vertical">
-                        @* Language services check box *@
-                        <FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
-                        title="Completions, live diagnostics (currently uses only the built-in compiler and default configuration)"
-                        Label="Language services" />
+							@* Debug logs check box *@
+							<FluentCheckbox @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync"
+							Label="Debug logs" title="Whether to display debug-level logs in the browser development console" />
 
-                        @* Debug logs check box *@
-                        <FluentCheckbox @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync"
-                        Label="Debug logs" title="Whether to display debug-level logs in the browser development console" />
+							@* Trace logs check box *@
+							<FluentCheckbox @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync"
+							Label="Trace logs" title="Whether to display trace-level logs in the browser development console" />
 
-                        @* Trace logs check box *@
-                        <FluentCheckbox @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync"
-                        Label="Trace logs" title="Whether to display trace-level logs in the browser development console" />
+							@* Memory usage view check box *@
+							<FluentCheckbox @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync"
+							Label="Memory usage view" title="Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app" />
 
-                        @* Memory usage view check box *@
-                        <FluentCheckbox @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync"
-                        Label="Memory usage view" title="Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app" />
+							@* Use a worker check box *@
+							<FluentCheckbox @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync"
+							Label="Compile in a background worker thread (requires restart)"
+							title="Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled)" />
 
-                        @* Use a worker check box *@
-                        <FluentCheckbox @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync"
-                        Label="Compile in a background worker thread (requires restart)"
-                        title="Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled)" />
+							@* Caching check box *@
+							<FluentCheckbox @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync"
+							Label="Cache inputs and outputs on a server for faster sharing" />
 
-                        @* Caching check box *@
-                        <FluentCheckbox @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync"
-                        Label="Cache inputs and outputs on a server for faster sharing" />
+							@* Auto compile on start check box *@
+							<FluentCheckbox @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync"
+							Label="Automatically begin compilation on start" />
 
-                        @* Auto compile on start check box *@
-                        <FluentCheckbox @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync"
-                        Label="Automatically begin compilation on start" />
-
-                        @* Razor toolchain *@
-                        <FluentStack VerticalAlignment="VerticalAlignment.Center">
-                            <span>Razor toolchain</span>
-                            <FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
-                            Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
-                        </FluentStack>
+							@* Razor toolchain *@
+							<FluentStack VerticalAlignment="VerticalAlignment.Center">
+								<span>Razor toolchain</span>
+								<FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
+								Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
+							</FluentStack>
                         
-                        @* Razor strategy *@
-                        <FluentStack VerticalAlignment="VerticalAlignment.Center">
-                            <span>Razor strategy</span>
-                            <FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
-                            Items="Enum.GetValues<RazorStrategy>()" />
-                        </FluentStack>
-                    </FluentStack>
-                </FluentAccordionItem>
-            </FluentAccordion>
+							@* Razor strategy *@
+							<FluentStack VerticalAlignment="VerticalAlignment.Center">
+								<span>Razor strategy</span>
+								<FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
+								Items="Enum.GetValues<RazorStrategy>()" />
+							</FluentStack>
+						</FluentStack>
+					</ChildContent>
+				</SettingsExpander>
+			</ChildContent>
+		</SettingsGroup>
 
-            <h5 style="margin: 0.75rem 0 0 0">Compilers</h5>
+		<SettingsGroup>
+			<Header>
+				<h2 id="compilers" class="unset">Compilers</h2>
+			</Header>
 
-            @* SDK version select *@
-            <FluentComboboxEx @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
-            Autocomplete="ComboboxAutocomplete.Both" Placeholder="version" Style="width: 100%">
-                <FluentLabel slot="start">SDK</FluentLabel>
-                @foreach (var info in sdkVersions ?? [])
-                {
-                    <FluentOption TOption="string" Value="@info.Version">
-                        @info.Version
-                        @*
-                            For some reason, we cannot customize the text displayed in the closed combo box after selection
-                            and we don't want it to contain the additional info, so we use this as a workaround.
-                            `option-badge` is a CSS class which puts the `data-text` into `content` of `::after` pseudo-element.
-                        *@
-                        <span class="option-badge" data-text="@info.ReleaseDate"></span>
-                    </FluentOption>
-                }
-                <FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkInfo" Width="1em" />
-            </FluentComboboxEx>
-            <FluentLabel Style="opacity: 80%">
-                Enter a .NET SDK version above to automatically get
-                the corresponding Roslyn and Razor version numbers below.
-            </FluentLabel>
-            @if (sdkInfo != null)
-            {
-                <FluentLabel>
-                    SDK @(sdkInfo.SdkVersion)
-                    @if (!sdkInfo.Commits.IsDefaultOrEmpty)
-                    {
-                        @(" (")
-                        foreach (var (index, commit) in sdkInfo.Commits.Index())
-                        {
-                            if (index != 0)
-                            {
-                                @(" / ")
-                            }
-                            <CommitHashView Enabled="!modalHidden" Commit="commit" SaveKey="SdkCommitInfo" />
-                        }
-                        @(") ")
-                    }
-                    has roslyn @(sdkInfo.RoslynVersion)
-                    and razor @(sdkInfo.RazorVersion).
-                </FluentLabel>
-            }
-            @if (sdkError != null)
-            {
-                <FluentLabel Color="Color.Error">
-                    @sdkError
-                </FluentLabel>
-            }
+			<ChildContent>
+				@* SDK version select *@
+				<SettingsCard Class="settings-keepwarp">
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
+					</Icon>
+					<Header>
+						<h3 id="compilers-sdk" class="unset">.NET SDK</h3>
+					</Header>
+					<Description>
+						Enter a .NET SDK version above to automatically get
+						the corresponding Roslyn and Razor version numbers below.
+					</Description>
+					<ActionContent>
+						<FluentComboboxEx @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
+						Autocomplete="ComboboxAutocomplete.Both" Placeholder="version" Style="width: 100%">
+							<FluentLabel slot="start">SDK</FluentLabel>
+							@foreach (var info in sdkVersions ?? [])
+							{
+								<FluentOption TOption="string" Value="@info.Version">
+									@info.Version
+									@*
+										For some reason, we cannot customize the text displayed in the closed combo box after selection
+										and we don't want it to contain the additional info, so we use this as a workaround.
+										`option-badge` is a CSS class which puts the `data-text` into `content` of `::after` pseudo-element.
+									*@
+									<span class="option-badge" data-text="@info.ReleaseDate"></span>
+								</FluentOption>
+							}
+							<FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkInfo" Width="1em" />
+						</FluentComboboxEx>
+						@if (sdkInfo != null)
+						{
+							<FluentLabel>
+								SDK @(sdkInfo.SdkVersion)
+								@if (!sdkInfo.Commits.IsDefaultOrEmpty)
+								{
+									@(" (")
+									foreach (var (index, commit) in sdkInfo.Commits.Index())
+									{
+										if (index != 0)
+										{
+											@(" / ")
+										}
+										<CommitHashView Enabled="!modalHidden" Commit="commit" SaveKey="SdkCommitInfo" />
+									}
+									@(") ")
+								}
+								has roslyn @(sdkInfo.RoslynVersion)
+								and razor @(sdkInfo.RazorVersion).
+							</FluentLabel>
+						}
+						@if (sdkError != null)
+						{
+							<FluentLabel Color="Color.Error">
+								@sdkError
+							</FluentLabel>
+						}
+					</ActionContent>
+				</SettingsCard>
+				
+				@* Roslyn version select *@
+				<SettingsCard Class="settings-keepwarp">
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
+					</Icon>
+					<Header>
+						<h3 id="compilers-roslyn" class="unset">Roslyn Version</h3>
+					</Header>
+					<Description>
+						@SeeLinks(CompilerInfo.Roslyn)
+						Use
+						@if (roslynVersion != "latest")
+						{
+							<a href="javascript:void" @onclick:preventDefault
+							@onclick="@(() => UseRoslynVersionAsync("latest"))">latest</a>
+						}
+						@if (!string.IsNullOrWhiteSpace(roslynVersion))
+						{
+							if (roslynVersion != "latest")
+							{
+								@(" or ")
+							}
+							<a href="javascript:void" @onclick:preventDefault
+							@onclick="@(() => UseRoslynVersionAsync(null))">built-in</a>
+						}
+						@(".")
+					</Description>
+					<ActionContent>
+						<FluentStack>
+							<FluentTextField @bind-Value="roslynVersion" @bind-Value:after="() => LoadRoslynInfoAsync()"
+							Placeholder="@VersionPlaceholder" Style="width: 100%">
+								<FluentLabel slot="start">Roslyn</FluentLabel>
+								<FluentProgressRing slot="end" title="Loading info..." Visible="loadingRoslynInfo" Width="1em" />
+							</FluentTextField>
+							<FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
+							@bind-SelectedOption="roslynConfiguration" @bind-SelectedOption:after="() => LoadRoslynInfoAsync()"
+							Style="min-width: 7em" />
+						</FluentStack>
+						<div style="margin-top: 8px">
+							@Info((this, CompilerInfo.Roslyn, roslynInfo, roslynError))
+						</div>
+					</ActionContent>
+				</SettingsCard>
 
-            @* Roslyn version select *@
-            <FluentStack>
-                <FluentTextField @bind-Value="roslynVersion" @bind-Value:after="() => LoadRoslynInfoAsync()"
-                Placeholder="@VersionPlaceholder" Style="width: 100%">
-                    <FluentLabel slot="start">Roslyn</FluentLabel>
-                    <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRoslynInfo" Width="1em" />
-                </FluentTextField>
-                <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
-                @bind-SelectedOption="roslynConfiguration" @bind-SelectedOption:after="() => LoadRoslynInfoAsync()"
-                Style="min-width: 7em" />
-            </FluentStack>
-            <FluentLabel>
-                @SeeLinks(CompilerInfo.Roslyn)
-                Use
-                @if (roslynVersion != "latest")
-                {
-                    <a href="javascript:void" @onclick:preventDefault
-                    @onclick="@(() => UseRoslynVersionAsync("latest"))">latest</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(roslynVersion))
-                {
-                    if (roslynVersion != "latest")
-                    {
-                        @(" or ")
-                    }
-                    <a href="javascript:void" @onclick:preventDefault
-                    @onclick="@(() => UseRoslynVersionAsync(null))">built-in</a>
-                }
-                @(".")
-            </FluentLabel>
-            @Info((this, CompilerInfo.Roslyn, roslynInfo, roslynError))
+				@* Razor version select *@
+				<SettingsCard Class="settings-keepwarp">
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
+					</Icon>
+					<Header>
+						<h3 id="compilers-razor" class="unset">Razor Version</h3>
+					</Header>
+					<Description>
+						@SeeLinks(CompilerInfo.Razor)
+						Use
+						@if (razorVersion != "latest")
+						{
+							<a href="javascript:void" @onclick:preventDefault
+							@onclick="@(() => UseRazorVersionAsync("latest"))">latest</a>
+						}
+						@if (!string.IsNullOrWhiteSpace(razorVersion))
+						{
+							if (razorVersion != "latest")
+							{
+								@(" or ")
+							}
+							<a href="javascript:void" @onclick:preventDefault
+							@onclick="@(() => UseRazorVersionAsync(null))">built-in</a>
+						}
+						@(".")
+					</Description>
+					<ActionContent>
+						<FluentStack>
+							<FluentTextField @bind-Value="razorVersion" @bind-Value:after="() => LoadRazorInfoAsync()"
+							Placeholder="@VersionPlaceholder" Style="width: 100%">
+								<FluentLabel slot="start">Razor</FluentLabel>
+								<FluentProgressRing slot="end" title="Loading info..." Visible="loadingRazorInfo" Width="1em" />
+							</FluentTextField>
+							<FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
+							@bind-SelectedOption="razorConfiguration" @bind-SelectedOption:after="() => LoadRazorInfoAsync()"
+							Style="min-width: 7em" />
+						</FluentStack>
+						<div style="margin-top: 8px">
+							@Info((this, CompilerInfo.Razor, razorInfo, razorError))
+						</div>
+					</ActionContent>
+				</SettingsCard>
+			</ChildContent>
+		</SettingsGroup>
 
-            @* Razor version select *@
-            <FluentStack>
-                <FluentTextField @bind-Value="razorVersion" @bind-Value:after="() => LoadRazorInfoAsync()"
-                Placeholder="@VersionPlaceholder" Style="width: 100%">
-                    <FluentLabel slot="start">Razor</FluentLabel>
-                    <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRazorInfo" Width="1em" />
-                </FluentTextField>
-                <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
-                @bind-SelectedOption="razorConfiguration" @bind-SelectedOption:after="() => LoadRazorInfoAsync()"
-                Style="min-width: 7em" />
-            </FluentStack>
-            <FluentLabel>
-                @SeeLinks(CompilerInfo.Razor)
-                Use
-                @if (razorVersion != "latest")
-                {
-                    <a href="javascript:void" @onclick:preventDefault
-                    @onclick="@(() => UseRazorVersionAsync("latest"))">latest</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(razorVersion))
-                {
-                    if (razorVersion != "latest")
-                    {
-                        @(" or ")
-                    }
-                    <a href="javascript:void" @onclick:preventDefault
-                    @onclick="@(() => UseRazorVersionAsync(null))">built-in</a>
-                }
-                @(".")
-            </FluentLabel>
-            @Info((this, CompilerInfo.Razor, razorInfo, razorError))
+        @* About section *@
+		<SettingsGroup>
+			<Header>
+				<h2 id="about" class="unset">About</h2>
+			</Header>
+			<ChildContent>
+				<SettingsCard>
+					<Icon>
+						<FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ArrowClockwise()" />
+					</Icon>
+					<Header>
+						<h3 id="about-about" class="unset">.NET Lab v@(typeof(App).Assembly.GetName().Version?.ToString(3))</h3>
+					</Header>
+					<Description>
+						<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>,
+						commit
+						<CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
+					</Description>
+					<ActionContent>
+						@* Check for updates *@
+						<FluentButton OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
+					</ActionContent>
+				</SettingsCard>
+				@if (UpdateInfo.LoadUpdate is { } loadUpdate)
+				{
+					<FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
+						To apply the update, all .NET Lab tabs need to be reloaded.
+						<FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
+							<FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
+							IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
+							<FluentAnchor Href="@VersionUtil.CurrentCommit.ReleasesUrl" Target="_blank" Style="width: 100%"
+							IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
+						</FluentStack>
+					</FluentMessageBar>
+				}
+				else if (UpdateInfo.UpdateIsDownloading)
+				{
+					<FluentMessageBar Title="An update is being downloaded in the background." Intent="MessageIntent.Info" AllowDismiss="false">
+						<FluentProgressRing Width="1em" Style="display: inline-flex; margin-left: 0.5em" />
+					</FluentMessageBar>
+				}
+				else if (checkedForUpdates)
+				{
+					<FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
+				}
 
-            @* About section *@
-            <h5 style="margin: 0.75rem 0 0 0">About</h5>
-            <p style="margin: 0">
-                <a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>,
-                commit
-                <CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
-            </p>
-
-            @* Check for updates *@
-            <FluentButton IconStart="@(new Icons.Regular.Size16.ArrowClockwise())"
-            OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
-            @if (UpdateInfo.LoadUpdate is { } loadUpdate)
-            {
-                <FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
-                    To apply the update, all .NET Lab tabs need to be reloaded.
-                    <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
-                        <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
-                        IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
-                        <FluentAnchor Href="@VersionUtil.CurrentCommit.ReleasesUrl" Target="_blank" Style="width: 100%"
-                        IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
-                    </FluentStack>
-                </FluentMessageBar>
-            }
-            else if (UpdateInfo.UpdateIsDownloading)
-            {
-                <FluentMessageBar Title="An update is being downloaded in the background." Intent="MessageIntent.Info" AllowDismiss="false">
-                    <FluentProgressRing Width="1em" Style="display: inline-flex; margin-left: 0.5em" />
-                </FluentMessageBar>
-            }
-            else if (checkedForUpdates)
-            {
-                <FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
-            }
-
-            @* Theme select *@
-            <FluentSelect Items="Enum.GetValues<DesignThemeModes>()" @bind-SelectedOption="theme"
-            OptionText="@(x => $"{x} theme")" />
-        </FluentStack>
+				@* Theme select *@
+                <SettingsCard>
+                    <Icon>
+                        <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Color()" />
+                    </Icon>
+                    <Header>
+                        <h3 id="about-theme" class="unset">App Theme</h3>
+                    </Header>
+                    <Description>
+                        Set the theme of this App.
+                    </Description>
+                    <ActionContent>
+                        <FluentSelect Width="auto" Items="Enum.GetValues<DesignThemeModes>()" @bind-SelectedOption="theme"
+						OptionText="@(x => $"{x} theme")"/>
+                    </ActionContent>
+                </SettingsCard>
+			</ChildContent>
+		</SettingsGroup>
     </FluentDialogBody>
 
     <FluentDialogFooter>

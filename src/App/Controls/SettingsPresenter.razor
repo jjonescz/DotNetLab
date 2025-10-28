@@ -1,0 +1,36 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+@inherits SettingsCardBase
+
+<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
+    <div class="header-root">
+        @if (Icon != null)
+        {
+            <div class="icon-holder">
+                @Icon
+            </div>
+        }
+        <div class="header-panel">
+            @if (Header != null)
+            {
+                @Header
+            }
+            @if (Description != null)
+            {
+                <span class="description">@Description</span>
+            }
+        </div>
+    </div>
+    @if (ActionContent != null)
+    {
+        <div class="content-presenter">
+            @ActionContent
+        </div>
+    }
+</div>
+
+@code
+{
+    protected override string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-presenter")
+        .Build();
+}

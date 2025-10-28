@@ -1,0 +1,20 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+@inherits SettingsCardBase
+
+<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
+	<FluentCard Class="fluent-card"
+				AreaRestricted="false"
+				MinimalStyle="true">
+		<SettingsPresenter Icon="Icon"
+						   Header="Header"
+						   Description="Description"
+						   ActionContent="ActionContent" />
+	</FluentCard>
+</div>
+
+@code
+{
+	protected override string? ClassValue => new CssBuilder(Class)
+		.AddClass("settings-card")
+		.Build();
+}

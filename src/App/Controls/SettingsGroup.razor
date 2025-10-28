@@ -1,0 +1,31 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+@inherits FluentComponentBase
+
+<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
+    @if (Header != null)
+    {
+        <div class="header-presenter">@Header</div>
+    }
+    <div class="items-presenter">
+        @ChildContent
+    </div>
+</div>
+
+@code
+{
+    private string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-group")
+        .Build();
+
+    /// <summary>
+    /// Gets or sets the Header.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    /// <summary>
+    /// Gets or sets the collection of child elements of the panel.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
