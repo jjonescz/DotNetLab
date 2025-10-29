@@ -8,6 +8,7 @@
 		<SettingsPresenter Icon="Icon"
 						   Header="Header"
 						   Description="Description"
+						   FillColor="@FillColor"
 						   ActionContent="ActionContent" />
 	</FluentCard>
 </div>
@@ -17,4 +18,6 @@
 	protected override string? ClassValue => new CssBuilder(Class)
 		.AddClass("settings-card")
 		.Build();
+
+	private string FillColor => Class?.Contains("default-setting-expander-item") == true ? "neutralFillLayerAltRest" : "neutralFillInputRest";
 }

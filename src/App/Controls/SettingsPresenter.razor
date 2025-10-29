@@ -23,8 +23,17 @@
     @if (ActionContent != null)
     {
         <div class="content-presenter">
-            @ActionContent
-        </div>
+			@if (string.IsNullOrEmpty(FillColor))
+			{
+				@ActionContent
+			}
+			else
+			{
+				<FillColorDiv FillColor="@FillColor">
+					@ActionContent
+				</FillColorDiv>
+			}
+		</div>
     }
 </div>
 
@@ -33,4 +42,7 @@
     protected override string? ClassValue => new CssBuilder(Class)
         .AddClass("settings-presenter")
         .Build();
+
+	[Parameter]
+	public string? FillColor { get; set; }
 }

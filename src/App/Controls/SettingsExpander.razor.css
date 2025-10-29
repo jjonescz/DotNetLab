@@ -34,3 +34,31 @@
 ::deep div.setting-expander-content-grid {
     padding: var(--settings-expander-item-padding);
 }
+
+div.settings-expander ::deep .default-setting-expander-item .fluent-card {
+    background: none;
+    border: none;
+    border-top: 1px solid var(--neutral-stroke-layer-rest);
+    border-radius: 0;
+    box-shadow: none;
+}
+
+div.settings-expander ::deep .default-setting-expander-item:first-child .fluent-card {
+    border-top: none;
+}
+
+div.settings-expander ::deep .default-setting-expander-item .fluent-card {
+    padding: calc(var(--design-unit) * 2px) calc((var(--base-height-multiplier) + 1 + var(--density)) * var(--design-unit) * 1px) calc(var(--design-unit) * 2px) calc((var(--base-horizontal-spacing-multiplier) * 12 - var(--design-unit) * 1.5) * 1px + var(--type-ramp-base-line-height));
+}
+
+div.settings-expander ::deep .default-setting-expander-item:first-child .fluent-card {
+    padding-top: 0;
+}
+
+div.settings-expander ::deep .default-setting-expander-item:last-child .fluent-card {
+    padding-bottom: 0;
+}
+
+div.settings-expander ::deep .default-setting-expander-item .settings-presenter {
+    padding: 0;
+}

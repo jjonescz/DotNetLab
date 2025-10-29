@@ -77,51 +77,140 @@ OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLumi
 						The advanced options.
 					</Description>
 					<ChildContent>
-						<FluentStack Class="setting-expander-content-grid" Orientation="Orientation.Vertical">
+						<div>
 							@* Language services check box *@
-							<FluentCheckbox @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync"
-							title="Completions, live diagnostics (currently uses only the built-in compiler and default configuration)"
-							Label="Language services" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-server" class="unset">Language Services</h4>
+								</Header>
+								<Description>
+									Completions, live diagnostics. (currently uses only the built-in compiler and default configuration)
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync">
+										@(EnableLanguageServices? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Debug logs check box *@
-							<FluentCheckbox @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync"
-							Label="Debug logs" title="Whether to display debug-level logs in the browser development console" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-debug" class="unset">Debug Logs</h4>
+								</Header>
+								<Description>
+									Whether to display debug-level logs in the browser development console.
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync">
+										@(DebugLogs? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Trace logs check box *@
-							<FluentCheckbox @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync"
-							Label="Trace logs" title="Whether to display trace-level logs in the browser development console" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-trace" class="unset">Trace Logs</h4>
+								</Header>
+								<Description>
+									Whether to display trace-level logs in the browser development console.
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync">
+										@(TraceLogs? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Memory usage view check box *@
-							<FluentCheckbox @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync"
-							Label="Memory usage view" title="Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-memory" class="unset">Memory Usage View</h4>
+								</Header>
+								<Description>
+									Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app.
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync">
+										@(EnableMemoryUsageView? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Use a worker check box *@
-							<FluentCheckbox @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync"
-							Label="Compile in a background worker thread (requires restart)"
-							title="Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled)" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-worker" class="unset">Compile in a background worker thread (requires restart)</h4>
+								</Header>
+								<Description>
+									Moves compilation (and language services if enabled) to a separate worker thread. (it is recommended to keep this enabled)
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync">
+										@(EnableWorker? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Caching check box *@
-							<FluentCheckbox @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync"
-							Label="Cache inputs and outputs on a server for faster sharing" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-caching" class="unset">Enable Caching</h4>
+								</Header>
+								<Description>
+									Cache inputs and outputs on a server for faster sharing.
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync">
+										@(EnableCaching? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Auto compile on start check box *@
-							<FluentCheckbox @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync"
-							Label="Automatically begin compilation on start" />
-
+							<SettingsCard Class="default-setting-expander-item settings-nowarp">
+								<Header>
+									<h4 id="csharp-advanced-automatically" class="unset">Automatically Compilation</h4>
+								</Header>
+								<Description>
+									Automatically begin compilation on start.
+								</Description>
+								<ActionContent>
+									<FluentSwitch @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync">
+										@(AutoCompileOnStart? "On" : "Off")
+									</FluentSwitch>
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Razor toolchain *@
-							<FluentStack VerticalAlignment="VerticalAlignment.Center">
-								<span>Razor toolchain</span>
-								<FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
-								Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" />
-							</FluentStack>
-                        
+							<SettingsCard Class="default-setting-expander-item">
+								<Header>
+									<h4 id="csharp-advanced-toolchain" class="unset">Razor Toolchain</h4>
+								</Header>
+								<Description>
+									Switch the Razor toolchain used for compilation.
+								</Description>
+								<ActionContent>
+									<FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
+									Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" Style="min-width: 10em" />
+								</ActionContent>
+							</SettingsCard>
+							
 							@* Razor strategy *@
-							<FluentStack VerticalAlignment="VerticalAlignment.Center">
-								<span>Razor strategy</span>
-								<FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
-								Items="Enum.GetValues<RazorStrategy>()" />
-							</FluentStack>
-						</FluentStack>
+							<SettingsCard Class="default-setting-expander-item">
+								<Header>
+									<h4 id="csharp-advanced-strategy" class="unset">Razor Strategy</h4>
+								</Header>
+								<Description>
+									Switch the Razor strategy used for compilation.
+								</Description>
+								<ActionContent>
+									<FluentSelect @bind-SelectedOption="RazorStrategy" @bind-SelectedOption:after="OnSetRazorStrategyAsync"
+									Items="Enum.GetValues<RazorStrategy>()" Style="min-width: 10em" />
+								</ActionContent>
+							</SettingsCard>
+						</div>
 					</ChildContent>
 				</SettingsExpander>
 			</ChildContent>
