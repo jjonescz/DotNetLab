@@ -2,39 +2,36 @@
 @inherits SettingsCardBase
 
 <div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
-    <div class="header-root">
-        @if (Icon != null)
-        {
-            <div class="icon-holder">
-                @Icon
+    <CascadingValue Name="FillColor" Value="FillColor">
+        <FillColorDiv Element="@Element">
+            <div class="header-root">
+                @if (Icon != null)
+                {
+                    <div class="icon-holder">
+                        @Icon
+                    </div>
+                }
+                <div class="header-panel">
+                    @if (Header != null)
+                    {
+                        @Header
+                    }
+                    @if (Description != null)
+                    {
+                        <span class="description">
+                            @Description
+                        </span>
+                    }
+                </div>
             </div>
-        }
-        <div class="header-panel">
-            @if (Header != null)
+            @if (ActionContent != null)
             {
-                @Header
+                <div class="content-presenter">
+                    @ActionContent
+                </div>
             }
-            @if (Description != null)
-            {
-                <span class="description">@Description</span>
-            }
-        </div>
-    </div>
-    @if (ActionContent != null)
-    {
-        <div class="content-presenter">
-			@if (string.IsNullOrEmpty(FillColor))
-			{
-				@ActionContent
-			}
-			else
-			{
-				<FillColorDiv FillColor="@FillColor">
-					@ActionContent
-				</FillColorDiv>
-			}
-		</div>
-    }
+        </FillColorDiv>
+    </CascadingValue>
 </div>
 
 @code
@@ -43,6 +40,6 @@
         .AddClass("settings-presenter")
         .Build();
 
-	[Parameter]
-	public string? FillColor { get; set; }
+    [CascadingParameter(Name = nameof(FillColor))]
+    public string? FillColor { get; set; }
 }

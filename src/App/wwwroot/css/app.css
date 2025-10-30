@@ -40,20 +40,6 @@ body {
     flex-direction: column;
 }
 
-h6.unset,
-h5.unset,
-h4.unset,
-h3.unset,
-h2.unset,
-h1.unset {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-weight: inherit;
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-}
-
 #blazor-error-ui {
     background: light-dark(var(--custom-light), var(--custom-dark));
     bottom: 0;
@@ -135,4 +121,25 @@ code {
 
 .underline {
     text-decoration: underline;
+}
+
+h6.unset,
+h5.unset,
+h4.unset,
+h3.unset,
+h2.unset,
+h1.unset {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-weight: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+fluent-select::part(listbox),
+fluent-select .listbox,
+fluent-combobox::part(listbox),
+fluent-combobox .listbox {
+    max-height: calc(var(--base-height-multiplier) * 30px);
 }

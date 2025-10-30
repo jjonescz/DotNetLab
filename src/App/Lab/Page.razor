@@ -18,29 +18,31 @@
         @* Logo *@
         @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
         @* Empty slug is used to go to "initial state + loaded user preferences". *@
-        <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>@*
+        <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>
+            @*
             *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
-            *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span></a>
+            *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span>
+        </a>
 
         @* Input presets (quick-start templates) *@
         <FluentMenuButton Text="Template" Items="WellKnownSlugs.ShorthandToTitle" OnMenuChanged="OnInputPresetSelectedAsync"
-        ButtonStyle="margin-left: 0.5em" />
+                          ButtonStyle="margin-left: 0.5em" />
     </div>
 
     <div>
         @* Copy URL button *@
         <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
-        IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
+                      IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
 
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
-        Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
+                      Title="Compile (Ctrl+S)" IconStart="@(new Icons.Regular.Size20.FlashPlay())" Disabled="!initialized">
             Compile
         </FluentButton>
 
         @* Settings button *@
         <FluentButton OnClick="() => settings.OpenModalAsync()"
-        IconStart="@(new Icons.Regular.Size20.Settings())">
+                      IconStart="@(new Icons.Regular.Size20.Settings())">
             Settings
 
             @if (UpdateInfo.UpdateIsAvailable)
@@ -57,8 +59,8 @@
             @if (IsOutputOutdated)
             {
                 <FluentStack title="Output is outdated, click Compile or press Ctrl+S"
-                Style="font-size: 0.8rem; font-style: normal; width: auto"
-                HorizontalAlignment="HorizontalAlignment.Center">
+                             Style="font-size: 0.8rem; font-style: normal; width: auto"
+                             HorizontalAlignment="HorizontalAlignment.Center">
                     <FluentIcon Value="@(new Icons.Regular.Size20.Save())" Color="Color.Fill" />
                     Ctrl+S to re-compile
                 </FluentStack>
@@ -67,10 +69,10 @@
             else if (compiled is { CacheInfo: { } cacheInfo })
             {
                 var title = cacheInfo.Timestamp.HasValue
-                    ? "The currently displayed output has been fetched from a server cache."
-                    : "The currently displayed output comes from a built-in cache.";
+                ? "The currently displayed output has been fetched from a server cache."
+                : "The currently displayed output comes from a built-in cache.";
                 <FluentStack title="@title" Style="font-size: 0.8rem; font-style: normal; width: auto"
-                HorizontalAlignment="HorizontalAlignment.Center">
+                             HorizontalAlignment="HorizontalAlignment.Center">
                     <FluentIcon Value="@(new Icons.Regular.Size20.CloudCheckmark())" Color="Color.Fill" />
                     Cached
                     @if (cacheInfo.Timestamp is { } cacheTimestamp)
@@ -96,14 +98,14 @@
             @if (orientation == Orientation.Horizontal)
             {
                 <FluentButton OnClick="() => orientation = Orientation.Vertical"
-                Title="Display editors in a column">
+                              Title="Display editors in a column">
                     <FluentIcon Value="@(new Icons.Regular.Size20.LayoutRowTwo())" Color="Color.Neutral" />
                 </FluentButton>
             }
             else
             {
                 <FluentButton OnClick="() => orientation = Orientation.Horizontal"
-                Title="Display editors in a row">
+                              Title="Display editors in a row">
                     <FluentIcon Value="@(new Icons.Regular.Size20.LayoutColumnTwo())" Color="Color.Neutral" />
                 </FluentButton>
             }
@@ -123,13 +125,13 @@
         <div style="display: flex; flex-direction: column; height: 100%">
             @* Input tabs *@
             <FluentTabs @bind-ActiveTabId="activeInputTabId" @bind-ActiveTabId:after="OnActiveInputTabIdChangedAsync"
-            ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync"
-            Style="padding: 0 0.2em">
+                        ShowClose="inputs.Count > 1 || configuration != null" OnTabClose="OnInputTabClosedAsync"
+                        Style="padding: 0 0.2em">
                 @* Normal files *@
                 @foreach (var (index, input) in inputs.Index())
                 {
                     <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
-                    LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
+                               LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
                 }
 
                 @* Special configuration file *@
@@ -147,7 +149,7 @@
                 @* Add new file button *@
                 <div slot="end">
                     <FluentMenuButton IconStart="@(new Icons.Filled.Size20.DocumentAdd())" Text="Add"
-                    ButtonAppearance="Appearance.Neutral" OnMenuChanged="OnAddInputTabAsync">
+                                      ButtonAppearance="Appearance.Neutral" OnMenuChanged="OnAddInputTabAsync">
                         <FluentMenuItem Id="cs">.cs</FluentMenuItem>
                         <FluentMenuItem Id="razor">.razor</FluentMenuItem>
                         <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
@@ -166,10 +168,10 @@
             @* Input editor *@
             <div style="flex-grow: 1">
                 <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
-                ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
-                OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                OnDidChangeModelContent="OnDidChangeModelContent"
-                OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
+                                                          ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
+                                                          OnDidChangeModel="LanguageServices.OnDidChangeModel"
+                                                          OnDidChangeModelContent="OnDidChangeModelContent"
+                                                          OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
     </FluentMultiSplitterPane>
@@ -183,7 +185,7 @@
                 <FluentMessageBar Title="Compiler worker failed." Intent="MessageIntent.Error" AllowDismiss="false">
                     <div style="white-space-collapse: preserve">@workerError</div>
                     <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorker"
-                    IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Re-create the worker</FluentButton>
+                                  IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Re-create the worker</FluentButton>
                 </FluentMessageBar>
             }
 
@@ -192,7 +194,7 @@
             the FluentTabs might render incorrect selected tab
             even though ActiveTabId is set correctly (probably a bug). *@
             <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
-            Style="padding: 0 0.2em">
+                        Style="padding: 0 0.2em">
                 @foreach (var output in AllOutputs)
                 {
                     @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
@@ -202,8 +204,8 @@
 
                             @* Error List badge *@
                             @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
-                                compiled?.Output is { } compiledOutput &&
-                                compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
+                                                    compiled?.Output is { } compiledOutput &&
+                                                    compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
                             {
                                 var color = compiledOutput.NumErrors > 0 ? "error" : "warning";
                                 <FluentBadge Fill="x" BackgroundColor="@($"var(--{color})")" Color="white" Style="margin-left: 0.4em">
@@ -229,31 +231,31 @@
                         case "tree":
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
-                                Label="Show symbols" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
+                                                Label="Show symbols" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
-                                Label="Show operations" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
+                                                Label="Show operations" />
                             }
                             break;
                         case "il":
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { DecodeCustomAttributeBlobs = v })"
-                                Label="Decode custom attribute blobs" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { DecodeCustomAttributeBlobs = v })"
+                                                Label="Decode custom attribute blobs" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
-                                Label="Show sequence points" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
+                                                Label="Show sequence points" />
                                 <FluentCheckbox @bind-Value:get="savedState.FullIl"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
-                                Label="Full IL" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
+                                                Label="Full IL" />
                             }
                             break;
                         case CompiledAssembly.DiagnosticsOutputType:
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ExcludeSingleFileNameInDiagnostics"
-                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
-                                Label="Exclude single file name" />
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
+                                                Label="Exclude single file name" />
                             }
                             break;
                     }
@@ -263,7 +265,7 @@
             @* Output editor *@
             <div style="flex-grow: 1">
                 <BlazorMonaco.Editor.StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
-                ConstructionOptions="OutputConstructionOptions" />
+                                                          ConstructionOptions="OutputConstructionOptions" />
             </div>
         </div>
     </FluentMultiSplitterPane>
@@ -511,7 +513,7 @@
         Debug.Assert(!monacoThemeDefined);
         await CustomMonacoTheme.DefineAsync(JSRuntime);
         monacoThemeDefined = true;
-        bool dark = settings.Theme switch 
+        bool dark = settings.Theme switch
         {
             DesignThemeModes.Dark => true,
             DesignThemeModes.Light => false,
@@ -945,7 +947,7 @@
 
             if (saveViewState && !state.ViewState.IsEmpty)
             {
-                await outputEditor.RestoreViewStateAsync(state.ViewState, module);                
+                await outputEditor.RestoreViewStateAsync(state.ViewState, module);
             }
             else if (isOutputLanguage)
             {
@@ -1215,7 +1217,7 @@
         }
 
         var models = InputsAndConfiguration
-            .Select(t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName) 
+            .Select(t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName)
             {
                 NewContent = t.Input.NewContent,
                 IsConfiguration = t.IsConfiguration,

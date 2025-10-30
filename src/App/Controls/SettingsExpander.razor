@@ -2,36 +2,39 @@
 @inherits SettingsCardBase
 
 <div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
-	<FluentAccordion>
-		<FluentAccordionItem Class="expander-item"
-							 ChildContent="ChildContent"
-							 Expanded="Expanded">
-			<HeadingTemplate>
-				<SettingsPresenter Icon="Icon"
-								   Header="Header"
-								   Description="Description"
-								   FillColor="neutralFillInputRest"
-								   ActionContent="ActionContent" />
-			</HeadingTemplate>
-		</FluentAccordionItem>
-	</FluentAccordion>
+    <FluentAccordion>
+        <FluentAccordionItem Class="expander-item" Expanded="Expanded">
+            <HeadingTemplate>
+                <SettingsPresenter Icon="Icon"
+                                   Header="Header"
+                                   Description="Description"
+                                   FillColor="neutralFillInputRest"
+                                   ActionContent="ActionContent" />
+            </HeadingTemplate>
+            <ChildContent>
+                <CascadingValue Name="FillColor" Value="@("neutralFillLayerAltRest")">
+                    @ChildContent
+                </CascadingValue>
+            </ChildContent>
+        </FluentAccordionItem>
+    </FluentAccordion>
 </div>
 
 @code
 {
-	protected override string? ClassValue => new CssBuilder(Class)
-		.AddClass("settings-expander")
-		.Build();
+    protected override string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-expander")
+        .Build();
 
-	/// <summary>
-	/// Gets or sets a value indicating whether the item is expanded or collapsed.
-	/// </summary>
-	[Parameter]
-	public bool Expanded { get; set; }
+    /// <summary>
+    /// Gets or sets a value indicating whether the item is expanded or collapsed.
+    /// </summary>
+    [Parameter]
+    public bool Expanded { get; set; }
 
-	/// <summary>
-	/// Gets or sets the content of a ContentControl.
-	/// </summary>
-	[Parameter]
-	public RenderFragment? ChildContent { get; set; }
+    /// <summary>
+    /// Gets or sets the content of a ContentControl.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
 }

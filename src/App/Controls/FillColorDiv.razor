@@ -1,10 +1,9 @@
 ﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
-@inherits FluentComponentBase
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 @inject ILogger<FillColorDiv> Logger
 
-<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">@ChildContent</div>
+@ChildContent
 
 @code
 {
@@ -13,14 +12,13 @@
     private IJSObjectReference? _jsModule;
     private bool _raiseContentConverted;
 
-    protected string? ClassValue => new CssBuilder(Class)
-        .AddClass("fill-color-div")
-        .Build();
+    [Parameter, EditorRequired]
+    public required ElementReference Element { get; set; }
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    [Parameter]
+    [CascadingParameter(Name = nameof(FillColor))]
     public string? FillColor { get; set; }
 
     private string? fillColor;

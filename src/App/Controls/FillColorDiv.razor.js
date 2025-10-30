@@ -2,6 +2,13 @@
 
 export function setFillColor(element, color) {
     if (element instanceof HTMLElement) {
-        fluent.fillColor.setValueFor(element, fluent[color].getValueFor(element.parentElement));
+        if (typeof color === "string" && color.length) {
+            const resource = fluent[color];
+            if (resource) {
+                fluent.fillColor.setValueFor(element, resource.getValueFor(element.parentElement));
+                return;
+            }
+        }
+        fluent.fillColor.deleteValueFor(element);
     }
 }

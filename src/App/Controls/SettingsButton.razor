@@ -1,22 +1,24 @@
 ﻿@inherits SettingsCardBase
 
 <div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
-	<FluentCard onclick="@OnClick"
-				Class="fluent-card clickable-card"
-				AreaRestricted="false"
-				MinimalStyle="true">
-		<div class="content-grid">
-			<SettingsPresenter Icon="Icon"
-							   Header="Header"
-							   Description="Description"
-							   FillColor="neutralFillInputRest"
-							   ActionContent="ActionContent" />
-			@if (ActionIcon != null)
-			{
-				<div class="action-icon-holder">
-					@ActionIcon
-				</div>
-			}
-		</div>
-	</FluentCard>
+    <FluentCard onclick="@OnClick"
+                Class="fluent-card clickable-card"
+                AreaRestricted="false"
+                MinimalStyle="true">
+        <CascadingValue Name="FillColor" Value="FillColor">
+            <div class="content-grid">
+                <SettingsPresenter Icon="Icon"
+                                   Header="Header"
+                                   Description="Description"
+                                   FillColor="@FillColor"
+                                   ActionContent="ActionContent" />
+                @if (ActionIcon != null)
+                {
+                    <div class="action-icon-holder">
+                        @ActionIcon
+                    </div>
+                }
+            </div>
+        </CascadingValue>
+    </FluentCard>
 </div>

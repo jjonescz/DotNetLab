@@ -26,5 +26,8 @@ namespace DotNetLab.Controls
         /// </summary>
         [Parameter]
         public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+        [CascadingParameter(Name = nameof(FillColor))]
+        private string FillColor { get; set; } = "neutralFillInputRest";
     }
 }

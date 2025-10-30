@@ -2,22 +2,24 @@
 @inherits SettingsCardBase
 
 <div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
-	<FluentCard Class="fluent-card"
-				AreaRestricted="false"
-				MinimalStyle="true">
-		<SettingsPresenter Icon="Icon"
-						   Header="Header"
-						   Description="Description"
-						   FillColor="@FillColor"
-						   ActionContent="ActionContent" />
-	</FluentCard>
+    <FluentCard Class="fluent-card"
+                AreaRestricted="false"
+                MinimalStyle="true">
+        <CascadingValue Name="FillColor" Value="FillColor">
+            <SettingsPresenter Icon="Icon"
+                               Header="Header"
+                               Description="Description"
+                               ActionContent="ActionContent" />
+        </CascadingValue>
+    </FluentCard>
 </div>
 
 @code
 {
-	protected override string? ClassValue => new CssBuilder(Class)
-		.AddClass("settings-card")
-		.Build();
+    protected override string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-card")
+        .Build();
 
-	private string FillColor => Class?.Contains("default-setting-expander-item") == true ? "neutralFillLayerAltRest" : "neutralFillInputRest";
+    [CascadingParameter(Name = nameof(FillColor))]
+    private string FillColor { get; set; } = "neutralFillInputRest";
 }
