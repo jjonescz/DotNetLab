@@ -1,0 +1,45 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+@inherits SettingsCardBase
+
+<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
+    <CascadingValue Name="FillColor" Value="FillColor">
+        <FillColorHost Element="@Element">
+            <div class="header-root">
+                @if (Icon != null)
+                {
+                    <div class="icon-holder">
+                        @Icon
+                    </div>
+                }
+                <div class="header-panel">
+                    @if (Header != null)
+                    {
+                        @Header
+                    }
+                    @if (Description != null)
+                    {
+                        <span class="description">
+                            @Description
+                        </span>
+                    }
+                </div>
+            </div>
+            @if (ActionContent != null)
+            {
+                <div class="content-presenter">
+                    @ActionContent
+                </div>
+            }
+        </FillColorHost>
+    </CascadingValue>
+</div>
+
+@code
+{
+    protected override string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-presenter")
+        .Build();
+
+    [CascadingParameter(Name = nameof(FillColor))]
+    public string? FillColor { get; set; }
+}

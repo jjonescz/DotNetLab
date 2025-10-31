@@ -1,0 +1,24 @@
+﻿div.settings-button {
+    --settings-button-padding: calc(var(--design-unit) * 4px) 0 calc(var(--design-unit) * 4px) calc(var(--design-unit) * 4px);
+    cursor: pointer;
+}
+
+::deep .fluent-card {
+    padding: var(--settings-button-padding);
+    border-radius: calc(var(--control-corner-radius) * 1px);
+}
+
+div.content-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+div.action-icon-holder {
+    width: calc((var(--base-height-multiplier) + var(--density)) * var(--design-unit) * 1px);
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 calc(var(--design-unit) * 2px);
+}

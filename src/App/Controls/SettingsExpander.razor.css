@@ -1,0 +1,64 @@
+﻿div.settings-expander {
+    --settings-expander-header-padding: calc(var(--design-unit) * 1px) 0 calc(var(--design-unit) * 1px) calc(var(--design-unit) * 2px);
+    --settings-expander-item-padding: 0 calc((var(--base-height-multiplier) + 1 + var(--density)) * var(--design-unit) * 1px) 0 calc((var(--base-horizontal-spacing-multiplier) * 12 - var(--design-unit) * 1.5) * 1px + var(--type-ramp-base-line-height));
+}
+
+::deep fluent-accordion-item.expander-item {
+    box-sizing: border-box;
+    box-shadow: var(--elevation-shadow-card-rest);
+    border-radius: calc(var(--control-corner-radius) * 1px);
+}
+
+    ::deep fluent-accordion-item.expander-item:hover {
+        background: var(--neutral-fill-input-hover);
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-hover);
+        box-shadow: var(--elevation-shadow-card-hover);
+    }
+
+    ::deep fluent-accordion-item.expander-item:active {
+        background: var(--neutral-fill-input-active);
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-active);
+        box-shadow: var(--elevation-shadow-card-pressed);
+    }
+
+    ::deep fluent-accordion-item.expander-item::part(region),
+    ::deep fluent-accordion-item.expander-item .region {
+        border-bottom-left-radius: calc((var(--control-corner-radius) - var(--stroke-width)) * 1px);
+        border-bottom-right-radius: calc((var(--control-corner-radius) - var(--stroke-width)) * 1px);
+    }
+
+::deep div.settings-presenter {
+    padding: var(--settings-expander-header-padding);
+}
+
+::deep div.setting-expander-content-grid {
+    padding: var(--settings-expander-item-padding);
+}
+
+div.settings-expander ::deep .default-setting-expander-item .fluent-card {
+    background: none;
+    border: none;
+    border-top: 1px solid var(--neutral-stroke-layer-rest);
+    border-radius: 0;
+    box-shadow: none;
+}
+
+div.settings-expander ::deep .default-setting-expander-item:first-child .fluent-card {
+    border-top: none;
+}
+
+div.settings-expander ::deep .default-setting-expander-item .fluent-card {
+    padding: calc(var(--design-unit) * 2px) calc((var(--base-height-multiplier) + 1 + var(--density)) * var(--design-unit) * 1px) calc(var(--design-unit) * 2px) calc((var(--base-horizontal-spacing-multiplier) * 12 - var(--design-unit) * 1.5) * 1px + var(--type-ramp-base-line-height));
+}
+
+div.settings-expander ::deep .default-setting-expander-item:first-child .fluent-card {
+    padding-top: 0;
+}
+
+div.settings-expander ::deep .default-setting-expander-item:last-child .fluent-card {
+    padding-bottom: 0;
+}
+
+div.settings-expander ::deep .default-setting-expander-item .settings-presenter {
+    padding: 0;
+}

@@ -1,0 +1,9 @@
+﻿div.settings-card {
+    --settings-card-padding: calc(var(--design-unit) * 4px);
+}
+
+::deep .fluent-card {
+    padding: var(--settings-card-padding);
+    background: var(--neutral-fill-input-rest);
+    border-radius: calc(var(--control-corner-radius) * 1px);
+}
