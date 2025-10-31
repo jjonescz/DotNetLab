@@ -20,6 +20,9 @@
         .AddClass("settings-card")
         .Build();
 
+    /// <summary>
+    /// Gets or sets the FillColor for the card.
+    /// </summary>
     [CascadingParameter(Name = nameof(FillColor))]
     private string FillColor { get; set; } = "neutralFillInputRest";
 }

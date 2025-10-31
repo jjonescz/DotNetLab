@@ -3,7 +3,7 @@
 
 <div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
     <CascadingValue Name="FillColor" Value="FillColor">
-        <FillColorDiv Element="@Element">
+        <FillColorHost Element="@Element">
             <div class="header-root">
                 @if (Icon != null)
                 {
@@ -30,7 +30,7 @@
                     @ActionContent
                 </div>
             }
-        </FillColorDiv>
+        </FillColorHost>
     </CascadingValue>
 </div>
 

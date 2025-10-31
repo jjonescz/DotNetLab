@@ -5,16 +5,21 @@
     <FluentAccordion>
         <FluentAccordionItem Class="expander-item" Expanded="Expanded">
             <HeadingTemplate>
-                <SettingsPresenter Icon="Icon"
-                                   Header="Header"
-                                   Description="Description"
-                                   FillColor="neutralFillInputRest"
-                                   ActionContent="ActionContent" />
+                <CascadingValue Name="FillColor" Value="FillColor">
+                    <SettingsPresenter Icon="Icon"
+                                       Header="Header"
+                                       Description="Description"
+                                       ActionContent="ActionContent" />
+                </CascadingValue>
             </HeadingTemplate>
             <ChildContent>
-                <CascadingValue Name="FillColor" Value="@("neutralFillLayerAltRest")">
-                    @ChildContent
-                </CascadingValue>
+                <div @ref="host">
+                    <CascadingValue Name="FillColor" Value="@("neutralFillLayerAltRest")">
+                        <FillColorHost Element="host">
+                            @ChildContent
+                        </FillColorHost>
+                    </CascadingValue>
+                </div>
             </ChildContent>
         </FluentAccordionItem>
     </FluentAccordion>
@@ -22,6 +27,8 @@
 
 @code
 {
+    private ElementReference host;
+
     protected override string? ClassValue => new CssBuilder(Class)
         .AddClass("settings-expander")
         .Build();
@@ -37,4 +44,10 @@
     /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the FillColor for the expander header.
+    /// </summary>
+    [CascadingParameter(Name = nameof(FillColor))]
+    private string FillColor { get; set; } = "neutralFillInputRest";
 }

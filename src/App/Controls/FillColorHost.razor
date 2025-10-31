@@ -1,13 +1,14 @@
-﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
-@implements IAsyncDisposable
+﻿@implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
-@inject ILogger<FillColorDiv> Logger
+@inject ILogger<FillColorHost> Logger
 
-@ChildContent
+<CascadingValue Name="FillColor" TValue="string" Value="null">
+    @ChildContent
+</CascadingValue>
 
 @code
 {
-    private const string JAVASCRIPT_FILE = $"./{nameof(Controls)}/{nameof(FillColorDiv)}.razor.js";
+    private const string JAVASCRIPT_FILE = $"./{nameof(Controls)}/{nameof(FillColorHost)}.razor.js";
 
     private IJSObjectReference? _jsModule;
     private bool _raiseContentConverted;
