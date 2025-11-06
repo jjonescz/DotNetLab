@@ -38,7 +38,7 @@
                         <h6 id="csharp-wrap" class="unset">Word Wrap</h6>
                     </Header>
                     <Description>
-                        Wrap the word.
+                        Wrap text in the editors.
                     </Description>
                     <ActionContent>
                         <FluentSwitch @bind-Value="WordWrap" @bind-Value:after="OnWordWrapChanged">
@@ -144,7 +144,7 @@
                                     <h7 id="csharp-advanced-worker" class="unset">Compile in a background worker thread (requires restart)</h7>
                                 </Header>
                                 <Description>
-                                    Moves compilation (and language services if enabled) to a separate worker thread. (it is recommended to keep this enabled)
+                                    Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync">
@@ -171,7 +171,7 @@
                             @* Auto compile on start check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-automatically" class="unset">Automatically Compilation</h7>
+                                    <h7 id="csharp-advanced-automatically" class="unset">Automatic Compilation</h7>
                                 </Header>
                                 <Description>
                                     Automatically begin compilation on start.
