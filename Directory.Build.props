@@ -11,6 +11,7 @@
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <UseArtifactsOutput>true</UseArtifactsOutput>
+    <VersionPrefix Condition="$(VersionPrefix) == ''">1.16.3</VersionPrefix>
 
     <!--
         Needed to get diagnostics inside XML doc comments.

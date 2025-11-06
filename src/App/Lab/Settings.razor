@@ -237,7 +237,6 @@
                     <ActionContent>
                         <FluentComboboxEx @bind-Value="sdkVersion" @bind-Value:after="() => LoadSdkInfoAsync()"
                                           Autocomplete="ComboboxAutocomplete.Both" Placeholder="version" Style="width: 100%">
-                            <FluentLabel slot="start">SDK</FluentLabel>
                             @foreach (var info in sdkVersions ?? [])
                             {
                                 <FluentOption TOption="string" Value="@info.Version">
@@ -254,7 +253,7 @@
                         </FluentComboboxEx>
                         @if (sdkInfo != null)
                         {
-                            <FluentLabel>
+                            <FluentLabel Style="margin-top: 8px">
                                 SDK @(sdkInfo.SdkVersion)
                                 @if (!sdkInfo.Commits.IsDefaultOrEmpty)
                                 {
@@ -275,7 +274,7 @@
                         }
                         @if (sdkError != null)
                         {
-                            <FluentLabel Color="Color.Error">
+                            <FluentLabel Color="Color.Error" Style="margin-top: 8px">
                                 @sdkError
                             </FluentLabel>
                         }
@@ -320,9 +319,7 @@
                                           @bind-SelectedOption="roslynConfiguration" @bind-SelectedOption:after="() => LoadRoslynInfoAsync()"
                                           Style="min-width: 7em" />
                         </FluentStack>
-                        <div style="margin-top: 8px">
-                            @Info((this, CompilerInfo.Roslyn, roslynInfo, roslynError))
-                        </div>
+                        @Info((this, CompilerInfo.Roslyn, roslynInfo, roslynError, "margin-top: 8px"))
                     </ActionContent>
                 </SettingsCard>
 
@@ -364,9 +361,7 @@
                                           @bind-SelectedOption="razorConfiguration" @bind-SelectedOption:after="() => LoadRazorInfoAsync()"
                                           Style="min-width: 7em" />
                         </FluentStack>
-                        <div style="margin-top: 8px">
-                            @Info((this, CompilerInfo.Razor, razorInfo, razorError))
-                        </div>
+                        @Info((this, CompilerInfo.Razor, razorInfo, razorError, "margin-top: 8px"))
                     </ActionContent>
                 </SettingsCard>
             </ChildContent>
@@ -448,20 +443,21 @@
     private static readonly string VersionPlaceholder = "version / PR / branch / build";
 
     private static readonly string ConfigurationTip = "Release configuration is always used for the built-in compilers and versions from NuGet.";
-
-    private static readonly RenderFragment<CompilerInfo> SeeLinks = (info) =>@<span>
+    
+    private static readonly RenderFragment<CompilerInfo> SeeLinks = (info) =>
+    @<span>
         Lists:
         <a href="@info.NuGetVersionListUrl" target="_blank">version</a>,
         <a href="@info.PrListUrl" target="_blank">PR</a>,
         <a href="@info.BranchListUrl" target="_blank">branch</a>,
         <a href="@info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>.
-    </span>
-    ;
+    </span>;
 
-    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, PackageDependencyInfo? Info, string? Error)> Info = (arg) =>@<div>
+    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, PackageDependencyInfo? Info, string? Error, string Style)> Info = (arg) => (__builder) =>
+    {
         @if (arg.Info != null)
         {
-            <FluentLabel>
+            <FluentLabel Style="@arg.Style">
                 Using
                 @if (arg.Info.VersionLink != null)
                 {
@@ -478,7 +474,7 @@
                 {
                     @(", ")
                     <a href="@arg.Info.AdditionalLink.Url" title="@arg.Info.AdditionalLink.Description"
-                    target="_blank">@arg.Info.AdditionalLink.Text</a>
+                       target="_blank">@arg.Info.AdditionalLink.Text</a>
                 }
                 @("),")
                 <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.
@@ -486,12 +482,11 @@
         }
         @if (arg.Error != null)
         {
-            <FluentLabel Color="Color.Error">
+            <FluentLabel Color="Color.Error" Style="@arg.Style">
                 @arg.Error
             </FluentLabel>
         }
-    </div>
-    ;
+    };
 
     private bool modalHidden = true;
     private DesignThemeModes theme;

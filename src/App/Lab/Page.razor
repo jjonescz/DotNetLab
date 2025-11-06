@@ -10,6 +10,7 @@
 @inject ILocalStorageService LocalStorage
 @inject CursorSynchronizer.Services CursorSynchronizerServices
 @inject ILogger<Page> Logger
+@using BlazorMonaco.Editor
 
 <PageTitle>.NET Lab</PageTitle>
 
@@ -19,8 +20,7 @@
         @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
         @* Empty slug is used to go to "initial state + loaded user preferences". *@
         <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>
-            @*
-            *@<img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
+            <img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span>
         </a>
 
@@ -167,11 +167,11 @@
 
             @* Input editor *@
             <div style="flex-grow: 1">
-                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
-                                                          ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
-                                                          OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                                                          OnDidChangeModelContent="OnDidChangeModelContent"
-                                                          OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
+                <StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
+                                      ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
+                                      OnDidChangeModel="LanguageServices.OnDidChangeModel"
+                                      OnDidChangeModelContent="OnDidChangeModelContent"
+                                      OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
     </FluentMultiSplitterPane>
@@ -264,8 +264,8 @@
 
             @* Output editor *@
             <div style="flex-grow: 1">
-                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
-                                                          ConstructionOptions="OutputConstructionOptions" />
+                <StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
+                                      ConstructionOptions="OutputConstructionOptions" />
             </div>
         </div>
     </FluentMultiSplitterPane>
