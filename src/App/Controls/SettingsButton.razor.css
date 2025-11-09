@@ -8,6 +8,22 @@
     border-radius: calc(var(--control-corner-radius) * 1px);
 }
 
+::deep .clickable-card {
+    background: var(--neutral-fill-input-rest);
+}
+
+    ::deep .clickable-card:hover {
+        background: var(--neutral-fill-input-hover);
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-hover);
+        box-shadow: var(--elevation-shadow-card-hover);
+    }
+
+    ::deep .clickable-card:active {
+        background: var(--neutral-fill-input-active);
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-active);
+        box-shadow: var(--elevation-shadow-card-pressed);
+    }
+
 div.content-grid {
     display: flex;
     justify-content: space-between;
