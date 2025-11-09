@@ -12,6 +12,7 @@
 
     private IJSObjectReference? _jsModule;
     private bool _raiseContentConverted;
+    private IJSObjectReference? _dispose;
 
     [Parameter, EditorRequired]
     public required ElementReference Element { get; set; }
@@ -43,8 +44,19 @@
 
         if (_jsModule != null && _raiseContentConverted)
         {
-            await _jsModule.InvokeVoidAsync("setFillColor", Element, FillColor);
+            await CallDisposeAsync();
+            _dispose = await _jsModule.InvokeAsync<IJSObjectReference?>("setFillColor", Element, FillColor);
             _raiseContentConverted = false;
+        }
+    }
+
+    private async Task CallDisposeAsync()
+    {
+        if (_dispose != null)
+        {
+            var dispose = _dispose;
+            _dispose = null;
+            await _jsModule!.InvokeVoidAsync("dispose", dispose);
         }
     }
 
@@ -54,6 +66,7 @@
         {
             if (_jsModule != null)
             {
+                await CallDisposeAsync();
                 await _jsModule.DisposeAsync();
                 _jsModule = null;
             }
