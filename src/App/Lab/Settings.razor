@@ -11,9 +11,7 @@
 <FluentDialog @bind-Hidden="modalHidden" Modal="true" TrapFocus="true" PreventScroll="true"
               @ondialogdismiss="CloseModal" Style="--dialog-height: 100%">
     <FluentDialogHeader ShowDismiss="true" ShowDismissTooltip="false">
-        <FluentLabel Typo="Typography.PaneHeader">
-            Settings
-        </FluentLabel>
+        <h2 style="font-size: 1.5em">Settings</h2>
     </FluentDialogHeader>
 
     <FluentDialogBody Style="overflow-y: auto; overflow-x: hidden; padding-bottom: 1em">
@@ -24,7 +22,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DocumentSettings()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">Configuration File</h6>
+                        <h4 class="unset">Configuration File</h4>
                     </Header>
                     <Description>
                         C# version, feature flags, and more
@@ -40,10 +38,10 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.TextWrap()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">
+                        <h4 class="unset">
                             Word Wrap
                             <kbd style="margin-left: 0.5em" title="Keyboard shortcut (works only inside the editors)">Alt+Z</kbd>
-                        </h6>
+                        </h4>
                     </Header>
                     <Description>
                         Wrap text in the editors.
@@ -61,7 +59,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Keyboard()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">Use VIM</h6>
+                        <h4 class="unset">Use VIM</h4>
                     </Header>
                     <Description>
                         Use the VIM mode.
@@ -79,7 +77,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DeveloperBoard()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">Advanced</h6>
+                        <h4 class="unset">Advanced</h4>
                     </Header>
                     <Description>
                         The advanced options.
@@ -89,7 +87,7 @@
                             @* Language services check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Language Services</h7>
+                                    <h5 class="unset">Language Services</h5>
                                 </Header>
                                 <Description>
                                     Completions, live diagnostics. (currently uses only the built-in compiler and default configuration)
@@ -104,7 +102,7 @@
                             @* Debug logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Debug Logs</h7>
+                                    <h5 class="unset">Debug Logs</h5>
                                 </Header>
                                 <Description>
                                     Whether to display debug-level logs in the browser development console.
@@ -119,7 +117,7 @@
                             @* Trace logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Trace Logs</h7>
+                                    <h5 class="unset">Trace Logs</h5>
                                 </Header>
                                 <Description>
                                     Whether to display trace-level logs in the browser development console.
@@ -134,7 +132,7 @@
                             @* Memory usage view check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Memory Usage View</h7>
+                                    <h5 class="unset">Memory Usage View</h5>
                                 </Header>
                                 <Description>
                                     Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app.
@@ -149,7 +147,7 @@
                             @* Use a worker check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Compile in a background worker thread (requires restart)</h7>
+                                    <h5 class="unset">Compile in a background worker thread (requires restart)</h5>
                                 </Header>
                                 <Description>
                                     Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
@@ -164,7 +162,7 @@
                             @* Caching check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Enable Caching</h7>
+                                    <h5 class="unset">Enable Caching</h5>
                                 </Header>
                                 <Description>
                                     Cache inputs and outputs on a server for faster sharing.
@@ -179,7 +177,7 @@
                             @* Auto compile on start check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 class="unset">Automatic Compilation</h7>
+                                    <h5 class="unset">Automatic Compilation</h5>
                                 </Header>
                                 <Description>
                                     Automatically begin compilation on start.
@@ -194,7 +192,7 @@
                             @* Razor toolchain *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
-                                    <h7 class="unset">Razor Toolchain</h7>
+                                    <h5 class="unset">Razor Toolchain</h5>
                                 </Header>
                                 <Description>
                                     Switch the Razor toolchain used for compilation.
@@ -208,7 +206,7 @@
                             @* Razor strategy *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
-                                    <h7 class="unset">Razor Strategy</h7>
+                                    <h5 class="unset">Razor Strategy</h5>
                                 </Header>
                                 <Description>
                                     Switch the Razor strategy used for compilation.
@@ -226,7 +224,7 @@
 
         <SettingsGroup>
             <Header>
-                <h5 class="unset">Compilers</h5>
+                <h3 class="unset">Compilers</h3>
             </Header>
 
             <ChildContent>
@@ -236,7 +234,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">.NET SDK</h6>
+                        <h4 class="unset">.NET SDK</h4>
                     </Header>
                     <Description>
                         Enter a .NET SDK version above to automatically get
@@ -295,7 +293,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">Roslyn Version</h6>
+                        <h4 class="unset">Roslyn Version</h4>
                     </Header>
                     <Description>
                         @SeeLinks(CompilerInfo.Roslyn)
@@ -336,7 +334,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">Razor Version</h6>
+                        <h4 class="unset">Razor Version</h4>
                     </Header>
                     <Description>
                         @SeeLinks(CompilerInfo.Razor)
@@ -376,7 +374,7 @@
         @* About section *@
         <SettingsGroup>
             <Header>
-                <h5 class="unset">About</h5>
+                <h3 class="unset">About</h3>
             </Header>
             <ChildContent>
                 <SettingsCard>
@@ -384,7 +382,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ArrowClockwise()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">.NET Lab (<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>)</h6>
+                        <h4 class="unset">.NET Lab (<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>)</h4>
                     </Header>
                     <Description>
                         <CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
@@ -423,7 +421,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Color()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">App Theme</h6>
+                        <h4 class="unset">App Theme</h4>
                     </Header>
                     <Description>
                         Set the theme of this App.
