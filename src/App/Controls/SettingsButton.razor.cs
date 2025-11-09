@@ -16,12 +16,6 @@ namespace DotNetLab.Controls
         public RenderFragment? ActionIcon { get; set; }
 
         /// <summary>
-        /// Gets or sets the tooltip of the ActionIcon.
-        /// </summary>
-        [Parameter]
-        public string ActionIconToolTip { get; set; } = "More";
-
-        /// <summary>
         /// Command executed when the user clicks on the button.
         /// </summary>
         [Parameter]
