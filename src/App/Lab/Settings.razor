@@ -17,18 +17,23 @@
     </FluentDialogHeader>
 
     <FluentDialogBody Style="overflow-y: auto; overflow-x: hidden">
-        <SettingsGroup Style="margin-top: -1rem">
-            <Header>
-                <h5 id="csharp" class="unset">
-                    @* Open config file *@
-                    <FluentStack VerticalAlignment="VerticalAlignment.Center">
-                        <span style="flex: 1">C# version, feature flags, and more:</span>
-                        <FluentButton OnClick="GoToConfigurationAsync" Appearance="Appearance.Lightweight"
-                                      IconStart="@(new Icons.Regular.Size16.DocumentSettings())">Open Configuration</FluentButton>
-                    </FluentStack>
-                </h5>
-            </Header>
+        <SettingsGroup>
             <ChildContent>
+                <SettingsCard Class="settings-nowarp">
+                    <Icon>
+                        <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DocumentSettings()" />
+                    </Icon>
+                    <Header>
+                        <h6 class="unset">Configuration File</h6>
+                    </Header>
+                    <Description>
+                        C# version, feature flags, and more
+                    </Description>
+                    <ActionContent>
+                        <FluentButton OnClick="GoToConfigurationAsync">Open</FluentButton>
+                    </ActionContent>
+                </SettingsCard>
+
                 @* Word wrap check box *@
                 <SettingsCard Class="settings-nowarp">
                     <Icon>
