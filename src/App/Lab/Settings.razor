@@ -45,7 +45,7 @@
                     </Description>
                     <ActionContent>
                         <FluentSwitch @bind-Value="WordWrap" @bind-Value:after="OnWordWrapChanged">
-                            @(WordWrap? "On" : "Off")
+                            @(WordWrap ? "On" : "Off")
                         </FluentSwitch>
                     </ActionContent>
                 </SettingsCard>
@@ -63,7 +63,7 @@
                     </Description>
                     <ActionContent>
                         <FluentSwitch @bind-Value="UseVim" @bind-Value:after="OnVimChanged">
-                            @(UseVim? "On" : "Off")
+                            @(UseVim ? "On" : "Off")
                         </FluentSwitch>
                     </ActionContent>
                 </SettingsCard>
@@ -91,11 +91,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync">
-                                        @(EnableLanguageServices? "On" : "Off")
+                                        @(EnableLanguageServices ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Debug logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -106,11 +106,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="DebugLogs" @bind-Value:after="OnSetDebugLogsAsync">
-                                        @(DebugLogs? "On" : "Off")
+                                        @(DebugLogs ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Trace logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -121,11 +121,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="TraceLogs" @bind-Value:after="OnSetTraceLogsAsync">
-                                        @(TraceLogs? "On" : "Off")
+                                        @(TraceLogs ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Memory usage view check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -136,11 +136,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync">
-                                        @(EnableMemoryUsageView? "On" : "Off")
+                                        @(EnableMemoryUsageView ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Use a worker check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -151,11 +151,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync">
-                                        @(EnableWorker? "On" : "Off")
+                                        @(EnableWorker ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Caching check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -166,11 +166,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableCaching" @bind-Value:after="OnSetEnableCachingAsync">
-                                        @(EnableCaching? "On" : "Off")
+                                        @(EnableCaching ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Auto compile on start check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
@@ -181,11 +181,11 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="AutoCompileOnStart" @bind-Value:after="OnSetAutoCompileOnStartAsync">
-                                        @(AutoCompileOnStart? "On" : "Off")
+                                        @(AutoCompileOnStart ? "On" : "Off")
                                     </FluentSwitch>
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Razor toolchain *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
@@ -196,10 +196,10 @@
                                 </Description>
                                 <ActionContent>
                                     <FluentSelect @bind-SelectedOption="RazorToolchain" @bind-SelectedOption:after="OnSetRazorToolchainAsync"
-                                    Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" Style="min-width: 10em" />
+                                                  Items="Enum.GetValues<RazorToolchain>()" OptionText="RazorToolchainText" Style="min-width: 10em" />
                                 </ActionContent>
                             </SettingsCard>
-                            
+
                             @* Razor strategy *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
@@ -283,7 +283,7 @@
                         }
                     </ActionContent>
                 </SettingsCard>
-                
+
                 @* Roslyn version select *@
                 <SettingsCard Class="settings-keepwarp">
                     <Icon>
@@ -298,7 +298,7 @@
                         @if (roslynVersion != "latest")
                         {
                             <a href="javascript:void" @onclick:preventDefault
-                            @onclick="@(() => UseRoslynVersionAsync("latest"))">latest</a>
+                               @onclick="@(() => UseRoslynVersionAsync("latest"))">latest</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(roslynVersion))
                         {
@@ -307,7 +307,7 @@
                                 @(" or ")
                             }
                             <a href="javascript:void" @onclick:preventDefault
-                            @onclick="@(() => UseRoslynVersionAsync(null))">built-in</a>
+                               @onclick="@(() => UseRoslynVersionAsync(null))">built-in</a>
                         }
                         @(".")
                     </Description>
@@ -340,7 +340,7 @@
                         @if (razorVersion != "latest")
                         {
                             <a href="javascript:void" @onclick:preventDefault
-                            @onclick="@(() => UseRazorVersionAsync("latest"))">latest</a>
+                               @onclick="@(() => UseRazorVersionAsync("latest"))">latest</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(razorVersion))
                         {
@@ -349,7 +349,7 @@
                                 @(" or ")
                             }
                             <a href="javascript:void" @onclick:preventDefault
-                            @onclick="@(() => UseRazorVersionAsync(null))">built-in</a>
+                               @onclick="@(() => UseRazorVersionAsync(null))">built-in</a>
                         }
                         @(".")
                     </Description>
@@ -429,7 +429,7 @@
                     </Description>
                     <ActionContent>
                         <FluentSelect Width="auto" Items="Enum.GetValues<DesignThemeModes>()" @bind-SelectedOption="theme"
-                                      OptionText="@(x => $"{x} theme")"/>
+                                      OptionText="@(x => $"{x} theme")" />
                     </ActionContent>
                 </SettingsCard>
             </ChildContent>
@@ -446,544 +446,544 @@
     private static readonly string VersionPlaceholder = "version / PR / branch / build";
 
     private static readonly string ConfigurationTip = "Release configuration is always used for the built-in compilers and versions from NuGet.";
-    
+
     private static readonly RenderFragment<CompilerInfo> SeeLinks = (info) =>
     @<span>
-        Lists:
-        <a href="@info.NuGetVersionListUrl" target="_blank">version</a>,
-        <a href="@info.PrListUrl" target="_blank">PR</a>,
-        <a href="@info.BranchListUrl" target="_blank">branch</a>,
-        <a href="@info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>.
+            Lists:
+            <a href="@info.NuGetVersionListUrl" target="_blank">version</a>,
+            <a href="@info.PrListUrl" target="_blank">PR</a>,
+            <a href="@info.BranchListUrl" target="_blank">branch</a>,
+            <a href="@info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>.
     </span>;
 
-    private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, PackageDependencyInfo? Info, string? Error, string Style)> Info = (arg) => (__builder) =>
-    {
-        @if (arg.Info != null)
+private static readonly RenderFragment<(Settings Settings, CompilerInfo Compiler, PackageDependencyInfo? Info, string? Error, string Style)> Info = (arg) => (__builder) =>
+{
+@if (arg.Info != null)
+{
+    <FluentLabel Style="@arg.Style">
+        Using
+        @if (arg.Info.VersionLink != null)
         {
-            <FluentLabel Style="@arg.Style">
-                Using
-                @if (arg.Info.VersionLink != null)
-                {
-                    <a href="@arg.Info.VersionLink" target="_blank">@(arg.Info.Version)</a>
-                }
-                else
-                {
-                    @(arg.Info.Version)
-                }
-                (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit"
-                                 SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)"
-                                 AlternativeCommitHash="@(arg.Info.AdditionalCommitHash)" />
-                @if (arg.Info.AdditionalLink != null)
-                {
-                    @(", ")
-                    <a href="@arg.Info.AdditionalLink.Url" title="@arg.Info.AdditionalLink.Description"
-                       target="_blank">@arg.Info.AdditionalLink.Text</a>
-                }
-                @("),")
-                <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.
-            </FluentLabel>
-        }
-        @if (arg.Error != null)
-        {
-            <FluentLabel Color="Color.Error" Style="@arg.Style">
-                @arg.Error
-            </FluentLabel>
-        }
-    };
-
-    private bool modalHidden = true;
-    private DesignThemeModes theme;
-    private IJSObjectReference? vimDisposable;
-    private string? sdkVersion, roslynVersion, razorVersion;
-    private BuildConfiguration roslynConfiguration, razorConfiguration;
-    private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
-    private List<SdkVersionInfo>? sdkVersions;
-    private SdkInfo? sdkInfo;
-    private PackageDependencyInfo? roslynInfo, razorInfo;
-    private string? sdkError, roslynError, razorError;
-    private bool checkedForUpdates;
-
-    [Parameter] public bool WordWrap { get; set; }
-    [Parameter] public EventCallback<bool> WordWrapChanged { get; set; }
-    [Parameter] public bool UseVim { get; set; }
-    [Parameter] public EventCallback<bool> UseVimChanged { get; set; }
-    [Parameter, EditorRequired] public required StandaloneCodeEditor InputEditor { get; set; }
-    [Parameter, EditorRequired] public required StandaloneCodeEditor OutputEditor { get; set; }
-    [CascadingParameter] public required Page Page { get; set; }
-
-    public DesignThemeModes Theme => theme;
-
-    private bool DebugLogs
-    {
-        get => Logging.LogLevel <= LogLevel.Debug;
-        set => Logging.LogLevel = value ? LogLevel.Debug : LogLevel.Information;
-    }
-
-    private bool TraceLogs
-    {
-        get => Logging.LogLevel <= LogLevel.Trace;
-        set => Logging.LogLevel = value ? LogLevel.Trace : DebugLogs ? LogLevel.Debug : LogLevel.Information;
-    }
-
-    [Parameter] public bool EnableMemoryUsageView { get; set; }
-    [Parameter] public EventCallback<bool> EnableMemoryUsageViewChanged { get; set; }
-
-    /// <remarks>
-    /// Turning this on by default for existing users means we need new key, hence the <c>2</c>.
-    /// </remarks>
-    private const string EnableLanguageServicesKey = $"{nameof(EnableLanguageServices)}2";
-    private bool EnableLanguageServices { get; set; }
-    private bool EnableWorker { get; set; }
-    public bool EnableCaching { get; set; }
-    public bool AutoCompileOnStart { get; set; }
-    private RazorToolchain RazorToolchain { get; set; }
-    private RazorStrategy RazorStrategy { get; set; }
-
-    private async Task OnSetDebugLogsAsync()
-    {
-        await LocalStorage.SetItemAsync(nameof(DebugLogs), DebugLogs);
-    }
-
-    private async Task OnSetTraceLogsAsync()
-    {
-        await LocalStorage.SetItemAsync(nameof(TraceLogs), TraceLogs);
-    }
-
-    private async Task OnSetEnableMemoryUsageViewAsync()
-    {
-        await EnableMemoryUsageViewChanged.InvokeAsync(EnableMemoryUsageView);
-        await LocalStorage.SetItemAsync(nameof(EnableMemoryUsageView), EnableMemoryUsageView);
-    }
-
-    private async Task OnSetEnableLanguageServicesAsync()
-    {
-        await UpdateLanguageServicesAsync();
-        await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
-
-        if (EnableLanguageServices)
-        {
-            await Page.ResetWorkspaceAsync();
-        }
-    }
-
-    private async Task OnSetEnableWorkerAsync()
-    {
-        await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
-    }
-
-    private async Task OnSetEnableCachingAsync()
-    {
-        await LocalStorage.SetItemAsync(nameof(EnableCaching), EnableCaching);
-    }
-
-    private async Task OnSetAutoCompileOnStartAsync()
-    {
-        await LocalStorage.SetItemAsync(nameof(AutoCompileOnStart), AutoCompileOnStart);
-    }
-
-    private async Task OnSetRazorToolchainAsync()
-    {
-        Page.OnSettingsInputChanged();
-
-        await Page.SaveStateToUrlAsync(state => state with
-        {
-            RazorToolchain = RazorToolchain,
-        });
-    }
-
-    private async Task OnSetRazorStrategyAsync()
-    {
-        Page.OnSettingsInputChanged();
-
-        await Page.SaveStateToUrlAsync(state => state with
-        {
-            RazorStrategy = RazorStrategy,
-        });
-    }
-
-    private static string RazorToolchainText(RazorToolchain value)
-    {
-        return value switch
-        {
-            RazorToolchain.SourceGeneratorOrInternalApi => "Auto",
-            RazorToolchain.SourceGenerator => "Source Generator",
-            RazorToolchain.InternalApi => "Internal API",
-            _ => value.ToString(),
-        };
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await JSHost.ImportAsync("Settings", "../Lab/Settings.razor.js");
-    }
-
-    public async Task InitializeAsync()
-    {
-        UpdateInfo.UpdateStatusChanged += StateHasChanged;
-
-        // Load settings from local storage.
-        WordWrap = await loadOptionAsync(nameof(WordWrap), defaultValue: false);
-        if (WordWrap)
-        {
-            await OnWordWrapChanged();
-        }
-        UseVim = await loadOptionAsync(nameof(UseVim), defaultValue: false);
-        if (UseVim)
-        {
-            await OnVimChanged();
-        }
-        DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
-        TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
-        EnableMemoryUsageView = await loadOptionAsync(nameof(EnableMemoryUsageView), defaultValue: false);
-        if (EnableMemoryUsageView)
-        {
-            await EnableMemoryUsageViewChanged.InvokeAsync(EnableMemoryUsageView);
-        }
-        EnableLanguageServices = await loadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
-        EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
-        EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
-        AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
-        RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
-
-        await UpdateLanguageServicesAsync();
-
-        Worker.Disabled = !EnableWorker;
-
-        async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
-        {
-            return await LocalStorage.ContainKeyAsync(name)
-                ? await LocalStorage.GetItemAsync<T>(name)
-                : defaultValue;
-        }
-    }
-
-    void IDisposable.Dispose()
-    {
-        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
-    }
-
-    public Task OpenModalAsync()
-    {
-        if (!modalHidden)
-        {
-            return Task.CompletedTask;
-        }
-
-        modalHidden = false;
-        StateHasChanged();
-
-        Task sdkVersionsTask = Task.CompletedTask;
-        Task sdkTask = Task.CompletedTask;
-        Task roslynTask = Task.CompletedTask;
-        Task razorTask = Task.CompletedTask;
-
-        if (sdkVersions is null)
-        {
-            sdkVersionsTask = LoadSdkVersionsAsync();
-        }
-
-        if (sdkInfo is null)
-        {
-            sdkTask = LoadSdkInfoAsync(saveState: false);
-        }
-
-        if (roslynInfo is null)
-        {
-            roslynTask = LoadRoslynInfoAsync(saveState: false);
-        }
-
-        if (razorInfo is null)
-        {
-            razorTask = LoadRazorInfoAsync(saveState: false);
-        }
-
-        return Task.WhenAll(sdkVersionsTask, sdkTask, roslynTask, razorTask);
-    }
-
-    public void CloseModal()
-    {
-        modalHidden = true;
-    }
-
-    internal Task LoadFromStateAsync(SavedState state)
-    {
-        RazorToolchain = state.RazorToolchain;
-        RazorStrategy = state.RazorStrategy;
-        StateHasChanged();
-
-        Task sdkTask = Task.CompletedTask;
-        Task roslynTask = Task.CompletedTask;
-        Task razorTask = Task.CompletedTask;
-
-        if (sdkVersion != state.SdkVersion)
-        {
-            sdkVersion = state.SdkVersion;
-            sdkTask = LoadSdkInfoAsync(saveState: false);
-        }
-
-        if (roslynVersion != state.RoslynVersion ||
-            roslynConfiguration != state.RoslynConfiguration)
-        {
-            roslynVersion = state.RoslynVersion;
-            roslynConfiguration = state.RoslynConfiguration;
-            roslynTask = LoadRoslynInfoAsync(saveState: false);
-        }
-
-        if (razorVersion != state.RazorVersion ||
-            razorConfiguration != state.RazorConfiguration)
-        {
-            razorVersion = state.RazorVersion;
-            razorConfiguration = state.RazorConfiguration;
-            razorTask = LoadRazorInfoAsync(saveState: false);
-        }
-
-        return Task.WhenAll(sdkTask, roslynTask, razorTask);
-    }
-
-    private async Task LoadSdkVersionsAsync()
-    {
-        sdkVersions = await Worker.GetSdkVersionsAsync();
-        await RefreshAsync();
-    }
-
-    private async Task LoadSdkInfoAsync(bool saveState = true)
-    {
-        var versionToLoad = sdkVersion;
-
-        if (saveState)
-        {
-            await Page.SaveStateToUrlAsync(state => state with { SdkVersion = versionToLoad });
-        }
-
-        loadingSdkInfo = true;
-        await RefreshAsync();
-
-        SdkInfo? info;
-        string? error;
-        try
-        {
-            if (string.IsNullOrEmpty(versionToLoad))
-            {
-                info = null;
-                error = null;
-            }
-            else
-            {
-                info = modalHidden ? null : await Worker.GetSdkInfoAsync(versionToLoad);
-                error = null;
-
-                if (saveState)
-                {
-                    await Task.WhenAll(
-                        UseRoslynVersionAsync(info?.RoslynVersion),
-                        UseRazorVersionAsync(info?.RazorVersion));
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to load SDK info.");
-            error = ex is WorkerException w ? w.Failure.Message : ex.Message;
-            info = null;
-        }
-
-        if (sdkVersion == versionToLoad)
-        {
-            sdkInfo = info;
-            sdkError = error;
-        }
-
-        loadingSdkInfo = false;
-        await RefreshAsync();
-    }
-
-    private async Task UseSdkVersionAsync(string? version)
-    {
-        sdkVersion = version;
-        await LoadSdkInfoAsync();
-    }
-
-    private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
-        CompilerKind compilerKind,
-        string? versionToLoad,
-        BuildConfiguration configuration,
-        bool saveState)
-    {
-        try
-        {
-            var changed = await Worker.UseCompilerVersionAsync(
-                compilerKind,
-                version: versionToLoad,
-                configuration: configuration);
-
-            // `saveState` is `false` during initial load where we don't want to
-            // display "output outdated" which would override the "cached" info.
-            if (changed && saveState)
-            {
-                Page.OnSettingsInputChanged();
-            }
-
-            var info = modalHidden
-                ? null
-                : await Worker.GetCompilerDependencyInfoAsync(compilerKind);
-
-            return (info, null);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, $"Failed to load {compilerKind} info.");
-
-            return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
-        }
-    }
-
-    private async Task LoadRoslynInfoAsync(bool saveState = true)
-    {
-        var versionToLoad = roslynVersion;
-
-        if (saveState)
-        {
-            await Page.SaveStateToUrlAsync(state => state with
-            {
-                RoslynVersion = versionToLoad,
-                RoslynConfiguration = roslynConfiguration,
-            });
-        }
-
-        loadingRoslynInfo = true;
-        await RefreshAsync();
-
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
-
-        if (roslynVersion == versionToLoad)
-        {
-            roslynInfo = info;
-            roslynError = error;
-        }
-
-        loadingRoslynInfo = false;
-        await RefreshAsync();
-    }
-
-    private async Task UseRoslynVersionAsync(string? version)
-    {
-        roslynVersion = version;
-        roslynConfiguration = BuildConfiguration.Release;
-        await LoadRoslynInfoAsync();
-    }
-
-    private async Task LoadRazorInfoAsync(bool saveState = true)
-    {
-        var versionToLoad = razorVersion;
-
-        if (saveState)
-        {
-            await Page.SaveStateToUrlAsync(state => state with
-            {
-                RazorVersion = versionToLoad,
-                RazorConfiguration = razorConfiguration,
-            });
-        }
-
-        loadingRazorInfo = true;
-        await RefreshAsync();
-
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
-
-        if (razorVersion == versionToLoad)
-        {
-            razorInfo = info;
-            razorError = error;
-        }
-
-        loadingRazorInfo = false;
-        await RefreshAsync();
-    }
-
-    private async Task UseRazorVersionAsync(string? version)
-    {
-        razorVersion = version;
-        razorConfiguration = BuildConfiguration.Release;
-        await LoadRazorInfoAsync();
-    }
-
-    public Task ToggleWordWrapAsync()
-    {
-        WordWrap = !WordWrap;
-        return OnWordWrapChanged();
-    }
-
-    private async Task OnWordWrapChanged()
-    {
-        await RefreshAsync();
-        await WordWrapChanged.InvokeAsync(WordWrap);
-        await LocalStorage.SetItemAsync(nameof(WordWrap), WordWrap);
-
-        var updateOptions = new EditorUpdateOptions { WordWrap = WordWrap ? "on" : "off" };
-        await InputEditor.UpdateOptions(updateOptions);
-        await OutputEditor.UpdateOptions(updateOptions);
-    }
-
-    private async Task OnVimChanged()
-    {
-        await RefreshAsync();
-        await UseVimChanged.InvokeAsync(UseVim);
-        await LocalStorage.SetItemAsync(nameof(UseVim), UseVim);
-        if (UseVim)
-        {
-            if (vimDisposable is null)
-            {
-                vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", InputEditor.Id, "vim-status");
-            }
+            <a href="@arg.Info.VersionLink" target="_blank">@(arg.Info.Version)</a>
         }
         else
         {
-            if (vimDisposable is not null)
+            @(arg.Info.Version)
+        }
+        (<CommitHashView Enabled="!arg.Settings.modalHidden" Commit="arg.Info.Commit"
+                         SaveKey="@(arg.Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(arg.Compiler.RepositoryUrl)"
+                         AlternativeCommitHash="@(arg.Info.AdditionalCommitHash)" />
+        @if (arg.Info.AdditionalLink != null)
+        {
+            @(", ")
+            <a href="@arg.Info.AdditionalLink.Url" title="@arg.Info.AdditionalLink.Description"
+               target="_blank">@arg.Info.AdditionalLink.Text</a>
+        }
+        @("),")
+        <span title="@(arg.Info.CanChangeBuildConfiguration ? "" : ConfigurationTip)">@arg.Info.Configuration</span>.
+    </FluentLabel>
+}
+@if (arg.Error != null)
+{
+    <FluentLabel Color="Color.Error" Style="@arg.Style">
+        @arg.Error
+    </FluentLabel>
+}
+    };
+
+private bool modalHidden = true;
+private DesignThemeModes theme;
+private IJSObjectReference? vimDisposable;
+private string? sdkVersion, roslynVersion, razorVersion;
+private BuildConfiguration roslynConfiguration, razorConfiguration;
+private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
+private List<SdkVersionInfo>? sdkVersions;
+private SdkInfo? sdkInfo;
+private PackageDependencyInfo? roslynInfo, razorInfo;
+private string? sdkError, roslynError, razorError;
+private bool checkedForUpdates;
+
+[Parameter] public bool WordWrap { get; set; }
+[Parameter] public EventCallback<bool> WordWrapChanged { get; set; }
+[Parameter] public bool UseVim { get; set; }
+[Parameter] public EventCallback<bool> UseVimChanged { get; set; }
+[Parameter, EditorRequired] public required StandaloneCodeEditor InputEditor { get; set; }
+[Parameter, EditorRequired] public required StandaloneCodeEditor OutputEditor { get; set; }
+[CascadingParameter] public required Page Page { get; set; }
+
+public DesignThemeModes Theme => theme;
+
+private bool DebugLogs
+{
+    get => Logging.LogLevel <= LogLevel.Debug;
+    set => Logging.LogLevel = value ? LogLevel.Debug : LogLevel.Information;
+}
+
+private bool TraceLogs
+{
+    get => Logging.LogLevel <= LogLevel.Trace;
+    set => Logging.LogLevel = value ? LogLevel.Trace : DebugLogs ? LogLevel.Debug : LogLevel.Information;
+}
+
+[Parameter] public bool EnableMemoryUsageView { get; set; }
+[Parameter] public EventCallback<bool> EnableMemoryUsageViewChanged { get; set; }
+
+/// <remarks>
+/// Turning this on by default for existing users means we need new key, hence the <c>2</c>.
+/// </remarks>
+private const string EnableLanguageServicesKey = $"{nameof(EnableLanguageServices)}2";
+private bool EnableLanguageServices { get; set; }
+private bool EnableWorker { get; set; }
+public bool EnableCaching { get; set; }
+public bool AutoCompileOnStart { get; set; }
+private RazorToolchain RazorToolchain { get; set; }
+private RazorStrategy RazorStrategy { get; set; }
+
+private async Task OnSetDebugLogsAsync()
+{
+    await LocalStorage.SetItemAsync(nameof(DebugLogs), DebugLogs);
+}
+
+private async Task OnSetTraceLogsAsync()
+{
+    await LocalStorage.SetItemAsync(nameof(TraceLogs), TraceLogs);
+}
+
+private async Task OnSetEnableMemoryUsageViewAsync()
+{
+    await EnableMemoryUsageViewChanged.InvokeAsync(EnableMemoryUsageView);
+    await LocalStorage.SetItemAsync(nameof(EnableMemoryUsageView), EnableMemoryUsageView);
+}
+
+private async Task OnSetEnableLanguageServicesAsync()
+{
+    await UpdateLanguageServicesAsync();
+    await LocalStorage.SetItemAsync(EnableLanguageServicesKey, EnableLanguageServices);
+
+    if (EnableLanguageServices)
+    {
+        await Page.ResetWorkspaceAsync();
+    }
+}
+
+private async Task OnSetEnableWorkerAsync()
+{
+    await LocalStorage.SetItemAsync(nameof(EnableWorker), EnableWorker);
+}
+
+private async Task OnSetEnableCachingAsync()
+{
+    await LocalStorage.SetItemAsync(nameof(EnableCaching), EnableCaching);
+}
+
+private async Task OnSetAutoCompileOnStartAsync()
+{
+    await LocalStorage.SetItemAsync(nameof(AutoCompileOnStart), AutoCompileOnStart);
+}
+
+private async Task OnSetRazorToolchainAsync()
+{
+    Page.OnSettingsInputChanged();
+
+    await Page.SaveStateToUrlAsync(state => state with
+    {
+        RazorToolchain = RazorToolchain,
+    });
+}
+
+private async Task OnSetRazorStrategyAsync()
+{
+    Page.OnSettingsInputChanged();
+
+    await Page.SaveStateToUrlAsync(state => state with
+    {
+        RazorStrategy = RazorStrategy,
+    });
+}
+
+private static string RazorToolchainText(RazorToolchain value)
+{
+    return value switch
+    {
+        RazorToolchain.SourceGeneratorOrInternalApi => "Auto",
+        RazorToolchain.SourceGenerator => "Source Generator",
+        RazorToolchain.InternalApi => "Internal API",
+        _ => value.ToString(),
+    };
+}
+
+protected override async Task OnInitializedAsync()
+{
+    await JSHost.ImportAsync("Settings", "../Lab/Settings.razor.js");
+}
+
+public async Task InitializeAsync()
+{
+    UpdateInfo.UpdateStatusChanged += StateHasChanged;
+
+    // Load settings from local storage.
+    WordWrap = await loadOptionAsync(nameof(WordWrap), defaultValue: false);
+    if (WordWrap)
+    {
+        await OnWordWrapChanged();
+    }
+    UseVim = await loadOptionAsync(nameof(UseVim), defaultValue: false);
+    if (UseVim)
+    {
+        await OnVimChanged();
+    }
+    DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
+    TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
+    EnableMemoryUsageView = await loadOptionAsync(nameof(EnableMemoryUsageView), defaultValue: false);
+    if (EnableMemoryUsageView)
+    {
+        await EnableMemoryUsageViewChanged.InvokeAsync(EnableMemoryUsageView);
+    }
+    EnableLanguageServices = await loadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
+    EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
+    EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
+    AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
+    RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
+
+    await UpdateLanguageServicesAsync();
+
+    Worker.Disabled = !EnableWorker;
+
+    async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
+    {
+        return await LocalStorage.ContainKeyAsync(name)
+            ? await LocalStorage.GetItemAsync<T>(name)
+            : defaultValue;
+    }
+}
+
+void IDisposable.Dispose()
+    {
+    UpdateInfo.UpdateStatusChanged -= StateHasChanged;
+}
+
+public Task OpenModalAsync()
+{
+    if (!modalHidden)
+    {
+        return Task.CompletedTask;
+    }
+
+    modalHidden = false;
+    StateHasChanged();
+
+    Task sdkVersionsTask = Task.CompletedTask;
+    Task sdkTask = Task.CompletedTask;
+    Task roslynTask = Task.CompletedTask;
+    Task razorTask = Task.CompletedTask;
+
+    if (sdkVersions is null)
+    {
+        sdkVersionsTask = LoadSdkVersionsAsync();
+    }
+
+    if (sdkInfo is null)
+    {
+        sdkTask = LoadSdkInfoAsync(saveState: false);
+    }
+
+    if (roslynInfo is null)
+    {
+        roslynTask = LoadRoslynInfoAsync(saveState: false);
+    }
+
+    if (razorInfo is null)
+    {
+        razorTask = LoadRazorInfoAsync(saveState: false);
+    }
+
+    return Task.WhenAll(sdkVersionsTask, sdkTask, roslynTask, razorTask);
+}
+
+public void CloseModal()
+{
+    modalHidden = true;
+}
+
+internal Task LoadFromStateAsync(SavedState state)
+{
+    RazorToolchain = state.RazorToolchain;
+    RazorStrategy = state.RazorStrategy;
+    StateHasChanged();
+
+    Task sdkTask = Task.CompletedTask;
+    Task roslynTask = Task.CompletedTask;
+    Task razorTask = Task.CompletedTask;
+
+    if (sdkVersion != state.SdkVersion)
+    {
+        sdkVersion = state.SdkVersion;
+        sdkTask = LoadSdkInfoAsync(saveState: false);
+    }
+
+    if (roslynVersion != state.RoslynVersion ||
+        roslynConfiguration != state.RoslynConfiguration)
+    {
+        roslynVersion = state.RoslynVersion;
+        roslynConfiguration = state.RoslynConfiguration;
+        roslynTask = LoadRoslynInfoAsync(saveState: false);
+    }
+
+    if (razorVersion != state.RazorVersion ||
+        razorConfiguration != state.RazorConfiguration)
+    {
+        razorVersion = state.RazorVersion;
+        razorConfiguration = state.RazorConfiguration;
+        razorTask = LoadRazorInfoAsync(saveState: false);
+    }
+
+    return Task.WhenAll(sdkTask, roslynTask, razorTask);
+}
+
+private async Task LoadSdkVersionsAsync()
+{
+    sdkVersions = await Worker.GetSdkVersionsAsync();
+    await RefreshAsync();
+}
+
+private async Task LoadSdkInfoAsync(bool saveState = true)
+{
+    var versionToLoad = sdkVersion;
+
+    if (saveState)
+    {
+        await Page.SaveStateToUrlAsync(state => state with { SdkVersion = versionToLoad });
+    }
+
+    loadingSdkInfo = true;
+    await RefreshAsync();
+
+    SdkInfo? info;
+    string? error;
+    try
+    {
+        if (string.IsNullOrEmpty(versionToLoad))
+        {
+            info = null;
+            error = null;
+        }
+        else
+        {
+            info = modalHidden ? null : await Worker.GetSdkInfoAsync(versionToLoad);
+            error = null;
+
+            if (saveState)
             {
-                await vimDisposable.InvokeVoidAsync("dispose");
-                vimDisposable = null;
+                await Task.WhenAll(
+                    UseRoslynVersionAsync(info?.RoslynVersion),
+                    UseRazorVersionAsync(info?.RazorVersion));
             }
         }
-
-        await InputEditor.Layout();
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "Failed to load SDK info.");
+        error = ex is WorkerException w ? w.Failure.Message : ex.Message;
+        info = null;
     }
 
-    private async Task SetLuminanceAsync(bool dark)
+    if (sdkVersion == versionToLoad)
     {
-        await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, Page.GetMonacoTheme(dark: dark));
+        sdkInfo = info;
+        sdkError = error;
     }
 
-    private async Task GoToConfigurationAsync()
-    {
-        await Page.SelectConfigurationAsync();
-        CloseModal();
-    }
+    loadingSdkInfo = false;
+    await RefreshAsync();
+}
 
-    private async Task CheckForUpdatesAsync()
+private async Task UseSdkVersionAsync(string? version)
+{
+    sdkVersion = version;
+    await LoadSdkInfoAsync();
+}
+
+private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
+    CompilerKind compilerKind,
+    string? versionToLoad,
+    BuildConfiguration configuration,
+    bool saveState)
+{
+    try
     {
-        if (checkedForUpdates)
+        var changed = await Worker.UseCompilerVersionAsync(
+            compilerKind,
+            version: versionToLoad,
+            configuration: configuration);
+
+        // `saveState` is `false` during initial load where we don't want to
+        // display "output outdated" which would override the "cached" info.
+        if (changed && saveState)
         {
-            checkedForUpdates = false;
-            await RefreshAsync();
+            Page.OnSettingsInputChanged();
         }
 
-        await SettingsInterop.CheckForUpdatesAsync();
-        checkedForUpdates = true;
-    }
+        var info = modalHidden
+            ? null
+            : await Worker.GetCompilerDependencyInfoAsync(compilerKind);
 
-    private async Task LoadUpdateAsync(Action loadUpdate)
-    {
-        await Page.SaveStateToUrlAsync();
-        loadUpdate();
+        return (info, null);
     }
-
-    private async Task UpdateLanguageServicesAsync()
+    catch (Exception ex)
     {
-        await LanguageServices.EnableAsync(EnableLanguageServices);
-        if (!EnableLanguageServices)
+        Logger.LogError(ex, $"Failed to load {compilerKind} info.");
+
+        return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
+    }
+}
+
+private async Task LoadRoslynInfoAsync(bool saveState = true)
+{
+    var versionToLoad = roslynVersion;
+
+    if (saveState)
+    {
+        await Page.SaveStateToUrlAsync(state => state with
         {
-            // If disabled, replace live errors with compilation errors.
-            await Page.DisplaySquigglesAsync();
+            RoslynVersion = versionToLoad,
+            RoslynConfiguration = roslynConfiguration,
+        });
+    }
+
+    loadingRoslynInfo = true;
+    await RefreshAsync();
+
+    var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
+
+    if (roslynVersion == versionToLoad)
+    {
+        roslynInfo = info;
+        roslynError = error;
+    }
+
+    loadingRoslynInfo = false;
+    await RefreshAsync();
+}
+
+private async Task UseRoslynVersionAsync(string? version)
+{
+    roslynVersion = version;
+    roslynConfiguration = BuildConfiguration.Release;
+    await LoadRoslynInfoAsync();
+}
+
+private async Task LoadRazorInfoAsync(bool saveState = true)
+{
+    var versionToLoad = razorVersion;
+
+    if (saveState)
+    {
+        await Page.SaveStateToUrlAsync(state => state with
+        {
+            RazorVersion = versionToLoad,
+            RazorConfiguration = razorConfiguration,
+        });
+    }
+
+    loadingRazorInfo = true;
+    await RefreshAsync();
+
+    var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
+
+    if (razorVersion == versionToLoad)
+    {
+        razorInfo = info;
+        razorError = error;
+    }
+
+    loadingRazorInfo = false;
+    await RefreshAsync();
+}
+
+private async Task UseRazorVersionAsync(string? version)
+{
+    razorVersion = version;
+    razorConfiguration = BuildConfiguration.Release;
+    await LoadRazorInfoAsync();
+}
+
+public Task ToggleWordWrapAsync()
+{
+    WordWrap = !WordWrap;
+    return OnWordWrapChanged();
+}
+
+private async Task OnWordWrapChanged()
+{
+    await RefreshAsync();
+    await WordWrapChanged.InvokeAsync(WordWrap);
+    await LocalStorage.SetItemAsync(nameof(WordWrap), WordWrap);
+
+    var updateOptions = new EditorUpdateOptions { WordWrap = WordWrap ? "on" : "off" };
+    await InputEditor.UpdateOptions(updateOptions);
+    await OutputEditor.UpdateOptions(updateOptions);
+}
+
+private async Task OnVimChanged()
+{
+    await RefreshAsync();
+    await UseVimChanged.InvokeAsync(UseVim);
+    await LocalStorage.SetItemAsync(nameof(UseVim), UseVim);
+    if (UseVim)
+    {
+        if (vimDisposable is null)
+        {
+            vimDisposable = await JSRuntime.InvokeAsync<IJSObjectReference>("jslib.EnableVimMode", InputEditor.Id, "vim-status");
         }
     }
+    else
+    {
+        if (vimDisposable is not null)
+        {
+            await vimDisposable.InvokeVoidAsync("dispose");
+            vimDisposable = null;
+        }
+    }
+
+    await InputEditor.Layout();
+}
+
+private async Task SetLuminanceAsync(bool dark)
+{
+    await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, Page.GetMonacoTheme(dark: dark));
+}
+
+private async Task GoToConfigurationAsync()
+{
+    await Page.SelectConfigurationAsync();
+    CloseModal();
+}
+
+private async Task CheckForUpdatesAsync()
+{
+    if (checkedForUpdates)
+    {
+        checkedForUpdates = false;
+        await RefreshAsync();
+    }
+
+    await SettingsInterop.CheckForUpdatesAsync();
+    checkedForUpdates = true;
+}
+
+private async Task LoadUpdateAsync(Action loadUpdate)
+{
+    await Page.SaveStateToUrlAsync();
+    loadUpdate();
+}
+
+private async Task UpdateLanguageServicesAsync()
+{
+    await LanguageServices.EnableAsync(EnableLanguageServices);
+    if (!EnableLanguageServices)
+    {
+        // If disabled, replace live errors with compilation errors.
+        await Page.DisplaySquigglesAsync();
+    }
+}
 }
