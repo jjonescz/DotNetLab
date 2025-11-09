@@ -40,7 +40,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.TextWrap()" />
                     </Icon>
                     <Header>
-                        <h6 id="csharp-wrap" class="unset">
+                        <h6 class="unset">
                             Word Wrap
                             <kbd style="margin-left: 0.5em" title="Keyboard shortcut (works only inside the editors)">Alt+Z</kbd>
                         </h6>
@@ -61,7 +61,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Keyboard()" />
                     </Icon>
                     <Header>
-                        <h6 id="csharp-vim" class="unset">Use VIM</h6>
+                        <h6 class="unset">Use VIM</h6>
                     </Header>
                     <Description>
                         Use the VIM mode.
@@ -79,7 +79,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DeveloperBoard()" />
                     </Icon>
                     <Header>
-                        <h6 id="csharp-advanced" class="unset">Advanced</h6>
+                        <h6 class="unset">Advanced</h6>
                     </Header>
                     <Description>
                         The advanced options.
@@ -89,7 +89,7 @@
                             @* Language services check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-server" class="unset">Language Services</h7>
+                                    <h7 class="unset">Language Services</h7>
                                 </Header>
                                 <Description>
                                     Completions, live diagnostics. (currently uses only the built-in compiler and default configuration)
@@ -104,7 +104,7 @@
                             @* Debug logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-debug" class="unset">Debug Logs</h7>
+                                    <h7 class="unset">Debug Logs</h7>
                                 </Header>
                                 <Description>
                                     Whether to display debug-level logs in the browser development console.
@@ -119,7 +119,7 @@
                             @* Trace logs check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-trace" class="unset">Trace Logs</h7>
+                                    <h7 class="unset">Trace Logs</h7>
                                 </Header>
                                 <Description>
                                     Whether to display trace-level logs in the browser development console.
@@ -134,7 +134,7 @@
                             @* Memory usage view check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-memory" class="unset">Memory Usage View</h7>
+                                    <h7 class="unset">Memory Usage View</h7>
                                 </Header>
                                 <Description>
                                     Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app.
@@ -149,7 +149,7 @@
                             @* Use a worker check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-worker" class="unset">Compile in a background worker thread (requires restart)</h7>
+                                    <h7 class="unset">Compile in a background worker thread (requires restart)</h7>
                                 </Header>
                                 <Description>
                                     Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
@@ -164,7 +164,7 @@
                             @* Caching check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-caching" class="unset">Enable Caching</h7>
+                                    <h7 class="unset">Enable Caching</h7>
                                 </Header>
                                 <Description>
                                     Cache inputs and outputs on a server for faster sharing.
@@ -179,7 +179,7 @@
                             @* Auto compile on start check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                 <Header>
-                                    <h7 id="csharp-advanced-automatically" class="unset">Automatic Compilation</h7>
+                                    <h7 class="unset">Automatic Compilation</h7>
                                 </Header>
                                 <Description>
                                     Automatically begin compilation on start.
@@ -194,7 +194,7 @@
                             @* Razor toolchain *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
-                                    <h7 id="csharp-advanced-toolchain" class="unset">Razor Toolchain</h7>
+                                    <h7 class="unset">Razor Toolchain</h7>
                                 </Header>
                                 <Description>
                                     Switch the Razor toolchain used for compilation.
@@ -208,7 +208,7 @@
                             @* Razor strategy *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
-                                    <h7 id="csharp-advanced-strategy" class="unset">Razor Strategy</h7>
+                                    <h7 class="unset">Razor Strategy</h7>
                                 </Header>
                                 <Description>
                                     Switch the Razor strategy used for compilation.
@@ -226,7 +226,7 @@
 
         <SettingsGroup>
             <Header>
-                <h5 id="compilers" class="unset">Compilers</h5>
+                <h5 class="unset">Compilers</h5>
             </Header>
 
             <ChildContent>
@@ -236,7 +236,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 id="compilers-sdk" class="unset">.NET SDK</h6>
+                        <h6 class="unset">.NET SDK</h6>
                     </Header>
                     <Description>
                         Enter a .NET SDK version above to automatically get
@@ -295,7 +295,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 id="compilers-roslyn" class="unset">Roslyn Version</h6>
+                        <h6 class="unset">Roslyn Version</h6>
                     </Header>
                     <Description>
                         @SeeLinks(CompilerInfo.Roslyn)
@@ -336,7 +336,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Box()" />
                     </Icon>
                     <Header>
-                        <h6 id="compilers-razor" class="unset">Razor Version</h6>
+                        <h6 class="unset">Razor Version</h6>
                     </Header>
                     <Description>
                         @SeeLinks(CompilerInfo.Razor)
@@ -376,7 +376,7 @@
         @* About section *@
         <SettingsGroup>
             <Header>
-                <h5 id="about" class="unset">About</h5>
+                <h5 class="unset">About</h5>
             </Header>
             <ChildContent>
                 <SettingsCard>
@@ -384,7 +384,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ArrowClockwise()" />
                     </Icon>
                     <Header>
-                        <h6 id="about-about" class="unset">.NET Lab</h6>
+                        <h6 class="unset">.NET Lab</h6>
                     </Header>
                     <Description>
                         <a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>,
@@ -425,7 +425,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.Color()" />
                     </Icon>
                     <Header>
-                        <h6 id="about-theme" class="unset">App Theme</h6>
+                        <h6 class="unset">App Theme</h6>
                     </Header>
                     <Description>
                         Set the theme of this App.
