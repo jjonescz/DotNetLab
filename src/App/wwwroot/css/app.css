@@ -137,6 +137,10 @@ h1.unset {
     line-height: inherit;
 }
 
+.fluent-dialog-header {
+    padding-bottom: 0 !important;
+}
+
 fluent-select::part(listbox),
 fluent-select .listbox,
 fluent-combobox::part(listbox),
