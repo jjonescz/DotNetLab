@@ -31,7 +31,6 @@ html, body {
     font-size: var(--type-ramp-base-font-size);
     line-height: var(--type-ramp-base-line-height);
     height: 100%;
-
     /* Prevent scrollbar flashes during Monaco Editor resizes. */
     overflow: hidden;
 }
@@ -122,4 +121,29 @@ code {
 
 .underline {
     text-decoration: underline;
+}
+
+h6.unset,
+h5.unset,
+h4.unset,
+h3.unset,
+h2.unset,
+h1.unset {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-weight: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.fluent-dialog-header {
+    padding-bottom: 0 !important;
+}
+
+fluent-select::part(listbox),
+fluent-select .listbox,
+fluent-combobox::part(listbox),
+fluent-combobox .listbox {
+    max-height: calc(var(--base-height-multiplier) * 30px);
 }

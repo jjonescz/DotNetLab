@@ -1,0 +1,39 @@
+﻿@if (Info != null)
+{
+    <FluentLabel Style="@Style">
+        Using
+        @if (Info.VersionLink != null)
+        {
+            <a href="@Info.VersionLink" target="_blank">@(Info.Version)</a>
+        }
+        else
+        {
+            @(Info.Version)
+        }
+        (<CommitHashView Enabled="!Settings.ModalHidden" Commit="Info.Commit"
+                         SaveKey="@(Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(Compiler.RepositoryUrl)"
+                         AlternativeCommitHash="@(Info.AdditionalCommitHash)" />
+        @if (Info.AdditionalLink != null)
+        {
+            @(", ")
+            <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
+               target="_blank">@Info.AdditionalLink.Text</a>
+        }
+        @("),")
+        <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.
+    </FluentLabel>
+}
+@if (Error != null)
+{
+    <FluentLabel Color="Color.Error" Style="@Style">
+        @Error
+    </FluentLabel>
+}
+
+@code {
+    [Parameter, EditorRequired] public Settings Settings { get; set; }
+    [Parameter, EditorRequired] public CompilerInfo Compiler { get; set; }
+    [Parameter] public PackageDependencyInfo? Info { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter, EditorRequired] public string Style { get; set; }
+}

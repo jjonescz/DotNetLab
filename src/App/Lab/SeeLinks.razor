@@ -1,0 +1,11 @@
+﻿<span>
+    Lists:
+    <a href="@Info.NuGetVersionListUrl" target="_blank">version</a>,
+    <a href="@Info.PrListUrl" target="_blank">PR</a>,
+    <a href="@Info.BranchListUrl" target="_blank">branch</a>,
+    <a href="@Info.BuildListUrl" target="_blank" title="Enter build ID (from the URL) not the build number">build</a>.
+</span>
+
+@code {
+    [Parameter, EditorRequired] public CompilerInfo Info { get; set; }
+}
