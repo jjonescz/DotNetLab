@@ -384,11 +384,9 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ArrowClockwise()" />
                     </Icon>
                     <Header>
-                        <h6 class="unset">.NET Lab</h6>
+                        <h6 class="unset">.NET Lab (<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>)</h6>
                     </Header>
                     <Description>
-                        <a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>,
-                        commit
                         <CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
                     </Description>
                     <ActionContent>
