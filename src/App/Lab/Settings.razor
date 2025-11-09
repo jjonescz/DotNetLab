@@ -315,7 +315,6 @@
                         <FluentStack>
                             <FluentTextField @bind-Value="roslynVersion" @bind-Value:after="() => LoadRoslynInfoAsync()"
                                              Placeholder="@VersionPlaceholder" Style="width: 100%">
-                                <FluentLabel slot="start">Roslyn</FluentLabel>
                                 <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRoslynInfo" Width="1em" />
                             </FluentTextField>
                             <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
@@ -357,7 +356,6 @@
                         <FluentStack>
                             <FluentTextField @bind-Value="razorVersion" @bind-Value:after="() => LoadRazorInfoAsync()"
                                              Placeholder="@VersionPlaceholder" Style="width: 100%">
-                                <FluentLabel slot="start">Razor</FluentLabel>
                                 <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRazorInfo" Width="1em" />
                             </FluentTextField>
                             <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
