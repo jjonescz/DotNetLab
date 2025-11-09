@@ -5,17 +5,20 @@
                 Class="fluent-card clickable-card"
                 AreaRestricted="false"
                 MinimalStyle="true">
-        <div class="content-grid">
-            <SettingsPresenter Icon="Icon"
-                               Header="Header"
-                               Description="Description"
-                               ActionContent="ActionContent" />
-            @if (ActionIcon != null)
-            {
-                <div class="action-icon-holder">
-                    @ActionIcon
-                </div>
-            }
-        </div>
+        <CascadingValue Name="FillColor" Value="FillColor">
+            <div class="content-grid">
+                <SettingsPresenter Icon="Icon"
+                                   Header="Header"
+                                   Description="Description"
+                                   FillColor="@FillColor"
+                                   ActionContent="ActionContent" />
+                @if (ActionIcon != null)
+                {
+                    <div class="action-icon-holder">
+                        @ActionIcon
+                    </div>
+                }
+            </div>
+        </CascadingValue>
     </FluentCard>
 </div>

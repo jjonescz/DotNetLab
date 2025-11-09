@@ -20,5 +20,11 @@ namespace DotNetLab.Controls
         /// </summary>
         [Parameter]
         public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+        /// <summary>
+        /// Gets or sets the fill color of the button.
+        /// </summary>
+        [CascadingParameter(Name = nameof(FillColor))]
+        private string FillColor { get; set; } = "neutralFillInputRest";
     }
 }

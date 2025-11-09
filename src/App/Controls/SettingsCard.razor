@@ -5,10 +5,12 @@
     <FluentCard Class="fluent-card"
                 AreaRestricted="false"
                 MinimalStyle="true">
-        <SettingsPresenter Icon="Icon"
-                            Header="Header"
-                            Description="Description"
-                            ActionContent="ActionContent" />
+        <CascadingValue Name="FillColor" Value="FillColor">
+            <SettingsPresenter Icon="Icon"
+                               Header="Header"
+                               Description="Description"
+                               ActionContent="ActionContent" />
+        </CascadingValue>
     </FluentCard>
 </div>
 
@@ -17,4 +19,10 @@
     protected override string? ClassValue => new CssBuilder(Class)
         .AddClass("settings-card")
         .Build();
+
+    /// <summary>
+    /// Gets or sets the FillColor for the card.
+    /// </summary>
+    [CascadingParameter(Name = nameof(FillColor))]
+    private string FillColor { get; set; } = "neutralFillInputRest";
 }
