@@ -50,5 +50,6 @@
   </ItemGroup>
   <ItemGroup Label="Pinned Transitive Dependencies">
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="$(NetCoreVersion)" />
   </ItemGroup>
 </Project>
