@@ -4,8 +4,8 @@
 @using Humanizer
 
 <FluentStack Style="font-size: 0.8rem; font-style: normal; width: auto"
-HorizontalAlignment="HorizontalAlignment.Center"
-VerticalAlignment="VerticalAlignment.Center">
+             HorizontalAlignment="HorizontalAlignment.Center"
+             VerticalAlignment="VerticalAlignment.Center">
     <span title="@tooltip" @onclick="Refresh">@text</span>
     <FluentButton IconStart="new Icons.Regular.Size20.ArrowDownload()" Title="Download .nettrace file" OnClick="DownloadProfileAsync" />
 </FluentStack>

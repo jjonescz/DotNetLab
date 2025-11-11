@@ -1,0 +1,53 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+@inherits SettingsCardBase
+
+<div id="@Id" class="@ClassValue" style="@Style" @ref="Element" @attributes="AdditionalAttributes">
+    <FluentAccordion>
+        <FluentAccordionItem Class="expander-item" Expanded="Expanded">
+            <HeadingTemplate>
+                <CascadingValue Name="FillColor" Value="FillColor">
+                    <SettingsPresenter Icon="Icon"
+                                       Header="Header"
+                                       Description="Description"
+                                       ActionContent="ActionContent" />
+                </CascadingValue>
+            </HeadingTemplate>
+            <ChildContent>
+                <div @ref="host">
+                    <CascadingValue Name="FillColor" Value="@("neutralFillLayerAltRest")" IsFixed="true">
+                        <FillColorHost Element="host">
+                            @ChildContent
+                        </FillColorHost>
+                    </CascadingValue>
+                </div>
+            </ChildContent>
+        </FluentAccordionItem>
+    </FluentAccordion>
+</div>
+
+@code
+{
+    private ElementReference host;
+
+    protected override string? ClassValue => new CssBuilder(Class)
+        .AddClass("settings-expander")
+        .Build();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the item is expanded or collapsed.
+    /// </summary>
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    /// <summary>
+    /// Gets or sets the content of a ContentControl.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the FillColor for the expander header.
+    /// </summary>
+    [CascadingParameter(Name = nameof(FillColor))]
+    private string FillColor { get; set; } = "neutralFillInputRest";
+}
