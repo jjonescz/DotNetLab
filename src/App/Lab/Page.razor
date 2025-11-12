@@ -11,6 +11,7 @@
 @inject CursorSynchronizer.Services CursorSynchronizerServices
 @inject ILogger<Page> Logger
 @using BlazorMonaco.Editor
+@using Microsoft.CodeAnalysis.CSharp
 
 <PageTitle>.NET Lab</PageTitle>
 
@@ -753,6 +754,12 @@
 
         compilationInProgress = false;
 
+        // Format the code if compilation succeeded with no errors.
+        if (output.NumErrors == 0)
+        {
+            await FormatCurrentInputAsync();
+        }
+
         var mode = storeInCache
             ? OutputActionMode.Always
             : OutputActionMode.Never;
@@ -763,6 +770,39 @@
         // Reset workspace state in case incremental updates were applied incorrectly.
         // We don't want diagnostics from the workspace though, we just set the ones from compiler.
         await ResetWorkspaceAsync(updateDiagnostics: false);
+    }
+
+    private async Task FormatCurrentInputAsync()
+    {
+        if (CurrentInput is not { } input)
+        {
+            return;
+        }
+
+        if (!input.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            var currentCode = await input.Model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(currentCode);
+            var root = await syntaxTree.GetRootAsync();
+
+            var formattedRoot = root.NormalizeWhitespace();
+            var formattedCode = formattedRoot.ToFullString();
+
+            if (formattedCode != currentCode)
+            {
+                await input.Model.SetValue(formattedCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to format code for file '{FileName}'.", input.FileName);
+        }
     }
 
     private void TryStoreInCache(SavedState state, CompiledAssembly output)
