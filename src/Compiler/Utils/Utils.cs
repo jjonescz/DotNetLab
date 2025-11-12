@@ -29,6 +29,21 @@ public static class CodeAnalysisUtil
         }
     }
 
+    extension(Diagnostic diagnostic)
+    {
+        public string GetMessageSafe()
+        {
+            try
+            {
+                return diagnostic.GetMessage();
+            }
+            catch (Exception ex)
+            {
+                return $"Failed to format diagnostic (Title: '{diagnostic.Descriptor.Title}', MessageFormat: '{diagnostic.Descriptor.MessageFormat}'): {ex.GetType().FullName}: {ex.Message}";
+            }
+        }
+    }
+
     extension(EmitOptions)
     {
         public static EmitOptions Default => DefaultEmitOptions;
@@ -101,7 +116,7 @@ public static class CodeAnalysisUtil
             },
             Id: d.Id,
             HelpLinkUri: d.Descriptor.HelpLinkUri,
-            Message: d.GetMessage(),
+            Message: d.GetMessageSafe(),
             StartLineNumber: lineSpan.StartLinePosition.Line + 1,
             StartColumn: lineSpan.StartLinePosition.Character + 1,
             EndLineNumber: lineSpan.EndLinePosition.Line + 1,

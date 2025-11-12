@@ -144,6 +144,15 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                 // #error version
                 Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "preview").WithLocation(1, 8)
                 """.ReplaceLineEndings(), diagnosticsText);
+
+            // TODO: This happens because we currently don't download satellite resource assemblies
+            // so we use the built-in Roslyn version for the message formats instead of the specified Roslyn version
+            // which can lead to mismatches like here (this error message would be visible in the IDE, for example).
+            var errorMessage = compiled.Diagnostics[1].Message;
+            output.WriteLine(errorMessage);
+            Assert.Equal("""
+                Failed to format diagnostic (Title: '', MessageFormat: 'Compiler version: '{0}'. Language version: {1}. Compiler path: '{2}'.'): System.FormatException: Index (zero based) must be greater than or equal to zero and less than the size of the argument list.
+                """, errorMessage);
         }
         finally
         {
