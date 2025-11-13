@@ -11,7 +11,6 @@
 @inject CursorSynchronizer.Services CursorSynchronizerServices
 @inject ILogger<Page> Logger
 @using BlazorMonaco.Editor
-@using Microsoft.CodeAnalysis.CSharp
 
 <PageTitle>.NET Lab</PageTitle>
 
@@ -734,6 +733,19 @@
         StateHasChanged();
     }
 
+    [JSInvokable]
+    public async Task FormatCurrentFileAsync()
+    {
+        if (CurrentInput is not { } input
+            || !input.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await editorInitialized.Task;
+        await FormatCurrentInputAsync(input);
+    }
+
     private async Task CompileAsync(bool storeInCache = true)
     {
         compilationInProgress = true;
@@ -754,10 +766,13 @@
 
         compilationInProgress = false;
 
-        // Format the code if compilation succeeded with no errors.
-        if (output.NumErrors == 0)
+        // Format the code if compilation succeeded with no errors and automatic formatting is enabled.
+        if (settings.AutomaticFormatting
+            && output.NumErrors == 0 
+            && CurrentInput is { } currentInput 
+            && currentInput.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
         {
-            await FormatCurrentInputAsync();
+            await FormatCurrentInputAsync(currentInput);
         }
 
         var mode = storeInCache
@@ -772,27 +787,13 @@
         await ResetWorkspaceAsync(updateDiagnostics: false);
     }
 
-    private async Task FormatCurrentInputAsync()
+    private async Task FormatCurrentInputAsync(Input input)
     {
-        if (CurrentInput is not { } input)
-        {
-            return;
-        }
-
-        if (!input.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
         try
         {
             var currentCode = await input.Model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
 
-            var syntaxTree = CSharpSyntaxTree.ParseText(currentCode);
-            var root = await syntaxTree.GetRootAsync();
-
-            var formattedRoot = root.NormalizeWhitespace();
-            var formattedCode = formattedRoot.ToFullString();
+            var formattedCode = await Worker.FormatCodeAsync(currentCode);
 
             if (formattedCode != currentCode)
             {

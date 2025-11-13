@@ -71,6 +71,12 @@ public sealed class WorkerExecutor(
         }
     }
 
+    public async Task<string> HandleAsync(WorkerInputMessage.FormatCode message)
+    {
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        return await compiler.FormatCodeAsync(message.Code);
+    }
+
     public async Task<CompiledFileLazyResult> HandleAsync(WorkerInputMessage.GetOutput message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();

@@ -86,6 +86,22 @@ public sealed class Compiler(
         return result.CompiledAssembly;
     }
 
+    public string FormatCode(string code)
+    {
+        try
+        {
+            var syntaxTree = CSharpSyntaxTree.ParseText(code);
+            var root = syntaxTree.GetRoot();
+            var formattedRoot = root.NormalizeWhitespace();
+            return formattedRoot.ToFullString();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to format C# code.");
+            return code;
+        }
+    }
+
     private async ValueTask<LiveCompilationResult> CompileNoCacheAsync(
         CompilationInput compilationInput,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,

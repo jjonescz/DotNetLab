@@ -189,6 +189,21 @@
                                 </ActionContent>
                             </SettingsCard>
 
+                            @* Automatic formatting check box *@
+                            <SettingsCard Class="default-setting-expander-item settings-nowarp">
+                                <Header>
+                                    <h5 class="unset">Automatic Formatting</h5>
+                                </Header>
+                                <Description>
+                                    Automatically format C# code upon successful compilation (Ctrl+I to trigger manually)
+                                </Description>
+                                <ActionContent>
+                                    <FluentSwitch @bind-Value="AutomaticFormatting" @bind-Value:after="OnSetAutomaticFormattingAsync">
+                                        @(AutomaticFormatting ? "On" : "Off")
+                                    </FluentSwitch>
+                                </ActionContent>
+                            </SettingsCard>
+
                             @* Razor toolchain *@
                             <SettingsCard Class="default-setting-expander-item">
                                 <Header>
@@ -488,6 +503,7 @@
     private bool EnableWorker { get; set; }
     public bool EnableCaching { get; set; }
     public bool AutoCompileOnStart { get; set; }
+    public bool AutomaticFormatting { get; set; }
     private RazorToolchain RazorToolchain { get; set; }
     private RazorStrategy RazorStrategy { get; set; }
 
@@ -531,6 +547,11 @@
     private async Task OnSetAutoCompileOnStartAsync()
     {
         await LocalStorage.SetItemAsync(nameof(AutoCompileOnStart), AutoCompileOnStart);
+    }
+
+    private async Task OnSetAutomaticFormattingAsync()
+    {
+        await LocalStorage.SetItemAsync(nameof(AutomaticFormatting), AutomaticFormatting);
     }
 
     private async Task OnSetRazorToolchainAsync()
@@ -595,6 +616,7 @@
         EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
         EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
         AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
+        AutomaticFormatting = await loadOptionAsync(nameof(AutomaticFormatting), defaultValue: false);
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
 
         await UpdateLanguageServicesAsync();

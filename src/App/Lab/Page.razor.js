@@ -10,6 +10,9 @@
             // invoke the.NET method so the URL is updated to reflect the current state and
             // the UI displays "copied" checkmark afterwards.
             dotNetObj.invokeMethodAsync('CopyUrlToClipboardAsync');
+        } else if (e.ctrlKey && e.key === 'i') {
+            e.preventDefault();
+            dotNetObj.invokeMethodAsync('FormatCurrentFileAsync');
         }
     };
 

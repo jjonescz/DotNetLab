@@ -94,6 +94,20 @@ internal sealed class CompilerProxy(
         return loaded.LanguageServices.Value;
     }
 
+    public async ValueTask<string> FormatCodeAsync(string code)
+    {
+        try
+        {
+            var compiler = await GetCompilerAsync();
+            return compiler.FormatCode(code);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to format code.");
+            return code;
+        }
+    }
+
     public async Task<ICompiler> GetCompilerAsync()
     {
         await EnsureLoadedAsync();

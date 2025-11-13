@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace DotNetLab;
 
@@ -655,6 +656,36 @@ public class C
         var csText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(null)).Text;
         output.WriteLine(csText);
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
+    }
+
+    [Fact]
+    public async Task FormatCode_01()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+            class Test{
+            public void Method(  ){
+            var x=1;
+            }
+            }
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            class Test
+            {
+                public void Method()
+                {
+                    var x = 1;
+                }
+            }
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
     }
 
     [Fact]

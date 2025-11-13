@@ -9,6 +9,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(Ping), nameof(Ping))]
 [JsonDerivedType(typeof(Cancel), nameof(Cancel))]
 [JsonDerivedType(typeof(Compile), nameof(Compile))]
+[JsonDerivedType(typeof(FormatCode), nameof(FormatCode))]
 [JsonDerivedType(typeof(GetOutput), nameof(GetOutput))]
 [JsonDerivedType(typeof(UseCompilerVersion), nameof(UseCompilerVersion))]
 [JsonDerivedType(typeof(GetCompilerDependencyInfo), nameof(GetCompilerDependencyInfo))]
@@ -69,6 +70,14 @@ public abstract record WorkerInputMessage
     public sealed record Compile(CompilationInput Input, bool LanguageServicesEnabled) : WorkerInputMessage<CompiledAssembly>
     {
         public override Task<CompiledAssembly> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
+    public sealed record FormatCode(string Code) : WorkerInputMessage<string>
+    {
+        public override Task<string> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
         }
@@ -199,6 +208,7 @@ public abstract record WorkerInputMessage
         Task<PingResult> HandleAsync(Ping message);
         Task<NoOutput> HandleAsync(Cancel message);
         Task<CompiledAssembly> HandleAsync(Compile message);
+        Task<string> HandleAsync(FormatCode message);
         Task<CompiledFileLazyResult> HandleAsync(GetOutput message);
         Task<bool> HandleAsync(UseCompilerVersion message);
         Task<PackageDependencyInfo?> HandleAsync(GetCompilerDependencyInfo message);
