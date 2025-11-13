@@ -86,11 +86,18 @@ public sealed class Compiler(
         return result.CompiledAssembly;
     }
 
-    public string FormatCode(string code)
+    public string FormatCode(string code, bool isScript)
     {
         try
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
+            var parseOptions = CreateDefaultParseOptions();
+            parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
+            if (isScript)
+            {
+                parseOptions = parseOptions.WithKind(SourceCodeKind.Script);
+            }
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(code, parseOptions, encoding: Encoding.UTF8);
             var root = syntaxTree.GetRoot();
             var formattedRoot = root.NormalizeWhitespace();
             return formattedRoot.ToFullString();

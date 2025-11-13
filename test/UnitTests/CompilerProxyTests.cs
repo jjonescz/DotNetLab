@@ -672,7 +672,7 @@ public class C
             }
             """;
 
-        var formatted = (await compiler.FormatCodeAsync(unformatted))
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: false))
             .ReplaceLineEndings(Environment.NewLine);
 
         var expected = """
@@ -683,6 +683,31 @@ public class C
                     var x = 1;
                 }
             }
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
+    }
+
+    [Fact]
+    public async Task FormatCode_02()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+              #r   "nuget: Newtonsoft.Json, 13.0.3"
+            using   Newtonsoft.Json;
+              var   json = "{}"; 
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: true))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            #r "nuget: Newtonsoft.Json, 13.0.3"
+            using Newtonsoft.Json;
+
+            var json = "{}";
             """.ReplaceLineEndings(Environment.NewLine);
 
         Assert.Equal(expected, formatted);

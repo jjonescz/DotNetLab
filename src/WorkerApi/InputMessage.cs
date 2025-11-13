@@ -75,7 +75,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record FormatCode(string Code) : WorkerInputMessage<string>
+    public sealed record FormatCode(string Code, bool IsScript) : WorkerInputMessage<string>
     {
         public override Task<string> HandleAsync(IExecutor executor)
         {

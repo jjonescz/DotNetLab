@@ -434,10 +434,10 @@ internal sealed class WorkerController : IAsyncDisposable
             fallback: CompiledAssembly.Fail);
     }
 
-    public Task<string> FormatCodeAsync(string code)
+    public Task<string> FormatCodeAsync(string code, bool isScript)
     {
         return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.FormatCode(code) { Id = messageId++ },
+            new WorkerInputMessage.FormatCode(code, isScript) { Id = messageId++ },
             deserializeAs: default(string));
     }
 
