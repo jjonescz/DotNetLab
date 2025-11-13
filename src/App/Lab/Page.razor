@@ -766,15 +766,6 @@
 
         compilationInProgress = false;
 
-        // Format the code if compilation succeeded with no errors and automatic formatting is enabled.
-        if (settings.AutomaticFormatting
-            && output.NumErrors == 0 
-            && CurrentInput is { } currentInput 
-            && currentInput.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            await FormatCurrentInputAsync(currentInput);
-        }
-
         var mode = storeInCache
             ? OutputActionMode.Always
             : OutputActionMode.Never;
