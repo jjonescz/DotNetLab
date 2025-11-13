@@ -536,6 +536,20 @@
         await outputEditor.AddAction(action);
     }
 
+    private async Task RegisterFormatActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "format",
+            Label = "Format Document",
+            ContextMenuGroupId = "1_modification",
+            Keybindings = [(int)KeyMod.CtrlCmd | (int)BlazorMonaco.KeyCode.KeyI],
+            Run = _ => InvokeAsync(FormatCurrentFileAsync),
+        };
+        await inputEditor.AddAction(action);
+        await outputEditor.AddAction(action);
+    }
+
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
         if (args.Id is { } slug && NavigateToSlug(slug))
@@ -1130,6 +1144,7 @@
         await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
+        await RegisterFormatActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
