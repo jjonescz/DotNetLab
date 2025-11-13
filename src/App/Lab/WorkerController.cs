@@ -434,6 +434,13 @@ internal sealed class WorkerController : IAsyncDisposable
             fallback: CompiledAssembly.Fail);
     }
 
+    public Task<string> FormatCodeAsync(string code, bool isScript)
+    {
+        return PostAndReceiveMessageAsync(
+            new WorkerInputMessage.FormatCode(code, isScript) { Id = messageId++ },
+            deserializeAs: default(string));
+    }
+
     public Task<CompiledFileLazyResult> GetOutputAsync(CompilationInput input, string? file, string outputType)
     {
         return PostAndReceiveMessageAsync(

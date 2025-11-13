@@ -11,6 +11,8 @@ public interface ICompiler
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
         ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
         AssemblyLoadContext alc);
+
+    string FormatCode(string code, bool isScript);
 }
 
 public sealed record CompilationInput

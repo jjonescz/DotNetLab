@@ -30,6 +30,10 @@
     </div>
 
     <div>
+        @* Format document button *@
+        <FluentButton OnClick="() => FormatCurrentFileAsync()" Title="Format document (Ctrl+I)"
+                      IconStart="@(new Icons.Regular.Size20.CodeText())" Disabled="!IsCurrentInputCSharp" />
+
         @* Copy URL button *@
         <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
                       IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
@@ -536,6 +540,20 @@
         await outputEditor.AddAction(action);
     }
 
+    private async Task RegisterFormatActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "format",
+            Label = "Format Document",
+            ContextMenuGroupId = "1_modification",
+            Keybindings = [(int)KeyMod.CtrlCmd | (int)BlazorMonaco.KeyCode.KeyI],
+            Run = _ => InvokeAsync(FormatCurrentFileAsync),
+        };
+        await inputEditor.AddAction(action);
+        await outputEditor.AddAction(action);
+    }
+
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
         if (args.Id is { } slug && NavigateToSlug(slug))
@@ -731,6 +749,35 @@
     {
         await CompileAsync();
         StateHasChanged();
+    }
+
+    public async Task FormatCurrentFileAsync()
+    {
+        if (CurrentInput is not { FileName: var fileName } input
+            || !fileName.IsCSharpFileName(out bool isScript))
+        {
+            return;
+        }
+
+        await editorInitialized.Task;
+
+        try
+        {
+            var currentCode = await input.Model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
+
+            var formattedCode = await Worker.FormatCodeAsync(currentCode, isScript);
+
+            if (formattedCode != currentCode)
+            {
+                var viewState = await inputEditor.SaveViewStateAsync(module);
+                await input.Model.SetValue(formattedCode);
+                await inputEditor.RestoreViewStateAsync(viewState, module);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to format code for file '{FileName}'.", input.FileName);
+        }
     }
 
     private async Task CompileAsync(bool storeInCache = true)
@@ -1073,6 +1120,9 @@
 
     private string CurrentFileName => CurrentInput?.FileName ?? "";
 
+    private bool IsCurrentInputCSharp
+        => CurrentInput is { FileName: var fileName } && fileName.IsCSharpFileName();
+
     private CompiledFile? CurrentCompiledFile
     {
         get
@@ -1098,6 +1148,7 @@
         await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
+        await RegisterFormatActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
