@@ -30,6 +30,10 @@
     </div>
 
     <div>
+        @* Format document button *@
+        <FluentButton OnClick="() => FormatCurrentFileAsync()" Title="Format document (Ctrl+I)"
+                      IconStart="@(new Icons.Regular.Size20.CodeText())" Disabled="!IsCurrentInputCSharp" />
+
         @* Copy URL button *@
         <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
                       IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
@@ -1118,6 +1122,8 @@
     }
 
     private string CurrentFileName => CurrentInput?.FileName ?? "";
+
+    private bool IsCurrentInputCSharp => CurrentInput?.FileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ?? false;
 
     private CompiledFile? CurrentCompiledFile
     {
