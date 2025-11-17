@@ -1,9 +1,10 @@
 ﻿export function registerEventListeners(dotNetObj) {
-    const keyDownHandler = (e) => {
-        if (e.ctrlKey && e.key === 's') {
+    const keyDownHandler = (/** @type {KeyboardEvent} */ e) => {
+        const ctrl = (e.ctrlKey || e.metaKey);
+        if (ctrl && e.key === 's') {
             e.preventDefault();
             dotNetObj.invokeMethodAsync('CompileAndRenderAsync');
-        } else if (e.ctrlKey && e.key === ';') {
+        } else if (ctrl && e.key === ';') {
             e.preventDefault();
 
             // Instead of just copying the URL directly in JavaScript,
