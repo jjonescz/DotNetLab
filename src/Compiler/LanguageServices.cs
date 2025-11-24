@@ -531,9 +531,8 @@ internal sealed class LanguageServices : ILanguageServices
                 }
                 else
                 {
-                    additionalConfigurationReferences = compilerAssemblies.Values
-                        .Select(MetadataReference (b) => MetadataReference.CreateFromImage(b))
-                        .ToImmutableArray();
+                    additionalConfigurationReferences = compilerAssemblies
+                        .SelectAsArray(MetadataReference (p) => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value));
                     project = project.AddMetadataReferences(additionalConfigurationReferences);
                 }
 

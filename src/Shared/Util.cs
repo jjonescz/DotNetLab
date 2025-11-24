@@ -276,6 +276,11 @@ public static partial class Util
         }
     }
 
+    public static string GetAssemblyDiskPath(string assemblyName)
+    {
+        return Path.Join(AppContext.BaseDirectory, $"{assemblyName}.dll");
+    }
+
     public static string GetFirstLine(this string text)
     {
         foreach (var line in text.AsSpan().EnumerateLines())

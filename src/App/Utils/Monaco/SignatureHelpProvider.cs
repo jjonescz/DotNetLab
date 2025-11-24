@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class SignatureHelpProvider(ILoggerFactory loggerFactory)
+public sealed class SignatureHelpProvider(ILoggerFactory loggerFactory)
 {
     public ILogger<SignatureHelpProvider> Logger { get; } = loggerFactory.CreateLogger<SignatureHelpProvider>();
 

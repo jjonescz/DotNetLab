@@ -1,10 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
-
-  <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <OutputType>Exe</OutputType>
-    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
-  </PropertyGroup>
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <PackageReference Include="Knapcode.MiniZip" />
@@ -20,7 +14,5 @@
     <ProjectReference Include="..\RoslynWorkspaceAccess\RoslynWorkspaceAccess.csproj" />
     <ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
   </ItemGroup>
-
-  <Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>

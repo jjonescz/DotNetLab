@@ -2,10 +2,6 @@
 
 namespace DotNetLab;
 
-// RS1041: Compiler extensions should be implemented in assemblies targeting netstandard2.0
-// We are fine with only supporting .NET Core compiler hosts.
-#pragma warning disable RS1041
-
 [Generator(LanguageNames.CSharp)]
 public sealed class TemplateCacheGenerator : IIncrementalGenerator
 {

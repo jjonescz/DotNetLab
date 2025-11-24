@@ -1,8 +1,10 @@
 ﻿using DotNetLab;
+using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 Console.WriteLine("Worker started.");
 
@@ -14,7 +16,15 @@ if (args.Length != 2)
 
 var services = WorkerServices.Create(
     baseUrl: args[0],
-    logLevel: Enum.Parse<LogLevel>(args[1]));
+    logLevel: Enum.Parse<LogLevel>(args[1]),
+    configureServices: (services) =>
+    {
+        services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () =>
+        {
+            string json = WorkerInterop.GetDotNetConfig();
+            return JsonSerializer.Deserialize(json, WorkerWebAssemblyJsonContext.Default.DotNetBootConfig)!;
+        });
+    });
 
 Imports.RegisterOnMessage(async data =>
 {
@@ -45,3 +55,7 @@ static void PostMessage(WorkerOutputMessage message)
 
 [SupportedOSPlatform("browser")]
 partial class Program;
+
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+[JsonSerializable(typeof(DotNetBootConfig))]
+internal sealed partial class WorkerWebAssemblyJsonContext : JsonSerializerContext;

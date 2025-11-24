@@ -1,0 +1,27 @@
+<Project>
+
+  <PropertyGroup>
+    <IndexHtmlTemplatePath Condition="'$(IndexHtmlTemplatePath)' == ''">$(MSBuildThisFileDirectory)index.template.html</IndexHtmlTemplatePath>
+    <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(ProjectDir)wwwroot\index.html</IndexHtmlOutputPath>
+    <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Mark as Content so it's included in `service-worker-assets.js`. -->
+    <None Remove="$(IndexHtmlOutputPath)" />
+    <Content Remove="$(IndexHtmlOutputPath)" />
+    <Content Include="$(IndexHtmlOutputPath)" />
+  </ItemGroup>
+
+  <Target Name="GenerateIndexHtml" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath)" Outputs="$(IndexHtmlOutputPath)">
+    <WriteLinesToFile
+      File="$(IndexHtmlOutputPath)"
+      Lines="$([System.IO.File]::ReadAllText('$(IndexHtmlTemplatePath)')
+        .Replace('@@SCRIPT_PATH@@', '$(IndexHtmlScriptPath)')
+        .Replace('@@HEAD@@', '$(IndexHtmlHead)')
+        .Replace('@@ASSEMBLY_NAME@@', '$(AssemblyName)')
+        .Replace('@@SCRIPTS@@', '$(IndexHtmlScripts)'))"
+      Overwrite="true" />
+  </Target>
+
+</Project>

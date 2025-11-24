@@ -4,6 +4,8 @@
 @inject ILocalStorageService LocalStorage
 @inject WorkerController Worker
 @inject LanguageServicesClient LanguageServices
+@inject IUpdateChecker UpdateChecker
+@inject IAppHostEnvironment HostEnvironment
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
                    OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
@@ -129,35 +131,41 @@
                                 </ActionContent>
                             </SettingsCard>
 
-                            @* Memory usage view check box *@
-                            <SettingsCard Class="default-setting-expander-item settings-nowarp">
-                                <Header>
-                                    <h5 class="unset">Memory Usage View</h5>
-                                </Header>
-                                <Description>
-                                    Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app.
-                                </Description>
-                                <ActionContent>
-                                    <FluentSwitch @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync">
-                                        @(EnableMemoryUsageView ? "On" : "Off")
-                                    </FluentSwitch>
-                                </ActionContent>
-                            </SettingsCard>
+                            @* Memory usage view check box (currently works only in browser) *@
+                            @if (OperatingSystem.IsBrowser())
+                            {
+                                <SettingsCard Class="default-setting-expander-item settings-nowarp">
+                                    <Header>
+                                        <h5 class="unset">Memory Usage View</h5>
+                                    </Header>
+                                    <Description>
+                                        Whether to display info about memory usage (and a button to download GC traces) in the top right corner of the app.
+                                    </Description>
+                                    <ActionContent>
+                                        <FluentSwitch @bind-Value="EnableMemoryUsageView" @bind-Value:after="OnSetEnableMemoryUsageViewAsync">
+                                            @(EnableMemoryUsageView ? "On" : "Off")
+                                        </FluentSwitch>
+                                    </ActionContent>
+                                </SettingsCard>
+                            }
 
                             @* Use a worker check box *@
-                            <SettingsCard Class="default-setting-expander-item settings-nowarp">
-                                <Header>
-                                    <h5 class="unset">Compile in a background worker thread (requires restart)</h5>
-                                </Header>
-                                <Description>
-                                    Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
-                                </Description>
-                                <ActionContent>
-                                    <FluentSwitch @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync">
-                                        @(EnableWorker ? "On" : "Off")
-                                    </FluentSwitch>
-                                </ActionContent>
-                            </SettingsCard>
+                            @if (HostEnvironment.SupportsWebWorkers)
+                            {
+                                <SettingsCard Class="default-setting-expander-item settings-nowarp">
+                                    <Header>
+                                        <h5 class="unset">Compile in a background worker thread (requires restart)</h5>
+                                    </Header>
+                                    <Description>
+                                        Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
+                                    </Description>
+                                    <ActionContent>
+                                        <FluentSwitch @bind-Value="EnableWorker" @bind-Value:after="OnSetEnableWorkerAsync">
+                                            @(EnableWorker ? "On" : "Off")
+                                        </FluentSwitch>
+                                    </ActionContent>
+                                </SettingsCard>
+                            }
 
                             @* Caching check box *@
                             <SettingsCard Class="default-setting-expander-item settings-nowarp">
@@ -389,10 +397,13 @@
                     </Description>
                     <ActionContent>
                         @* Check for updates *@
-                        <FluentButton OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
+                        @if (UpdateChecker.Enabled)
+                        {
+                            <FluentButton OnClick="CheckForUpdatesAsync">Check for updates</FluentButton>
+                        }
                     </ActionContent>
                 </SettingsCard>
-                @if (UpdateInfo.LoadUpdate is { } loadUpdate)
+                @if (UpdateChecker.LoadUpdate is { } loadUpdate)
                 {
                     <FluentMessageBar Title="An update is available." Intent="MessageIntent.Info" AllowDismiss="false">
                         To apply the update, all .NET Lab tabs need to be reloaded.
@@ -404,7 +415,7 @@
                         </FluentStack>
                     </FluentMessageBar>
                 }
-                else if (UpdateInfo.UpdateIsDownloading)
+                else if (UpdateChecker.UpdateIsDownloading)
                 {
                     <FluentMessageBar Title="An update is being downloaded in the background." Intent="MessageIntent.Info" AllowDismiss="false">
                         <FluentProgressRing Width="1em" Style="display: inline-flex; margin-left: 0.5em" />
@@ -566,12 +577,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await JSHost.ImportAsync("Settings", "../Lab/Settings.razor.js");
+        await UpdateChecker.InitializeAsync();
     }
 
     public async Task InitializeAsync()
     {
-        UpdateInfo.UpdateStatusChanged += StateHasChanged;
+        UpdateChecker.UpdateStatusChanged += StateHasChanged;
 
         // Load settings from local storage.
         WordWrap = await loadOptionAsync(nameof(WordWrap), defaultValue: false);
@@ -584,7 +595,7 @@
         {
             await OnVimChanged();
         }
-        DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: false);
+        DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: HostEnvironment.IsDevelopment);
         TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
         EnableMemoryUsageView = await loadOptionAsync(nameof(EnableMemoryUsageView), defaultValue: false);
         if (EnableMemoryUsageView)
@@ -599,7 +610,10 @@
 
         await UpdateLanguageServicesAsync();
 
-        Worker.Disabled = !EnableWorker;
+        if (HostEnvironment.SupportsWebWorkers)
+        {
+            Worker.Disabled = !EnableWorker;
+        }
 
         async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
         {
@@ -611,7 +625,7 @@
 
     void IDisposable.Dispose()
     {
-        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
+        UpdateChecker.UpdateStatusChanged -= StateHasChanged;
     }
 
     public Task OpenModalAsync()
@@ -919,7 +933,7 @@
             await RefreshAsync();
         }
 
-        await SettingsInterop.CheckForUpdatesAsync();
+        await UpdateChecker.CheckForUpdatesAsync();
         checkedForUpdates = true;
     }
 

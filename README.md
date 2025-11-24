@@ -23,18 +23,15 @@ C# and Razor compiler playground in the browser via Blazor WebAssembly. https://
 
 ## Development
 
+For prerequisites, see `eng/build.sh` (in short: you need .NET SDK according to `global.json`
+and workloads `wasm-tools wasm-experimental`).
+
 The recommended startup app for development is `src/Server`.
 
 To hit breakpoints, it is recommended to turn off the worker (in app settings).
 
 - `eng/BuildTools`: build-time tools.
-- `src/App`: the WebAssembly app.
-  - `cd src/App; dotnet watch` (`src/Server` might be better for development though).
-  - Trying out published version locally:
-    ```ps1
-    dotnet tool install -g dotnet-serve
-    dotnet publish .\src\App\ && dotnet serve -d .\artifacts\publish\App\release\wwwroot\ -o -q
-    ```
+- `src/App`: the core app.
 - `src/Compiler`: self-contained project referencing Roslyn/Razor.
   It's reloaded at runtime with a user-chosen version of Roslyn/Razor.
   It should be small (for best reloading perf). It can reference shared code
@@ -45,15 +42,20 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 - `src/RoslynWorkspaceAccess`: `internal` access to Roslyn Workspace DLLs (via fake assembly name).
 - `src/Server`: a Blazor Server entrypoint for easier development of the App
   (it has better tooling support for hot reload and debugging).
-  - `cd src/Server; dotnet watch`
 - `src/Shared`: code used by `Compiler` that does not depend on Roslyn/Razor.
-- `src/Worker`: an app loaded in a web worker (a separate process in the browser),
+- `src/WebAssembly`: web-assembly host of the `App` (this is what's deployed online).
+  - Trying out published version locally:
+    ```ps1
+    dotnet tool install -g dotnet-serve
+    dotnet publish ./src/WebAssembly/ && dotnet serve -d ./artifacts/publish/WebAssembly/release/wwwroot/ -o -q
+    ```
+- `src/Worker`: a separate component that can be loaded in a web worker (a separate process in the browser),
   so it does all the CPU-intensive work to avoid lagging the user interface.
 - `src/WorkerApi`: shared code between `Worker` and `App`.
   This is in preparation for making the worker independent of the app,
   so the app can be optimized (trimming, NativeAOT) and the worker can be loaded more lazily.
+- `src/WorkerWebAssembly`: web-assembly host of the `Worker`.
 - `test/UnitTests`
-  - `dotnet test`
 
 ## Attribution
 

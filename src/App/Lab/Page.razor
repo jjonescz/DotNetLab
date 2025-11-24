@@ -9,6 +9,8 @@
 @inject BlazorMonacoInterop BlazorMonacoInterop
 @inject ILocalStorageService LocalStorage
 @inject CursorSynchronizer.Services CursorSynchronizerServices
+@inject IUpdateChecker UpdateChecker
+@inject IScreenInfo ScreenInfo
 @inject ILogger<Page> Logger
 @using BlazorMonaco.Editor
 
@@ -20,7 +22,7 @@
         @* Need to handle clicks to work around https://github.com/jjonescz/DotNetLab/issues/75. *@
         @* Empty slug is used to go to "initial state + loaded user preferences". *@
         <a href="/#" style="text-decoration: none" @onclick="@(() => OnLocationChanged(""))" @onclick:preventDefault>
-            <img style="vertical-align: middle" src="favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
+            <img style="vertical-align: middle" src="_content/DotNetLab.App/favicon.png" alt="Logo" title=".NET Lab" width="24" height="24" />@*
             *@<span style="margin-left: 0.5em; vertical-align: middle">.NET Lab</span>
         </a>
 
@@ -34,9 +36,18 @@
         <FluentButton OnClick="() => FormatCurrentFileAsync()" Title="Format document (Ctrl+I)"
                       IconStart="@(new Icons.Regular.Size20.CodeText())" Disabled="!IsCurrentInputCSharp" />
 
-        @* Copy URL button *@
-        <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
-                      IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.ClipboardLink())" />
+        @* URL buttons *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="0" Style="width: initial">
+            @* Copy URL button *@
+            <FluentButton OnClick="() => CopyUrlToClipboardAsync()" Title="Copy URL to clipboard (Ctrl+;)"
+                          Style="border-top-right-radius: 0; border-bottom-right-radius: 0"
+                          IconStart="@(urlCopied ? new Icons.Regular.Size20.Checkmark() : new Icons.Regular.Size20.Copy())" />
+
+            @* Load URL button *@
+            <FluentButton OnClick="() => LoadUrlFromClipboardAsync()" Title="Load URL from clipboard"
+                          Style="border-top-left-radius: 0; border-bottom-left-radius: 0"
+                          IconStart="@(new Icons.Regular.Size20.ClipboardPaste())" />
+        </FluentStack>
 
         @* Compile button *@
         <FluentButton Appearance="Appearance.Accent" OnClick="() => CompileAsync()" Loading="compilationInProgress"
@@ -49,7 +60,7 @@
                       IconStart="@(new Icons.Regular.Size20.Settings())">
             Settings
 
-            @if (UpdateInfo.UpdateIsAvailable)
+            @if (UpdateChecker.UpdateIsAvailable)
             {
                 <FluentSpacer Width="4" />
                 <FluentBadge Appearance="Appearance.Accent" title="Update is available">1</FluentBadge>
@@ -286,7 +297,6 @@
     private DotNetObjectReference<Page>? dotNetObjectReference;
     private Action? unregisterEventListeners;
     private IJSObjectReference module = null!;
-    private bool loadedDarkTheme;
     private Input? configuration;
     private string activeInputTabId = IndexToInputTabId(0);
     private StandaloneCodeEditor inputEditor = null!;
@@ -304,7 +314,7 @@
     private bool wordWrap;
     private bool useVim;
     private bool enableMemoryUsageView;
-    private Orientation orientation = GetAutoOrientation();
+    private Orientation orientation;
     private string? workerError;
 
     private record EditorState(TextModel Model) : IAsyncDisposable
@@ -393,26 +403,18 @@
 
     protected override void OnInitialized()
     {
+        orientation = GetAutoOrientation();
+
         NavigationManager.LocationChanged += OnLocationChanged;
-        UpdateInfo.UpdateStatusChanged += StateHasChanged;
+        UpdateChecker.UpdateStatusChanged += StateHasChanged;
         ScreenInfo.Updated += OnScreenInfoUpdated;
         Worker.Failed += OnWorkerFailed;
-
-        // Load editor theme early to avoid flash of light theme.
-        loadedDarkTheme = ((IJSInProcessRuntime)JSRuntime).Invoke<bool>(
-            "eval", """
-                (() => {
-                    const appSetting = JSON.parse(localStorage.getItem('theme'))?.mode;
-                    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    return appSetting === 'dark' || (appSetting !== 'light' && systemDark);
-                })()
-                """);
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
-        UpdateInfo.UpdateStatusChanged -= StateHasChanged;
+        UpdateChecker.UpdateStatusChanged -= StateHasChanged;
         ScreenInfo.Updated -= OnScreenInfoUpdated;
         Worker.Failed -= OnWorkerFailed;
 
@@ -471,6 +473,18 @@
         });
     }
 
+    public async Task LoadUrlFromClipboardAsync()
+    {
+        var text = await module.InvokeAsync<string>("getClipboardText");
+        text ??= "";
+        var hashIndex = text.IndexOf('#');
+        var slug = hashIndex >= 0 ? text[(hashIndex + 1)..] : text;
+        if (NavigateToSlug(slug))
+        {
+            await LoadStateFromUrlAsync();
+        }
+    }
+
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
     {
         return EditorConstructionOptions(editor, output: false);
@@ -492,7 +506,6 @@
             WordWrap = wordWrap ? "on" : "off",
             BracketPairColorization = output ? new() { Enabled = false } : null,
             Padding = new() { Top = 10 },
-            Theme = GetMonacoTheme(dark: loadedDarkTheme),
             Scrollbar = new()
             {
                 // This allows Ctrl+Wheel on the editor to zoom the whole app
@@ -521,7 +534,7 @@
         {
             DesignThemeModes.Dark => true,
             DesignThemeModes.Light => false,
-            _ => loadedDarkTheme,
+            _ => await BlazorMonacoInterop.HasDarkThemeAsync(inputEditor.Id),
         };
         await BlazorMonaco.Editor.Global.SetTheme(JSRuntime, GetMonacoTheme(dark: dark));
     }
@@ -1014,7 +1027,7 @@
                         offsets[i++] = span.End;
                     }
 
-                    BlazorMonacoInterop.UnderlineLinksUnsafe(outputEditor.Id, offsets);
+                    await BlazorMonacoInterop.UnderlineLinksAsync(outputEditor.Id, offsets);
                 }
             }
 
@@ -1149,7 +1162,7 @@
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
         await RegisterFormatActionAsync();
-        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Lab/Page.razor.js?v=3");
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
 
@@ -1309,7 +1322,7 @@
         StateHasChanged();
     }
 
-    private static Orientation GetAutoOrientation()
+    private Orientation GetAutoOrientation()
     {
         return ScreenInfo.IsNarrowScreen ? Orientation.Vertical : Orientation.Horizontal;
     }

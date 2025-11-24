@@ -1,14 +1,7 @@
-﻿using System.Runtime.InteropServices.JavaScript;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DotNetLab.Lab;
-
-internal static partial class SettingsInterop
-{
-    [JSImport("checkForUpdates", "Settings")]
-    public static partial Task CheckForUpdatesAsync();
-}
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(GitHubCommitResponse))]

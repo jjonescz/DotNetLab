@@ -49,6 +49,16 @@ public static class CodeAnalysisUtil
         public static EmitOptions Default => DefaultEmitOptions;
     }
 
+    extension(MetadataReference)
+    {
+        public static PortableExecutableReference LoadFromBytesOrDisk(string name, ImmutableArray<byte> bytes)
+        {
+            return bytes.IsDefault
+                ? MetadataReference.CreateFromFile(Util.GetAssemblyDiskPath(name))
+                : MetadataReference.CreateFromImage(bytes);
+        }
+    }
+
     extension(SourceText text)
     {
 #pragma warning disable RSEXPERIMENTAL003 // 'SyntaxTokenParser' is experimental

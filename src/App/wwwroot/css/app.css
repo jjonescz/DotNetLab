@@ -4,6 +4,14 @@
     --custom-dark: #8967AA;
 }
 
+/*
+    FluentUI sets `data-theme` attribute on `body` when it's loaded from preferences.
+    But at the beginning when there are no preferences, we need to set this default.
+*/
+body:not([data-theme]) {
+    color-scheme: dark light;
+}
+
 .lab-header {
     background-color: light-dark(var(--custom-light), var(--custom-dark)) !important;
 }

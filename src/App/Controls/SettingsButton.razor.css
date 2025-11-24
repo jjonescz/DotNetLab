@@ -4,24 +4,24 @@
 }
 
 ::deep .fluent-card {
-    padding: var(--settings-button-padding);
-    border-radius: calc(var(--control-corner-radius) * 1px);
+    padding: var(--settings-button-padding) !important;
+    border-radius: calc(var(--control-corner-radius) * 1px) !important;
 }
 
 ::deep .clickable-card {
-    background: var(--neutral-fill-input-rest);
+    background: var(--neutral-fill-input-rest) !important;
 }
 
     ::deep .clickable-card:hover {
-        background: var(--neutral-fill-input-hover);
-        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-hover);
-        box-shadow: var(--elevation-shadow-card-hover);
+        background: var(--neutral-fill-input-hover) !important;
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-hover) !important;
+        box-shadow: var(--elevation-shadow-card-hover) !important;
     }
 
     ::deep .clickable-card:active {
-        background: var(--neutral-fill-input-active);
-        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-active);
-        box-shadow: var(--elevation-shadow-card-pressed);
+        background: var(--neutral-fill-input-active) !important;
+        border: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-layer-active) !important;
+        box-shadow: var(--elevation-shadow-card-pressed) !important;
     }
 
 div.content-grid {

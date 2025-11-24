@@ -464,17 +464,14 @@ public sealed class Compiler(
             var configurationParseOptions = parseOptions.WithFeatures(parseOptions.Features.Where(p => p.Key != FileBasedProgramFeatureName));
 
             var configCompilation = CSharpCompilation.Create(
-                assemblyName: "Configuration",
+                // We need a unique assembly name because the ALC can already contain a previous configuration assembly and that would throw on CoreCLR.
+                assemblyName: $"Configuration_{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, configurationParseOptions, "Configuration.cs", Encoding.UTF8),
                     CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, "GlobalUsings.cs", Encoding.UTF8)
                 ],
-                references:
-                [
-                    ..references.Metadata,
-                    ..assemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
-                ],
+                references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
 
             var emitStreams = getEmitStreams(configCompilation, emitPdb: false, out diagnostics);
@@ -486,11 +483,7 @@ public sealed class Compiler(
             else
             {
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
-                var configCompilationWithBuiltInReferences = configCompilation.WithReferences(
-                [
-                    ..references.Metadata,
-                    ..builtInAssemblies!.Values.Select(b => MetadataReference.CreateFromImage(b)),
-                ]);
+                var configCompilationWithBuiltInReferences = configCompilation.WithReferences(getConfigurationReferences(builtInAssemblies!));
                 emitStreams = getEmitStreams(configCompilationWithBuiltInReferences, emitPdb: false, out var diagnosticsWithBuiltInReferences);
                 if (emitStreams != null)
                 {
@@ -513,6 +506,14 @@ public sealed class Compiler(
             Debug.Assert(result.IsCompletedSuccessfully);
 
             return true;
+        }
+
+        MetadataReference[] getConfigurationReferences(ImmutableDictionary<string, ImmutableArray<byte>> assemblies)
+        {
+            return [
+                ..references.Metadata,
+                ..assemblies.Select(p => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value)),
+            ];
         }
 
         static string getFilePath(InputCode input) => directory + input.FileName;

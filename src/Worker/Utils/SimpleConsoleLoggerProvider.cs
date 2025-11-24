@@ -3,7 +3,7 @@
 namespace DotNetLab;
 
 /// <summary>
-/// A simle console logger provider.
+/// A simple console logger provider.
 /// </summary>
 /// <remarks>
 /// The default console logger provider creates threads so it's unsupported on Blazor WebAssembly.

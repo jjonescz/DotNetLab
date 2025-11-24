@@ -489,3 +489,5 @@ $RECYCLE.BIN/
 
 jslib.js*
 dotnet.d.ts
+index.html
+!/src/WorkerWebAssembly/wwwroot/index.html

@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 
 namespace DotNetLab.Lab;
 
@@ -44,23 +43,17 @@ internal sealed class AssemblyDownloader
     }
 }
 
-internal sealed class DotNetBootConfig
+public sealed class DotNetBootConfig
 {
     public required DotNetBootConfigResources Resources { get; init; }
-
-    public static DotNetBootConfig GetFromRuntime()
-    {
-        string json = WorkerInterop.GetDotNetConfig();
-        return JsonSerializer.Deserialize(json, LabWorkerJsonContext.Default.DotNetBootConfig)!;
-    }
 }
 
-internal sealed class DotNetBootConfigResources
+public sealed class DotNetBootConfigResources
 {
     public required ImmutableArray<DotNetBootConfigAssembly> Assembly { get; init; }
 }
 
-internal sealed class DotNetBootConfigAssembly
+public sealed class DotNetBootConfigAssembly
 {
     public required string Name { get; init; }
     public required string VirtualPath { get; init; }

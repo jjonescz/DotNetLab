@@ -6,11 +6,6 @@ using System.Runtime.Loader;
 
 namespace DotNetLab.Lab;
 
-internal sealed record CompilerProxyOptions
-{
-    public bool AssembliesAreAlwaysInDllFormat { get; set; }
-}
-
 /// <summary>
 /// Can load our compiler project with any given Roslyn/Razor compiler version as dependency.
 /// </summary>
@@ -182,7 +177,7 @@ internal sealed class CompilerProxy(
         return new()
         {
             Name = name,
-            Data = await assemblyDownloader.DownloadAsync(name),
+            Data = options.Value.LoadAssembliesFromDisk ? default : await assemblyDownloader.DownloadAsync(name),
             Format = options.Value.AssembliesAreAlwaysInDllFormat ? AssemblyDataFormat.Dll : AssemblyDataFormat.Webcil,
         };
     }
@@ -303,6 +298,14 @@ internal sealed class CompilerLoader(
             if (knownAssemblies.TryGetValue(name, out var loadedAssembly))
             {
                 services.Logger.LogDebug("▶️ {AssemblyName}", assemblyName);
+
+                if (loadedAssembly.Data.IsDefault)
+                {
+                    Debug.Assert(loadedAssembly.Format == AssemblyDataFormat.Dll);
+                    loaded = base.LoadFromAssemblyPath(loadedAssembly.DiskPath);
+                    loadedAssemblies.Add(name, loaded);
+                    return loaded;
+                }
 
                 var bytes = ImmutableCollectionsMarshal.AsArray(loadedAssembly.Data)!;
                 loaded = LoadFromStream(new MemoryStream(bytes));

@@ -54,18 +54,27 @@ internal enum AssemblyDataFormat
 
 internal sealed class LoadedAssembly
 {
+    private bool convertedToDll;
+
     /// <summary>
     /// File name without the extension.
     /// </summary>
     public required string Name { get; init; }
+
+    /// <summary>
+    /// Can be <see langword="default"/> if the assembly should be loaded from disk (from <see cref="DiskPath"/>).
+    /// </summary>
     public required ImmutableArray<byte> Data { get; init; }
+
     public required AssemblyDataFormat Format { get; init; }
+
+    public string DiskPath => Util.GetAssemblyDiskPath(Name);
 
     public ImmutableArray<byte> DataAsDll
     {
         get
         {
-            if (field.IsDefault)
+            if (!convertedToDll)
             {
                 field = Format switch
                 {
@@ -73,7 +82,7 @@ internal sealed class LoadedAssembly
                     AssemblyDataFormat.Webcil => WebcilUtil.WebcilToDll(Data),
                     _ => throw new InvalidOperationException($"Unknown assembly format: {Format}"),
                 };
-                Debug.Assert(!field.IsDefault);
+                convertedToDll = true;
             }
 
             return field;

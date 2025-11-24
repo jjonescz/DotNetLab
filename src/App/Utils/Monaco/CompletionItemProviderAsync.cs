@@ -1,14 +1,12 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Languages;
-using System.Runtime.Versioning;
 
 namespace DotNetLab;
 
 /// <summary>
 /// <see href="https://github.com/serdarciplak/BlazorMonaco/issues/124"/>
 /// </summary>
-[SupportedOSPlatform("browser")]
-internal sealed class CompletionItemProviderAsync(ILoggerFactory loggerFactory)
+public sealed class CompletionItemProviderAsync(ILoggerFactory loggerFactory)
 {
     public delegate Task<string> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
 

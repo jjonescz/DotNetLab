@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -7,11 +7,11 @@
     <title>.NET Lab</title>
     <base href="/" />
     <link href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" rel="stylesheet" />
-    <link rel="stylesheet" href="css/app.css?v=5" />
-    <link rel="icon" type="image/png" href="favicon.png?v=2" />
-    <link href="DotNetLab.App.styles.css?v=3" rel="stylesheet" />
-    <link href="manifest.webmanifest?v=2" rel="manifest" />
-    <link rel="apple-touch-icon" sizes="512x512" href="favicon.png?v=2" />
+    <link rel="stylesheet" href="_content/DotNetLab.App/css/app.css" />
+    <link rel="icon" type="image/png" href="_content/DotNetLab.App/favicon.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="_content/DotNetLab.App/favicon.png" />
+    <link href="@@ASSEMBLY_NAME@@.styles.css" rel="stylesheet" />
+    @@HEAD@@
 </head>
 
 <body>
@@ -57,9 +57,9 @@
     <script src="_content/BlazorMonaco/jsInterop.js"></script>
     <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
     <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
-    <script src="_framework/blazor.webassembly.js"></script>
-    <script src="js/jslib.js"></script>
-    <script>navigator.serviceWorker.register('service-worker.js');</script>
+    <script src="@@SCRIPT_PATH@@"></script>
+    <script src="_content/DotNetLab.App/js/jslib.js"></script>
+    @@SCRIPTS@@
 </body>
 
 </html>

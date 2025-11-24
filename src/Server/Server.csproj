@@ -5,7 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\App\App.csproj" />
+    <ProjectReference Include="..\WebAssembly\WebAssembly.csproj" />
   </ItemGroup>
 
 </Project>
