@@ -6,14 +6,14 @@
             "type": "blazorwasm",
             "request": "launch",
             "hosted": true,
-            "program": "${workspaceFolder}/src/Server/bin/Debug/net10.0/DotNetLab.Server.dll",
-            "cwd": "${workspaceFolder}/src/App"
+            "program": "${workspaceFolder}/artifacts/bin/Server/debug/DotNetLab.Server.dll",
+            "cwd": "${workspaceFolder}/src/Server"
         },
         {
-            "name": "App",
+            "name": "WebAssembly",
             "type": "blazorwasm",
             "request": "launch",
-            "cwd": "${workspaceFolder}/src/App"
+            "cwd": "${workspaceFolder}/src/WebAssembly"
         }
     ]
 }
