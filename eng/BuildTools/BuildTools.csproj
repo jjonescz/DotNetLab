@@ -4,6 +4,18 @@
     <!-- Cannot target TFM newer than the compiler host. -->
     <TargetFramework>net8.0</TargetFramework>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+    <!-- 
+      RS1041: Compiler extensions should be implemented in assemblies targeting netstandard2.0
+      Justification: We are fine with only supporting .NET Core compiler hosts.
+    -->
+    <NoWarn>$(NoWarn);RS1041</NoWarn>
+
+    <!-- 
+      RS2008: Enable analyzer release tracking
+      Justification: Our analyzer is not for external use.
+    -->
+    <NoWarn>$(NoWarn);RS2008</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

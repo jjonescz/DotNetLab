@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class HoverProvider(ILoggerFactory loggerFactory)
+public sealed class HoverProvider(ILoggerFactory loggerFactory)
 {
     public ILogger<HoverProvider> Logger { get; } = loggerFactory.CreateLogger<HoverProvider>();
 

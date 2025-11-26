@@ -1,6 +1,6 @@
 namespace DotNetLab;
 
-internal static class Logging
+public static class Logging
 {
     public static LogLevel LogLevel { get; set; } = LogLevel.Information;
 

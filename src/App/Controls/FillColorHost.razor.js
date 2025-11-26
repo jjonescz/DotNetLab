@@ -1,7 +1,7 @@
-﻿import * as fluent from '../_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js';
+﻿import * as fluent from '../../Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js';
 
 /**
- * @returns {(() => void) | null}
+ * @returns {Readonly<{ dispose: () => void }> | null}
  */
 export function setFillColor(element, color) {
     if (element instanceof HTMLElement) {
@@ -19,7 +19,7 @@ export function setFillColor(element, color) {
                         }
                     };
                     theme.addEventListener('onchange', themeListener);
-                    return () => theme.removeEventListener('onchange', themeListener);
+                    return { dispose: () => theme.removeEventListener('onchange', themeListener) };
                 }
 
                 return null;
@@ -33,8 +33,8 @@ export function setFillColor(element, color) {
 }
 
 /**
- * @param {() => void} fn
+ * @param {Readonly<{ dispose: () => void }>} disposable
  */
-export function dispose(fn) {
-    fn();
+export function dispose(disposable) {
+    disposable.dispose();
 }

@@ -1,0 +1,10 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..'))" />
+
+  <PropertyGroup>
+    <!-- Allow self-contained publishing. -->
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+</Project>

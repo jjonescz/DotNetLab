@@ -259,6 +259,47 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         Assert.Equal("<div>42</div>", htmlText);
     }
 
+    [Fact]
+    public async Task ConfigurationFile()
+    {
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+
+        var source = "unsafe { int* p = null; }";
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Configuration = """
+                    Config.CSharpCompilationOptions(options => options
+                        .WithAllowUnsafe(false));
+                    """,
+            });
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Equal($$"""
+            // (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
+            // unsafe { int* p = null; }
+            Diagnostic(ErrorCode.ERR_IllegalUnsafe, "unsafe").WithLocation(1, 1)
+            """.ReplaceLineEndings(), diagnosticsText);
+
+        // Changing configuration should work.
+        compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Configuration = """
+                    Config.CSharpCompilationOptions(options => options
+                        .WithAllowUnsafe(true));
+                    """,
+            });
+
+        diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+    }
+
     [Theory, CombinatorialData]
     public async Task AsyncMain(bool args)
     {

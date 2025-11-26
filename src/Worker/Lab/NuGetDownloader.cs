@@ -526,7 +526,8 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 CacheContext = cacheContext,
                 DependencyInfo = dep,
                 // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
-                Zip = !dep.Source.PackageSource.IsNuGetOrg
+                // Outside browser, use full nupkg because it's persistently cached.
+                Zip = !OperatingSystem.IsBrowser() || !dep.Source.PackageSource.IsNuGetOrg
                     ? null
                     : new(async () =>
                     {

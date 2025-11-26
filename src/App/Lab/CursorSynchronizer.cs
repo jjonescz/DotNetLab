@@ -1,8 +1,5 @@
-﻿using System.Runtime.Versioning;
+﻿namespace DotNetLab.Lab;
 
-namespace DotNetLab.Lab;
-
-[SupportedOSPlatform("browser")]
 internal sealed class CursorSynchronizer(
     CursorSynchronizer.Services services,
     BlazorMonaco.Editor.Editor inputEditor,
@@ -14,8 +11,8 @@ internal sealed class CursorSynchronizer(
 
     public async Task InitAsync()
     {
-        await services.Interop.OnDidChangeCursorPosition(inputEditor.Id, OnInputCursorPositionChanged);
-        await services.Interop.OnDidChangeCursorPosition(outputEditor.Id, OnOutputCursorPositionChanged);
+        await services.Interop.OnDidChangeCursorPositionAsync(inputEditor.Id, OnInputCursorPositionChangedAsync);
+        await services.Interop.OnDidChangeCursorPositionAsync(outputEditor.Id, OnOutputCursorPositionChangedAsync);
     }
 
     public void Enable(CompiledFileOutputMetadata? metadata)
@@ -32,7 +29,7 @@ internal sealed class CursorSynchronizer(
         }
     }
 
-    private void OnInputCursorPositionChanged(int position)
+    private async Task OnInputCursorPositionChangedAsync(int position)
     {
         if (inputToOutputMapping.IsDefault ||
             !inputToOutputMapping.TryFind(position, out _, out var outputSpan))
@@ -40,10 +37,10 @@ internal sealed class CursorSynchronizer(
             return;
         }
 
-        BlazorMonacoInterop.SetSelectionUnsafe(outputEditor.Id, outputSpan.Start, outputSpan.End);
+        await services.Interop.SetSelectionAsync(outputEditor.Id, outputSpan.Start, outputSpan.End);
     }
 
-    private void OnOutputCursorPositionChanged(int position)
+    private async Task OnOutputCursorPositionChangedAsync(int position)
     {
         if (outputToInputMapping.IsDefault ||
             !outputToInputMapping.TryFind(position, out _, out var inputSpan))
@@ -51,6 +48,6 @@ internal sealed class CursorSynchronizer(
             return;
         }
 
-        BlazorMonacoInterop.SetSelectionUnsafe(inputEditor.Id, inputSpan.Start, inputSpan.End);
+        await services.Interop.SetSelectionAsync(inputEditor.Id, inputSpan.Start, inputSpan.End);
     }
 }

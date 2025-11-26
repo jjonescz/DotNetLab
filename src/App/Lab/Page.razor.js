@@ -33,3 +33,7 @@ export function restoreMonacoEditorViewState(editorId, state) {
 export function copyUrlToClipboard() {
     navigator.clipboard.writeText(window.location.href);
 }
+
+export function getClipboardText() {
+    return navigator.clipboard.readText();
+}

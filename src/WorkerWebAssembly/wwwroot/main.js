@@ -41,7 +41,7 @@ instance.setModuleImports('worker-imports.js', {
 
 instance.setModuleImports('worker-interop.js', interop);
 
-await instance.runMainAndExit('DotNetLab.Worker.wasm');
+await instance.runMainAndExit('DotNetLab.WorkerWebAssembly.wasm');
 
 /**
  * @param {MessagePort} port

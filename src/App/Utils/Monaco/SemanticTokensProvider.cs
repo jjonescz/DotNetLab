@@ -5,7 +5,7 @@
 /// <see href="https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider">DocumentSemanticTokensProvider</see> and
 /// <see href="https://code.visualstudio.com/api/references/vscode-api#DocumentRangeSemanticTokensProvider">DocumentRangeSemanticTokensProvider</see>.
 /// </summary>
-internal sealed class SemanticTokensProvider(ILoggerFactory loggerFactory)
+public sealed class SemanticTokensProvider(ILoggerFactory loggerFactory)
 {
     public ILogger<SemanticTokensProvider> Logger { get; } = loggerFactory.CreateLogger<SemanticTokensProvider>();
 

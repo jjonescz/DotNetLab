@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class DefinitionProvider(ILoggerFactory loggerFactory)
+public sealed class DefinitionProvider(ILoggerFactory loggerFactory)
 {
     public ILogger<DefinitionProvider> Logger { get; } = loggerFactory.CreateLogger<DefinitionProvider>();
 

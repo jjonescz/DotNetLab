@@ -2,11 +2,9 @@
 using BlazorMonaco.Languages;
 using Microsoft.JSInterop;
 using System.IO.Compression;
-using System.Runtime.Versioning;
 
 namespace DotNetLab.Lab;
 
-[SupportedOSPlatform("browser")]
 internal sealed class LanguageServicesClient(
     ILoggerFactory loggerFactory,
     ILogger<LanguageServicesClient> logger,
@@ -17,7 +15,7 @@ internal sealed class LanguageServicesClient(
     private readonly LanguageSelector cSharpLanguageSelector = new(CompiledAssembly.CSharpLanguageId);
     private readonly LanguageSelector outputLanguageSelector = new(CompiledAssembly.OutputLanguageId);
     private Dictionary<string, string> modelUrlToFileName = [];
-    private IDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
+    private IAsyncDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
     private int outputRegistered;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
@@ -89,7 +87,7 @@ internal sealed class LanguageServicesClient(
         }
         else
         {
-            Unregister();
+            await UnregisterAsync();
         }
     }
 
@@ -202,19 +200,27 @@ internal sealed class LanguageServicesClient(
         });
     }
 
-    private void Unregister()
+    private async Task UnregisterAsync()
     {
-        completionProvider?.Dispose();
-        completionProvider = null;
-        semanticTokensProvider?.Dispose();
-        semanticTokensProvider = null;
-        codeActionProvider?.Dispose();
-        codeActionProvider = null;
-        hoverProvider?.Dispose();
-        hoverProvider = null;
-        signatureHelpProvider?.Dispose();
-        signatureHelpProvider = null;
         InvalidateCaches();
+        await Task.WhenAll(
+            UnregisterOneAsync(ref completionProvider),
+            UnregisterOneAsync(ref semanticTokensProvider),
+            UnregisterOneAsync(ref codeActionProvider),
+            UnregisterOneAsync(ref hoverProvider),
+            UnregisterOneAsync(ref signatureHelpProvider));
+    }
+
+    private static Task UnregisterOneAsync(ref IAsyncDisposable? disposable)
+    {
+        if (disposable is not null)
+        {
+            var result = disposable.DisposeAsync();
+            disposable = null;
+            return result.AsTask();
+        }
+
+        return Task.CompletedTask;
     }
 
     private void InvalidateCaches()
@@ -222,11 +228,11 @@ internal sealed class LanguageServicesClient(
         lastCodeActions = null;
     }
 
-    public Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true, bool refresh = false)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true, bool refresh = false)
     {
         if (!Enabled)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         InvalidateCaches();
@@ -241,12 +247,9 @@ internal sealed class LanguageServicesClient(
         if (refresh)
         {
             // Refresh semantic tokens which might be outdated after compilation (e.g., due to new references).
-            semanticTokensProvider?.Dispose();
-            semanticTokensProvider = null;
-            return RegisterSemanticTokensProviderAsync();
+            await UnregisterOneAsync(ref semanticTokensProvider);
+            await RegisterSemanticTokensProviderAsync();
         }
-
-        return Task.CompletedTask;
     }
 
     public void OnDidChangeModel(ModelChangedEvent args)

@@ -37,8 +37,8 @@ div.content-presenter {
 }
 
 ::deep a.text-button {
-    font-weight: bold;
-    text-decoration: inherit;
+    font-weight: bold !important;
+    text-decoration: inherit !important;
 }
 
 @media (max-width: 600px) {

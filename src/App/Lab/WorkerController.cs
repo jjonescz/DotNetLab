@@ -1,7 +1,6 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Text.Json;
@@ -13,7 +12,8 @@ namespace DotNetLab.Lab;
 internal sealed class WorkerController : IAsyncDisposable
 {
     private readonly ILogger<WorkerController> logger;
-    private readonly IWebAssemblyHostEnvironment hostEnvironment;
+    private readonly IAppHostEnvironment hostEnvironment;
+    private readonly IWorkerConfigurer? workerConfigurer;
     private readonly Dispatcher dispatcher;
     private readonly Lazy<IServiceProvider> workerServices;
     private readonly Channel<WorkerInputMessage> workerInputMessages = Channel.CreateUnbounded<WorkerInputMessage>();
@@ -24,14 +24,17 @@ internal sealed class WorkerController : IAsyncDisposable
     private int messageId;
 
     [SupportedOSPlatform("browser")]
-    private readonly Lazy<Task> initializeInteropScript = new(() => JSHost.ImportAsync(nameof(WorkerController), "../js/WorkerController.js"));
+    private readonly Lazy<Task> initializeInteropScript = new(() => JSHost.ImportAsync(nameof(WorkerController), "../_content/DotNetLab.App/js/WorkerController.js"));
 
     public WorkerController(
         ILogger<WorkerController> logger,
-        IWebAssemblyHostEnvironment hostEnvironment)
+        IAppHostEnvironment hostEnvironment,
+        IWorkerConfigurer? workerConfigurer)
     {
         this.logger = logger;
         this.hostEnvironment = hostEnvironment;
+        this.workerConfigurer = workerConfigurer;
+        Disabled = !hostEnvironment.SupportsWebWorkers;
         dispatcher = Dispatcher.CreateDefault();
         workerServices = new(CreateWorkerServices);
         workerSendingTask = new(SendWorkerMessagesAsync);
@@ -39,7 +42,15 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public event Action<string>? Failed;
 
-    public bool Disabled { get; set; }
+    public bool Disabled
+    {
+        get;
+        set
+        {
+            Debug.Assert(value || hostEnvironment.SupportsWebWorkers);
+            field = value;
+        }
+    }
 
     public PingResult? LastPingResult { get; private set; }
 
@@ -55,7 +66,8 @@ internal sealed class WorkerController : IAsyncDisposable
     {
         return WorkerServices.Create(
            baseUrl: hostEnvironment.BaseAddress,
-           logLevel: Logging.LogLevel);
+           logLevel: Logging.LogLevel,
+           configureServices: workerConfigurer is null ? null : workerConfigurer.ConfigureWorkerServices);
     }
 
     private async Task<WorkerInstance?> GetWorkerAsync()
@@ -135,7 +147,7 @@ internal sealed class WorkerController : IAsyncDisposable
             if (OperatingSystem.IsBrowser())
             {
                 // One-time initialization.
-                await JSHost.ImportAsync("worker-interop.js", "../_content/DotNetLab.Worker/interop.js");
+                await JSHost.ImportAsync("worker-interop.js", "../_content/DotNetLab.WorkerWebAssembly/interop.js");
             }
 
             worker = Task.FromResult<WorkerInstance?>(null);
@@ -173,6 +185,7 @@ internal sealed class WorkerController : IAsyncDisposable
         return worker;
     }
 
+    [SupportedOSPlatform("browser")]
     private async Task<WorkerInstance?> CreateWorkerAsync()
     {
         Debug.Assert(!Disabled);
@@ -193,7 +206,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            scriptUrl: getWorkerUrl("../_content/DotNetLab.Worker/main.js?v=3", [hostEnvironment.BaseAddress, Logging.LogLevel.ToString()]),
+            scriptUrl: getWorkerUrl("../_content/DotNetLab.WorkerWebAssembly/main.js", [hostEnvironment.BaseAddress, Logging.LogLevel.ToString()]),
             messageHandler: void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>
@@ -250,9 +263,11 @@ internal sealed class WorkerController : IAsyncDisposable
         {
             // Append args as &arg=...&arg=...&arg=...
             var sb = new StringBuilder(url);
+            int i = 0;
             foreach (var arg in args)
             {
-                sb.Append("&arg=");
+                sb.Append(i++ == 0 ? '?' : '&');
+                sb.Append("arg=");
                 sb.Append(Uri.EscapeDataString(arg));
             }
             return sb.ToString();
@@ -318,6 +333,8 @@ internal sealed class WorkerController : IAsyncDisposable
 
         _ = Task.Run(async () =>
         {
+            Debug.Assert(OperatingSystem.IsBrowser());
+
             try
             {
                 while (true)
@@ -567,7 +584,7 @@ internal sealed class WorkerInstance
 
 internal static partial class WorkerControllerInterop
 {
-    [JSImport("createWorker", nameof(WorkerController))]
+    [JSImport("createWorker", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial JSObject CreateWorker(
         string scriptUrl,
         [JSMarshalAs<JSType.Function<JSType.String>>]
@@ -575,19 +592,19 @@ internal static partial class WorkerControllerInterop
         [JSMarshalAs<JSType.Function<JSType.String>>]
         Action<string> errorHandler);
 
-    [JSImport("workerReady", nameof(WorkerController))]
+    [JSImport("workerReady", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial void WorkerReady(JSObject workerSetup);
 
-    [JSImport("postMessage", nameof(WorkerController))]
+    [JSImport("postMessage", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial void PostMessage(JSObject workerSetup, string message);
 
-    [JSImport("postSideMessage", nameof(WorkerController))]
+    [JSImport("postSideMessage", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial void PostSideMessage(JSObject workerSetup, string message);
 
-    [JSImport("disposeWorker", nameof(WorkerController))]
+    [JSImport("disposeWorker", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial void DisposeWorker(JSObject workerSetup);
 
-    [JSImport("collectAndDownloadGcDump", nameof(WorkerController))]
+    [JSImport("collectAndDownloadGcDump", nameof(WorkerController)), SupportedOSPlatform("browser")]
     public static partial void CollectAndDownloadGcDump();
 }
 
@@ -595,4 +612,9 @@ internal sealed class WorkerException(WorkerOutputMessage.Failure failure)
     : Exception(failure.FullString)
 {
     public WorkerOutputMessage.Failure Failure { get; } = failure;
+}
+
+public interface IWorkerConfigurer
+{
+    void ConfigureWorkerServices(ServiceCollection services);
 }

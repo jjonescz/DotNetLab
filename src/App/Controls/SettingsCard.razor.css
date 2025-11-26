@@ -3,7 +3,7 @@
 }
 
 ::deep .fluent-card {
-    padding: var(--settings-card-padding);
-    background: var(--neutral-fill-input-rest);
-    border-radius: calc(var(--control-corner-radius) * 1px);
+    padding: var(--settings-card-padding) !important;
+    background: var(--neutral-fill-input-rest) !important;
+    border-radius: calc(var(--control-corner-radius) * 1px) !important;
 }

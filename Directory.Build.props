@@ -11,6 +11,7 @@
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
 
     <!--
         Needed to get diagnostics inside XML doc comments.
@@ -25,8 +26,11 @@
     <PublishTrimmed>false</PublishTrimmed>
     <WasmNativeStrip>false</WasmNativeStrip>
 
-    <!-- Needed to allow collecting GC traces. -->
-    <EnableDiagnostics>true</EnableDiagnostics>
+    <!-- Needed to allow collecting GC traces. Only enabled in Release config to speed up dev loop. -->
+    <EnableDiagnostics Condition="'$(Configuration)' == 'Release'">true</EnableDiagnostics>
+
+    <!-- Disable runtime relinking and similar optimizations to speed up dev loop. -->
+    <UsingBrowserRuntimeWorkload Condition="'$(Configuration)' != 'Release'">false</UsingBrowserRuntimeWorkload>
 
     <!--
       Suppress a warning like this one https://github.com/dotnet/runtime/issues/119317.

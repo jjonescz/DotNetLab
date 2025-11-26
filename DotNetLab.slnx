@@ -1,10 +1,15 @@
 <Solution>
   <Folder Name="/eng/">
+    <File Path="eng/AppEntryPoint.targets" />
     <File Path="eng/build.sh" />
     <File Path="eng/CopyDotNetDTs.targets" />
+    <File Path="eng/index.template.html" />
+    <File Path="eng/IndexHtmlGeneration.targets" />
     <Project Path="eng/BuildTools/BuildTools.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <File Path="src/Directory.Build.props" />
+    <File Path="src/Directory.Build.targets" />
     <Project Path="src/App/App.csproj" />
     <Project Path="src/Compiler/Compiler.csproj" />
     <Project Path="src/RazorAccess/RazorAccess.csproj" />
@@ -13,8 +18,10 @@
     <Project Path="src/RoslynWorkspaceAccess/RoslynWorkspaceAccess.csproj" />
     <Project Path="src/Server/Server.csproj" />
     <Project Path="src/Shared/Shared.csproj" />
+    <Project Path="src/WebAssembly/WebAssembly.csproj" />
     <Project Path="src/Worker/Worker.csproj" />
     <Project Path="src/WorkerApi/WorkerApi.csproj" />
+    <Project Path="src/WorkerWebAssembly/WorkerWebAssembly.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/UnitTests/UnitTests.csproj" />

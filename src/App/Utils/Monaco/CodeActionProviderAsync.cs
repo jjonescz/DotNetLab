@@ -1,6 +1,6 @@
 ﻿namespace DotNetLab;
 
-internal sealed class CodeActionProviderAsync(ILoggerFactory loggerFactory)
+public sealed class CodeActionProviderAsync(ILoggerFactory loggerFactory)
 {
     public ILogger<CodeActionProviderAsync> Logger { get; } = loggerFactory.CreateLogger<CodeActionProviderAsync>();
 

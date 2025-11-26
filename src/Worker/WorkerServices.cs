@@ -20,7 +20,6 @@ public static class WorkerServices
             },
             configureServices: services =>
             {
-                services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () => null);
                 services.Configure<CompilerProxyOptions>(static options =>
                 {
                     options.AssembliesAreAlwaysInDllFormat = true;
@@ -40,7 +39,8 @@ public static class WorkerServices
     public static IServiceProvider Create(
         string baseUrl,
         LogLevel logLevel,
-        HttpMessageHandler? httpMessageHandler = null)
+        HttpMessageHandler? httpMessageHandler = null,
+        Action<ServiceCollection>? configureServices = null)
     {
         return Create(
             logLevel,
@@ -48,7 +48,8 @@ public static class WorkerServices
             {
                 var handler = httpMessageHandler ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp);
                 return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
-            });
+            },
+            configureServices);
     }
 
     private static IServiceProvider Create(
@@ -79,7 +80,7 @@ public static class WorkerServices
         services.AddScoped<IRefAssemblyDownloader, RefAssemblyDownloader>();
         services.AddScoped<INuGetDownloader>(static sp => sp.GetRequiredService<NuGetDownloaderPlugin>());
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
-        services.AddScoped<Func<DotNetBootConfig?>>(static _ => DotNetBootConfig.GetFromRuntime);
+        services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () => null);
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }

@@ -4,12 +4,12 @@
 
 export function onDidChangeCursorPosition(editorId, callback) {
     const editor = window.blazorMonaco.editor.getEditor(editorId);
-    return editor.onDidChangeCursorPosition((e) => {
+    return editor.onDidChangeCursorPosition(async (e) => {
         if (e.reason === 3 /* explicit user gesture */) {
             const model = editor.getModel();
             if (model) {
                 const offset = model.getOffsetAt(e.position);
-                globalThis.DotNetLab.BlazorMonacoInterop.OnDidChangeCursorPositionCallback(callback, offset);
+                await DotNet.invokeMethodAsync('DotNetLab.App', 'OnDidChangeCursorPositionCallbackAsync', callback, offset);
             }
         }
     });
@@ -38,26 +38,36 @@ export function registerCompletionProvider(language, triggerCharacters, completi
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
-            /** @type {monaco.languages.CompletionList} */
-            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCompletionItemsAsync(
-                completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), token));
+            const tokenRef = wrapToken(token);
+            try {
+                /** @type {monaco.languages.CompletionList} */
+                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
+                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
 
-            for (const item of result.suggestions) {
-                // `insertText` is missing if it's equal to `label` to save bandwidth
-                // but monaco editor expects it to be always present.
-                item.insertText ??= item.label;
+                for (const item of result.suggestions) {
+                    // `insertText` is missing if it's equal to `label` to save bandwidth
+                    // but monaco editor expects it to be always present.
+                    item.insertText ??= item.label;
 
-                // These are the same for all completion items.
-                item.range = result.range;
-                item.commitCharacters = result.commitCharacters;
+                    // These are the same for all completion items.
+                    item.range = result.range;
+                    item.commitCharacters = result.commitCharacters;
+                }
+
+                return result;
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
             }
-
-            return result;
         },
         resolveCompletionItem: async (completionItem, token) => {
-            const json = await globalThis.DotNetLab.BlazorMonacoInterop.ResolveCompletionItemAsync(
-                completionItemProvider, JSON.stringify(completionItem), token);
-            return json ? JSON.parse(json) : completionItem;
+            const tokenRef = wrapToken(token);
+            try {
+                const json = await DotNet.invokeMethodAsync('DotNetLab.App', 'ResolveCompletionItemAsync',
+                    completionItemProvider, JSON.stringify(completionItem), tokenRef);
+                return json ? JSON.parse(json) : completionItem;
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
+            }
         },
     });
 }
@@ -89,9 +99,14 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
     disposables.add(monaco.languages.registerDocumentSemanticTokensProvider(languageParsed, {
         getLegend: () => legendParsed,
         provideDocumentSemanticTokens: async (model, lastResultId, token) => {
-            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
-                provider, decodeURI(model.uri.toString()), null, debugSemanticTokens, token);
-            return decodeResult(result, legendParsed);
+            const tokenRef = wrapToken(token);
+            try {
+                const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
+                    provider, decodeURI(model.uri.toString()), null, debugSemanticTokens, tokenRef);
+                return decodeResult(result, legendParsed);
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
+            }
         },
         releaseDocumentSemanticTokens: (resultId) => {
             // Not implemented.
@@ -103,9 +118,14 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
         disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
             getLegend: () => legendParsed,
             provideDocumentRangeSemanticTokens: async (model, range, token) => {
-                const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSemanticTokensAsync(
-                    provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, token);
-                return decodeResult(result, legendParsed);
+                const tokenRef = wrapToken(token);
+                try {
+                    const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
+                        provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, tokenRef);
+                    return decodeResult(result, legendParsed);
+                } finally {
+                    DotNet.disposeJSObjectReference(tokenRef);
+                }
             },
         }));
     }
@@ -143,26 +163,31 @@ export function registerCodeActionProvider(language, codeActionProvider) {
     // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCodeActionProvider.html
     return monaco.languages.registerCodeActionProvider(JSON.parse(language), {
         provideCodeActions: async (model, range, context, token) => {
-            const result = JSON.parse(await globalThis.DotNetLab.BlazorMonacoInterop.ProvideCodeActionsAsync(
-                codeActionProvider, decodeURI(model.uri.toString()), JSON.stringify(range), token));
+            const tokenRef = wrapToken(token);
+            try {
+                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCodeActionsAsync',
+                    codeActionProvider, decodeURI(model.uri.toString()), JSON.stringify(range), tokenRef));
 
-            if (result === null) {
-                // If null result is returned, it means the request should be ignored, so we need to throw
-                // (as opposed to returning no code actions).
-                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                throw new Error('busy');
-            }
-
-            for (const action of result) {
-                for (const edit of action.edit?.edits ?? []) {
-                    edit.resource = monaco.Uri.parse(edit.resource);
+                if (result === null) {
+                    // If null result is returned, it means the request should be ignored, so we need to throw
+                    // (as opposed to returning no code actions).
+                    // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                    throw new Error('busy');
                 }
-            }
 
-            return {
-                actions: result,
-                dispose: () => { }, // Currently not used.
-            };
+                for (const action of result) {
+                    for (const edit of action.edit?.edits ?? []) {
+                        edit.resource = monaco.Uri.parse(edit.resource);
+                    }
+                }
+
+                return {
+                    actions: result,
+                    dispose: () => { }, // Currently not used.
+                };
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
+            }
         },
     }, {
         providedCodeActionKinds: ['quickfix'],
@@ -172,9 +197,9 @@ export function registerCodeActionProvider(language, codeActionProvider) {
 export function registerDefinitionProvider(language, definitionProvider) {
     // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDefinitionProvider.html
     return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
-        provideDefinition: (model, position, token) => {
+        provideDefinition: async (model, position, token) => {
             const offset = model.getOffsetAt(position);
-            const result = globalThis.DotNetLab.BlazorMonacoInterop.ProvideDefinition(
+            const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideDefinition',
                 definitionProvider, decodeURI(model.uri.toString()), offset);
 
             if (result === null) {
@@ -199,17 +224,22 @@ export function registerHoverProvider(language, hoverProvider) {
     // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
     return monaco.languages.registerHoverProvider(JSON.parse(language), {
         provideHover: async (model, position, token, context) => {
-            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideHoverAsync(
-                hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), token);
+            const tokenRef = wrapToken(token);
+            try {
+                const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideHoverAsync',
+                    hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), tokenRef);
 
-            if (result === null) {
-                // If null result is returned, it means the request should be ignored, so we need to throw
-                // (as opposed to returning no code actions).
-                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                throw new Error('busy');
+                if (result === null) {
+                    // If null result is returned, it means the request should be ignored, so we need to throw
+                    // (as opposed to returning no code actions).
+                    // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                    throw new Error('busy');
+                }
+
+                return { contents: [{ value: result }] };
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
             }
-
-            return { contents: [{ value: result }] };
         },
     });
 }
@@ -219,32 +249,37 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
     return monaco.languages.registerSignatureHelpProvider(JSON.parse(language), {
         signatureHelpTriggerCharacters: ['(', ','],
         provideSignatureHelp: async (model, position, token, context) => {
-            const contextLight = {
-                ...context,
-                // Avoid sending currently unused data.
-                activeSignatureHelp: undefined,
-            };
+            const tokenRef = wrapToken(token);
+            try {
+                const contextLight = {
+                    ...context,
+                    // Avoid sending currently unused data.
+                    activeSignatureHelp: undefined,
+                };
 
-            const result = await globalThis.DotNetLab.BlazorMonacoInterop.ProvideSignatureHelpAsync(
-                hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(contextLight), token);
+                const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSignatureHelpAsync',
+                    hoverProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(contextLight), tokenRef);
 
-            if (result === null) {
-                // If null result is returned, it means the request should be ignored, so we need to throw
-                // (as opposed to returning no code actions).
-                // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                throw new Error('busy');
+                if (result === null) {
+                    // If null result is returned, it means the request should be ignored, so we need to throw
+                    // (as opposed to returning no code actions).
+                    // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
+                    throw new Error('busy');
+                }
+
+                const parsed = JSON.parse(result);
+
+                if (parsed === null) {
+                    return null;
+                }
+
+                return {
+                    value: parsed,
+                    dispose: () => { }, // Currently not used.
+                };
+            } finally {
+                DotNet.disposeJSObjectReference(tokenRef);
             }
-
-            const parsed = JSON.parse(result);
-
-            if (parsed === null) {
-                return null;
-            }
-
-            return {
-                value: parsed,
-                dispose: () => { }, // Currently not used.
-            };
         },
     });
 }
@@ -278,19 +313,20 @@ export function registerLanguage(languageId) {
     monaco.languages.register({ id: languageId });
 }
 
-/**
- * @param {monaco.IDisposable} disposable
- */
-export function dispose(disposable) {
-    disposable.dispose();
+export function hasDarkTheme(editorId) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    const theme = editor.getRawOptions().theme;
+    return Boolean(theme) && theme.includes('dark');
 }
 
-/**
- * @param {monaco.CancellationToken} token
- * @param {() => void} callback
- */
-export function onCancellationRequested(token, callback) {
-    token.onCancellationRequested(callback);
+function wrapToken(token) {
+    return DotNet.createJSObjectReference({ 
+        onCancellationRequested(tokenWrapper) {
+            token.onCancellationRequested(async () => {
+                await tokenWrapper.invokeMethodAsync('Cancel');
+            });
+        },
+    });
 }
 
 class DisposableList {

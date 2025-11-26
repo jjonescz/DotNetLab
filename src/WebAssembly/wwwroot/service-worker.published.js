@@ -68,7 +68,7 @@ async function onActivate() {
  */
 async function onFetch(event) {
     // If there is only one remaining client that is navigating
-    // (e.g., being refreshed using the broswer reload button),
+    // (e.g., being refreshed using the browser reload button),
     // and there is a new version of the service worker waiting,
     // force active the new version and reload the page (so it uses the new version).
     if (event.request.mode === 'navigate' &&
@@ -77,7 +77,7 @@ async function onFetch(event) {
         (await worker.clients.matchAll()).length < 2
     ) {
         worker.registration.waiting.postMessage('skipWaiting');
-        return new Repsonse('', { headers: { Refresh: '0' } });
+        return new Response('', { headers: { Refresh: '0' } });
     }
 
     let cachedResponse = null;
