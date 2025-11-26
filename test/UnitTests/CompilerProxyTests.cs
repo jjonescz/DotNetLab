@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace DotNetLab;
 
@@ -709,61 +708,6 @@ public class C
     }
 
     [Fact]
-    public async Task FormatCode_01()
-    {
-        var services = WorkerServices.CreateTest();
-        var compiler = services.GetRequiredService<CompilerProxy>();
-
-        var unformatted = """
-            class Test{
-            public void Method(  ){
-            var x=1;
-            }
-            }
-            """;
-
-        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: false))
-            .ReplaceLineEndings(Environment.NewLine);
-
-        var expected = """
-            class Test
-            {
-                public void Method()
-                {
-                    var x = 1;
-                }
-            }
-            """.ReplaceLineEndings(Environment.NewLine);
-
-        Assert.Equal(expected, formatted);
-    }
-
-    [Fact]
-    public async Task FormatCode_02()
-    {
-        var services = WorkerServices.CreateTest();
-        var compiler = services.GetRequiredService<CompilerProxy>();
-
-        var unformatted = """
-              #r   "nuget: Newtonsoft.Json, 13.0.3"
-            using   Newtonsoft.Json;
-              var   json = "{}"; 
-            """;
-
-        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: true))
-            .ReplaceLineEndings(Environment.NewLine);
-
-        var expected = """
-            #r "nuget: Newtonsoft.Json, 13.0.3"
-            using Newtonsoft.Json;
-
-            var json = "{}";
-            """.ReplaceLineEndings(Environment.NewLine);
-
-        Assert.Equal(expected, formatted);
-    }
-
-    [Fact]
     public async Task Directives_Package_Roslyn()
     {
         var services = WorkerServices.CreateTest(output);
@@ -839,6 +783,61 @@ public class C
             now
             Stderr:
             """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    [Fact]
+    public async Task FormatCode_01()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+            class Test{
+            public void Method(  ){
+            var x=1;
+            }
+            }
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: false))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            class Test
+            {
+                public void Method()
+                {
+                    var x = 1;
+                }
+            }
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
+    }
+
+    [Fact]
+    public async Task FormatCode_02()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+              #r   "nuget: Newtonsoft.Json, 13.0.3"
+            using   Newtonsoft.Json;
+              var   json = "{}"; 
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: true))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            #r "nuget: Newtonsoft.Json, 13.0.3"
+            using Newtonsoft.Json;
+
+            var json = "{}";
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
     }
 }
 
