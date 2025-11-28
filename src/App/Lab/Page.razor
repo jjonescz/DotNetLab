@@ -354,6 +354,11 @@
         {
             var i = InputTabIdToIndex(activeInputTabId);
 
+            if (i == (int)SpecialInput.Configuration)
+            {
+                return configuration;
+            }
+
             if (i < 0 || i >= inputs.Count)
             {
                 return null;
@@ -766,10 +771,21 @@
 
     public async Task FormatCurrentFileAsync()
     {
-        if (CurrentInput is not { FileName: var fileName } input
-            || !fileName.IsCSharpFileName(out bool isScript))
+        if (CurrentInput is not { FileName: var fileName } input)
         {
             return;
+        }
+
+        if (!fileName.IsCSharpFileName(out bool isScript))
+        {
+            if (InputTabIdToIndex(activeInputTabId) == (int)SpecialInput.Configuration)
+            {
+                isScript = false;
+            }
+            else
+            {
+                return;
+            }
         }
 
         await editorInitialized.Task;
@@ -1134,7 +1150,9 @@
     private string CurrentFileName => CurrentInput?.FileName ?? "";
 
     private bool IsCurrentInputCSharp
-        => CurrentInput is { FileName: var fileName } && fileName.IsCSharpFileName();
+        => CurrentInput is { FileName: var fileName } &&
+        (fileName.IsCSharpFileName() ||
+        InputTabIdToIndex(activeInputTabId) == (int)SpecialInput.Configuration);
 
     private CompiledFile? CurrentCompiledFile
     {
