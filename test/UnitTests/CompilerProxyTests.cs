@@ -785,6 +785,46 @@ public class C
             """.ReplaceLineEndings("\n"), runText.Trim());
     }
 
+    /// <summary>
+    /// Directives should have an effect on IDE too
+    /// and <c>OutputType</c> should not be overridden.
+    /// </summary>
+    [Fact]
+    public async Task Directives_OutputType_Live()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:property OutputType=WinMdObj
+
+            partial class C
+            {
+                public event System.Action E { add { return default; } remove { } }
+            }
+
+            namespace System.Runtime.InteropServices.WindowsRuntime
+            {
+                public struct EventRegistrationToken { }
+            }
+            """;
+
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        languageServices.OnCompilationFinished();
+        await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
+
+        var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
+        markers.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task FormatCode_01()
     {

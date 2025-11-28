@@ -585,7 +585,7 @@ internal sealed class LanguageServices : ILanguageServices
 
         var modelLookupByUri = models.ToDictionary(m => m.Uri);
 
-        // Make sure our workspaces matches `models`.
+        // Make sure our workspace matches `models`.
         foreach (DocumentId docId in GetDocumentIds())
         {
             if (modelUris.TryGetValue(docId, out string? modelUri))
@@ -663,7 +663,9 @@ internal sealed class LanguageServices : ILanguageServices
         var project = GetProject(configuration: false);
         var sources = await project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
         defaultOutputKind = Compiler.GetDefaultOutputKind(sources);
-        if (project.CompilationOptions is { } options && options.OutputKind != defaultOutputKind)
+        if (project.CompilationOptions is { } options &&
+            options.OutputKind != defaultOutputKind &&
+            compiler.LastResult?.Output.CSharpCompilationOptions is null)
         {
             ApplyChanges(project.WithCompilationOptions(options.WithOutputKind(defaultOutputKind)).Solution);
         }
