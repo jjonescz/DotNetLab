@@ -74,27 +74,17 @@ partial class Page
             state = state.WithPreferences(await loadPreferencesAsync());
         }
 
-        savedState = state;
-        editingUserPreferences = loadPreferences;
-
-        // Dispose old inputs.
-        var oldInputs = inputs.ToArray();
-        inputs.Clear();
-        foreach (var input in oldInputs)
-        {
-            await input.DisposeAsync();
-        }
-
-        // Load inputs.
-        activeInputTabId = IndexToInputTabId(0);
-        var activeIndex = savedState.SelectedInputIndex;
+        // Load new inputs (don't change the actual Page fields yet while we do this async work
+        // to avoid interference with SaveStateToUrlAsync).
+        var newInputs = new List<Input>();
+        var activeIndex = state.SelectedInputIndex;
         Input? firstInput = null;
         Input? activeInput = null;
-        foreach (var (index, input) in savedState.Inputs.Index())
+        foreach (var (index, input) in state.Inputs.Index())
         {
             var model = await CreateModelAsync(input);
             Input inputModel = new(input.FileName, model) { NewContent = input.Text };
-            inputs.Add(inputModel);
+            newInputs.Add(inputModel);
 
             if (index == 0)
             {
@@ -107,33 +97,44 @@ partial class Page
             }
         }
 
-        if (savedState.Configuration is { } savedConfiguration)
+        Input? newConfiguration;
+        if (state.Configuration is { } savedConfiguration)
         {
             var input = InitialCode.Configuration.ToInputCode() with { Text = savedConfiguration };
-            configuration = new(input.FileName, await CreateModelAsync(input)) { NewContent = input.Text };
+            newConfiguration = new(input.FileName, await CreateModelAsync(input)) { NewContent = input.Text };
         }
         else
         {
-            configuration = null;
+            newConfiguration = null;
         }
 
+        var selectInput = activeInput ?? firstInput;
+
+        // Now change page fields without awaits.
+        Input[] oldInputs;
+        using (Util.EnsureSync())
         {
-            // Unset cache info (the loaded state might not be cached).
-            if (compiled is { Input: var input, Output: var output, CacheInfo: { } })
-            {
-                var timestamp = DateTimeOffset.Now;
-                compiled = (input, output, CacheInfo: null, Start: timestamp, End: timestamp);
-            }
+            oldInputs = inputs.ToArray();
+            inputs.Clear();
+            inputs.AddRange(newInputs);
+            configuration = newConfiguration;
+            savedState = state;
+            editingUserPreferences = loadPreferences;
+            activeInputTabId = IndexToInputTabId(activeIndex);
+            currentInput = selectInput;
+            selectedOutputType = savedState.SelectedOutputType;
         }
 
-        activeInputTabId = IndexToInputTabId(activeIndex);
-        selectedOutputType = savedState.SelectedOutputType;
+        // Dispose old inputs.
+        foreach (var input in oldInputs)
+        {
+            await input.DisposeAsync();
+        }
 
         await OnWorkspaceChangedAsync();
 
-        if ((activeInput ?? firstInput) is { } selectInput)
+        if (selectInput != null)
         {
-            currentInput = selectInput;
             await inputEditor.SetModel(selectInput.Model);
         }
 
