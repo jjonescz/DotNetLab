@@ -1141,7 +1141,8 @@
             }
             catch (Exception ex)
             {
-                result = new() { Text = ex.ToString(), SpecialMessage = true };
+                string error = ex is WorkerException w ? w.Failure.FullString : ex.ToString();
+                result = new() { Text = error, SpecialMessage = true };
                 success = false;
             }
 
