@@ -163,6 +163,66 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task SpecifiedNuGetRoslynVersion_CompilerCrash()
+    {
+        // https://github.com/dotnet/roslyn/issues/78042
+        var source = """
+            using System;
+            using System.Text;
+
+            var sb = new StringBuilder("Info: ");
+            StringBuilder.Inspect(sb);
+
+            public static class Extensions
+            {
+                extension(StringBuilder)
+                {
+                    public static StringBuilder Inspect(StringBuilder sb)
+                    {
+                        var s = () =>
+                        {
+                            foreach (char c in sb.ToString())
+                            {
+                                Console.Write(c);
+                            }
+                        };
+                        s();
+                        return sb;
+                    }
+                }
+            }
+            """;
+
+        var version = "5.0.0-1.25206.1";
+
+        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+
+        await services.GetRequiredService<CompilerDependencyProvider>()
+            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        await Assert.ThrowsAsync<NullReferenceException>(
+            testCode: () => compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null),
+            inspector: static exception =>
+            {
+                Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", exception.StackTrace);
+                return null;
+            });
+
+        // Tree output is independent and doesn't crash.
+        var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync(outputFactory: null)).Text;
+        Assert.NotNull(treeText);
+        Assert.Contains("CompilationUnitSyntax", treeText);
+    }
+
     [Theory]
     [InlineData("9.0.0-preview.24413.5")]
     [InlineData("9.0.0-preview.25128.1")]

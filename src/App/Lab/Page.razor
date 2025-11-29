@@ -1141,7 +1141,7 @@
             }
             catch (Exception ex)
             {
-                result = new() { Text = ex.ToString() };
+                result = new() { Text = ex.ToString(), SpecialMessage = true };
                 success = false;
             }
 

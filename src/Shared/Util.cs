@@ -160,8 +160,13 @@ public static partial class Util
                 return Task.FromResult(selector(task.Result));
             }
 
-            return task.AsTask()
-                .ContinueWith(t => selector(t.Result), TaskContinuationOptions.OnlyOnRanToCompletion);
+            return selectAsync();
+
+            async Task<TResult> selectAsync()
+            {
+                var result = await task;
+                return selector(result);
+            }
         }
     }
 
