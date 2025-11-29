@@ -332,6 +332,7 @@ public readonly struct CompiledFileLazyResult
 {
     public required string Text { get; init; }
     public CompiledFileOutputMetadata? Metadata { get; init; }
+    public bool SpecialMessage { get; init; }
 }
 
 public sealed class CompiledFileOutputMetadata
