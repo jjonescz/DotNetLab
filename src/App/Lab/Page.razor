@@ -1111,7 +1111,7 @@
 
         // If we are currently displaying cached outputs, but this specific output type is not cached,
         // avoid resolving it and hence starting compilation implicitly.
-        if (compiled?.CacheInfo is { } cached)
+        if (compiled?.CacheInfo is not null)
         {
             return (new() { Text = "(not cached, press Compile to load this)", SpecialMessage = true }, false);
         }
