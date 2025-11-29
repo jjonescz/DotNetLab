@@ -354,6 +354,11 @@
         {
             var i = InputTabIdToIndex(activeInputTabId);
 
+            if (i == (int)SpecialInput.Configuration)
+            {
+                return configuration;
+            }
+
             if (i < 0 || i >= inputs.Count)
             {
                 return null;
@@ -766,10 +771,21 @@
 
     public async Task FormatCurrentFileAsync()
     {
-        if (CurrentInput is not { FileName: var fileName } input
-            || !fileName.IsCSharpFileName(out bool isScript))
+        if (CurrentInput is not { FileName: var fileName } input)
         {
             return;
+        }
+
+        if (!fileName.IsCSharpFileName(out bool isScript))
+        {
+            if (InputTabIdToIndex(activeInputTabId) == (int)SpecialInput.Configuration)
+            {
+                isScript = false;
+            }
+            else
+            {
+                return;
+            }
         }
 
         await editorInitialized.Task;
@@ -914,14 +930,14 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
-        if (compiled is null || selectedOutputType is null)
+        if (compiled is not { } comp || selectedOutputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
             await setModelAsync(null, "", new() { Text = "" }, null);
         }
         else
         {
-            var compiledOutput = compiled?.Output;
+            var compiledOutput = comp.Output;
             var outputType = selectedOutputType;
             var output = GetOutput(outputType);
             var (result, resolvedLazyText) = await LoadOutputTextAsync(output);
@@ -963,7 +979,7 @@
 
         async Task setModelAsync(string? inputFileName, string outputType, CompiledFileLazyResult result, CompiledFileOutput? output)
         {
-            var language = output?.Language;
+            var language = (result.SpecialMessage ? null : output?.Language) ?? "plaintext";
 
             if (!outputStates.TryGetValue(outputType, out var state))
             {
@@ -977,10 +993,7 @@
             else
             {
                 await state.Model.SetValue(result.Text);
-                if (language is not null)
-                {
-                    await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
-                }
+                await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
             }
 
             bool saveViewState = currentOutput != state;
@@ -1096,6 +1109,13 @@
             return (new() { Text = eagerText, Metadata = output?.Metadata }, false);
         }
 
+        // If we are currently displaying cached outputs, but this specific output type is not cached,
+        // avoid resolving it and hence starting compilation implicitly.
+        if (compiled?.CacheInfo is not null)
+        {
+            return (new() { Text = "(not cached, press Compile to load this)", SpecialMessage = true }, false);
+        }
+
         if (!outputLoading)
         {
             return await loadAsync(compiled!.Value.Input, file: file, outputType: output.Type);
@@ -1121,7 +1141,8 @@
             }
             catch (Exception ex)
             {
-                result = new() { Text = ex.ToString() };
+                string error = ex is WorkerException w ? w.Failure.FullString : ex.ToString();
+                result = new() { Text = error, SpecialMessage = true };
                 success = false;
             }
 
@@ -1134,7 +1155,9 @@
     private string CurrentFileName => CurrentInput?.FileName ?? "";
 
     private bool IsCurrentInputCSharp
-        => CurrentInput is { FileName: var fileName } && fileName.IsCSharpFileName();
+        => CurrentInput is { FileName: var fileName } &&
+        (fileName.IsCSharpFileName() ||
+        InputTabIdToIndex(activeInputTabId) == (int)SpecialInput.Configuration);
 
     private CompiledFile? CurrentCompiledFile
     {

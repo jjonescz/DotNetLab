@@ -31,7 +31,7 @@
           "Label": "HTML",
           "Priority": 0,
           "Language": "html",
-          "Text": "System.Threading.Tasks.TaskCanceledException: A task was canceled.",
+          "Text": "System.ArgumentException: The type TestNamespace._Imports does not implement IComponent. (Parameter \u0027componentType\u0027)",
           "Metadata": null
         }
       ]

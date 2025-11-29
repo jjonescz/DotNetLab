@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace DotNetLab;
 
@@ -162,6 +161,66 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             CultureInfo.CurrentCulture = previousCulture;
             CultureInfo.CurrentUICulture = previousUiCulture;
         }
+    }
+
+    [Fact]
+    public async Task SpecifiedNuGetRoslynVersion_CompilerCrash()
+    {
+        // https://github.com/dotnet/roslyn/issues/78042
+        var source = """
+            using System;
+            using System.Text;
+
+            var sb = new StringBuilder("Info: ");
+            StringBuilder.Inspect(sb);
+
+            public static class Extensions
+            {
+                extension(StringBuilder)
+                {
+                    public static StringBuilder Inspect(StringBuilder sb)
+                    {
+                        var s = () =>
+                        {
+                            foreach (char c in sb.ToString())
+                            {
+                                Console.Write(c);
+                            }
+                        };
+                        s();
+                        return sb;
+                    }
+                }
+            }
+            """;
+
+        var version = "5.0.0-1.25206.1";
+
+        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+
+        await services.GetRequiredService<CompilerDependencyProvider>()
+            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        await Assert.ThrowsAsync<NullReferenceException>(
+            testCode: () => compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null),
+            inspector: static exception =>
+            {
+                Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", exception.StackTrace);
+                return null;
+            });
+
+        // Tree output is independent and doesn't crash.
+        var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync(outputFactory: null)).Text;
+        Assert.NotNull(treeText);
+        Assert.Contains("CompilationUnitSyntax", treeText);
     }
 
     [Theory]
@@ -709,61 +768,6 @@ public class C
     }
 
     [Fact]
-    public async Task FormatCode_01()
-    {
-        var services = WorkerServices.CreateTest();
-        var compiler = services.GetRequiredService<CompilerProxy>();
-
-        var unformatted = """
-            class Test{
-            public void Method(  ){
-            var x=1;
-            }
-            }
-            """;
-
-        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: false))
-            .ReplaceLineEndings(Environment.NewLine);
-
-        var expected = """
-            class Test
-            {
-                public void Method()
-                {
-                    var x = 1;
-                }
-            }
-            """.ReplaceLineEndings(Environment.NewLine);
-
-        Assert.Equal(expected, formatted);
-    }
-
-    [Fact]
-    public async Task FormatCode_02()
-    {
-        var services = WorkerServices.CreateTest();
-        var compiler = services.GetRequiredService<CompilerProxy>();
-
-        var unformatted = """
-              #r   "nuget: Newtonsoft.Json, 13.0.3"
-            using   Newtonsoft.Json;
-              var   json = "{}"; 
-            """;
-
-        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: true))
-            .ReplaceLineEndings(Environment.NewLine);
-
-        var expected = """
-            #r "nuget: Newtonsoft.Json, 13.0.3"
-            using Newtonsoft.Json;
-
-            var json = "{}";
-            """.ReplaceLineEndings(Environment.NewLine);
-
-        Assert.Equal(expected, formatted);
-    }
-
-    [Fact]
     public async Task Directives_Package_Roslyn()
     {
         var services = WorkerServices.CreateTest(output);
@@ -839,6 +843,101 @@ public class C
             now
             Stderr:
             """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    /// <summary>
+    /// Directives should have an effect on IDE too
+    /// and <c>OutputType</c> should not be overridden.
+    /// </summary>
+    [Fact]
+    public async Task Directives_OutputType_Live()
+    {
+        var services = WorkerServices.CreateTest(output);
+
+        var source = """
+            #:property OutputType=WinMdObj
+
+            partial class C
+            {
+                public event System.Action E { add { return default; } remove { } }
+            }
+
+            namespace System.Runtime.InteropServices.WindowsRuntime
+            {
+                public struct EventRegistrationToken { }
+            }
+            """;
+
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.NotNull(diagnosticsText);
+        output.WriteLine(diagnosticsText);
+        Assert.Empty(diagnosticsText);
+
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        languageServices.OnCompilationFinished();
+        await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
+
+        var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
+        markers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FormatCode_01()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+            class Test{
+            public void Method(  ){
+            var x=1;
+            }
+            }
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: false))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            class Test
+            {
+                public void Method()
+                {
+                    var x = 1;
+                }
+            }
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
+    }
+
+    [Fact]
+    public async Task FormatCode_02()
+    {
+        var services = WorkerServices.CreateTest();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var unformatted = """
+              #r   "nuget: Newtonsoft.Json, 13.0.3"
+            using   Newtonsoft.Json;
+              var   json = "{}"; 
+            """;
+
+        var formatted = (await compiler.FormatCodeAsync(unformatted, isScript: true))
+            .ReplaceLineEndings(Environment.NewLine);
+
+        var expected = """
+            #r "nuget: Newtonsoft.Json, 13.0.3"
+            using Newtonsoft.Json;
+
+            var json = "{}";
+            """.ReplaceLineEndings(Environment.NewLine);
+
+        Assert.Equal(expected, formatted);
     }
 }
 
