@@ -575,9 +575,9 @@ internal sealed class WorkerController : IAsyncDisposable
             new WorkerInputMessage.OnDidChangeWorkspace(models) { Id = messageId++ });
     }
 
-    public void OnDidChangeModelContent(string modelUri, ModelContentChangedEvent args)
+    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
-        PostMessage(
+        await PostMessageAsync(
             new WorkerInputMessage.OnDidChangeModelContent(modelUri, args) { Id = messageId++ });
     }
 

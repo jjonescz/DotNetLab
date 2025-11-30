@@ -263,7 +263,7 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
-    public void OnDidChangeModelContent(ModelContentChangedEvent args)
+    public async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
     {
         if (!Enabled)
         {
@@ -278,7 +278,7 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
-        worker.OnDidChangeModelContent(modelUri: currentModelUrl, args);
+        await worker.OnDidChangeModelContentAsync(modelUri: currentModelUrl, args);
         UpdateDiagnostics();
     }
 
