@@ -20,7 +20,7 @@ internal sealed class LanguageServicesClient(
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
-    private CancellationTokenSource diagnosticsCts = new();
+    private CancellationTokenSource? diagnosticsCts;
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
     private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
 
@@ -287,7 +287,7 @@ internal sealed class LanguageServicesClient(
     /// </summary>
     public void CancelDiagnostics()
     {
-        diagnosticsCts.Cancel();
+        diagnosticsCts?.Cancel();
     }
 
     private async void UpdateDiagnostics()
@@ -301,6 +301,8 @@ internal sealed class LanguageServicesClient(
 
         try
         {
+            diagnosticsCts?.Dispose();
+            diagnosticsCts = new();
             await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
                 var (worker, jsRuntime, currentModelUrl) = args;
@@ -318,10 +320,8 @@ internal sealed class LanguageServicesClient(
         }
         finally
         {
-            if (diagnosticsCts.IsCancellationRequested)
-            {
-                diagnosticsCts = new();
-            }
+            diagnosticsCts?.Dispose();
+            diagnosticsCts = null;
         }
     }
 }
