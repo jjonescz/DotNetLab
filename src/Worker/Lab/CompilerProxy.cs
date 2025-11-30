@@ -23,32 +23,28 @@ internal sealed class CompilerProxy(
     private LoadedCompiler? loaded;
     private int iteration;
 
-    private async Task EnsureLoadedAsync()
-    {
-        if (loaded is null || dependencyRegistry.Iteration != iteration)
-        {
-            var previousIteration = dependencyRegistry.Iteration;
-            var currentlyLoaded = await LoadCompilerAsync();
-
-            if (dependencyRegistry.Iteration == previousIteration)
-            {
-                loaded?.Dispose();
-                loaded = currentlyLoaded;
-                iteration = dependencyRegistry.Iteration;
-            }
-            else
-            {
-                Debug.Assert(loaded is not null);
-            }
-        }
-    }
-
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
         try
         {
-            await EnsureLoadedAsync();
-            Debug.Assert(loaded is not null);
+            // NOTE: Only explicit compilation should load the compiler.
+            //       Until then, language services use the previously-loaded compiler.
+            if (loaded is null || dependencyRegistry.Iteration != iteration)
+            {
+                var previousIteration = dependencyRegistry.Iteration;
+                var currentlyLoaded = await LoadCompilerAsync(onlyLoadBuiltInCompiler: false);
+
+                if (dependencyRegistry.Iteration == previousIteration)
+                {
+                    loaded?.Dispose();
+                    loaded = currentlyLoaded;
+                    iteration = dependencyRegistry.Iteration;
+                }
+                else
+                {
+                    Debug.Assert(loaded is not null);
+                }
+            }
 
             if (input.Configuration is not null && loaded.DllAssemblies is null)
             {
@@ -84,8 +80,7 @@ internal sealed class CompilerProxy(
 
     public async Task<ILanguageServices> GetLanguageServicesAsync()
     {
-        await EnsureLoadedAsync();
-        Debug.Assert(loaded is not null);
+        loaded ??= await LoadCompilerAsync(onlyLoadBuiltInCompiler: true);
         return loaded.LanguageServices.Value;
     }
 
@@ -93,21 +88,14 @@ internal sealed class CompilerProxy(
     {
         try
         {
-            var compiler = await GetCompilerAsync();
-            return compiler.FormatCode(code, isScript);
+            loaded ??= await LoadCompilerAsync(onlyLoadBuiltInCompiler: true);
+            return loaded.Compiler.FormatCode(code, isScript);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to format code.");
             return code;
         }
-    }
-
-    public async Task<ICompiler> GetCompilerAsync()
-    {
-        await EnsureLoadedAsync();
-        Debug.Assert(loaded is not null);
-        return loaded.Compiler;
     }
 
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
@@ -182,12 +170,12 @@ internal sealed class CompilerProxy(
         };
     }
 
-    private async Task<LoadedCompiler> LoadCompilerAsync()
+    private async Task<LoadedCompiler> LoadCompilerAsync(bool onlyLoadBuiltInCompiler)
     {
         ImmutableDictionary<string, LoadedAssembly>? assemblies = null;
 
         AssemblyLoadContext alc;
-        if (dependencyRegistry.IsEmpty)
+        if (onlyLoadBuiltInCompiler || dependencyRegistry.IsEmpty)
         {
             // Load the built-in compiler.
             alc = AssemblyLoadContext.Default;
