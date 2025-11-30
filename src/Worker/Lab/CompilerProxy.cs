@@ -290,14 +290,14 @@ internal sealed class CompilerLoader(
         {
             if (loadedAssemblies.TryGetValue(name, out var loaded))
             {
-                services.Logger.LogDebug("✔️ {AssemblyName}", assemblyName);
+                services.Logger.LogDebug("✓ {AssemblyName}", assemblyName);
 
                 return loaded;
             }
 
             if (knownAssemblies.TryGetValue(name, out var loadedAssembly))
             {
-                services.Logger.LogDebug("▶️ {AssemblyName}", assemblyName);
+                services.Logger.LogDebug("> {AssemblyName}", assemblyName);
 
                 if (loadedAssembly.Data.IsDefault)
                 {
@@ -319,11 +319,11 @@ internal sealed class CompilerLoader(
             }
             catch (FileNotFoundException)
             {
-                services.Logger.LogDebug("❌ {AssemblyName}", assemblyName);
+                services.Logger.LogDebug("✗ {AssemblyName}", assemblyName);
                 return null;
             }
 
-            services.Logger.LogDebug("➖ {AssemblyName}", assemblyName);
+            services.Logger.LogDebug("- {AssemblyName}", assemblyName);
             loadedAssemblies.Add(name, loaded);
             return loaded;
         }
