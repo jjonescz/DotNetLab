@@ -375,6 +375,12 @@ internal sealed class WorkerController : IAsyncDisposable
 
             var workerServices = this.workerServices.Value;
             var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
+
+            if (hostEnvironment.SupportsThreads)
+            {
+                return await Task.Run(() => message.HandleAndGetOutputAsync(executor));
+            }
+
             return await message.HandleAndGetOutputAsync(executor);
         }
 
