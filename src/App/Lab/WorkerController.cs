@@ -214,7 +214,7 @@ internal sealed class WorkerController : IAsyncDisposable
                     var message = JsonSerializer.Deserialize(data, WorkerJsonContext.Default.WorkerOutputMessage)!;
                     logger.Log(
                         message.InputType == nameof(WorkerInputMessage.Ping) ? LogLevel.Trace : LogLevel.Debug,
-                        "📩 {Id}: {InputType} → {OutputType} ({Size})",
+                        "<= {Id}: {InputType} → {OutputType} ({Size})",
                         message.Id,
                         message.InputType,
                         message.GetType().Name,
@@ -343,12 +343,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
                     // TODO: Use ProtoBuf.
                     var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
-                    logger.Log(
-                        message is WorkerInputMessage.Ping ? LogLevel.Trace : LogLevel.Debug,
-                        "📨 {Id}: {Type} ({Size})",
-                        message.Id,
-                        message.GetType().Name,
-                        serialized.Length.SeparateThousands());
+                    LogOutgoingMessage(message, details: serialized.Length.SeparateThousands());
                     WorkerControllerInterop.PostMessage(worker, serialized);
                 }
             }
@@ -359,6 +354,16 @@ internal sealed class WorkerController : IAsyncDisposable
         });
 
         return true;
+    }
+
+    private void LogOutgoingMessage(WorkerInputMessage message, string details)
+    {
+        logger.Log(
+            message is WorkerInputMessage.Ping ? LogLevel.Trace : LogLevel.Debug,
+            "=> {Id}: {Type} ({Details})",
+            message.Id,
+            message.GetType().Name,
+            details);
     }
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
@@ -378,9 +383,11 @@ internal sealed class WorkerController : IAsyncDisposable
 
             if (hostEnvironment.SupportsThreads)
             {
+                LogOutgoingMessage(message, details: "bg");
                 return await Task.Run(() => message.HandleAndGetOutputAsync(executor));
             }
 
+            LogOutgoingMessage(message, details: "fg");
             return await message.HandleAndGetOutputAsync(executor);
         }
 
