@@ -27,6 +27,7 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
     public string Environment => webAssemblyHostEnvironment.Environment;
     public string BaseAddress => webAssemblyHostEnvironment.BaseAddress;
     public bool SupportsWebWorkers => true;
+    public bool SupportsThreads => false;
 }
 
 file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer

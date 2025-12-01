@@ -127,6 +127,11 @@ code {
     height: 99%;
 }
 
+/* Workaround for https://github.com/microsoft/monaco-editor/issues/4984. */
+.quick-input-widget {
+    margin-left: initial !important;
+}
+
 .underline {
     text-decoration: underline;
 }

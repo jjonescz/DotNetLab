@@ -53,6 +53,7 @@ public interface IAppHostEnvironment
     string Environment { get; }
     string BaseAddress { get; }
     bool SupportsWebWorkers { get; }
+    bool SupportsThreads { get; }
 
     sealed bool IsDevelopment => Environments.Development.Equals(Environment, StringComparison.OrdinalIgnoreCase);
 }

@@ -185,7 +185,7 @@
                 <StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
                                       ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                                       OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                                      OnDidChangeModelContent="OnDidChangeModelContent"
+                                      OnDidChangeModelContent="OnDidChangeModelContentAsync"
                                       OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
@@ -1333,10 +1333,10 @@
         await LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics: updateDiagnostics, refresh: true);
     }
 
-    private void OnDidChangeModelContent(ModelContentChangedEvent args)
+    private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
     {
         inputChanged = DateTimeOffset.Now;
-        LanguageServices.OnDidChangeModelContent(args);
+        await LanguageServices.OnDidChangeModelContentAsync(args);
     }
 
     private void OnScreenInfoUpdated()
