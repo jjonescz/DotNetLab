@@ -46,7 +46,8 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 - `src/WebAssembly`: web-assembly host of the `App` (this is what's deployed online).
   - Trying out published version locally:
     ```ps1
-    dotnet tool install -g dotnet-serve
+    dotnet tool restore
+    dotnet workload restore
     dotnet publish ./src/WebAssembly/ && dotnet serve -d ./artifacts/publish/WebAssembly/release/wwwroot/ -o -q
     ```
 - `src/Worker`: a separate component that can be loaded in a web worker (a separate process in the browser),
