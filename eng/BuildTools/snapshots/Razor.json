@@ -32,7 +32,13 @@
           "Priority": 0,
           "Language": "html",
           "Text": "System.ArgumentException: The type TestNamespace._Imports does not implement IComponent. (Parameter \u0027componentType\u0027)",
-          "Metadata": null
+          "Metadata": {
+            "SpecialMessage": true,
+            "SemanticTokens": null,
+            "InputToOutput": null,
+            "OutputToInput": null,
+            "OutputToOutput": null
+          }
         }
       ]
     },

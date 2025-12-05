@@ -1133,9 +1133,12 @@
             try
             {
                 // The text will be cached and loaded synchronously next time (from `output.Text`).
-                result = await output.LoadAsync(outputFactory: async () =>
+                result = await output.LoadAsync(new()
                 {
-                    return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
+                    OutputFactory = async () =>
+                    {
+                        return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
+                    },
                 });
                 success = true;
             }

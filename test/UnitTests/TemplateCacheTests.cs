@@ -37,7 +37,7 @@ public sealed class TemplateCacheTests(ITestOutputHelper output)
             string? value;
             try
             {
-                value = (await output.LoadAsync(outputFactory: null)).Text;
+                value = (await output.LoadAsync(new() { StripExceptionStackTrace = true })).Text;
             }
             catch (Exception ex)
             {
