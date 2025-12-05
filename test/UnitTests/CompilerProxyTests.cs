@@ -209,13 +209,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        await Assert.ThrowsAsync<NullReferenceException>(
-            testCode: () => compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null),
-            inspector: static exception =>
-            {
-                Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", exception.StackTrace);
-                return null;
-            });
+        var runResult = await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null);
+        Assert.StartsWith("System.NullReferenceException:", runResult.Text);
+        Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", runResult.Text);
+        Assert.True(runResult.Metadata?.SpecialMessage);
 
         // Tree output is independent and doesn't crash.
         var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync(outputFactory: null)).Text;

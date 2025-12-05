@@ -300,7 +300,8 @@ public sealed class CompiledFileOutput
             {
                 Text = t;
                 return new CompiledFileLazyResult { Text = t };
-            });
+            },
+            handleException);
         }
 
         if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> factoryWithMetadata)
@@ -314,10 +315,26 @@ public sealed class CompiledFileOutput
                     Text = output.Text,
                     Metadata = output.Metadata,
                 };
-            });
+            },
+            handleException);
         }
 
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
+
+        // We handle exceptions here so they have all the advantages of output processing, e.g., caching.
+        CompiledFileLazyResult handleException(Task t)
+        {
+            var exception = t.Exception is AggregateException { InnerExceptions: [{ } inner] } ? inner : t.Exception;
+            var text = exception?.ToString() ?? "null";
+            var metadata = CompiledFileOutputMetadata.ForSpecialMessage;
+            Text = text;
+            Metadata = metadata;
+            return new CompiledFileLazyResult
+            {
+                Text = text,
+                Metadata = metadata,
+            };
+        }
     }
 
     internal void SetEagerText(string value)
@@ -332,11 +349,13 @@ public readonly struct CompiledFileLazyResult
 {
     public required string Text { get; init; }
     public CompiledFileOutputMetadata? Metadata { get; init; }
-    public bool SpecialMessage { get; init; }
 }
 
 public sealed class CompiledFileOutputMetadata
 {
+    public static CompiledFileOutputMetadata ForSpecialMessage => field ??= new() { SpecialMessage = true };
+
+    public bool SpecialMessage { get; init; }
     public string? SemanticTokens { get; init; }
     public string? InputToOutput { get; init; }
     public string? OutputToInput { get; init; }
