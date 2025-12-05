@@ -153,7 +153,9 @@ public static partial class Util
 
     extension<T>(ValueTask<T> task)
     {
-        public Task<TResult> SelectAsTask<TResult>(Func<T, TResult> selector)
+        public Task<TResult> SelectAsTask<TResult>(
+            Func<T, TResult> selector,
+            Func<Exception, TResult>? exceptionHandler = null)
         {
             if (task.IsCompletedSuccessfully)
             {
@@ -164,7 +166,17 @@ public static partial class Util
 
             async Task<TResult> selectAsync()
             {
-                var result = await task;
+                T result;
+
+                try
+                {
+                    result = await task;
+                }
+                catch (Exception ex) when (exceptionHandler != null)
+                {
+                    return exceptionHandler(ex);
+                }
+
                 return selector(result);
             }
         }

@@ -82,7 +82,7 @@ public sealed class WorkerExecutor(
         var compiler = services.GetRequiredService<CompilerProxy>();
         var result = await compiler.CompileAsync(message.Input);
         var output = result.GetRequiredOutput(message.File, message.OutputType);
-        return await output.LoadAsync(outputFactory: null);
+        return await output.LoadAsync();
     }
 
     public Task<bool> HandleAsync(WorkerInputMessage.UseCompilerVersion message)

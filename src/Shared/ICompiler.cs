@@ -264,29 +264,32 @@ public sealed class CompiledFileOutput
         }
     }
 
-    public Task<CompiledFileLazyResult> LoadAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
+    public Task<CompiledFileLazyResult> LoadAsync(in CompiledFileLoadOptions options = default)
     {
-        var result = LoadCoreAsync(outputFactory);
+        var result = LoadCoreAsync(options);
         text = result;
         return result;
     }
 
     [SuppressMessage("Reliability", "CA2012: Use ValueTasks correctly", Justification = "Analyzer broken with extension members")]
-    private Task<CompiledFileLazyResult> LoadCoreAsync(Func<ValueTask<CompiledFileLazyResult>>? outputFactory)
+    private Task<CompiledFileLazyResult> LoadCoreAsync(in CompiledFileLoadOptions options)
     {
+        bool stripExceptionStackTrace = options.StripExceptionStackTrace;
+
         if (text is null)
         {
-            if (outputFactory is null)
+            if (options.OutputFactory is null)
             {
-                throw new InvalidOperationException($"For uncached lazy texts, {nameof(outputFactory)} must be provided.");
+                throw new InvalidOperationException($"For uncached lazy texts, {nameof(options.OutputFactory)} must be provided.");
             }
 
-            return outputFactory().SelectAsTask(output =>
+            return options.OutputFactory().SelectAsTask(output =>
             {
                 Text = output.Text;
                 Metadata = output.Metadata;
                 return output;
-            });
+            },
+            handleException);
         }
 
         if (text is Task<CompiledFileLazyResult> task)
@@ -300,7 +303,8 @@ public sealed class CompiledFileOutput
             {
                 Text = t;
                 return new CompiledFileLazyResult { Text = t };
-            });
+            },
+            handleException);
         }
 
         if (text is Func<ValueTask<(string Text, CompiledFileOutputMetadata? Metadata)>> factoryWithMetadata)
@@ -314,10 +318,25 @@ public sealed class CompiledFileOutput
                     Text = output.Text,
                     Metadata = output.Metadata,
                 };
-            });
+            },
+            handleException);
         }
 
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
+
+        // We handle exceptions here so they have all the advantages of output processing, e.g., caching.
+        CompiledFileLazyResult handleException(Exception ex)
+        {
+            var text = stripExceptionStackTrace ? $"{ex.GetType().FullName}: {ex.Message}" : ex.ToString();
+            var metadata = CompiledFileOutputMetadata.ForSpecialMessage;
+            Text = text;
+            Metadata = metadata;
+            return new CompiledFileLazyResult
+            {
+                Text = text,
+                Metadata = metadata,
+            };
+        }
     }
 
     internal void SetEagerText(string value)
@@ -328,15 +347,23 @@ public sealed class CompiledFileOutput
     }
 }
 
+public readonly struct CompiledFileLoadOptions
+{
+    public Func<ValueTask<CompiledFileLazyResult>>? OutputFactory { get; init; }
+    public bool StripExceptionStackTrace { get; init; }
+}
+
 public readonly struct CompiledFileLazyResult
 {
     public required string Text { get; init; }
     public CompiledFileOutputMetadata? Metadata { get; init; }
-    public bool SpecialMessage { get; init; }
 }
 
 public sealed class CompiledFileOutputMetadata
 {
+    public static CompiledFileOutputMetadata ForSpecialMessage => field ??= new() { SpecialMessage = true };
+
+    public bool SpecialMessage { get; init; }
     public string? SemanticTokens { get; init; }
     public string? InputToOutput { get; init; }
     public string? OutputToInput { get; init; }

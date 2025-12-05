@@ -979,7 +979,7 @@
 
         async Task setModelAsync(string? inputFileName, string outputType, CompiledFileLazyResult result, CompiledFileOutput? output)
         {
-            var language = (result.SpecialMessage ? null : output?.Language) ?? "plaintext";
+            var language = (result.Metadata?.SpecialMessage == true ? null : output?.Language) ?? "plaintext";
 
             if (!outputStates.TryGetValue(outputType, out var state))
             {
@@ -1113,7 +1113,7 @@
         // avoid resolving it and hence starting compilation implicitly.
         if (compiled?.CacheInfo is not null)
         {
-            return (new() { Text = "(not cached, press Compile to load this)", SpecialMessage = true }, false);
+            return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.ForSpecialMessage }, false);
         }
 
         if (!outputLoading)
@@ -1133,16 +1133,19 @@
             try
             {
                 // The text will be cached and loaded synchronously next time (from `output.Text`).
-                result = await output.LoadAsync(outputFactory: async () =>
+                result = await output.LoadAsync(new()
                 {
-                    return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
+                    OutputFactory = async () =>
+                    {
+                        return await Worker.GetOutputAsync(input, file: file, outputType: outputType);
+                    },
                 });
                 success = true;
             }
             catch (Exception ex)
             {
                 string error = ex is WorkerException w ? w.Failure.FullString : ex.ToString();
-                result = new() { Text = error, SpecialMessage = true };
+                result = new() { Text = error, Metadata = CompiledFileOutputMetadata.ForSpecialMessage };
                 success = false;
             }
 

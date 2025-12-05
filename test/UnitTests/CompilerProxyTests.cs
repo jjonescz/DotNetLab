@@ -209,16 +209,13 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        await Assert.ThrowsAsync<NullReferenceException>(
-            testCode: () => compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null),
-            inspector: static exception =>
-            {
-                Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", exception.StackTrace);
-                return null;
-            });
+        var runResult = await compiled.GetRequiredGlobalOutput("run").LoadAsync();
+        Assert.StartsWith("System.NullReferenceException:", runResult.Text);
+        Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", runResult.Text);
+        Assert.True(runResult.Metadata?.SpecialMessage);
 
         // Tree output is independent and doesn't crash.
-        var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync(outputFactory: null)).Text;
+        var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync()).Text;
         Assert.NotNull(treeText);
         Assert.Contains("CompilationUnitSyntax", treeText);
     }
@@ -250,26 +247,26 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(string.Empty);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
         output.WriteLine("C#:");
         output.WriteLine(cSharpText);
         output.WriteLine(string.Empty);
         Assert.Contains("class TestComponent", cSharpText);
 
-        var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync(outputFactory: null)).Text;
+        var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync()).Text;
         output.WriteLine("Syntax:");
         output.WriteLine(syntaxText);
         output.WriteLine(string.Empty);
         Assert.Contains("RazorDocument", syntaxText);
 
-        var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync(outputFactory: null)).Text;
+        var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync()).Text;
         output.WriteLine("IR:");
         output.WriteLine(irText);
         output.WriteLine(string.Empty);
         Assert.Contains("""component.1.0""", irText);
         Assert.Contains("TestComponent", irText);
 
-        var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync(outputFactory: null)).Text;
+        var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync()).Text;
         output.WriteLine("HTML:");
         output.WriteLine(htmlText);
         output.WriteLine(string.Empty);
@@ -308,12 +305,12 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
         output.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
         Assert.Contains("AddComponentParameter", cSharpText);
 
-        var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync(outputFactory: null)).Text;
+        var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync()).Text;
         output.WriteLine(htmlText);
         Assert.Equal("<div>42</div>", htmlText);
     }
@@ -386,7 +383,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 42
@@ -420,7 +417,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(outputFactory: null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 42
@@ -451,7 +448,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(outputFactory: null)).Text;
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
         output.WriteLine(cSharpText);
         Assert.Contains("[Extension]", cSharpText);
     }
@@ -531,7 +528,7 @@ public class C
 
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Program.cs", Text = code }])));
 
-        string ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync(outputFactory: null)).Text;
+        string ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
         Assert.DoesNotContain("\t", ilText);
 
         // Verify that the IL contains expected content
@@ -592,7 +589,7 @@ public class C
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync(null)).Text;
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
         output.WriteLine(ilText);
         Action<string, string> assert = debug ? Assert.Contains : Assert.DoesNotContain;
         assert("nop", ilText);
@@ -688,7 +685,7 @@ public class C
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -722,7 +719,7 @@ public class C
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -762,7 +759,7 @@ public class C
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var csText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync(null)).Text;
+        var csText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
         output.WriteLine(csText);
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
@@ -797,7 +794,7 @@ public class C
         output.WriteLine(diagnosticsText);
         Assert.Empty(diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
@@ -835,7 +832,7 @@ public class C
             Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
             """.ReplaceLineEndings(), diagnosticsText);
 
-        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync(null)).Text;
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         output.WriteLine(runText);
         Assert.Equal("""
             Exit code: 0
