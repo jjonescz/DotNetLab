@@ -155,29 +155,28 @@ public static partial class Util
     {
         public Task<TResult> SelectAsTask<TResult>(
             Func<T, TResult> selector,
-            Func<Task, TResult>? exceptionHandler = null)
+            Func<Exception, TResult>? exceptionHandler = null)
         {
             if (task.IsCompletedSuccessfully)
             {
                 return Task.FromResult(selector(task.Result));
             }
 
-            var result = selectAsync();
-
-            if (exceptionHandler != null)
-            {
-                result = result.ContinueWith(t =>
-                {
-                    return exceptionHandler(t);
-                },
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
-            }
-
-            return result;
+            return selectAsync();
 
             async Task<TResult> selectAsync()
             {
-                var result = await task;
+                T result;
+
+                try
+                {
+                    result = await task;
+                }
+                catch (Exception ex) when (exceptionHandler != null)
+                {
+                    return exceptionHandler(ex);
+                }
+
                 return selector(result);
             }
         }

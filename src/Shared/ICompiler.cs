@@ -322,10 +322,9 @@ public sealed class CompiledFileOutput
         throw new InvalidOperationException($"Unrecognized {nameof(CompiledFileOutput)}.{nameof(text)}: {text?.GetType().FullName ?? "null"}");
 
         // We handle exceptions here so they have all the advantages of output processing, e.g., caching.
-        CompiledFileLazyResult handleException(Task t)
+        CompiledFileLazyResult handleException(Exception ex)
         {
-            var exception = t.Exception is AggregateException { InnerExceptions: [{ } inner] } ? inner : t.Exception;
-            var text = exception?.ToString() ?? "null";
+            var text = ex.ToString();
             var metadata = CompiledFileOutputMetadata.ForSpecialMessage;
             Text = text;
             Metadata = metadata;
