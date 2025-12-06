@@ -2,7 +2,15 @@
 
 <sup>(aka Razor Lab, formerly also DotNetInternals)</sup>
 
-C# and Razor compiler playground in the browser via Blazor WebAssembly. https://lab.razor.fyi/
+C# and Razor compiler playground.
+<br/>In the browser via Blazor WebAssembly. https://lab.razor.fyi/
+<br/>Desktop app on [Windows Store](https://apps.microsoft.com/detail/9PCPMM329DZT) (full .NET, best performance).
+
+<table><tr>
+<td><a href="https://github.com/jjonescz/DotNetLab"><img src="./src/App/wwwroot/favicon.png" height="40" /></a></td>
+<td><a href="https://apps.microsoft.com/detail/9PCPMM329DZT"><img src="./docs/badges/windows.png" width="150" /></a></td>
+<td><a href="https://lab.razor.fyi/"><img src="./docs/badges/web.png" width="150" /></a></td>
+</tr></table>
 
 | [C#](https://lab.razor.fyi/#csharp) | [Razor](https://lab.razor.fyi/#razor) |
 |:-:|:-:|
