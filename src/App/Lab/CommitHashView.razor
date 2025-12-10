@@ -27,6 +27,7 @@
 
 @code {
     private const string dateFormat = "MMM d, yyyy, HH:mm";
+    private static readonly ConcurrentDictionary<CommitLink, Task<CommitInfo?>> commitInfoCache = new();
     private readonly AsyncLock loading = new();
     private CommitInfo? commitInfo;
     private AlternativeCommitInfo? alternativeCommit;
@@ -130,6 +131,11 @@
     }
 
     private async Task<CommitInfo?> GetCommitInfoAsync()
+    {
+        return await commitInfoCache.GetOrAdd(Commit, _ => GetCommitInfoNoCacheAsync());
+    }
+
+    private async Task<CommitInfo?> GetCommitInfoNoCacheAsync()
     {
         if (Commit.OwnerAndName is not { } ownerAndName)
         {
