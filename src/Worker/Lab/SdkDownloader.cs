@@ -75,7 +75,14 @@ internal sealed class SdkDownloader(
         {
             var url = $"https://api.github.com/repos/{sdkRepoOwner}/{sdkRepoName}/contents/{versionDetailsRelativePath}?ref={commit.Hash}";
             using var response = await SendGitHubRequestAsync(url);
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMessage = (await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.GitHubErrorResponse))?.Message
+                     ?? $"{(int)response.StatusCode}: {response.ReasonPhrase}";
+                throw new InvalidOperationException($"Failed to get version details for .NET SDK version '{version}' ({commit.ShortHash}): {errorMessage}");
+            }
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var dependencies = (Dependencies)VersionDetailsSerializer.Deserialize(stream)!;
 
@@ -270,4 +277,9 @@ internal readonly struct DotNetReleaseIndex
     {
         public required string Version { get; init; }
     }
+}
+
+internal sealed class GitHubErrorResponse
+{
+    public string? Message { get; init; }
 }
