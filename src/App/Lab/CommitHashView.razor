@@ -28,6 +28,7 @@
 @code {
     private const string dateFormat = "MMM d, yyyy, HH:mm";
     private static readonly ConcurrentDictionary<CommitLink, Task<CommitInfo?>> commitInfoCache = new();
+    private static readonly ConcurrentDictionary<(string, string), Task<string?>> altCommitHashCache = new();
     private readonly AsyncLock loading = new();
     private CommitInfo? commitInfo;
     private AlternativeCommitInfo? alternativeCommit;
@@ -206,7 +207,7 @@
             // Already loaded.
             return;
         }
-        else if ((AlternativeCommitHash ?? await Worker.TryGetSubRepoCommitHashAsync(Commit.Hash, AlternativeRepoUrl!)) is not { } altCommitHash)
+        else if ((AlternativeCommitHash ?? await TryGetSubRepoCommitHashAsync(Commit.Hash, AlternativeRepoUrl!)) is not { } altCommitHash)
         {
             alternativeCommit = null;
         }
@@ -226,6 +227,11 @@
         StateHasChanged();
 
         await LocalStorage.SetItemAsync(saveKey, alternativeCommit);
+    }
+
+    private async Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
+    {
+        return await altCommitHashCache.GetOrAdd((monoRepoCommitHash, subRepoUrl), _ => Worker.TryGetSubRepoCommitHashAsync(monoRepoCommitHash, subRepoUrl));
     }
 
     private static bool Matches(CommitLink commit, CommitInfo? info)
