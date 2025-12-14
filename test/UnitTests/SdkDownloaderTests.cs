@@ -17,4 +17,15 @@ public sealed class SdkDownloaderTests
         var info = await downloader.GetInfoAsync(version);
         (info.RoslynVersion, info.RazorVersion).Should().Be((expectedRoslynVersion, expectedRazorVersion));
     }
+
+    [Theory]
+    [InlineData("10.0.100-preview.7.25351.106", "20250701.6")]
+    [InlineData("10.0.100-rtm.25523.111", "20251023.11")]
+    [InlineData("10.0.100", null)]
+    public void VersionToBuildNumber(string version, string? expectedBuildNumber)
+    {
+        VersionUtil.TryGetBuildNumberFromVersionNumber(version, out var actualBuildNumber)
+            .Should().Be(expectedBuildNumber != null);
+        actualBuildNumber.Should().Be(expectedBuildNumber);
+    }
 }

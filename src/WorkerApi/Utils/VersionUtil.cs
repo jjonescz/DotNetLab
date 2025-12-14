@@ -102,14 +102,14 @@ public static partial class VersionUtil
     {
         var parts = version.Split('.');
 
-        if (parts.Length != 6)
+        if (parts.Length < 5)
         {
             buildNumber = null;
             return false;
         }
 
-        var n1 = int.Parse(parts[4]);
-        var n2 = int.Parse(parts[5]);
+        var n1 = int.Parse(parts[^2]);
+        var n2 = int.Parse(parts[^1]);
         var yy = n1 / 1000;
         n1 -= yy * 1000;
         var mm = n1 / 50;
