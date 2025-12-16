@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -29,6 +30,8 @@ internal sealed class SdkDownloader(
 
     private static XmlSerializer VersionDetailsSerializer => field ??= new(typeof(Dependencies));
     private static XmlSerializer MergedManifestSerializer => field ??= new(typeof(MergedManifest));
+
+    private readonly ConcurrentDictionary<string, Task<MergedManifest?>> mergedManifestCache = new();
 
     public async Task<List<SdkVersionInfo>> GetListAsync()
     {
@@ -127,17 +130,10 @@ internal sealed class SdkDownloader(
 
                 // PackageVersion fields are removed from newer source manifests.
                 // Try to get the info from MergedManifest.xml file instead.
-                if (buildNumber != null)
+                if (buildNumber != null && await TryGetMergedManifestAsync(buildNumber) is { } mergedManifest)
                 {
-                    var url = $"https://ci.dot.net/public/assets/manifests/dotnet-dotnet/{buildNumber}/MergedManifest.xml";
-                    using var response = await client.GetAsync(url.WithCorsProxy());
-                    if (response.IsSuccessStatusCode)
-                    {
-                        using var stream = await response.Content.ReadAsStreamAsync();
-                        var mergedManifest = (MergedManifest)MergedManifestSerializer.Deserialize(stream)!;
-                        roslynVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Roslyn.PackageId)?.Version ?? roslynVersion;
-                        razorVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Razor.PackageId)?.Version ?? razorVersion;
-                    }
+                    roslynVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Roslyn.PackageId)?.Version ?? roslynVersion;
+                    razorVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Razor.PackageId)?.Version ?? razorVersion;
                 }
             }
 
@@ -155,14 +151,34 @@ internal sealed class SdkDownloader(
             };
         }
 
-        async Task<string?> tryGetVersionFromNuGetFeedAsync(CommitLink sdkCommit)
+        async Task<string?> tryGetVersionFromNuGetFeedAsync(CommitLink vmrCommit)
         {
-            var packageVersionListUrl = $"https://pkgs.dev.azure.com/dnceng/public/_packaging/darc-pub-dotnet-dotnet-{sdkCommit.Hash[..8]}/nuget/v3/flat2/Microsoft.CodeAnalysis/index.json";
+            var packageVersionListUrl = $"https://pkgs.dev.azure.com/dnceng/public/_packaging/{GetCommitBasedFeedName(vmrCommit.Hash)}/nuget/v3/flat2/Microsoft.CodeAnalysis/index.json";
             var response = await client.GetAsync(packageVersionListUrl);
             if (!response.IsSuccessStatusCode) return null;
             var result = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.NuGetVersionListResponse);
             return result?.Versions.FirstOrDefault();
         }
+    }
+
+    public static string GetCommitBasedFeedName(string vmrCommit) => $"darc-pub-dotnet-dotnet-{vmrCommit[..8]}";
+
+    public Task<MergedManifest?> TryGetMergedManifestAsync(string buildNumber)
+    {
+        return mergedManifestCache.GetOrAdd(buildNumber, TryGetMergedManifestNoCacheAsync);
+    }
+
+    private async Task<MergedManifest?> TryGetMergedManifestNoCacheAsync(string buildNumber)
+    {
+        var url = $"https://ci.dot.net/public/assets/manifests/dotnet-dotnet/{buildNumber}/MergedManifest.xml";
+        using var response = await client.GetAsync(url.WithCorsProxy());
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            return (MergedManifest)MergedManifestSerializer.Deserialize(stream)!;
+        }
+
+        return null;
     }
 
     public async Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
@@ -225,6 +241,8 @@ public sealed class Dependencies
 [XmlRoot("Build")]
 public sealed class MergedManifest
 {
+    [XmlAttribute] public required string Commit { get; init; }
+
     [XmlElement(nameof(Package))]
     public required List<Package> Packages { get; init; }
 

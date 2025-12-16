@@ -55,9 +55,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2", "2158b59104a5fb7db33796657d4ab3231e312302")] // preview version is downloaded from an AzDo feed
-    [InlineData("4.14.0", "4.14.0", "8edf7bcd4f1594c3d68a6a567469f41dbd33dd1b")] // non-preview version is downloaded from nuget.org
-    public async Task SpecifiedNuGetRoslynVersion_Info(string version, string expectedVersion, string expectedCommit)
+    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2", "2158b59104a5fb7db33796657d4ab3231e312302", "roslyn")] // preview version is downloaded from an AzDo feed
+    [InlineData("4.14.0", "4.14.0", "8edf7bcd4f1594c3d68a6a567469f41dbd33dd1b", "roslyn")] // non-preview version is downloaded from nuget.org
+    [InlineData("5.0.0-2.25569.105", "5.0.0-2.25569.105", "fad253f51b461736dfd3cd9c15977bb7493becef", "dotnet")] // this is not on dotnet-tools feed; it is on a special feed that can be inferred from the build number
+    public async Task SpecifiedNuGetRoslynVersion_Info(string version, string expectedVersion, string expectedCommit, string expectedRepoName)
     {
         var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
 
@@ -70,7 +71,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         info.Should().NotBeNull();
         info.Version.Should().Be(expectedVersion);
         info.Commit.Hash.Should().Be(expectedCommit);
-        info.Commit.RepoUrl.Should().Be("https://github.com/dotnet/roslyn");
+        info.Commit.RepoUrl.Should().Be($"https://github.com/dotnet/{expectedRepoName}");
     }
 
     [Theory]

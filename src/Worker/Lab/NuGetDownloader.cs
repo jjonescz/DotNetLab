@@ -148,7 +148,9 @@ internal readonly record struct PackageKey
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
     private readonly ILogger<NuGetDownloader> logger;
+    private readonly SdkDownloader sdkDownloader;
     private readonly SourceCacheContext cacheContext;
+    private readonly ImmutableArray<Lazy<INuGetResourceProvider>> providers;
     private readonly ImmutableArray<SourceRepository> repositories;
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
@@ -158,11 +160,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     public NuGetDownloader(
         ILogger<NuGetDownloader> logger,
         IOptions<NuGetOptions> options,
-        CorsClientHandler corsClientHandler)
+        CorsClientHandler corsClientHandler,
+        SdkDownloader sdkDownloader)
     {
         this.logger = logger;
+        this.sdkDownloader = sdkDownloader;
 
-        ImmutableArray<Lazy<INuGetResourceProvider>> providers =
+        providers =
         [
             new(() => new RegistrationResourceV3Provider()),
             new(() => new DependencyInfoResourceV3Provider()),
@@ -471,7 +475,8 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         string packageId,
         SourceRepository? repository,
         NuGetVersion version,
-        NuGetDllFilter dllFilter)
+        NuGetDllFilter dllFilter,
+        Func<Task<string?>>? fallbackFeedUrl = null)
     {
         var packageIdentity = new PackageIdentity(packageId, version);
         return GetOrCreatePackageDependency(packageIdentity, dllFilter, async () =>
@@ -480,27 +485,31 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 ? AsyncEnumerable.Create(r)
                 : repositories.ToAsyncEnumerable();
 
-            var success = await repos.SelectNonNull(async Task<NuGetDownloadablePackageResult?> (repository) =>
-            {
-                var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
-                var dep = await depResource.ResolvePackage(
-                    packageIdentity,
-                    NuGetFramework.AnyFramework,
-                    cacheContext,
-                    NullLogger.Instance,
-                    CancellationToken.None);
-                return Download(dep);
-            })
-            .FirstOrDefaultAsync();
-
-            if (success is not { } s)
-            {
-                throw new InvalidOperationException(
+            return await repos
+                .Concat(createFallbackRepositoryAsync())
+                .SelectNonNull(async Task<NuGetDownloadablePackageResult?> (repository) =>
+                {
+                    var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
+                    var dep = await depResource.ResolvePackage(
+                        packageIdentity,
+                        NuGetFramework.AnyFramework,
+                        cacheContext,
+                        NullLogger.Instance,
+                        CancellationToken.None);
+                    return Download(dep);
+                })
+                .FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException(
                     $"Failed to download '{packageId}@{version}'.");
-            }
-
-            return s;
         });
+
+        async IAsyncEnumerable<SourceRepository> createFallbackRepositoryAsync()
+        {
+            if (fallbackFeedUrl != null && await fallbackFeedUrl() is { } url)
+            {
+                yield return Repository.CreateSource(providers, url);
+            }
+        }
     }
 
     private PackageDependency GetOrCreatePackageDependency(PackageIdentity packageIdentity, NuGetDllFilter dllFilter, Func<Task<NuGetDownloadablePackageResult>> resultFactory)
@@ -577,7 +586,25 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         }
         else if (specifier is CompilerVersionSpecifier.NuGet nuGetSpecifier)
         {
-            return Download(info.PackageId, null, nuGetSpecifier.Version, new CompilerNuGetDllFilter(info.PackageFolder));
+            return Download(
+                info.PackageId,
+                null,
+                nuGetSpecifier.Version,
+                new CompilerNuGetDllFilter(info.PackageFolder),
+                fallbackFeedUrl: async () =>
+                {
+                    if (!VersionUtil.TryGetBuildNumberFromVersionNumber(nuGetSpecifier.Version.ToString(), out var buildNumber))
+                    {
+                        return null;
+                    }
+
+                    if (await sdkDownloader.TryGetMergedManifestAsync(buildNumber) is not { } mergedManifest)
+                    {
+                        return null;
+                    }
+
+                    return $"https://pkgs.dev.azure.com/dnceng/public/_packaging/{SdkDownloader.GetCommitBasedFeedName(mergedManifest.Commit)}/nuget/v3/index.json";
+                });
         }
         else
         {
