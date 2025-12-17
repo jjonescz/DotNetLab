@@ -23,7 +23,7 @@ internal static class NuGetUtil
 {
     extension(PackageSource packageSource)
     {
-        public bool IsNuGetOrg => packageSource.SourceUri.Host == "api.nuget.org";
+        public bool IsNuGetOrg => packageSource.SourceUri.Host == SimpleNuGetUtil.NuGetApiHost;
     }
 
     private static readonly VersionRange anyVersionRange = VersionRange.Parse("*-*");
@@ -868,10 +868,10 @@ internal sealed class NuGetDownloadablePackage(
             version: version,
             commit: commitLink)
         {
-            VersionLink = SimpleNuGetUtil.GetPackageDetailUrl(
+            VersionLink = SimpleNuGetUtil.TryGetPackageDetailUrl(
                 packageId: result.DependencyInfo.Id,
                 version: version,
-                fromNuGetOrg: result.DependencyInfo.Source.PackageSource.IsNuGetOrg),
+                feedUrl: result.DependencyInfo.Source.PackageSource.SourceUri),
             Configuration = BuildConfiguration.Release,
         };
     }
