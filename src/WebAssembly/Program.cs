@@ -6,7 +6,11 @@ using System.Runtime.Versioning;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 App.RegisterRootComponents(builder.RootComponents.Add);
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
+    DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
+});
 App.RegisterServices(builder.Services);
 builder.Services.AddScoped<IAppHostEnvironment, WebAssemblyAppHostEnvironment>();
 builder.Services.AddScoped<IUpdateChecker, WebAssemblyUpdateChecker>();

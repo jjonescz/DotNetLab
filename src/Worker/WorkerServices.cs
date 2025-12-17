@@ -47,7 +47,11 @@ public static class WorkerServices
             sp =>
             {
                 var handler = httpMessageHandler ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp);
-                return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
+                return new HttpClient(handler)
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
+                };
             },
             configureServices);
     }

@@ -195,7 +195,10 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             }
             : new SourceCacheContext();
 
-        httpClient = new HttpClient(corsClientHandler);
+        httpClient = new HttpClient(corsClientHandler)
+        {
+            DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
+        };
         httpZipProvider = new HttpZipProvider(httpClient);
     }
 
