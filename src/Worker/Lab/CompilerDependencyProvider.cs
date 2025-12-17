@@ -153,7 +153,7 @@ internal sealed class BuiltInCompilerProvider : ICompilerDependencyResolver
             return new()
             {
                 Info = new(() => Task.FromResult(new PackageDependencyInfo(assemblyName: info.AssemblyNames[0],
-                    versionLink: (d) => SimpleNuGetUtil.GetPackageDetailUrl(packageId: info.PackageId, version: d.Version, fromNuGetOrg: false))
+                    versionLink: (d) => SimpleNuGetUtil.TryGetPackageDetailUrl(packageId: info.PackageId, version: d.Version, feedUrl: SimpleNuGetUtil.DotNetToolsFeedUrl))
                 {
                     Configuration = BuildConfiguration.Release,
                 })),

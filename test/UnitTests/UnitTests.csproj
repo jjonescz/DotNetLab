@@ -4,6 +4,8 @@
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <OutputType>Exe</OutputType>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <!-- Temporary workaround for VS Test Explorer not being able to execute tests. -->
+    <DisableTestingPlatformServerCapability>true</DisableTestingPlatformServerCapability>
   </PropertyGroup>
 
   <ItemGroup>

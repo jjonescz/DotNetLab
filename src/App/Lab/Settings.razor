@@ -263,7 +263,7 @@
                                     <span class="option-badge" data-text="@info.ReleaseDate"></span>
                                 </FluentOption>
                             }
-                            <FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkInfo" Width="1em" />
+                            <FluentProgressRing slot="end" title="Loading info..." Visible="loadingSdkVersion != null" Width="1em" />
                         </FluentComboboxEx>
                         @if (sdkInfo != null)
                         {
@@ -326,7 +326,7 @@
                         <FluentStack>
                             <FluentTextField @bind-Value="roslynVersion" @bind-Value:after="() => LoadRoslynInfoAsync()"
                                              Placeholder="@VersionPlaceholder" Style="width: 100%">
-                                <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRoslynInfo" Width="1em" />
+                                <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRoslynVersion != null" Width="1em" />
                             </FluentTextField>
                             <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
                                           @bind-SelectedOption="roslynConfiguration" @bind-SelectedOption:after="() => LoadRoslynInfoAsync()"
@@ -367,7 +367,7 @@
                         <FluentStack>
                             <FluentTextField @bind-Value="razorVersion" @bind-Value:after="() => LoadRazorInfoAsync()"
                                              Placeholder="@VersionPlaceholder" Style="width: 100%">
-                                <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRazorInfo" Width="1em" />
+                                <FluentProgressRing slot="end" title="Loading info..." Visible="loadingRazorVersion != null" Width="1em" />
                             </FluentTextField>
                             <FluentSelect AriaLabel="@ConfigurationTip" Items="Enum.GetValues<BuildConfiguration>()"
                                           @bind-SelectedOption="razorConfiguration" @bind-SelectedOption:after="() => LoadRazorInfoAsync()"
@@ -457,7 +457,7 @@
     private IJSObjectReference? vimDisposable;
     private string? sdkVersion, roslynVersion, razorVersion;
     private BuildConfiguration roslynConfiguration, razorConfiguration;
-    private bool loadingSdkInfo, loadingRoslynInfo, loadingRazorInfo;
+    private string? loadingSdkVersion, loadingRoslynVersion, loadingRazorVersion;
     private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
     private PackageDependencyInfo? roslynInfo, razorInfo;
@@ -721,7 +721,12 @@
             await Page.SaveStateToUrlAsync(state => state with { SdkVersion = versionToLoad });
         }
 
-        loadingSdkInfo = true;
+        if (loadingSdkVersion != null && loadingSdkVersion == versionToLoad)
+        {
+            return;
+        }
+
+        loadingSdkVersion = versionToLoad;
         await RefreshAsync();
 
         SdkInfo? info;
@@ -759,7 +764,7 @@
             sdkError = error;
         }
 
-        loadingSdkInfo = false;
+        loadingSdkVersion = null;
         await RefreshAsync();
     }
 
@@ -816,7 +821,12 @@
             });
         }
 
-        loadingRoslynInfo = true;
+        if (loadingRoslynVersion != null && loadingRoslynVersion == versionToLoad)
+        {
+            return;
+        }
+
+        loadingRoslynVersion = versionToLoad;
         await RefreshAsync();
 
         var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
@@ -827,7 +837,7 @@
             roslynError = error;
         }
 
-        loadingRoslynInfo = false;
+        loadingRoslynVersion = null;
         await RefreshAsync();
     }
 
@@ -851,7 +861,12 @@
             });
         }
 
-        loadingRazorInfo = true;
+        if (loadingRazorVersion != null && loadingRazorVersion == versionToLoad)
+        {
+            return;
+        }
+
+        loadingRazorVersion = versionToLoad;
         await RefreshAsync();
 
         var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
@@ -862,7 +877,7 @@
             razorError = error;
         }
 
-        loadingRazorInfo = false;
+        loadingRazorVersion = null;
         await RefreshAsync();
     }
 

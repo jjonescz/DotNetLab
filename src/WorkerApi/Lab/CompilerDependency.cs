@@ -141,7 +141,7 @@ public sealed record CompilerInfo(
         };
     }
 
-    public string NuGetVersionListUrl => SimpleNuGetUtil.GetPackageVersionListUrl(PackageId);
+    public string NuGetVersionListUrl => SimpleNuGetUtil.GetPackageVersionListUrl(PackageId, SimpleNuGetUtil.DotNetToolsFeedUrl);
     public string PrListUrl => $"{RepositoryUrl}/pulls";
     public string BuildListUrl => SimpleAzDoUtil.GetBuildListUrl(BuildDefinitionId);
     public string BranchListUrl => $"{RepositoryUrl}/branches";

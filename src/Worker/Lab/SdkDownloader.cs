@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -29,6 +30,8 @@ internal sealed class SdkDownloader(
 
     private static XmlSerializer VersionDetailsSerializer => field ??= new(typeof(Dependencies));
     private static XmlSerializer MergedManifestSerializer => field ??= new(typeof(MergedManifest));
+
+    private readonly ConcurrentDictionary<string, Task<MergedManifest?>> mergedManifestCache = new();
 
     public async Task<List<SdkVersionInfo>> GetListAsync()
     {
@@ -75,7 +78,14 @@ internal sealed class SdkDownloader(
         {
             var url = $"https://api.github.com/repos/{sdkRepoOwner}/{sdkRepoName}/contents/{versionDetailsRelativePath}?ref={commit.Hash}";
             using var response = await SendGitHubRequestAsync(url);
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMessage = (await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.GitHubErrorResponse))?.Message
+                     ?? $"{(int)response.StatusCode}: {response.ReasonPhrase}";
+                throw new InvalidOperationException($"Failed to get version details for .NET SDK version '{version}' ({commit.ShortHash}): {errorMessage}");
+            }
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var dependencies = (Dependencies)VersionDetailsSerializer.Deserialize(stream)!;
 
@@ -101,17 +111,27 @@ internal sealed class SdkDownloader(
             var roslynVersion = manifest.GetRepo(roslynRepoUrl)?.PackageVersion ?? "";
             var razorVersion = manifest.GetRepo(razorRepoUrl)?.PackageVersion ?? "";
 
-            // PackageVersion fields are removed from newer source manifests.
-            // Try to get the info from MergedManifest.xml file instead.
-            if ((string.IsNullOrEmpty(roslynVersion) || string.IsNullOrEmpty(razorVersion)) &&
-                VersionUtil.TryGetBuildNumberFromVersionNumber(version, out var buildNumber))
+            if (string.IsNullOrEmpty(roslynVersion) || string.IsNullOrEmpty(razorVersion))
             {
-                var url = $"https://ci.dot.net/public/assets/manifests/dotnet-dotnet/{buildNumber}/MergedManifest.xml";
-                using var response = await client.GetAsync(url.WithCorsProxy());
-                if (response.IsSuccessStatusCode)
+                // If we have a public version like 10.0.100, we cannot derive the build number from it.
+                // However, we can use the commit to find the corresponding NuGet feed and find the full version there.
+                if (!VersionUtil.TryGetBuildNumberFromVersionNumber(version, out var buildNumber))
                 {
-                    using var stream = await response.Content.ReadAsStreamAsync();
-                    var mergedManifest = (MergedManifest)MergedManifestSerializer.Deserialize(stream)!;
+                    var versionFromNuGetFeed = await tryGetVersionFromNuGetFeedAsync(commit);
+                    if (versionFromNuGetFeed != null && VersionUtil.TryGetBuildNumberFromVersionNumber(versionFromNuGetFeed, out buildNumber))
+                    {
+                        version = versionFromNuGetFeed;
+                    }
+                    else
+                    {
+                        buildNumber = null;
+                    }
+                }
+
+                // PackageVersion fields are removed from newer source manifests.
+                // Try to get the info from MergedManifest.xml file instead.
+                if (buildNumber != null && await TryGetMergedManifestAsync(buildNumber) is { } mergedManifest)
+                {
                     roslynVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Roslyn.PackageId)?.Version ?? roslynVersion;
                     razorVersion = mergedManifest.Packages.FirstOrDefault(static p => p.Id == CompilerInfo.Razor.PackageId)?.Version ?? razorVersion;
                 }
@@ -130,6 +150,35 @@ internal sealed class SdkDownloader(
                 RazorVersion = razorVersion,
             };
         }
+
+        async Task<string?> tryGetVersionFromNuGetFeedAsync(CommitLink vmrCommit)
+        {
+            var packageVersionListUrl = $"https://pkgs.dev.azure.com/dnceng/public/_packaging/{GetCommitBasedFeedName(vmrCommit.Hash)}/nuget/v3/flat2/Microsoft.CodeAnalysis/index.json";
+            var response = await client.GetAsync(packageVersionListUrl);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.NuGetVersionListResponse);
+            return result?.Versions.FirstOrDefault();
+        }
+    }
+
+    public static string GetCommitBasedFeedName(string vmrCommit) => $"darc-pub-dotnet-dotnet-{vmrCommit[..8]}";
+
+    public Task<MergedManifest?> TryGetMergedManifestAsync(string buildNumber)
+    {
+        return mergedManifestCache.GetOrAdd(buildNumber, TryGetMergedManifestNoCacheAsync);
+    }
+
+    private async Task<MergedManifest?> TryGetMergedManifestNoCacheAsync(string buildNumber)
+    {
+        var url = $"https://ci.dot.net/public/assets/manifests/dotnet-dotnet/{buildNumber}/MergedManifest.xml";
+        using var response = await client.GetAsync(url.WithCorsProxy());
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            return (MergedManifest)MergedManifestSerializer.Deserialize(stream)!;
+        }
+
+        return null;
     }
 
     public async Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
@@ -192,6 +241,8 @@ public sealed class Dependencies
 [XmlRoot("Build")]
 public sealed class MergedManifest
 {
+    [XmlAttribute] public required string Commit { get; init; }
+
     [XmlElement(nameof(Package))]
     public required List<Package> Packages { get; init; }
 
@@ -270,4 +321,14 @@ internal readonly struct DotNetReleaseIndex
     {
         public required string Version { get; init; }
     }
+}
+
+internal sealed class GitHubErrorResponse
+{
+    public string? Message { get; init; }
+}
+
+internal sealed class NuGetVersionListResponse
+{
+    public ImmutableArray<string> Versions { get; init; }
 }

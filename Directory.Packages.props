@@ -12,7 +12,7 @@
     <NuGetVersion>6.14.0</NuGetVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AwesomeAssertions" Version="9.2.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.3.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.4.0" />
@@ -36,7 +36,7 @@
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="$(FluentUIVersion)" />
     <PackageVersion Include="Microsoft.Net.Compilers.Razor.Toolset" Version="$(RazorVersion)" />
     <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="$(RoslynVersion)" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Microsoft.NETCore.App.Ref" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
     <PackageVersion Include="NuGet.Resolver" Version="$(NuGetVersion)" />
@@ -45,7 +45,7 @@
     <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="$(RoslynVersion)" />
     <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Xunit.Combinatorial" Version="2.0.24" />
-    <PackageVersion Include="xunit.v3" Version="3.1.0" />
+    <PackageVersion Include="xunit.v3" Version="3.2.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup Label="Pinned Transitive Dependencies">
