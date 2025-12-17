@@ -44,4 +44,4 @@ jobs:
           name: logs
           path: |
             *.binlog
-            **/TestResults/*.trx
+            **/TestResults/*.*
