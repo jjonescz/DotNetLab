@@ -31,7 +31,7 @@ jobs:
         run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -bl:build.binlog
 
       - name: Incremental re-build
-        run: dotnet build -question -bl:question.binlog
+        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -question -bl:question.binlog
 
       - name: Test
         if: ${{ always() && steps.build.outcome == 'success' }}
