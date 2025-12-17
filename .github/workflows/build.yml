@@ -29,5 +29,8 @@ jobs:
       - name: Build
         run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true
 
+      - name: Incremental re-build
+        run: dotnet build -question
+
       - name: Test
         run: dotnet test --no-build
