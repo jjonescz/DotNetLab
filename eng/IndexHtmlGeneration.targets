@@ -4,6 +4,7 @@
     <IndexHtmlTemplatePath Condition="'$(IndexHtmlTemplatePath)' == ''">$(MSBuildThisFileDirectory)index.template.html</IndexHtmlTemplatePath>
     <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(ProjectDir)wwwroot\index.html</IndexHtmlOutputPath>
     <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
+    <IndexHtmlGoatcounterPath Condition="'$(IndexHtmlGoatcounterPath)' == ''">/</IndexHtmlGoatcounterPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
         .Replace('@@SCRIPT_PATH@@', '$(IndexHtmlScriptPath)')
         .Replace('@@HEAD@@', '$(IndexHtmlHead)')
         .Replace('@@ASSEMBLY_NAME@@', '$(AssemblyName)')
+        .Replace('@@GOATCOUNTER_PATH@@', '$(IndexHtmlGoatcounterPath)')
         .Replace('@@SCRIPTS@@', '$(IndexHtmlScripts)'))"
       Overwrite="true" />
   </Target>
