@@ -27,7 +27,21 @@ jobs:
         run: dotnet workload install wasm-tools wasm-experimental
 
       - name: Build
-        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true
+        id: build
+        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -bl:build.binlog
+
+      - name: Incremental re-build
+        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -question -bl:question.binlog
 
       - name: Test
-        run: dotnet test --no-build
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        run: dotnet test --no-build --report-xunit
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: logs
+          path: |
+            *.binlog
+            **/TestResults/*.*
