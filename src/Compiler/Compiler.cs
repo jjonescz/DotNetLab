@@ -943,7 +943,7 @@ public sealed class Compiler(
                 LazyText = () =>
                 {
                     // TODO: Share with Run.
-                    string output = tryGetEmitStreams(getExecutableCompilation(), emitPdb: false, out var emitStreams, out var error)
+                    string output = tryGetEmitStreams(finalCompilation, emitPdb: false, out var emitStreams, out var error)
                         ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
                         : error;
                     return new(output);
