@@ -9,6 +9,7 @@ namespace DotNetLab;
 public partial class App
 {
     public const string Domain = "lab.razor.fyi";
+    public const string DesktopAppLink = "https://apps.microsoft.com/detail/9PCPMM329DZT";
 
     public static void RegisterRootComponents(Action<Type, string> adder)
     {

@@ -11,6 +11,7 @@
 @inject CursorSynchronizer.Services CursorSynchronizerServices
 @inject IUpdateChecker UpdateChecker
 @inject IScreenInfo ScreenInfo
+@inject ICompilerOutputPlugin CompilerOutputPlugin
 @inject ILogger<Page> Logger
 @using BlazorMonaco.Editor
 
@@ -979,20 +980,22 @@
 
         async Task setModelAsync(string? inputFileName, string outputType, CompiledFileLazyResult result, CompiledFileOutput? output)
         {
-            var language = (result.Metadata?.SpecialMessage == true ? null : output?.Language) ?? "plaintext";
+            var language = (result.Metadata is { MessageKind: not MessageKind.Normal } ? null : output?.Language) ?? "plaintext";
+
+            var text = CompilerOutputPlugin.GetText(result);
 
             if (!outputStates.TryGetValue(outputType, out var state))
             {
                 state = new(await BlazorMonaco.Editor.Global.CreateModel(
                     JSRuntime,
-                    value: result.Text,
+                    value: text,
                     language: language,
                     uri: CompiledAssembly.GetOutputModelUri(inputFileName, outputType)));
                 outputStates[outputType] = state;
             }
             else
             {
-                await state.Model.SetValue(result.Text);
+                await state.Model.SetValue(text);
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
             }
 
@@ -1113,7 +1116,7 @@
         // avoid resolving it and hence starting compilation implicitly.
         if (compiled?.CacheInfo is not null)
         {
-            return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.ForSpecialMessage }, false);
+            return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.SpecialMessage }, false);
         }
 
         if (!outputLoading)
@@ -1145,7 +1148,7 @@
             catch (Exception ex)
             {
                 string error = ex is WorkerException w ? w.Failure.FullString : ex.ToString();
-                result = new() { Text = error, Metadata = CompiledFileOutputMetadata.ForSpecialMessage };
+                result = new() { Text = error, Metadata = CompiledFileOutputMetadata.SpecialMessage };
                 success = false;
             }
 

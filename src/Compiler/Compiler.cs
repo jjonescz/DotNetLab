@@ -930,7 +930,8 @@ public sealed class Compiler(
                 {
                     Type = "asm",
                     Label = "ASM",
-                    EagerText = "JIT ASM disassembler is not available on this platform. Please use the desktop app instead.",
+                    EagerText = "JIT ASM disassembler is not available.",
+                    Metadata = CompiledFileOutputMetadata.JitAsmUnavailableMessage,
                 };
             }
 

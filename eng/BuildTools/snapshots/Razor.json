@@ -33,7 +33,7 @@
           "Language": "html",
           "Text": "System.ArgumentException: The type TestNamespace._Imports does not implement IComponent. (Parameter \u0027componentType\u0027)",
           "Metadata": {
-            "SpecialMessage": true,
+            "MessageKind": 1,
             "SemanticTokens": null,
             "InputToOutput": null,
             "OutputToInput": null,
@@ -109,8 +109,14 @@
       "Label": "ASM",
       "Priority": 0,
       "Language": null,
-      "Text": "JIT ASM disassembler is not available on this platform. Please use the desktop app instead.",
-      "Metadata": null
+      "Text": "JIT ASM disassembler is not available.",
+      "Metadata": {
+        "MessageKind": 2,
+        "SemanticTokens": null,
+        "InputToOutput": null,
+        "OutputToInput": null,
+        "OutputToOutput": null
+      }
     },
     {
       "Type": "run",

@@ -226,12 +226,7 @@ public sealed class CompiledFileOutput
     [JsonInclude]
     public string? Text { get; internal set; }
 
-    /// <remarks>
-    /// <see cref="JsonIncludeAttribute"/> is explicitly needed because of the non-public setter
-    /// (which needs to be internal so the source generator can see it).
-    /// </remarks>
-    [JsonInclude]
-    public CompiledFileOutputMetadata? Metadata { get; internal set; }
+    public CompiledFileOutputMetadata? Metadata { get; set; }
 
     /// <remarks>
     /// This needs to allow <see langword="null"/> which was historically allowed in cached snippets
@@ -328,7 +323,7 @@ public sealed class CompiledFileOutput
         CompiledFileLazyResult handleException(Exception ex)
         {
             var text = stripExceptionStackTrace ? $"{ex.GetType().FullName}: {ex.Message}" : ex.ToString();
-            var metadata = CompiledFileOutputMetadata.ForSpecialMessage;
+            var metadata = CompiledFileOutputMetadata.SpecialMessage;
             Text = text;
             Metadata = metadata;
             return new CompiledFileLazyResult
@@ -361,11 +356,19 @@ public readonly struct CompiledFileLazyResult
 
 public sealed class CompiledFileOutputMetadata
 {
-    public static CompiledFileOutputMetadata ForSpecialMessage => field ??= new() { SpecialMessage = true };
+    public static CompiledFileOutputMetadata SpecialMessage => field ??= new() { MessageKind = MessageKind.Special };
+    public static CompiledFileOutputMetadata JitAsmUnavailableMessage => field ??= new() { MessageKind = MessageKind.JitAsmUnavailable };
 
-    public bool SpecialMessage { get; init; }
+    public MessageKind MessageKind { get; init; }
     public string? SemanticTokens { get; init; }
     public string? InputToOutput { get; init; }
     public string? OutputToInput { get; init; }
     public string? OutputToOutput { get; init; }
+}
+
+public enum MessageKind
+{
+    Normal,
+    Special,
+    JitAsmUnavailable,
 }
