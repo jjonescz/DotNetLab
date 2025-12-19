@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Reflection.Metadata;
@@ -417,6 +418,7 @@ public sealed class Compiler(
                         return new(getCSharpAsync(peFile));
                     },
                 },
+                getAsmOutput(),
                 new()
                 {
                     Type = "run",
@@ -916,6 +918,36 @@ public sealed class Compiler(
         ICSharpCode.Decompiler.Metadata.IAssemblyResolver getAssemblyResolver()
         {
             return new DecompilerAssemblyResolver(loggerFactory.CreateLogger<DecompilerAssemblyResolver>(), references.Assemblies);
+        }
+
+        CompiledFileOutput getAsmOutput()
+        {
+            var disassembler = services.GetService<IJitAsmDisassembler>();
+
+            if (disassembler == null)
+            {
+                return new()
+                {
+                    Type = "asm",
+                    Label = "ASM",
+                    EagerText = "JIT ASM disassembler is not available on this platform. Please use the desktop app instead.",
+                };
+            }
+
+            return new()
+            {
+                Type = "asm",
+                Label = "ASM",
+                Language = "scheme",
+                LazyText = () =>
+                {
+                    // TODO: Share with Run.
+                    string output = tryGetEmitStreams(getExecutableCompilation(), emitPdb: false, out var emitStreams, out var error)
+                        ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
+                        : error;
+                    return new(output);
+                },
+            };
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()

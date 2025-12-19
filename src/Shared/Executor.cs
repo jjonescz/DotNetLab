@@ -162,7 +162,7 @@ public static class Executor
     }
 }
 
-internal sealed class ExecutorLoader(ImmutableArray<RefAssembly> assemblies) : AssemblyLoadContext(nameof(ExecutorLoader), isCollectible: true)
+public sealed class ExecutorLoader(ImmutableArray<RefAssembly> assemblies) : AssemblyLoadContext(nameof(ExecutorLoader), isCollectible: true)
 {
     private readonly Dictionary<string, Assembly> loadedAssemblies = new();
     private readonly IReadOnlyDictionary<string, ImmutableArray<byte>> lookup = assemblies

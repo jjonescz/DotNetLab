@@ -105,11 +105,19 @@
       "Metadata": null
     },
     {
+      "Type": "asm",
+      "Label": "ASM",
+      "Priority": 0,
+      "Language": null,
+      "Text": "JIT ASM disassembler is not available on this platform. Please use the desktop app instead.",
+      "Metadata": null
+    },
+    {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
       "Language": null,
-      "Text": "Razor.GlobalOutputs.3.Text.txt",
+      "Text": "Razor.GlobalOutputs.4.Text.txt",
       "Metadata": null
     },
     {
