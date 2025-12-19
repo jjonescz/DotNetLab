@@ -4,7 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <!-- We are not using package source mapping. -->
     <NoWarn>$(NoWarn);NU1507</NoWarn>
-    <NetCoreVersion>10.0.0</NetCoreVersion>
+    <NetCoreVersion>10.0.1</NetCoreVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
     <RoslynVersion>5.3.0-2.25557.4</RoslynVersion>
     <RazorVersion>10.0.0-preview.25557.2</RazorVersion>
