@@ -13,8 +13,7 @@
     <Content Remove="$(IndexHtmlOutputPath)" />
     <Content Include="$(IndexHtmlOutputPath)" />
 
-    <UpToDateCheckInput Include="$(IndexHtmlTemplatePath)" />
-    <UpToDateCheckOutput Include="$(IndexHtmlOutputPath)" />
+    <UpToDateCheckBuilt Include="$(IndexHtmlOutputPath)" Original="$(IndexHtmlTemplatePath)" />
   </ItemGroup>
 
   <Target Name="GenerateIndexHtml" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath)" Outputs="$(IndexHtmlOutputPath)">
