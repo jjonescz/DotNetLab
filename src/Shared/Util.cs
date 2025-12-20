@@ -26,6 +26,15 @@ public static partial class Util
         }
     }
 
+    extension(CompiledFileOutput output)
+    {
+        public string ShortLabel => output.Label switch
+        {
+            "Sequence points" => "Seq",
+            var other => other,
+        };
+    }
+
     extension(Guid)
     {
         public static Guid TupleElementNames => tupleElementNames ??= new("ED9FDF71-8879-4747-8ED3-FE5EDE3CE710");
@@ -313,12 +322,28 @@ public static partial class Util
         TKey key,
         TValue value)
         where TKey : notnull
+        => GetOrAdd(dictionary, key, value, static (value, _) => value);
+
+    public static TValue GetOrAdd<TKey, TValue>(
+        this IDictionary<TKey, TValue> dictionary,
+        TKey key,
+        Func<TKey, TValue> valueFactory)
+        where TKey : notnull
+        => GetOrAdd(dictionary, key, valueFactory, static (valueFactory, key) => valueFactory(key));
+
+    public static TValue GetOrAdd<TKey, TValue, TArg>(
+        this IDictionary<TKey, TValue> dictionary,
+        TKey key,
+        TArg arg,
+        Func<TArg, TKey, TValue> valueFactory)
+        where TKey : notnull
     {
         if (dictionary.TryGetValue(key, out var existingValue))
         {
             return existingValue;
         }
 
+        var value = valueFactory(arg, key);
         dictionary.Add(key, value);
         return value;
     }

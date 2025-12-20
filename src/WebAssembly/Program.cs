@@ -16,6 +16,7 @@ builder.Services.AddScoped<IAppHostEnvironment, WebAssemblyAppHostEnvironment>()
 builder.Services.AddScoped<IUpdateChecker, WebAssemblyUpdateChecker>();
 builder.Services.AddScoped<IScreenInfo, WebAssemblyScreenInfo>();
 builder.Services.AddScoped<IWorkerConfigurer, WebAssemblyWorkerConfigurer>();
+builder.Services.AddScoped<ICompilerOutputPlugin, WebAssemblyCompilerOutputPlugin>();
 
 var host = builder.Build();
 
@@ -38,5 +39,37 @@ file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
 {
     public void ConfigureWorkerServices(ServiceCollection services)
     {
+    }
+}
+
+file sealed class WebAssemblyCompilerOutputPlugin : ICompilerOutputPlugin
+{
+    public string GetText(
+        OutputInfo? outputInfo,
+        CompiledFileLazyResult result,
+        out OutputDisclaimer outputDisclaimer,
+        ref string? language)
+    {
+        if (result.Metadata?.MessageKind == MessageKind.JitAsmUnavailable)
+        {
+            if (outputInfo?.CachedOutput is { Text: { } cachedText, Language: var cachedLanguage } &&
+                cachedText != result.Text)
+            {
+                outputDisclaimer = OutputDisclaimer.JitAsmUnavailableUsingCached;
+                language = cachedLanguage;
+                return cachedText;
+            }
+
+            outputDisclaimer = OutputDisclaimer.None;
+            language = null;
+            return $"""
+                JIT disassembler is not available on this platform.
+                Please use the desktop app instead ({App.DesktopAppLink}).
+
+                """;
+        }
+
+        outputDisclaimer = OutputDisclaimer.None;
+        return result.Text;
     }
 }

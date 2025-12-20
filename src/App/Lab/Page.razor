@@ -11,6 +11,7 @@
 @inject CursorSynchronizer.Services CursorSynchronizerServices
 @inject IUpdateChecker UpdateChecker
 @inject IScreenInfo ScreenInfo
+@inject ICompilerOutputPlugin CompilerOutputPlugin
 @inject ILogger<Page> Logger
 @using BlazorMonaco.Editor
 
@@ -81,7 +82,7 @@
                 </FluentStack>
             }
             @* Cached info *@
-            else if (compiled is { CacheInfo: { } cacheInfo })
+            else if (compiled is { CacheInfo: { } cacheInfo, CachedOutput: null })
             {
                 var title = cacheInfo.Timestamp.HasValue
                 ? "The currently displayed output has been fetched from a server cache."
@@ -92,7 +93,7 @@
                     Cached
                     @if (cacheInfo.Timestamp is { } cacheTimestamp)
                     {
-                        @cacheTimestamp.ToString("MMM\u00A0d,\u00A0yyyy")
+                        @FormatCacheTimestamp(cacheTimestamp)
                     }
                     else
                     {
@@ -215,7 +216,7 @@
                     @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
                     <FluentTab Id="@output.Type" Label="@output.Label">
                         <Header>
-                            <span>@output.Label</span>
+                            <span title="@output.Label (@output.Type)">@output.ShortLabel</span>
 
                             @* Error List badge *@
                             @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
@@ -277,6 +278,16 @@
                 </div>
             }
 
+            @* Output disclaimer *@
+            @if (outputDisclaimer == OutputDisclaimer.JitAsmUnavailableUsingCached)
+            {
+                <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+                    JIT disassembler is not available on this platform
+                    (it's only available in the <a href="@App.DesktopAppLink" target="_blank">desktop app</a>).<br/>
+                    Displaying cached output@(compiled?.CacheInfo?.Timestamp is { } cacheTimestamp ? $" ({FormatCacheTimestamp(cacheTimestamp)})" : "").
+                </FluentMessageBar>
+            }
+
             @* Output editor *@
             <div style="flex-grow: 1">
                 <StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
@@ -309,13 +320,29 @@
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
     private bool outputLoading;
-    private (CompilationInput Input, CompiledAssembly Output, CacheInfo? CacheInfo, DateTimeOffset Start, DateTimeOffset End)? compiled;
+    private OutputDisclaimer outputDisclaimer;
+    private CompiledState? compiled;
     private Settings settings = null!;
     private bool wordWrap;
     private bool useVim;
     private bool enableMemoryUsageView;
     private Orientation orientation;
     private string? workerError;
+
+    private sealed record CompiledState
+    {
+        public required CompilationInput Input { get; init; }
+        public required CompiledAssembly Output { get; init; }
+        public CacheInfo? CacheInfo { get; init; }
+        public required DateTimeOffset Start { get; init; }
+        public required DateTimeOffset End { get; init; }
+
+        /// <summary>
+        /// Only set if this <see cref="CompiledState"/> instance represents compiled (not cached) state
+        /// but we also have cached output loaded for it.
+        /// </summary>
+        public CompiledAssembly? CachedOutput { get; init; }
+    }
 
     private record EditorState(TextModel Model) : IAsyncDisposable
     {
@@ -823,7 +850,31 @@
         var startTime = DateTimeOffset.Now;
         var input = state.ToCompilationInput();
         var output = await Worker.CompileAsync(input, languageServicesEnabled: LanguageServices.Enabled);
-        compiled = (input, output, CacheInfo: null, Start: startTime, End: DateTimeOffset.Now);
+
+        // Preserve cached output info for the same input.
+        CompiledAssembly? cachedOutput;
+        CacheInfo? cacheInfo;
+        if (compiled is { Input: var existingInput, CachedOutput: null, CacheInfo: { } existingCacheInfo, Output: var existingOutput } &&
+            Equals(existingInput, input))
+        {
+            cachedOutput = existingOutput;
+            cacheInfo = existingCacheInfo;
+        }
+        else
+        {
+            cachedOutput = null;
+            cacheInfo = null;
+        }
+
+        compiled = new()
+        {
+            Input = input,
+            Output = output,
+            CachedOutput = cachedOutput,
+            CacheInfo = cacheInfo,
+            Start = startTime,
+            End = DateTimeOffset.Now,
+        };
 
         await DisplaySquigglesAsync();
 
@@ -933,16 +984,16 @@
         if (compiled is not { } comp || selectedOutputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
-            await setModelAsync(null, "", new() { Text = "" }, null);
+            await setModelAsync(null, "", new() { Text = "" });
         }
         else
         {
             var compiledOutput = comp.Output;
             var outputType = selectedOutputType;
-            var output = GetOutput(outputType);
-            var (result, resolvedLazyText) = await LoadOutputTextAsync(output);
+            var outputInfo = GetOutput(outputType);
+            var (result, resolvedLazyText) = await LoadOutputTextAsync(outputInfo);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
-            await setModelAsync(output?.File, outputType, result, output?.Output);
+            await setModelAsync(outputInfo, outputType, result);
 
             if (compiledOutput is not null && shouldPerformOutputAction(storeInCacheMode, resolvedLazyText))
             {
@@ -977,22 +1028,24 @@
             });
         }
 
-        async Task setModelAsync(string? inputFileName, string outputType, CompiledFileLazyResult result, CompiledFileOutput? output)
+        async Task setModelAsync(OutputInfo? outputInfo, string outputType, CompiledFileLazyResult result)
         {
-            var language = (result.Metadata?.SpecialMessage == true ? null : output?.Language) ?? "plaintext";
+            var language = (result.Metadata is { MessageKind: not MessageKind.Normal } ? null : outputInfo?.Output.Language) ?? "plaintext";
+
+            var text = CompilerOutputPlugin.GetText(outputInfo, result, out outputDisclaimer, ref language);
 
             if (!outputStates.TryGetValue(outputType, out var state))
             {
                 state = new(await BlazorMonaco.Editor.Global.CreateModel(
                     JSRuntime,
-                    value: result.Text,
+                    value: text,
                     language: language,
-                    uri: CompiledAssembly.GetOutputModelUri(inputFileName, outputType)));
+                    uri: CompiledAssembly.GetOutputModelUri(outputInfo?.File, outputType)));
                 outputStates[outputType] = state;
             }
             else
             {
-                await state.Model.SetValue(result.Text);
+                await state.Model.SetValue(text);
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
             }
 
@@ -1048,25 +1101,34 @@
         }
     }
 
-    private (CompiledFileOutput Output, string? File)? GetOutput(string type)
+    private OutputInfo? GetOutput(string type)
     {
         if (CurrentCompiledFile is { } currentCompiledFile)
         {
             if (currentCompiledFile.GetOutput(type) is { } output)
             {
-                return (output, CurrentFileName);
+                return new()
+                {
+                    Output = output,
+                    CachedOutput = CurrentCachedFile?.GetOutput(type),
+                    File = CurrentFileName
+                };
             }
         }
 
         if (compiled?.Output.GetGlobalOutput(type) is { } globalOutput)
         {
-            return (globalOutput, null);
+            return new()
+            {
+                Output = globalOutput,
+                CachedOutput = compiled?.CachedOutput?.GetGlobalOutput(type),
+            };
         }
 
         return null;
     }
 
-    private bool? HasEmptyText((CompiledFileOutput Output, string? File)? outputInfo)
+    private bool? HasEmptyText(OutputInfo? outputInfo)
     {
         if (TryLoadEagerOutputText(outputInfo, out _, out _, out var text))
         {
@@ -1076,12 +1138,12 @@
         return null;
     }
 
-    private bool TryLoadEagerOutputText((CompiledFileOutput Output, string? File)? outputInfo,
+    private bool TryLoadEagerOutputText(OutputInfo? outputInfo,
         [NotNullWhen(returnValue: false)] out CompiledFileOutput? output,
         out string? file,
         [NotNullWhen(returnValue: true)] out string? text)
     {
-        if (outputInfo is not (var o, var f))
+        if (outputInfo is not { } info)
         {
             output = null;
             file = null;
@@ -1089,8 +1151,8 @@
             return true;
         }
 
-        output = o;
-        file = f;
+        output = info.Output;
+        file = info.File;
 
         if (output.Text is { } eagerText)
         {
@@ -1102,7 +1164,7 @@
         return false;
     }
 
-    private async Task<(CompiledFileLazyResult Result, bool ResolvedLazyText)> LoadOutputTextAsync((CompiledFileOutput Output, string? File)? outputInfo)
+    private async Task<(CompiledFileLazyResult Result, bool ResolvedLazyText)> LoadOutputTextAsync(OutputInfo? outputInfo)
     {
         if (TryLoadEagerOutputText(outputInfo, out var output, out var file, out var eagerText))
         {
@@ -1111,14 +1173,14 @@
 
         // If we are currently displaying cached outputs, but this specific output type is not cached,
         // avoid resolving it and hence starting compilation implicitly.
-        if (compiled?.CacheInfo is not null)
+        if (compiled is { CacheInfo: not null, CachedOutput: null })
         {
-            return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.ForSpecialMessage }, false);
+            return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.SpecialMessage }, false);
         }
 
         if (!outputLoading)
         {
-            return await loadAsync(compiled!.Value.Input, file: file, outputType: output.Type);
+            return await loadAsync(compiled!.Input, file: file, outputType: output.Type);
         }
 
         return (new() { Text = "" }, false);
@@ -1145,7 +1207,7 @@
             catch (Exception ex)
             {
                 string error = ex is WorkerException w ? w.Failure.FullString : ex.ToString();
-                result = new() { Text = error, Metadata = CompiledFileOutputMetadata.ForSpecialMessage };
+                result = new() { Text = error, Metadata = CompiledFileOutputMetadata.SpecialMessage };
                 success = false;
             }
 
@@ -1172,6 +1234,16 @@
         }
     }
 
+    private CompiledFile? CurrentCachedFile
+    {
+        get
+        {
+            return compiled?.CachedOutput?.Files.TryGetValue(CurrentFileName, out var file) == true
+                ? file
+                : null;
+        }
+    }
+
     private async Task EditorInitAsync()
     {
         // This might get called twice when an editor is hidden and unhidden, or during hot reload,
@@ -1185,6 +1257,7 @@
 
         await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
         await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
         await RegisterFormatActionAsync();
@@ -1214,6 +1287,11 @@
             // users can always store their snippet separately by compiling manually).
             await CompileAsync(storeInCache: false);
         }
+    }
+
+    private static string FormatCacheTimestamp(DateTimeOffset timestamp)
+    {
+        return timestamp.ToString("MMM\u00A0d,\u00A0yyyy");
     }
 
     private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
@@ -1253,11 +1331,24 @@
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
         {
+            compiled = compiled with
+            {
+                CacheInfo = info,
+                CachedOutput = output,
+            };
+
             return;
         }
 
         var timestamp = DateTimeOffset.Now;
-        compiled = (input, output, info, Start: timestamp, End: timestamp);
+        compiled = new()
+        {
+            Input = input,
+            Output = output,
+            CacheInfo = info,
+            Start = timestamp,
+            End = timestamp
+        };
         StateHasChanged();
         await DisplaySquigglesAsync();
 

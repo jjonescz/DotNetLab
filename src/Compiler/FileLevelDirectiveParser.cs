@@ -523,7 +523,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     },
                     static (context, result) =>
                     {
-                        context.Config.EmitPdb = result != null;
+                        context.Config.ExtendedEmitOptions(options => options with { CreatePdbStream = result != null });
 
                         if (result is { } format)
                         {

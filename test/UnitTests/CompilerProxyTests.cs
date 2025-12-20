@@ -232,7 +232,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var runResult = await compiled.GetRequiredGlobalOutput("run").LoadAsync();
         Assert.StartsWith("System.NullReferenceException:", runResult.Text);
         Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", runResult.Text);
-        Assert.True(runResult.Metadata?.SpecialMessage);
+        Assert.Equal(MessageKind.Special, runResult.Metadata?.MessageKind);
 
         // Tree output is independent and doesn't crash.
         var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync()).Text;

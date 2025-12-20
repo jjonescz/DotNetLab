@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Razor;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Reflection.Metadata;
@@ -120,7 +121,7 @@ public sealed class Compiler(
 
         var parseOptions = CreateDefaultParseOptions();
         CSharpCompilationOptions? options = null;
-        EmitOptions emitOptions = EmitOptions.Default;
+        var emitOptions = new ExtendedEmitOptions(EmitOptions.Default);
 
         var references = new RefAssemblyList
         {
@@ -247,7 +248,7 @@ public sealed class Compiler(
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
 
-        var peFile = getPeFile(finalCompilation, emitPdb: Config.Instance.EmitPdb, out var emitDiagnostics);
+        var peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
         IEnumerable<Diagnostic> diagnostics = configDiagnostics
             .Concat(processDirectiveDiagnostics())
@@ -373,7 +374,7 @@ public sealed class Compiler(
 
                             var componentTypeName = string.IsNullOrEmpty(ns) ? cls : $"{ns}.{cls}";
 
-                            ValueTask<string> result = tryGetEmitStreams(finalCompilation, emitPdb: false, out var emitStreams, out var error)
+                            ValueTask<string> result = tryGetEmitStreams(finalCompilation, emitOptions.WithoutPdb(), out var emitStreams, out var error)
                                 ? new(Executor.RenderComponentToHtmlAsync(emitStreams.Value.PeStream, componentTypeName))
                                 : new(error);
                             return result;
@@ -417,13 +418,14 @@ public sealed class Compiler(
                         return new(getCSharpAsync(peFile));
                     },
                 },
+                getAsmOutput(),
                 new()
                 {
                     Type = "run",
                     Label = "Run",
                     LazyText = async () =>
                     {
-                        string output = tryGetEmitStreams(getExecutableCompilation(), emitPdb: false, out var emitStreams, out var error)
+                        string output = tryGetEmitStreams(getExecutableCompilation(), emitOptions.WithoutPdb(), out var emitStreams, out var error)
                             ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies)
                             : error;
                         return output;
@@ -474,7 +476,7 @@ public sealed class Compiler(
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
 
-            var emitStreams = getEmitStreams(configCompilation, emitPdb: false, out diagnostics);
+            var emitStreams = getEmitStreams(configCompilation, emitOptions.WithoutPdb(), out diagnostics);
 
             if (emitStreams != null)
             {
@@ -484,7 +486,7 @@ public sealed class Compiler(
             {
                 // If compilation fails, it might be because older Roslyn is referenced, re-try with built-in versions.
                 var configCompilationWithBuiltInReferences = configCompilation.WithReferences(getConfigurationReferences(builtInAssemblies!));
-                emitStreams = getEmitStreams(configCompilationWithBuiltInReferences, emitPdb: false, out var diagnosticsWithBuiltInReferences);
+                emitStreams = getEmitStreams(configCompilationWithBuiltInReferences, emitOptions.WithoutPdb(), out var diagnosticsWithBuiltInReferences);
                 if (emitStreams != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
@@ -740,11 +742,24 @@ public sealed class Compiler(
                 : finalCompilation.WithOptions(finalCompilation.Options.WithOutputKind(OutputKind.ConsoleApplication));
         }
 
-        (MemoryStream PeStream, MemoryStream? PdbStream)? getEmitStreams(CSharpCompilation compilation, bool emitPdb, out ImmutableArray<Diagnostic> diagnostics)
+        static (MemoryStream PeStream, MemoryStream? PdbStream)? getEmitStreams(
+            CSharpCompilation compilation,
+            ExtendedEmitOptions emitOptions,
+            out ImmutableArray<Diagnostic> diagnostics)
         {
             var peStream = new MemoryStream();
-            var pdbStream = emitPdb ? new MemoryStream() : null;
-            var emitResult = compilation.Emit(peStream, pdbStream, options: emitOptions);
+            var pdbStream = emitOptions.CreatePdbStream ? new MemoryStream() : null;
+
+            IEnumerable<EmbeddedText>? embeddedTexts = emitOptions.EmbedTexts
+                ? compilation.SyntaxTrees.Select(static t => EmbeddedText.FromSource(t.FilePath, t.GetText()))
+                : null;
+
+            var emitResult = compilation.Emit(
+                peStream,
+                pdbStream,
+                options: emitOptions.EmitOptions,
+                embeddedTexts: embeddedTexts);
+
             if (!emitResult.Success)
             {
                 diagnostics = emitResult.Diagnostics;
@@ -757,11 +772,13 @@ public sealed class Compiler(
             return (peStream, pdbStream);
         }
 
-        bool tryGetEmitStreams(CSharpCompilation compilation, bool emitPdb,
+        static bool tryGetEmitStreams(
+            CSharpCompilation compilation,
+            ExtendedEmitOptions emitOptions,
             [NotNullWhen(returnValue: true)] out (MemoryStream PeStream, MemoryStream? PdbStream)? emitStreams,
             [NotNullWhen(returnValue: false)] out string? error)
         {
-            emitStreams = getEmitStreams(compilation, emitPdb, out var diagnostics);
+            emitStreams = getEmitStreams(compilation, emitOptions, out var diagnostics);
             if (emitStreams is null)
             {
                 error = "Cannot execute due to compilation errors:" + Environment.NewLine +
@@ -773,11 +790,14 @@ public sealed class Compiler(
             return true;
         }
 
-        PeFileWithPdbStream? getPeFile(CSharpCompilation compilation, bool emitPdb, out ImmutableArray<Diagnostic> diagnostics)
+        static PeFileWithPdbStream? getPeFile(
+            CSharpCompilation compilation,
+            ExtendedEmitOptions emitOptions,
+            out ImmutableArray<Diagnostic> diagnostics)
         {
             try
             {
-                return getEmitStreams(compilation, emitPdb, out diagnostics) is { } emitStreams
+                return getEmitStreams(compilation, emitOptions, out diagnostics) is { } emitStreams
                     ? new(exception: null, new(compilation.AssemblyName ?? "", emitStreams.PeStream), emitStreams.PdbStream)
                     : null;
             }
@@ -916,6 +936,36 @@ public sealed class Compiler(
         ICSharpCode.Decompiler.Metadata.IAssemblyResolver getAssemblyResolver()
         {
             return new DecompilerAssemblyResolver(loggerFactory.CreateLogger<DecompilerAssemblyResolver>(), references.Assemblies);
+        }
+
+        CompiledFileOutput getAsmOutput()
+        {
+            var disassembler = services.GetService<IJitAsmDisassembler>();
+
+            if (disassembler == null)
+            {
+                return new()
+                {
+                    Type = "asm",
+                    Label = "Asm",
+                    EagerText = "JIT disassembler is not available.",
+                    Metadata = CompiledFileOutputMetadata.JitAsmUnavailableMessage,
+                };
+            }
+
+            return new()
+            {
+                Type = "asm",
+                Label = "Asm",
+                Language = "x86",
+                LazyText = () =>
+                {
+                    string output = tryGetEmitStreams(finalCompilation, emitOptions.WithoutPdb(), out var emitStreams, out var error)
+                        ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
+                        : error;
+                    return new(output);
+                },
+            };
         }
 
         async ValueTask<MultiDictionary<InputCode, (TextSpan, string)>?> processDirectivesAsync()
