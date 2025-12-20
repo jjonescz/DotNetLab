@@ -216,7 +216,7 @@
                     @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
                     <FluentTab Id="@output.Type" Label="@output.Label">
                         <Header>
-                            <span>@output.Label</span>
+                            <span title="@output.Label (@output.Type)">@output.ShortLabel</span>
 
                             @* Error List badge *@
                             @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&

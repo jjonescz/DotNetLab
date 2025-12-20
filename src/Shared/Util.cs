@@ -26,6 +26,15 @@ public static partial class Util
         }
     }
 
+    extension(CompiledFileOutput output)
+    {
+        public string ShortLabel => output.Label switch
+        {
+            "Sequence points" => "Seq",
+            var other => other,
+        };
+    }
+
     extension(Guid)
     {
         public static Guid TupleElementNames => tupleElementNames ??= new("ED9FDF71-8879-4747-8ED3-FE5EDE3CE710");
