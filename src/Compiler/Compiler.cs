@@ -749,7 +749,17 @@ public sealed class Compiler(
         {
             var peStream = new MemoryStream();
             var pdbStream = emitOptions.CreatePdbStream ? new MemoryStream() : null;
-            var emitResult = compilation.Emit(peStream, pdbStream, options: emitOptions.EmitOptions);
+
+            IEnumerable<EmbeddedText>? embeddedTexts = emitOptions.EmbedTexts
+                ? compilation.SyntaxTrees.Select(static t => EmbeddedText.FromSource(t.FilePath, t.GetText()))
+                : null;
+
+            var emitResult = compilation.Emit(
+                peStream,
+                pdbStream,
+                options: emitOptions.EmitOptions,
+                embeddedTexts: embeddedTexts);
+
             if (!emitResult.Success)
             {
                 diagnostics = emitResult.Diagnostics;

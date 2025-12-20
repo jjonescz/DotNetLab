@@ -121,11 +121,24 @@ internal interface IConfig
 public sealed record ExtendedEmitOptions(EmitOptions EmitOptions)
 {
     public bool CreatePdbStream { get; init; }
+    public bool EmbedTexts { get; init; }
 
     public ExtendedEmitOptions WithoutPdb()
     {
-        return !CreatePdbStream
+        return !CreatePdbStream && !EmbedTexts
             ? this
-            : this with { CreatePdbStream = false };
+            : this with { CreatePdbStream = false, EmbedTexts = false };
+    }
+
+    public ExtendedEmitOptions WithEmbeddedPdb()
+    {
+        return !CreatePdbStream && EmitOptions.DebugInformationFormat == DebugInformationFormat.Embedded && EmbedTexts
+            ? this
+            : this with
+            {
+                CreatePdbStream = false,
+                EmitOptions = EmitOptions.WithDebugInformationFormat(DebugInformationFormat.Embedded),
+                EmbedTexts = true,
+            };
     }
 }
