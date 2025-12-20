@@ -960,7 +960,6 @@ public sealed class Compiler(
                 Language = "scheme",
                 LazyText = () =>
                 {
-                    // TODO: Share with Run.
                     string output = tryGetEmitStreams(finalCompilation, emitOptions.WithoutPdb(), out var emitStreams, out var error)
                         ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
                         : error;
