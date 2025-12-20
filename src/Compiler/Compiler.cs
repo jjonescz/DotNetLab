@@ -947,8 +947,8 @@ public sealed class Compiler(
                 return new()
                 {
                     Type = "asm",
-                    Label = "ASM",
-                    EagerText = "JIT ASM disassembler is not available.",
+                    Label = "Asm",
+                    EagerText = "JIT disassembler is not available.",
                     Metadata = CompiledFileOutputMetadata.JitAsmUnavailableMessage,
                 };
             }
@@ -956,7 +956,7 @@ public sealed class Compiler(
             return new()
             {
                 Type = "asm",
-                Label = "ASM",
+                Label = "Asm",
                 Language = "x86",
                 LazyText = () =>
                 {

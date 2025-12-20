@@ -106,10 +106,10 @@
     },
     {
       "Type": "asm",
-      "Label": "ASM",
+      "Label": "Asm",
       "Priority": 0,
       "Language": null,
-      "Text": "JIT ASM disassembler is not available.",
+      "Text": "JIT disassembler is not available.",
       "Metadata": {
         "MessageKind": 2,
         "SemanticTokens": null,
