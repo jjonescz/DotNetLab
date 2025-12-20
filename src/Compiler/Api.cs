@@ -15,6 +15,9 @@ public static class Config
 
     public static void EmitOptions(Func<EmitOptions, EmitOptions> configure)
         => Instance.EmitOptions(configure);
+
+    public static void ExtendedEmitOptions(Func<ExtendedEmitOptions, ExtendedEmitOptions> configure)
+        => Instance.ExtendedEmitOptions(configure);
 }
 
 internal sealed class ConfigCollector : IConfig
@@ -22,13 +25,13 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
     private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
+    private readonly List<Func<ExtendedEmitOptions, ExtendedEmitOptions>> extendedEmitOptions = new();
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
     private readonly List<Func<RefAssemblyList>> additionalReferences = new();
 
-    public bool EmitPdb { get; set; } = true;
     public bool HasParseOptions => cSharpParseOptions.Count > 0;
     public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
-    public bool HasEmitOptions => emitOptions.Count > 0;
+    public bool HasEmitOptions => emitOptions.Count > 0 || extendedEmitOptions.Count > 0;
     public bool HasReferences => references.Count > 0 || additionalReferences.Count > 0;
 
     public void Reset()
@@ -36,6 +39,7 @@ internal sealed class ConfigCollector : IConfig
         cSharpParseOptions.Clear();
         cSharpCompilationOptions.Clear();
         emitOptions.Clear();
+        extendedEmitOptions.Clear();
         references.Clear();
         additionalReferences.Clear();
     }
@@ -55,6 +59,11 @@ internal sealed class ConfigCollector : IConfig
         emitOptions.Add(configure);
     }
 
+    public void ExtendedEmitOptions(Func<ExtendedEmitOptions, ExtendedEmitOptions> configure)
+    {
+        extendedEmitOptions.Add(configure);
+    }
+
     public void References(Func<RefAssemblyList, RefAssemblyList> configure)
     {
         references.Add(configure);
@@ -69,7 +78,11 @@ internal sealed class ConfigCollector : IConfig
 
     public CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
 
-    public EmitOptions ConfigureEmitOptions(EmitOptions options) => Configure(options, emitOptions);
+    public ExtendedEmitOptions ConfigureEmitOptions(ExtendedEmitOptions options)
+    {
+        options = options with { EmitOptions = Configure(options.EmitOptions, emitOptions) };
+        return Configure(options, extendedEmitOptions);
+    }
 
     public RefAssemblyList ConfigureReferences(RefAssemblyList options)
     {
@@ -97,11 +110,22 @@ internal sealed class ConfigCollector : IConfig
 
 internal interface IConfig
 {
-    bool EmitPdb { get; set; }
-
     void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure);
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);
+    void ExtendedEmitOptions(Func<ExtendedEmitOptions, ExtendedEmitOptions> configure);
     void References(Func<RefAssemblyList, RefAssemblyList> configure);
     void AdditionalReferences(Func<RefAssemblyList> configure);
+}
+
+public sealed record ExtendedEmitOptions(EmitOptions EmitOptions)
+{
+    public bool CreatePdbStream { get; init; }
+
+    public ExtendedEmitOptions WithoutPdb()
+    {
+        return !CreatePdbStream
+            ? this
+            : this with { CreatePdbStream = false };
+    }
 }
