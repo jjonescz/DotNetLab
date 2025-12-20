@@ -957,7 +957,7 @@ public sealed class Compiler(
             {
                 Type = "asm",
                 Label = "ASM",
-                Language = "scheme",
+                Language = "x86",
                 LazyText = () =>
                 {
                     string output = tryGetEmitStreams(finalCompilation, emitOptions.WithoutPdb(), out var emitStreams, out var error)

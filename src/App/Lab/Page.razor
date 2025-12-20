@@ -1257,6 +1257,7 @@
 
         await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
         await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
         await RegisterFormatActionAsync();
