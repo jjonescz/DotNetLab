@@ -44,17 +44,32 @@ file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
 
 file sealed class WebAssemblyCompilerOutputPlugin : ICompilerOutputPlugin
 {
-    public string GetText(CompiledFileLazyResult result)
+    public string GetText(
+        OutputInfo? outputInfo,
+        CompiledFileLazyResult result,
+        out OutputDisclaimer outputDisclaimer,
+        ref string? language)
     {
         if (result.Metadata?.MessageKind == MessageKind.JitAsmUnavailable)
         {
+            if (outputInfo?.CachedOutput is { Text: { } cachedText, Language: var cachedLanguage } &&
+                cachedText != result.Text)
+            {
+                outputDisclaimer = OutputDisclaimer.JitAsmUnavailableUsingCached;
+                language = cachedLanguage;
+                return cachedText;
+            }
+
+            outputDisclaimer = OutputDisclaimer.None;
+            language = null;
             return $"""
-                JIT ASM disassembler is not available on this platform.
+                JIT disassembler is not available on this platform.
                 Please use the desktop app instead ({App.DesktopAppLink}).
 
                 """;
         }
 
+        outputDisclaimer = OutputDisclaimer.None;
         return result.Text;
     }
 }
