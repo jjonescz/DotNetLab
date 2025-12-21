@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <IndexHtmlTemplatePath Condition="'$(IndexHtmlTemplatePath)' == ''">$(MSBuildThisFileDirectory)index.template.html</IndexHtmlTemplatePath>
-    <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(ProjectDir)wwwroot\index.html</IndexHtmlOutputPath>
+    <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(MSBuildProjectDirectory)\wwwroot\index.html</IndexHtmlOutputPath>
     <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
     <IndexHtmlGoatcounterPath Condition="'$(IndexHtmlGoatcounterPath)' == ''">/</IndexHtmlGoatcounterPath>
     <!--
@@ -20,6 +20,13 @@
 
     <UpToDateCheckBuilt Include="$(IndexHtmlOutputPath)" Original="$(IndexHtmlTemplatePath)" />
   </ItemGroup>
+
+  <!-- The index.html file would be included in UpToDateCheckInputs by CollectStaticWebAssetInputsDesignTime but it's an output in our case. -->
+  <Target Name="ExcludeIndexHtmlFromUpToDateCheckInputs" DependsOnTargets="CollectStaticWebAssetInputsDesignTime" BeforeTargets="CollectUpToDateCheckInputDesignTime">
+    <ItemGroup>
+      <UpToDateCheckInput Remove="$(IndexHtmlOutputPath)" />
+    </ItemGroup>
+  </Target>
 
   <Target Name="PrepareIndexHtmlInputsStamp">
     <WriteLinesToFile
