@@ -170,7 +170,8 @@
                         <FluentMenuItem Id="razor">.razor</FluentMenuItem>
                         <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
                         <FluentDivider />
-                        <FluentMenuItem Id="config">
+                        <FluentMenuItem Id="directives" title="Simple configuration using #: directives">Directives</FluentMenuItem>
+                        <FluentMenuItem Id="config" title="Complex configuration using Roslyn APIs">
                             <FluentIcon Slot="start" Value="@(new Icons.Regular.Size16.DocumentSettings())" />
                             Configuration
                         </FluentMenuItem>
@@ -709,6 +710,7 @@
             "cs" => InitialCode.CSharp,
             "razor" => InitialCode.Razor,
             "cshtml" => InitialCode.Cshtml,
+            "directives" => InitialCode.Directives,
             _ => null,
         } is { } initialCode)
         {
