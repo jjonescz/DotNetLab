@@ -96,14 +96,14 @@ public sealed record DiagnosticData(
     {
         return Util.Compare(this, other, static x => (
             x.FilePath,
-            x.Severity,
-            x.Id,
             x.StartLineNumber,
             x.StartColumn,
+            x.Severity,
+            x.Id,
             x.EndLineNumber,
             x.EndColumn,
-            x.Message,
-            x.HelpLinkUri));
+            x.HelpLinkUri,
+            x.Message));
     }
 }
 
