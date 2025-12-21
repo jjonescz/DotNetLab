@@ -427,6 +427,27 @@
                     <FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
                 }
 
+                @* Desktop app link *@
+                @if (OperatingSystem.IsBrowser())
+                {
+                    <a href="@App.DesktopAppLink" target="_blank" style="text-decoration: none">
+                        <SettingsButton Class="settings-nowarp">
+                            <Icon>
+                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.StoreMicrosoft()" />
+                            </Icon>
+                            <Header>
+                                <h4 class="unset">Desktop App</h4>
+                            </Header>
+                            <Description>
+                                Faster version of .NET Lab running on full .NET.
+                            </Description>
+                            <ActionIcon>
+                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ChevronRight()" />
+                            </ActionIcon>
+                        </SettingsButton>
+                    </a>
+                }
+
                 @* Theme select *@
                 <SettingsCard>
                     <Icon>
