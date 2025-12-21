@@ -143,7 +143,7 @@ public sealed class Compiler(
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
                 ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
-                    .Select(d => d.ToDiagnosticData())
+                    .Select(static d => d.ToDiagnosticData())
                     .ToImmutableArray();
                 var configResult = new CompiledAssembly(
                     Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
@@ -157,8 +157,8 @@ public sealed class Compiler(
                             EagerText = configDiagnosticsText,
                         },
                     ],
-                    NumWarnings: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning),
-                    NumErrors: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Error),
+                    NumWarnings: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning),
+                    NumErrors: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error),
                     Diagnostics: configDiagnosticData,
                     BaseDirectory: directory)
                 {
