@@ -46,6 +46,7 @@ public sealed record CompilationPreferences
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
+    public bool IncludeHiddenDiagnostics { get; init; }
 }
 
 public enum RazorToolchain
@@ -77,6 +78,7 @@ public enum DiagnosticDataSeverity
     Info,
     Warning,
     Error,
+    Hint,
 }
 
 public sealed record DiagnosticData(

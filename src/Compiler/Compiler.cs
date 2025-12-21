@@ -459,7 +459,7 @@ public sealed class Compiler(
             };
         }
 
-        static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
+        bool filterDiagnostic(Diagnostic d) => compilationInput.Preferences.IncludeHiddenDiagnostics || d.Severity != DiagnosticSeverity.Hidden;
 
         bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {

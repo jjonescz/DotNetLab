@@ -273,6 +273,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.ExcludeSingleFileNameInDiagnostics"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
                                                 Label="Exclude single file name" />
+                                <FluentCheckbox @bind-Value:get="savedState.IncludeHiddenDiagnostics"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { IncludeHiddenDiagnostics = v })"
+                                                Label="Include hidden diagnostics" />
                             }
                             break;
                     }

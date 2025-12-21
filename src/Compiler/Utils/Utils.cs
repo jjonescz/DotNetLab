@@ -122,6 +122,7 @@ public static class CodeAnalysisUtil
             {
                 DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
                 DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
+                DiagnosticSeverity.Hidden => DiagnosticDataSeverity.Hint,
                 _ => DiagnosticDataSeverity.Info,
             },
             Id: d.Id,

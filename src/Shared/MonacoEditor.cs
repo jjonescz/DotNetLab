@@ -141,6 +141,7 @@ public static class SimpleMonacoConversions
             {
                 DiagnosticDataSeverity.Error => MarkerSeverity.Error,
                 DiagnosticDataSeverity.Warning => MarkerSeverity.Warning,
+                DiagnosticDataSeverity.Hint => MarkerSeverity.Hint,
                 _ => MarkerSeverity.Info,
             },
         };
