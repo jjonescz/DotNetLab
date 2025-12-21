@@ -712,8 +712,8 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         var diagnostics = comp.GetDiagnostics()
-            .Where(d => d.Severity > DiagnosticSeverity.Hidden && d.Location.SourceTree == tree);
-        return diagnostics.Select(static d => d.ToMarkerData()).ToImmutableArray();
+            .Where(d => d.Location.SourceTree == tree);
+        return diagnostics.SelectAsArray(static d => d.ToMarkerData());
     }
 
     private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)

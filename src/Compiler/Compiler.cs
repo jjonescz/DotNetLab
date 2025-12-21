@@ -250,17 +250,17 @@ public sealed class Compiler(
 
         var peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
-        IEnumerable<Diagnostic> diagnostics = configDiagnostics
+        IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(processDirectiveDiagnostics())
             .Concat(emitDiagnostics)
-            .Concat(additionalDiagnostics)
-            .Where(filterDiagnostic);
-        string diagnosticsText = diagnostics.GetDiagnosticsText(
+            .Concat(additionalDiagnostics);
+        IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
+        string diagnosticsText = filteredDiagnostics.GetDiagnosticsText(
             excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics);
-        int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
-        int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
-        ImmutableArray<DiagnosticData> diagnosticData = diagnostics
-            .Select(d => d.ToDiagnosticData())
+        int numWarnings = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning);
+        int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
+        ImmutableArray<DiagnosticData> diagnosticData = allDiagnostics
+            .Select(static d => d.ToDiagnosticData())
             .ToImmutableArray();
 
         var result = new CompiledAssembly(
