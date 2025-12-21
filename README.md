@@ -19,9 +19,9 @@ C# and Razor compiler playground.
 ## Features
 
 - Razor/CSHTML to generated C# code / IR / Syntax Tree / Errors.
-- C# to IL / Syntax / IOperation / Symbols / decompiled-C# / Errors / Execution console output.
+- C# to IL / Syntax / IOperation / Symbols / decompiled-C# / JIT Asm / Errors / Execution console output.
 - Any Roslyn/Razor compiler version (NuGet official builds or CI builds given PR number / branch / build number).
-- Offline support (PWA).
+- Offline support: PWA or Windows desktop native app.
 - VSCode Monaco Editor.
 - Multiple input sources (especially useful for interlinked Razor components).
 - C# Language Services (completions, live diagnostics, code fixes).
