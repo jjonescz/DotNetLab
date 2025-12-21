@@ -930,26 +930,37 @@
 
         foreach (var input in inputs)
         {
-            List<MarkerData> markers = compiled is { } result ? result.Output.Diagnostics
-                .Skip(result.Output.ConfigDiagnosticCount)
-                .Where(d => d.FilePath == result.Output.BaseDirectory + input.FileName)
-                .Select(static d => d.ToMarkerData())
-                .ToList() : [];
+            List<MarkerData> markers = compiled is { } result
+                ? GetMarkersForInputFile(result.Output, input.FileName)
+                : [];
             await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
         }
 
         if (configuration != null)
         {
-            if (compiled is { } result)
-            {
-                List<MarkerData> markers = result.Output.Diagnostics
-                    .Take(result.Output.ConfigDiagnosticCount)
-                    .Where(static d => d.FilePath == "Configuration.cs")
-                    .Select(static d => d.ToMarkerData())
-                    .ToList();
-                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
-            }
+            List<MarkerData> markers = compiled is { } result
+                ? GetMarkersForConfiguration(result.Output)
+                : [];
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
         }
+    }
+
+    internal static List<MarkerData> GetMarkersForInputFile(CompiledAssembly compiled, string fileName)
+    {
+        return compiled.Diagnostics
+            .Skip(compiled.ConfigDiagnosticCount)
+            .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
+            .Select(static d => d.ToMarkerData())
+            .ToList();
+    }
+
+    internal static List<MarkerData> GetMarkersForConfiguration(CompiledAssembly compiled)
+    {
+        return compiled.Diagnostics
+            .Take(compiled.ConfigDiagnosticCount)
+            .Where(static d => d.FilePath == "Configuration.cs")
+            .Select(static d => d.ToMarkerData())
+            .ToList();
     }
 
     private async Task UpdateOutputDisplayAsync()

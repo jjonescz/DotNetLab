@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace DotNetLab;
 
@@ -179,6 +180,28 @@ public static class MonacoConversions
             }
 
             return MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data));
+        }
+    }
+
+    extension(MarkerData markerData)
+    {
+        public string? GetCode()
+        {
+            // Cannot use markerData.CodeAsObject because it's not deserialized properly ("value" isn't deserialized to "Value").
+            return markerData.Code switch
+            {
+                null => null,
+                { ValueKind: JsonValueKind.String } s => s.GetString(),
+                { ValueKind: JsonValueKind.Object } o => o.GetProperty("value").GetString(),
+                { } other => throw new InvalidOperationException($"Unknown marker data code kind: {other.ValueKind} ({other})"),
+            };
+        }
+
+        public string ToDisplayString()
+        {
+            var severity = markerData.Severity.ToString().ToLowerInvariant();
+            var code = markerData.GetCode();
+            return $"{markerData.Source}({markerData.StartLineNumber},{markerData.StartColumn}): {severity} {code}: {markerData.Message}";
         }
     }
 
