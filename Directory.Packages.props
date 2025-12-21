@@ -43,6 +43,7 @@
     <PackageVersion Include="NuGet.Resolver" Version="$(NuGetVersion)" />
     <PackageVersion Include="NuGet.Versioning" Version="$(NuGetVersion)" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
+    <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
     <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="$(RoslynVersion)" />
     <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Xunit.Combinatorial" Version="2.0.24" />
