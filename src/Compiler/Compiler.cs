@@ -256,7 +256,7 @@ public sealed class Compiler(
             .Concat(additionalDiagnostics)
             .Where(filterDiagnostic);
         string diagnosticsText = diagnostics.GetDiagnosticsText(
-            excludeFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics && finalCompilation.SyntaxTrees is [CSharpSyntaxTree]);
+            excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics);
         int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
         ImmutableArray<DiagnosticData> diagnosticData = diagnostics
