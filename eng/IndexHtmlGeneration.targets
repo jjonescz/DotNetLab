@@ -5,6 +5,11 @@
     <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(ProjectDir)wwwroot\index.html</IndexHtmlOutputPath>
     <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
     <IndexHtmlGoatcounterPath Condition="'$(IndexHtmlGoatcounterPath)' == ''">/</IndexHtmlGoatcounterPath>
+    <!--
+      Synthetic input file to make property changes participate in up-to-date checks.
+      Don't use `$(IntermediateOutputPath)` as it's not defined at this point (it's defined in SDK targets which are imported afterwards).
+    -->
+    <IndexHtmlInputsPath>$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.inputs.stamp</IndexHtmlInputsPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +21,19 @@
     <UpToDateCheckBuilt Include="$(IndexHtmlOutputPath)" Original="$(IndexHtmlTemplatePath)" />
   </ItemGroup>
 
-  <Target Name="GenerateIndexHtml" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath)" Outputs="$(IndexHtmlOutputPath)">
+  <Target Name="PrepareIndexHtmlInputsStamp">
+    <WriteLinesToFile
+      File="$(IndexHtmlInputsPath)"
+      Lines="$(IndexHtmlScriptPath)
+$(IndexHtmlHead)
+$(AssemblyName)
+$(IndexHtmlGoatcounterPath)
+$(IndexHtmlLoadingInfoFooter)
+$(IndexHtmlScripts)"
+      Overwrite="true" />
+  </Target>
+
+  <Target Name="GenerateIndexHtml" DependsOnTargets="PrepareIndexHtmlInputsStamp" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath);$(IndexHtmlInputsPath)" Outputs="$(IndexHtmlOutputPath)">
     <WriteLinesToFile
       File="$(IndexHtmlOutputPath)"
       Lines="$([System.IO.File]::ReadAllText('$(IndexHtmlTemplatePath)')
