@@ -24,6 +24,7 @@
         .Replace('@@HEAD@@', '$(IndexHtmlHead)')
         .Replace('@@ASSEMBLY_NAME@@', '$(AssemblyName)')
         .Replace('@@GOATCOUNTER_PATH@@', '$(IndexHtmlGoatcounterPath)')
+        .Replace('@@LOADING_INFO_FOOTER@@', '$(IndexHtmlLoadingInfoFooter)')
         .Replace('@@SCRIPTS@@', '$(IndexHtmlScripts)'))"
       Overwrite="true" />
   </Target>
