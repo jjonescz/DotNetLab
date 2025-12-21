@@ -4,8 +4,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
-    <IndexHtmlHead><![CDATA[<link href="manifest.webmanifest?v=2" rel="manifest" />]]></IndexHtmlHead>
-    <IndexHtmlScripts><![CDATA[<script>navigator.serviceWorker.register('service-worker.js');</script>]]></IndexHtmlScripts>
+    <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
+    <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
   </PropertyGroup>
 
   <ItemGroup>
