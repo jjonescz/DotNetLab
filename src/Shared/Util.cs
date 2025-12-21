@@ -229,6 +229,11 @@ public static partial class Util
         return (stdout, stderr);
     }
 
+    public static int Compare<T, R>(T a, T? b, Func<T, R> selector) where R : IComparable
+    {
+        return selector(a).CompareTo(b is null ? null : selector(b));
+    }
+
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)
     {
         await foreach (var item in a)
