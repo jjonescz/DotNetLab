@@ -95,6 +95,84 @@
   ],
   "NumWarnings": 0,
   "NumErrors": 0,
-  "Diagnostics": [],
+  "Diagnostics": [
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 8,
+      "StartColumn": 5,
+      "EndLineNumber": 8,
+      "EndColumn": 26
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 9,
+      "StartColumn": 5,
+      "EndLineNumber": 9,
+      "EndColumn": 46
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 10,
+      "StartColumn": 5,
+      "EndLineNumber": 10,
+      "EndColumn": 31
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 11,
+      "StartColumn": 5,
+      "EndLineNumber": 11,
+      "EndColumn": 42
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 12,
+      "StartColumn": 5,
+      "EndLineNumber": 12,
+      "EndColumn": 44
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 13,
+      "StartColumn": 5,
+      "EndLineNumber": 13,
+      "EndColumn": 54
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 14,
+      "StartColumn": 5,
+      "EndLineNumber": 14,
+      "EndColumn": 57
+    }
+  ],
   "BaseDirectory": "/"
 }

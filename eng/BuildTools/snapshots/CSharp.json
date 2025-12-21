@@ -77,6 +77,84 @@
   ],
   "NumWarnings": 0,
   "NumErrors": 0,
-  "Diagnostics": [],
+  "Diagnostics": [
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 2,
+      "StartColumn": 1,
+      "EndLineNumber": 2,
+      "EndColumn": 34
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 3,
+      "StartColumn": 1,
+      "EndLineNumber": 3,
+      "EndColumn": 36
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 4,
+      "StartColumn": 1,
+      "EndLineNumber": 4,
+      "EndColumn": 26
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 5,
+      "StartColumn": 1,
+      "EndLineNumber": 5,
+      "EndColumn": 39
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 6,
+      "StartColumn": 1,
+      "EndLineNumber": 6,
+      "EndColumn": 19
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 7,
+      "StartColumn": 1,
+      "EndLineNumber": 7,
+      "EndColumn": 24
+    },
+    {
+      "FilePath": "/Program.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 8,
+      "StartColumn": 1,
+      "EndLineNumber": 8,
+      "EndColumn": 30
+    }
+  ],
   "BaseDirectory": "/"
 }
