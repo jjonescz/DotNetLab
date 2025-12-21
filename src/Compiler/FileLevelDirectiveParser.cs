@@ -616,18 +616,22 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         return default;
                     },
                     Constant(
+                    // https://github.com/dotnet/roslyn/blob/main/src/Compilers/Core/Portable/CommandLine/Feature.cs
                     [
-                        // Search for `Feature("` in roslyn codebase to find supported features.
                         "debug-analyzers",
+                        "debug-determinism",
                         "disable-length-based-switch",
+                        "enable-generator-cache",
                         "experimental-data-section-string-literals",
                         "FileBasedProgram",
                         InterceptorsNamespaces,
                         "noRefSafetyRulesAttribute",
                         "nullablePublicOnly",
+                        "pdb-path-determinism",
                         "peverify-compat",
                         "run-nullable-analysis=always",
                         "run-nullable-analysis=never",
+                        "runtime-async",
                         "strict",
                         "UseLegacyStrongNameProvider",
                     ])),

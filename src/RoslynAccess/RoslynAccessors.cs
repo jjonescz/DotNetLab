@@ -82,4 +82,12 @@ public static class RoslynAccessors
             return true;
         }
     }
+
+    public static IEnumerable<string> GetFeatureNames()
+    {
+        return typeof(Feature)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(f => f.FieldType == typeof(string) && f.IsLiteral)
+            .Select(f => (string)f.GetRawConstantValue()!);
+    }
 }
