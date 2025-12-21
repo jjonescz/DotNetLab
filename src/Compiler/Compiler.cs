@@ -144,6 +144,7 @@ public sealed class Compiler(
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
                 ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
                     .Select(static d => d.ToDiagnosticData())
+                    .Order()
                     .ToImmutableArray();
                 var configResult = new CompiledAssembly(
                     Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
@@ -261,6 +262,7 @@ public sealed class Compiler(
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
         ImmutableArray<DiagnosticData> diagnosticData = allDiagnostics
             .Select(static d => d.ToDiagnosticData())
+            .Order()
             .ToImmutableArray();
 
         var result = new CompiledAssembly(

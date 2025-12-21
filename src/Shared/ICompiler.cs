@@ -90,8 +90,22 @@ public sealed record DiagnosticData(
     int StartLineNumber,
     int StartColumn,
     int EndLineNumber,
-    int EndColumn
-);
+    int EndColumn) : IComparable<DiagnosticData>
+{
+    public int CompareTo(DiagnosticData? other)
+    {
+        return Util.Compare(this, other, static x => (
+            x.FilePath,
+            x.Severity,
+            x.Id,
+            x.StartLineNumber,
+            x.StartColumn,
+            x.EndLineNumber,
+            x.EndColumn,
+            x.Message,
+            x.HelpLinkUri));
+    }
+}
 
 /// <remarks>
 /// <para>
