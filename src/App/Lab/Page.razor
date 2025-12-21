@@ -933,7 +933,7 @@
             List<MarkerData> markers = compiled is { } result ? result.Output.Diagnostics
                 .Skip(result.Output.ConfigDiagnosticCount)
                 .Where(d => d.FilePath == result.Output.BaseDirectory + input.FileName)
-                .Select(d => d.ToMarkerData())
+                .Select(static d => d.ToMarkerData())
                 .ToList() : [];
             await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
         }
@@ -944,8 +944,8 @@
             {
                 List<MarkerData> markers = result.Output.Diagnostics
                     .Take(result.Output.ConfigDiagnosticCount)
-                    .Where(d => d.FilePath == "Configuration.cs")
-                    .Select(d => d.ToMarkerData())
+                    .Where(static d => d.FilePath == "Configuration.cs")
+                    .Select(static d => d.ToMarkerData())
                     .ToList();
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
