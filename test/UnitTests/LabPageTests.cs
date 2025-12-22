@@ -54,4 +54,41 @@ public sealed class LabPageTests(ITestOutputHelper output)
             "(2,15): warning CS8600: Converting null literal or possible null value to non-nullable type.",
         ]);
     }
+
+    [Fact]
+    public async Task Markers_Configuration()
+    {
+        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(new(new(
+        [
+            new() { FileName = "A.cs", Text = "using System.Linq;" },
+            new() { FileName = "Z.cs", Text = "string s = null;" },
+        ]))
+        {
+            Configuration = "void F() { }",
+        });
+
+        Page.GetMarkersForInputFile(compiled, "A.cs")
+            .Select(static m => m.ToDisplayString())
+            .Should().Equal(
+            [
+                "(1,1): hint CS8019: Unnecessary using directive.",
+            ]);
+
+        Page.GetMarkersForInputFile(compiled, "Z.cs")
+            .Select(static m => m.ToDisplayString())
+            .Should().Equal(
+            [
+                "(1,8): warning CS0219: The variable 's' is assigned but its value is never used",
+                "(1,12): warning CS8600: Converting null literal or possible null value to non-nullable type.",
+            ]);
+
+        Page.GetMarkersForConfiguration(compiled)
+            .Select(static m => m.ToDisplayString())
+            .Should().Equal(
+            [
+                "(1,6): warning CS8321: The local function 'F' is declared but never used",
+            ]);
+    }
 }

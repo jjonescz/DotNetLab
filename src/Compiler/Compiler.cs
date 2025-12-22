@@ -262,7 +262,7 @@ public sealed class Compiler(
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
         ImmutableArray<DiagnosticData> diagnosticData = allDiagnostics
             .Select(static d => d.ToDiagnosticData())
-            .Order()
+            .OrderParts(splitAtIndex: configDiagnostics.Length)
             .ToImmutableArray();
 
         var result = new CompiledAssembly(
@@ -444,7 +444,7 @@ public sealed class Compiler(
                 },
             ])
         {
-            ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
+            ConfigDiagnosticCount = configDiagnostics.Length,
         };
 
         return getResult(result);
