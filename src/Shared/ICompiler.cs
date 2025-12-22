@@ -24,7 +24,7 @@ public sealed record CompilationInput
 
     public Sequence<InputCode> Inputs { get; }
     public string? Configuration { get; init; }
-    public RazorToolchain RazorToolchain { get; init; }
+    public RazorToolchain RazorToolchain { get; init; } = RazorToolchain.SourceGeneratorOrInternalApi;
     public RazorStrategy RazorStrategy { get; init; }
     public CompilationPreferences Preferences { get; init; } = CompilationPreferences.Default;
 }

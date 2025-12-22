@@ -156,14 +156,9 @@ internal sealed record InitialCode
 
     public SavedState ToSavedState()
     {
-        return new()
+        return SavedState.Initial with
         {
             Inputs = [ToInputCode()],
         };
-    }
-
-    public CompilationInput ToCompilationInput()
-    {
-        return new(new([ToInputCode()]));
     }
 }
