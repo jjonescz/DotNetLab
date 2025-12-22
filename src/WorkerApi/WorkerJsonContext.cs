@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
+[JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
 [JsonSerializable(typeof(WorkerInputMessage))]
 [JsonSerializable(typeof(WorkerOutputMessage))]
 [JsonSerializable(typeof(CompiledAssembly))]

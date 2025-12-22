@@ -25,11 +25,12 @@ public sealed class InputOutputCacheTests
             //  This change just means that new app versions ignore design-time text from old caches.
             .Replace(""","DesignTimeText":null""", null)
             // 2025-10-05: EagerText has been renamed to Text but it can still be deserialized as EagerText.
-            .Replace(""","EagerText":""", ""","Text":""");
-
-        serialized = serialized
-            // 2025-10-05: There is a new (optional) Metadata property.
-            .Replace(""","Metadata":null""", null);
+            .Replace(""","EagerText":""", ""","Text":""")
+            // 2025-12-22: Default values are excluded.
+            .Replace(""","Priority":0""", null)
+            .Replace(""","Language":null""", null)
+            .Replace(""","NumWarnings":0""", null)
+            .Replace(""","NumErrors":0""", null);
 
         serialized.Should().Be(response);
     }

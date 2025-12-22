@@ -134,7 +134,6 @@ public sealed record CompiledAssembly(
     /// <summary>
     /// Number of entries in <see cref="Diagnostics"/> (from the beginning) which belong to the special configuration file.
     /// </summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ConfigDiagnosticCount { get; init; }
 
     public const string DiagnosticsOutputType = "errors";
