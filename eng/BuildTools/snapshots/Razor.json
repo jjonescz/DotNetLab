@@ -117,42 +117,9 @@
       "Id": "CS8019",
       "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
       "Message": "Unnecessary using directive.",
-      "StartLineNumber": 1,
-      "StartColumn": 2,
-      "EndLineNumber": 4,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
       "StartLineNumber": 2,
       "StartColumn": 2,
       "EndLineNumber": 5,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 2,
-      "StartColumn": 2,
-      "EndLineNumber": 5,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 3,
-      "StartColumn": 2,
-      "EndLineNumber": 6,
       "EndColumn": 6
     },
     {
@@ -183,42 +150,9 @@
       "Id": "CS8019",
       "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
       "Message": "Unnecessary using directive.",
-      "StartLineNumber": 4,
-      "StartColumn": 2,
-      "EndLineNumber": 7,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
       "StartLineNumber": 5,
       "StartColumn": 2,
       "EndLineNumber": 8,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 5,
-      "StartColumn": 2,
-      "EndLineNumber": 8,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 6,
-      "StartColumn": 2,
-      "EndLineNumber": 9,
       "EndColumn": 6
     },
     {
@@ -249,42 +183,9 @@
       "Id": "CS8019",
       "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
       "Message": "Unnecessary using directive.",
-      "StartLineNumber": 7,
-      "StartColumn": 2,
-      "EndLineNumber": 10,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
       "StartLineNumber": 8,
       "StartColumn": 2,
       "EndLineNumber": 11,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 8,
-      "StartColumn": 2,
-      "EndLineNumber": 11,
-      "EndColumn": 6
-    },
-    {
-      "FilePath": "/_Imports.razor",
-      "Severity": 3,
-      "Id": "CS8019",
-      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
-      "Message": "Unnecessary using directive.",
-      "StartLineNumber": 9,
-      "StartColumn": 2,
-      "EndLineNumber": 12,
       "EndColumn": 6
     },
     {

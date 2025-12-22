@@ -112,12 +112,6 @@ public static partial class Util
 
             return default;
         }
-
-        public IEnumerable<T> OrderParts(int splitAtIndex)
-        {
-            return collection.Take(splitAtIndex).Order()
-                .Concat(collection.Skip(splitAtIndex).Order());
-        }
     }
 
     extension<T>(IList<T> list)

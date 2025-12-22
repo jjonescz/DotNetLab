@@ -142,8 +142,9 @@ public sealed class Compiler(
             if (!executeConfiguration(configuration, out configDiagnostics))
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
-                ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
+                ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
                     .Select(static d => d.ToDiagnosticData())
+                    .Distinct()
                     .Order()
                     .ToImmutableArray();
                 var configResult = new CompiledAssembly(
@@ -160,10 +161,10 @@ public sealed class Compiler(
                     ],
                     NumWarnings: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning),
                     NumErrors: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error),
-                    Diagnostics: configDiagnosticData,
+                    Diagnostics: failedConfigDiagnosticData,
                     BaseDirectory: directory)
                 {
-                    ConfigDiagnosticCount = configDiagnosticData.Length,
+                    ConfigDiagnosticCount = failedConfigDiagnosticData.Length,
                 };
                 return getResult(configResult);
             }
@@ -251,18 +252,28 @@ public sealed class Compiler(
 
         var peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
-        IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
-            .Concat(processDirectiveDiagnostics())
+        var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics);
+        IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
+            .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
+
         string diagnosticsText = filteredDiagnostics.GetDiagnosticsText(
             excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics);
         int numWarnings = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
-        ImmutableArray<DiagnosticData> diagnosticData = allDiagnostics
+
+        var configDiagnosticData = configDiagnostics
             .Select(static d => d.ToDiagnosticData())
-            .OrderParts(splitAtIndex: configDiagnostics.Length)
+            .Distinct()
+            .Order();
+        var nonConfigDiagnosticData = nonConfigDiagnostics
+            .Select(static d => d.ToDiagnosticData())
+            .Distinct()
+            .Order();
+        ImmutableArray<DiagnosticData> diagnosticData = configDiagnosticData
+            .Concat(nonConfigDiagnosticData)
             .ToImmutableArray();
 
         var result = new CompiledAssembly(
