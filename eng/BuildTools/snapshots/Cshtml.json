@@ -5,34 +5,26 @@
         {
           "Type": "syntax",
           "Label": "Syntax",
-          "Priority": 0,
-          "Language": null,
-          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.0.Text.txt",
-          "Metadata": null
+          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.0.Text.txt"
         },
         {
           "Type": "ir",
           "Label": "IR",
-          "Priority": 0,
           "Language": "csharp",
-          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.1.Text.txt",
-          "Metadata": null
+          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.1.Text.txt"
         },
         {
           "Type": "gcs",
           "Label": "C#",
           "Priority": 1,
           "Language": "csharp",
-          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.2.Text.txt",
-          "Metadata": null
+          "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.2.Text.txt"
         },
         {
           "Type": "html",
           "Label": "HTML",
-          "Priority": 0,
           "Language": "html",
-          "Text": "System.InvalidOperationException: Rendering Razor Pages (.cshtml) to HTML is currently not supported. Try Razor Components (.razor) instead.",
-          "Metadata": null
+          "Text": "System.InvalidOperationException: Rendering Razor Pages (.cshtml) to HTML is currently not supported. Try Razor Components (.razor) instead."
         }
       ]
     }
@@ -41,60 +33,41 @@
     {
       "Type": "il",
       "Label": "IL",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "Cshtml.GlobalOutputs.0.Text.txt",
-      "Metadata": null
+      "Text": "Cshtml.GlobalOutputs.0.Text.txt"
     },
     {
       "Type": "seq",
       "Label": "Sequence points",
-      "Priority": 0,
-      "Language": null,
-      "Text": "Cshtml.GlobalOutputs.1.Text.txt",
-      "Metadata": null
+      "Text": "Cshtml.GlobalOutputs.1.Text.txt"
     },
     {
       "Type": "cs",
       "Label": "C#",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "Cshtml.GlobalOutputs.2.Text.txt",
-      "Metadata": null
+      "Text": "Cshtml.GlobalOutputs.2.Text.txt"
     },
     {
       "Type": "asm",
       "Label": "Asm",
-      "Priority": 0,
-      "Language": null,
       "Text": "JIT disassembler is not available.",
       "Metadata": {
-        "MessageKind": 2,
-        "SemanticTokens": null,
-        "InputToOutput": null,
-        "OutputToInput": null,
-        "OutputToOutput": null
+        "MessageKind": 2
       }
     },
     {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
-      "Language": null,
-      "Text": "Cshtml.GlobalOutputs.4.Text.txt",
-      "Metadata": null
+      "Text": "Cshtml.GlobalOutputs.4.Text.txt"
     },
     {
       "Type": "errors",
       "Label": "Error List",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "",
-      "Metadata": null
+      "Text": ""
     }
   ],
-  "NumWarnings": 0,
-  "NumErrors": 0,
   "Diagnostics": [
     {
       "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestPage_cshtml.g.cs",
