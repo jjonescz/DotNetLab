@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -705,14 +704,7 @@ internal sealed class LanguageServices : ILanguageServices
             return [];
         }
 
-        var comp = await document.Project.GetCompilationAsync();
-        if (comp == null)
-        {
-            return [];
-        }
-
-        var diagnostics = comp.GetDiagnostics()
-            .Where(d => d.Location.SourceTree == tree);
+        var diagnostics = await document.GetDiagnosticsAsync();
         return diagnostics.SelectAsArray(static d => d.ToMarkerData());
     }
 

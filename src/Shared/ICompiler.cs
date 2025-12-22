@@ -81,6 +81,13 @@ public enum DiagnosticDataSeverity
     Hint,
 }
 
+[Flags]
+public enum DiagnosticTags
+{
+    None = 0,
+    Unnecessary = 1 << 0,
+}
+
 public sealed record DiagnosticData(
     string? FilePath,
     DiagnosticDataSeverity Severity,
@@ -90,7 +97,8 @@ public sealed record DiagnosticData(
     int StartLineNumber,
     int StartColumn,
     int EndLineNumber,
-    int EndColumn) : IComparable<DiagnosticData>
+    int EndColumn,
+    DiagnosticTags Tags = DiagnosticTags.None) : IComparable<DiagnosticData>
 {
     public int CompareTo(DiagnosticData? other)
     {

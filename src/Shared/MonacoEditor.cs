@@ -144,6 +144,14 @@ public static class SimpleMonacoConversions
                 DiagnosticDataSeverity.Hint => MarkerSeverity.Hint,
                 _ => MarkerSeverity.Info,
             },
+            Tags = d.Tags.HasFlag(DiagnosticTags.Unnecessary)
+                ? WellKnownMarkerTags.Unnecessary
+                : null,
         };
     }
+}
+
+file sealed class WellKnownMarkerTags
+{
+    public static List<MarkerTag> Unnecessary => field ??= [MarkerTag.Unnecessary];
 }
