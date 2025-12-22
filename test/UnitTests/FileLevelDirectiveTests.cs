@@ -2,6 +2,7 @@
 
 namespace DotNetLab;
 
+[TestClass]
 public sealed class FileLevelDirectiveTests
 {
     private static IEnumerable<string> GetSuggestedFeatureFlagNames()
@@ -11,7 +12,7 @@ public sealed class FileLevelDirectiveTests
             .Select(f => f.Split('=')[0]);
     }
 
-    [Fact]
+    [TestMethod]
     public void CompilerFeatureFlags_All()
     {
         var actualSuggestedValues = GetSuggestedFeatureFlagNames().Distinct();
@@ -25,7 +26,7 @@ public sealed class FileLevelDirectiveTests
         actualSuggestedValues.Should().BeEquivalentTo(expectedSuggestedValues);
     }
 
-    [Fact]
+    [TestMethod]
     public void CompilerFeatureFlags_Sorted()
     {
         var actualSuggestedValues = GetSuggestedFeatureFlagNames();

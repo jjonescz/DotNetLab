@@ -3,9 +3,10 @@ using System.Text.Json;
 
 namespace DotNetLab;
 
+[TestClass]
 public sealed class InputOutputCacheTests
 {
-    [Fact]
+    [TestMethod]
     public void BackwardsCompatibility()
     {
         // Do not change this string, we need to ensure it's always successfully parsed

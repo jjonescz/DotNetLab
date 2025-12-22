@@ -4,9 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetLab;
 
-public sealed class LabPageTests(ITestOutputHelper output)
+[TestClass]
+public sealed class LabPageTests
 {
-    [Fact]
+    public required TestContext TestContext { get; set; }
+
+    [TestMethod]
     public async Task Markers_CSharp()
     {
         var fileName = "Input.cs";
@@ -15,7 +18,7 @@ public sealed class LabPageTests(ITestOutputHelper output)
             string s = null;
             """;
 
-        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = fileName, Text = source }])));
 
@@ -28,9 +31,9 @@ public sealed class LabPageTests(ITestOutputHelper output)
         ]);
     }
 
-    [Theory]
-    [InlineData(RazorToolchain.SourceGenerator)]
-    [InlineData(RazorToolchain.InternalApi)]
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
     public async Task Markers_Razor(RazorToolchain toolchain)
     {
         var fileName = "Input.razor";
@@ -39,7 +42,7 @@ public sealed class LabPageTests(ITestOutputHelper output)
             @{ string s = null; }
             """;
 
-        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = fileName, Text = source }]))
         {
@@ -55,10 +58,10 @@ public sealed class LabPageTests(ITestOutputHelper output)
         ]);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Markers_Configuration()
     {
-        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new(
         [

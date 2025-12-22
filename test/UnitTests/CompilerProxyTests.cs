@@ -1,21 +1,25 @@
 using AwesomeAssertions;
+using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
 
-public sealed class CompilerProxyTests(ITestOutputHelper output)
+[TestClass]
+public sealed class CompilerProxyTests
 {
-    [Theory]
-    [InlineData("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
-    [InlineData("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
-    [InlineData("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
-    [InlineData("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [InlineData("latest", "5.0.0")] // `latest` works
+    public required TestContext TestContext { get; set; }
+
+    [TestMethod]
+    [DataRow("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
+    [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
+    [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
+    [DataRow("main", "-ci (<developer build>)")] // a branch can be downloaded
+    [DataRow("latest", "5.0.0")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -24,8 +28,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
         Assert.Contains(expectedDiagnostic, diagnosticsText);
 
         // Language services should also pick up the custom compiler version.
@@ -41,35 +45,35 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
             markers.Should().Contain(m => m.Message.Contains(expectedDiagnostic));
 
-            var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.Current.CancellationToken);
+            var semanticTokensJson = await languageServices.ProvideSemanticTokensAsync("Input.cs", null, false, TestContext.CancellationToken);
             semanticTokensJson.Should().NotBeNull();
 
-            var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.Current.CancellationToken);
+            var codeActionsJson = await languageServices.ProvideCodeActionsAsync("Input.cs", null, TestContext.CancellationToken);
             codeActionsJson.Should().NotBeNull();
         }
         catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
-            output.WriteLine(e.ToString());
+            TestContext.WriteLine(e.ToString());
             expectedDiagnostic.Should().StartWith("4.");
         }
     }
 
-    [Theory]
-    [InlineData(
+    [TestMethod]
+    [DataRow(
         // preview version is downloaded from an AzDo feed
         "4.12.0-2.24409.2",
         "4.12.0-2.24409.2",
         "2158b59104a5fb7db33796657d4ab3231e312302",
         "roslyn",
         "https://dev.azure.com/dnceng/public/_artifacts/feed/dotnet-tools/NuGet/Microsoft.Net.Compilers.Toolset/overview/4.12.0-2.24409.2")]
-    [InlineData(
+    [DataRow(
         // non-preview version is downloaded from nuget.org
         "4.14.0",
         "4.14.0",
         "8edf7bcd4f1594c3d68a6a567469f41dbd33dd1b",
         "roslyn",
         "https://www.nuget.org/packages/Microsoft.Net.Compilers.Toolset/4.14.0")]
-    [InlineData(
+    [DataRow(
         // this is not on dotnet-tools feed; it is on a special feed that can be inferred from the build number
         "5.0.0-2.25569.105",
         "5.0.0-2.25569.105",
@@ -78,7 +82,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         "https://dev.azure.com/dnceng/public/_artifacts/feed/darc-pub-dotnet-dotnet-fad253f5/NuGet/Microsoft.Net.Compilers.Toolset/overview/5.0.0-2.25569.105")]
     public async Task SpecifiedNuGetRoslynVersion_Info(string version, string expectedVersion, string expectedCommit, string expectedRepoName, string expectedVersionLink)
     {
-        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         var dependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
 
@@ -93,13 +97,13 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         info.VersionLink.Should().Be(expectedVersionLink);
     }
 
-    [Theory]
-    [InlineData("4.11.0-3.24352.2", "92051d4c")]
-    [InlineData("4.10.0-1.24076.1", "e1c36b10")]
-    [InlineData("5.0.0-1.25252.6", "b6ec1031")]
+    [TestMethod]
+    [DataRow("4.11.0-3.24352.2", "92051d4c")]
+    [DataRow("4.10.0-1.24076.1", "e1c36b10")]
+    [DataRow("5.0.0-1.25252.6", "b6ec1031")]
     public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string version, string commit)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -114,9 +118,9 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             });
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Equal($"""
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual($"""
             // (1,8): error CS1029: #error: 'version'
             // #error version
             Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
@@ -129,8 +133,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
     /// <summary>
     /// <see href="https://github.com/jjonescz/DotNetLab/issues/102"/>
     /// </summary>
-    [Theory]
-    [InlineData("5.0.0-2.25451.107", "2db1f5ee")]
+    [TestMethod]
+    [DataRow("5.0.0-2.25451.107", "2db1f5ee")]
     public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
     {
         var culture = new CultureInfo("cs");
@@ -145,7 +149,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
 
-            var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+            var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
             await services.GetRequiredService<CompilerDependencyProvider>()
                 .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -154,9 +158,9 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                 .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
 
             var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-            Assert.NotNull(diagnosticsText);
-            output.WriteLine(diagnosticsText);
-            Assert.Equal($"""
+            Assert.IsNotNull(diagnosticsText);
+            TestContext.WriteLine(diagnosticsText);
+            Assert.AreEqual($"""
                 // (1,8): error CS1029: #error: 'version'
                 // #error version
                 Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
@@ -169,8 +173,8 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             // so we use the built-in Roslyn version for the message formats instead of the specified Roslyn version
             // which can lead to mismatches like here (this error message would be visible in the IDE, for example).
             var errorMessage = compiled.Diagnostics[1].Message;
-            output.WriteLine(errorMessage);
-            Assert.Equal("""
+            TestContext.WriteLine(errorMessage);
+            Assert.AreEqual("""
                 Failed to format diagnostic (Title: '', MessageFormat: 'Compiler version: '{0}'. Language version: {1}. Compiler path: '{2}'.'): System.FormatException: Index (zero based) must be greater than or equal to zero and less than the size of the argument list.
                 """, errorMessage);
         }
@@ -183,7 +187,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SpecifiedNuGetRoslynVersion_CompilerCrash()
     {
         // https://github.com/dotnet/roslyn/issues/78042
@@ -216,7 +220,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
 
         var version = "5.0.0-1.25206.1";
 
-        var services = WorkerServices.CreateTest(output, new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -225,34 +229,34 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runResult = await compiled.GetRequiredGlobalOutput("run").LoadAsync();
-        Assert.StartsWith("System.NullReferenceException:", runResult.Text);
+        StringAssert.StartsWith(runResult.Text, "System.NullReferenceException:");
         Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", runResult.Text);
-        Assert.Equal(MessageKind.Special, runResult.Metadata?.MessageKind);
+        Assert.AreEqual(MessageKind.Special, runResult.Metadata?.MessageKind);
 
         // Tree output is independent and doesn't crash.
         var treeText = (await compiled.GetRequiredOutput("Input.cs", "tree").LoadAsync()).Text;
-        Assert.NotNull(treeText);
+        Assert.IsNotNull(treeText);
         Assert.Contains("CompilationUnitSyntax", treeText);
     }
 
-    [Theory]
-    [InlineData("9.0.0-preview.24413.5")]
-    [InlineData("9.0.0-preview.25128.1")]
-    [InlineData("10.0.0-preview.25252.1")]
-    [InlineData("10.0.0-preview.25264.1")]
-    [InlineData("10.0.0-preview.25311.107")]
-    [InlineData("10.0.0-preview.25314.101")]
-    [InlineData("10.0.0-preview.25429.2")]
-    [InlineData("main")] // test that we can download a branch
-    [InlineData("latest")] // `latest` works
+    [TestMethod]
+    [DataRow("9.0.0-preview.24413.5")]
+    [DataRow("9.0.0-preview.25128.1")]
+    [DataRow("10.0.0-preview.25252.1")]
+    [DataRow("10.0.0-preview.25264.1")]
+    [DataRow("10.0.0-preview.25311.107")]
+    [DataRow("10.0.0-preview.25314.101")]
+    [DataRow("10.0.0-preview.25429.2")]
+    [DataRow("main")] // test that we can download a branch
+    [DataRow("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Razor, version, BuildConfiguration.Release);
@@ -261,45 +265,45 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = "test" }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine("Diagnostics:");
-        output.WriteLine(diagnosticsText);
-        output.WriteLine(string.Empty);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine("Diagnostics:");
+        TestContext.WriteLine(diagnosticsText);
+        TestContext.WriteLine(string.Empty);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
-        output.WriteLine("C#:");
-        output.WriteLine(cSharpText);
-        output.WriteLine(string.Empty);
+        TestContext.WriteLine("C#:");
+        TestContext.WriteLine(cSharpText);
+        TestContext.WriteLine(string.Empty);
         Assert.Contains("class TestComponent", cSharpText);
 
         var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync()).Text;
-        output.WriteLine("Syntax:");
-        output.WriteLine(syntaxText);
-        output.WriteLine(string.Empty);
+        TestContext.WriteLine("Syntax:");
+        TestContext.WriteLine(syntaxText);
+        TestContext.WriteLine(string.Empty);
         Assert.Contains("RazorDocument", syntaxText);
 
         var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync()).Text;
-        output.WriteLine("IR:");
-        output.WriteLine(irText);
-        output.WriteLine(string.Empty);
-        Assert.Contains("""component.1.0""", irText);
+        TestContext.WriteLine("IR:");
+        TestContext.WriteLine(irText);
+        TestContext.WriteLine(string.Empty);
+        Assert.Contains("component.1.0", irText);
         Assert.Contains("TestComponent", irText);
 
         var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync()).Text;
-        output.WriteLine("HTML:");
-        output.WriteLine(htmlText);
-        output.WriteLine(string.Empty);
+        TestContext.WriteLine("HTML:");
+        TestContext.WriteLine(htmlText);
+        TestContext.WriteLine(string.Empty);
         Assert.Contains("test", htmlText);
     }
 
-    [Theory]
-    [InlineData(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
-    [InlineData(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
-    [InlineData(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
     public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         string code = """
             <div>@Param</div>
@@ -321,24 +325,24 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             });
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
-        output.WriteLine(cSharpText);
+        TestContext.WriteLine(cSharpText);
         Assert.Contains("class TestComponent", cSharpText);
         Assert.Contains("AddComponentParameter", cSharpText);
 
         var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync()).Text;
-        output.WriteLine(htmlText);
-        Assert.Equal("<div>42</div>", htmlText);
+        TestContext.WriteLine(htmlText);
+        Assert.AreEqual("<div>42</div>", htmlText);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConfigurationFile()
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         var source = "unsafe { int* p = null; }";
 
@@ -352,9 +356,9 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             });
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Equal($$"""
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual($$"""
             // (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
             // unsafe { int* p = null; }
             Diagnostic(ErrorCode.ERR_IllegalUnsafe, "unsafe").WithLocation(1, 1)
@@ -371,15 +375,15 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             });
 
         diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
     }
 
-    [Theory, CombinatorialData]
+    [TestMethod, CombinatorialData]
     public async Task AsyncMain(bool args)
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         string code = $$"""
             using System;
@@ -399,13 +403,13 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 42
             Stdout:
             Hello.
@@ -414,10 +418,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             """.ReplaceLineEndings("\n"), runText);
     }
 
-    [Theory, CombinatorialData]
+    [TestMethod, CombinatorialData]
     public async Task AsyncMain_TopLevel(bool script)
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         string code = $$"""
             using System;
@@ -433,13 +437,13 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             .CompileAsync(new(new([new() { FileName = $"Input.{ext}", Text = code }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 42
             Stdout:
             Hello.
@@ -448,10 +452,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             """.ReplaceLineEndings("\n"), runText);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DecompileExtension()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         string code = """
             static class E
@@ -464,16 +468,16 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = code }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
-        output.WriteLine(cSharpText);
+        TestContext.WriteLine(cSharpText);
         Assert.Contains("[Extension]", cSharpText);
     }
 
-    [Fact]
+    [TestMethod]
     public void DefaultCSharpDecompilerSettings()
     {
         var settings = Compiler.DefaultCSharpDecompilerSettings;
@@ -488,7 +492,7 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
                 continue;
             }
 
-            Assert.Equal(typeof(bool), property.PropertyType);
+            Assert.AreEqual(typeof(bool), property.PropertyType);
             var value = (bool)property.GetValue(settings)!;
             if (value) trueProperties.Add(property.Name);
         }
@@ -530,10 +534,10 @@ public sealed class CompilerProxyTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ILDecompilationUsesSpacesForIndentation()
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(output));
+        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
         var compiler = services.GetRequiredService<CompilerProxy>();
 
         var code = """
@@ -571,11 +575,11 @@ public class C
                 found8Spaces = true;
             }
 
-            Assert.True(leadingSpaces % 4 == 0, "All lines should be indented by a multiple of 4 spaces");
+            Assert.AreEqual(0, leadingSpaces % 4, "All lines should be indented by a multiple of 4 spaces");
         }
 
-        Assert.True(found4Spaces);
-        Assert.True(found8Spaces);
+        Assert.IsTrue(found4Spaces);
+        Assert.IsTrue(found8Spaces);
 
         return;
 
@@ -591,7 +595,7 @@ public class C
         }
     }
 
-    [Theory, CombinatorialData]
+    [TestMethod, CombinatorialData]
     public async Task Directives_Configuration(bool debug)
     {
         var services = WorkerServices.CreateTest();
@@ -605,17 +609,16 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
-        output.WriteLine(ilText);
-        Action<string, string> assert = debug ? Assert.Contains : Assert.DoesNotContain;
-        assert("nop", ilText);
+        TestContext.WriteLine(ilText);
+        Assert.AreEqual(debug, ilText.Contains("nop"));
     }
 
-    [Theory, CombinatorialData]
+    [TestMethod, CombinatorialData]
     public async Task Directives_LangVersion(bool old)
     {
         var services = WorkerServices.CreateTest();
@@ -629,12 +632,12 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
 
         if (old)
         {
-            Assert.Equal("""
+            Assert.AreEqual("""
                 // (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
                 // class C<T> where T : allows ref struct;
                 Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
@@ -642,14 +645,14 @@ public class C
         }
         else
         {
-            Assert.Empty(diagnosticsText);
+            Assert.AreEqual(string.Empty, diagnosticsText);
         }
     }
 
-    [Theory, CombinatorialData]
+    [TestMethod, CombinatorialData]
     public async Task Directives_TargetFramework(bool fx)
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = $$"""
             #:property TargetFramework={{(fx ? "net472" : "net9.0")}}
@@ -667,13 +670,13 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
 
         // .NET Framework does not have nullable-annotated `Debug.Assert` API.
         if (fx)
         {
-            Assert.Equal("""
+            Assert.AreEqual("""
                 // (7,16): warning CS8603: Possible null reference return.
                 //         return x;
                 Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
@@ -681,14 +684,14 @@ public class C
         }
         else
         {
-            Assert.Empty(diagnosticsText);
+            Assert.AreEqual(string.Empty, diagnosticsText);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Directives_Package()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = """
             #:package Humanizer
@@ -701,13 +704,13 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 0
             Stdout:
             now
@@ -715,10 +718,10 @@ public class C
             """.ReplaceLineEndings("\n"), runText.Trim());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Directives_Package_Unification()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = """
             #:package System.Reactive.Providers@3.1.1
@@ -735,13 +738,13 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 0
             Stdout:
             3.0.3000.0
@@ -753,10 +756,10 @@ public class C
     /// In this example, the referenced package references ASP.NET Core v9 but we have v10+.
     /// We should not pass both to the compiler to avoid compiler errors due to duplicate references.
     /// </summary>
-    [Fact]
+    [TestMethod]
     public async Task Directives_Package_DuplicateRefs()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var csSource = """
             #:package Microsoft.FluentUI.AspNetCore.Components@4.12.1
@@ -775,19 +778,19 @@ public class C
             ])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var csText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
-        output.WriteLine(csText);
+        TestContext.WriteLine(csText);
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Directives_Package_Roslyn()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = """
             #:package Microsoft.CodeAnalysis@*-*
@@ -810,13 +813,13 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 0
             Stdout:
             (1,10): error CS1513: } expected
@@ -827,10 +830,10 @@ public class C
     /// <summary>
     /// When one package does not exist, the other should still be downloaded.
     /// </summary>
-    [Fact]
+    [TestMethod]
     public async Task Directives_Package_OneDoesNotExist()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = """
             #:package Humanizer.Core
@@ -844,17 +847,17 @@ public class C
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Equal("""
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual("""
             // (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
             // #:package Microsoft.CodeAnalysis@1000
             Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
             """.ReplaceLineEndings(), diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
-        output.WriteLine(runText);
-        Assert.Equal("""
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
             Exit code: 0
             Stdout:
             now
@@ -866,10 +869,10 @@ public class C
     /// Directives should have an effect on IDE too
     /// and <c>OutputType</c> should not be overridden.
     /// </summary>
-    [Fact]
+    [TestMethod]
     public async Task Directives_OutputType_Live()
     {
-        var services = WorkerServices.CreateTest(output);
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = """
             #:property OutputType=WinMdObj
@@ -890,9 +893,9 @@ public class C
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.NotNull(diagnosticsText);
-        output.WriteLine(diagnosticsText);
-        Assert.Empty(diagnosticsText);
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
 
         var languageServices = await compiler.GetLanguageServicesAsync();
         languageServices.OnCompilationFinished();
@@ -902,7 +905,7 @@ public class C
         markers.Should().BeEmpty();
     }
 
-    [Fact]
+    [TestMethod]
     public async Task FormatCode_01()
     {
         var services = WorkerServices.CreateTest();
@@ -929,10 +932,10 @@ public class C
             }
             """.ReplaceLineEndings(Environment.NewLine);
 
-        Assert.Equal(expected, formatted);
+        Assert.AreEqual(expected, formatted);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task FormatCode_02()
     {
         var services = WorkerServices.CreateTest();
@@ -954,18 +957,18 @@ public class C
             var json = "{}";
             """.ReplaceLineEndings(Environment.NewLine);
 
-        Assert.Equal(expected, formatted);
+        Assert.AreEqual(expected, formatted);
     }
 }
 
 internal sealed partial class MockHttpMessageHandler : HttpClientHandler
 {
-    private readonly ITestOutputHelper testOutput;
+    private readonly TestContext testContext;
     private readonly string directory;
 
-    public MockHttpMessageHandler(ITestOutputHelper testOutput)
+    public MockHttpMessageHandler(TestContext testContext)
     {
-        this.testOutput = testOutput;
+        this.testContext = testContext;
         directory = Path.GetDirectoryName(GetType().Assembly.Location)!;
     }
 
@@ -975,11 +978,11 @@ internal sealed partial class MockHttpMessageHandler : HttpClientHandler
     {
         if (request.RequestUri?.Host != "localhost")
         {
-            testOutput.WriteLine($"Skipping mocking non-localhost request: {request.RequestUri}");
+            testContext.WriteLine($"Skipping mocking non-localhost request: {request.RequestUri}");
             return base.SendAsync(request, cancellationToken);
         }
 
-        testOutput.WriteLine($"Mocking request: {request.RequestUri}");
+        testContext.WriteLine($"Mocking request: {request.RequestUri}");
 
         if (UrlRegex.Match(request.RequestUri?.ToString() ?? "") is
             {

@@ -16,7 +16,6 @@
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.4.0" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Humanizer.Core" Version="2.14.1" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="10.0.0.8176-preview2" />
     <PackageVersion Include="JitInspect" Version="1.0.3" />
@@ -40,15 +39,13 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Microsoft.NETCore.App.Ref" Version="$(NetCoreVersion)" />
     <PackageVersion Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
+    <PackageVersion Include="Combinatorial.MSTest" Version="2.0.0" />
     <PackageVersion Include="NuGet.Resolver" Version="$(NuGetVersion)" />
     <PackageVersion Include="NuGet.Versioning" Version="$(NuGetVersion)" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
     <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="$(RoslynVersion)" />
     <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
-    <PackageVersion Include="Xunit.Combinatorial" Version="2.0.24" />
-    <PackageVersion Include="xunit.v3" Version="3.2.1" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup Label="Pinned Transitive Dependencies">
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
