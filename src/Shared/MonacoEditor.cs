@@ -124,6 +124,28 @@ public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;
 
 public static class SimpleMonacoConversions
 {
+    extension(Marker marker)
+    {
+        public MarkerData ToMarkerData()
+        {
+            return new()
+            {
+                Code = marker.Code,
+                Severity = marker.Severity,
+                Message = marker.Message,
+                Source = marker.Source,
+                StartLineNumber = marker.StartLineNumber,
+                StartColumn = marker.StartColumn,
+                EndLineNumber = marker.EndLineNumber,
+                EndColumn = marker.EndColumn,
+                ModelVersionId = marker.ModelVersionId,
+                RelatedInformation = marker.RelatedInformation,
+                Tags = marker.Tags,
+                Origin = marker.Origin,
+            };
+        }
+    }
+
     extension(MarkerData markerData)
     {
         public string? GetCode()

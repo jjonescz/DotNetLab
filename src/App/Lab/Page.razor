@@ -923,9 +923,6 @@
                 // Avoid overwriting live diagnostics which are newer.
                 return;
             }
-
-            // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
-            LanguageServices.CancelDiagnostics();
         }
 
         foreach (var input in inputs)
@@ -933,7 +930,7 @@
             List<MarkerData> markers = compiled is { } result
                 ? GetMarkersForInputFile(result.Output, input.FileName)
                 : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersCompilerOwner, markers);
         }
 
         if (configuration != null)
@@ -941,8 +938,10 @@
             List<MarkerData> markers = compiled is { } result
                 ? GetMarkersForConfiguration(result.Output)
                 : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersCompilerOwner, markers);
         }
+
+        LanguageServices.UpdateDiagnostics();
     }
 
     internal static List<MarkerData> GetMarkersForInputFile(CompiledAssembly compiled, string fileName)
