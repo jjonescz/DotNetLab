@@ -98,15 +98,16 @@ public sealed class CompilerProxyTests
     }
 
     [TestMethod]
-    [DataRow("4.11.0-3.24352.2", "92051d4c")]
-    [DataRow("4.10.0-1.24076.1", "e1c36b10")]
-    [DataRow("5.0.0-1.25252.6", "b6ec1031")]
-    public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string version, string commit)
+    [DataRow("4.11.0-3.24352.2", "92051d4c", "9.0.0-preview.24413.5")]
+    [DataRow("4.10.0-1.24076.1", "e1c36b10", "9.0.0-preview.24270.1")]
+    [DataRow("5.0.0-1.25252.6", "b6ec1031", "10.0.0-preview.25523.111")]
+    public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string roslynVersion, string expectedRoslynCommit, string razorVersion)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+        var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, roslynVersion, BuildConfiguration.Release);
+        await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
 
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }]))
@@ -124,9 +125,9 @@ public sealed class CompilerProxyTests
             // (1,8): error CS1029: #error: 'version'
             // #error version
             Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-            // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: 10.0.
+            // (1,8): error CS8304: Compiler version: '{roslynVersion} ({expectedRoslynCommit})'. Language version: 10.0.
             // #error version
-            Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "10.0").WithLocation(1, 8)
+            Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{roslynVersion} ({expectedRoslynCommit})", "10.0").WithLocation(1, 8)
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
