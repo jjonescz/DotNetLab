@@ -135,7 +135,7 @@
 
 @* Input / output panels *@
 @* Panels have `overflow: hidden` by default, which would cause Monaco Editor popups to get cropped, hence we reset it to `overflow: initial`. *@
-<FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1">
+<FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1" Class="@(displayHintSquiggles ? null : "no-squiggly-hint")">
     @* Input panel *@
     <FluentMultiSplitterPane Collapsible Style="overflow: initial">
         <div style="display: flex; flex-direction: column; height: 100%">
@@ -330,6 +330,7 @@
     private bool wordWrap;
     private bool useVim;
     private bool enableMemoryUsageView;
+    private bool displayHintSquiggles;
     private Orientation orientation;
     private string? workerError;
 
@@ -437,7 +438,7 @@
     private bool OutputHasPreferences
         => selectedOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         orientation = GetAutoOrientation();
 
@@ -445,6 +446,8 @@
         UpdateChecker.UpdateStatusChanged += StateHasChanged;
         ScreenInfo.Updated += OnScreenInfoUpdated;
         Worker.Failed += OnWorkerFailed;
+
+        displayHintSquiggles = await LocalStorage.TryLoadOptionAsync(nameof(displayHintSquiggles), defaultValue: false);
     }
 
     private async Task EditorInitAsync()
@@ -464,6 +467,7 @@
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
         await RegisterFormatActionAsync();
+        await RegisterSquigglyHintActionAsync();
         module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
         dotNetObjectReference = DotNetObjectReference.Create(this);
         unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
@@ -646,6 +650,24 @@
         };
         await inputEditor.AddAction(action);
         await outputEditor.AddAction(action);
+    }
+
+    private async Task RegisterSquigglyHintActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "squiggly-hint",
+            Label = ".NET Lab: Toggle Squiggly Hint (Hidden Diagnostic Decoration)",
+            Run = _ => InvokeAsync(ToggleSquigglyHintAsync),
+        };
+        await inputEditor.AddAction(action);
+
+        async Task ToggleSquigglyHintAsync()
+        {
+            displayHintSquiggles = !displayHintSquiggles;
+            StateHasChanged();
+            await LocalStorage.SetItemAsync(nameof(displayHintSquiggles), displayHintSquiggles);
+        }
     }
 
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
