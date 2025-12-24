@@ -704,20 +704,17 @@ public sealed class Compiler(
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
         {
-            return compilationInput.RazorToolchain switch
+            return effectiveToolchain switch
             {
                 RazorToolchain.SourceGenerator => designTime
                     ? throw new NotSupportedException("Cannot use source generator to obtain design-time internals." + ToolchainHelpText)
-                    : getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: true),
+                    : getSourceGeneratorRazorCodeDocument(filePath),
                 RazorToolchain.InternalApi => getInternalApiRazorCodeDocument(filePath, designTime),
-                RazorToolchain.SourceGeneratorOrInternalApi => designTime
-                    ? getInternalApiRazorCodeDocument(filePath, designTime)
-                    : (getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: false) ?? getInternalApiRazorCodeDocument(filePath, designTime)),
-                _ => throw new InvalidOperationException($"Invalid Razor toolchain '{compilationInput.RazorToolchain}'."),
+                _ => throw new InvalidOperationException($"Invalid effective Razor toolchain '{compilationInput.RazorToolchain}'."),
             };
         }
 
-        RazorCodeDocument? getSourceGeneratorRazorCodeDocument(string filePath, bool throwIfUnsupported)
+        RazorCodeDocument? getSourceGeneratorRazorCodeDocument(string filePath)
         {
             if (razorResult.TryGetHostOutputSafe("RazorGeneratorResult", out var hostOutput) &&
                 hostOutput is not null)
@@ -730,12 +727,7 @@ public sealed class Compiler(
                 return null;
             }
 
-            if (throwIfUnsupported)
-            {
-                throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
-            }
-
-            return null;
+            throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
         }
 
         RazorCodeDocument? getInternalApiRazorCodeDocument(string filePath, bool designTime)
