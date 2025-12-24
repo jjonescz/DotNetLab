@@ -42,9 +42,13 @@ public static class RoslynAccessors
                 sb.AppendLine(",");
             }
 
-            sb.Append("// ");
-            sb.Append(message);
-            sb.AppendLine();
+            foreach (var messageLine in message.EnumerateLines())
+            {
+                sb.Append("// ");
+                sb.Append(messageLine);
+                sb.AppendLine();
+            }
+
             if (l.IsInSource)
             {
                 sb.Append("// ");
