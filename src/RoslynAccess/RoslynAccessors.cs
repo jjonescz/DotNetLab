@@ -26,10 +26,14 @@ public static class RoslynAccessors
             var l = d.Location;
             if (excludeSingleFileName)
             {
-                var parenIndex = message.IndexOf('(');
-                if (parenIndex > 0)
+                var colonIndex = message.IndexOf(':');
+                if (colonIndex > 0)
                 {
-                    message = message[parenIndex..];
+                    var parenIndex = message[..colonIndex].IndexOf('(');
+                    if (parenIndex > 0)
+                    {
+                        message = message[parenIndex..];
+                    }
                 }
             }
 
