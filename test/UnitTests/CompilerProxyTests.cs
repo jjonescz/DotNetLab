@@ -229,7 +229,7 @@ public sealed class CompilerProxyTests
         Assert.AreEqual(string.Empty, diagnosticsText);
 
         var runResult = await compiled.GetRequiredGlobalOutput("run").LoadAsync();
-        StringAssert.StartsWith(runResult.Text, "System.NullReferenceException:");
+        Assert.StartsWith("System.NullReferenceException:", runResult.Text);
         Assert.Contains("Microsoft.Cci.MetadataWriter.CheckNameLength", runResult.Text);
         Assert.AreEqual(MessageKind.Special, runResult.Metadata?.MessageKind);
 
