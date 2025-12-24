@@ -447,6 +447,51 @@
         Worker.Failed += OnWorkerFailed;
     }
 
+    private async Task EditorInitAsync()
+    {
+        // This might get called twice when an editor is hidden and unhidden, or during hot reload,
+        // but we don't want to continue initialization in those cases.
+        if (editorInitializationStarted)
+        {
+            return;
+        }
+
+        editorInitializationStarted = true;
+
+        await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
+        await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
+        await DefineMonacoThemeAsync();
+        await RegisterWordWrapActionAsync();
+        await RegisterFormatActionAsync();
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
+
+        cursorSynchronizer = new CursorSynchronizer(CursorSynchronizerServices, inputEditor, outputEditor);
+        await cursorSynchronizer.InitAsync();
+
+        await settings.InitializeAsync();
+
+        await LoadStateFromUrlAsync();
+
+        if (!editorInitialized.TrySetResult())
+        {
+            Logger.LogError("Failed to set editor initialized result.");
+        }
+
+        initialized = true;
+        StateHasChanged();
+
+        if (settings.AutoCompileOnStart && !compilationInProgress)
+        {
+            // Avoid storing the first auto compilation in cache
+            // (the same shared snippet would be stored multiple times unnecessarily and
+            // users can always store their snippet separately by compiling manually).
+            await CompileAsync(storeInCache: false);
+        }
+    }
+
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
@@ -1256,51 +1301,6 @@
             return compiled?.CachedOutput?.Files.TryGetValue(CurrentFileName, out var file) == true
                 ? file
                 : null;
-        }
-    }
-
-    private async Task EditorInitAsync()
-    {
-        // This might get called twice when an editor is hidden and unhidden, or during hot reload,
-        // but we don't want to continue initialization in those cases.
-        if (editorInitializationStarted)
-        {
-            return;
-        }
-
-        editorInitializationStarted = true;
-
-        await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
-        await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
-        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
-        await DefineMonacoThemeAsync();
-        await RegisterWordWrapActionAsync();
-        await RegisterFormatActionAsync();
-        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
-        dotNetObjectReference = DotNetObjectReference.Create(this);
-        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
-
-        cursorSynchronizer = new CursorSynchronizer(CursorSynchronizerServices, inputEditor, outputEditor);
-        await cursorSynchronizer.InitAsync();
-
-        await settings.InitializeAsync();
-
-        await LoadStateFromUrlAsync();
-
-        if (!editorInitialized.TrySetResult())
-        {
-            Logger.LogError("Failed to set editor initialized result.");
-        }
-
-        initialized = true;
-        StateHasChanged();
-
-        if (settings.AutoCompileOnStart && !compilationInProgress)
-        {
-            // Avoid storing the first auto compilation in cache
-            // (the same shared snippet would be stored multiple times unnecessarily and
-            // users can always store their snippet separately by compiling manually).
-            await CompileAsync(storeInCache: false);
         }
     }
 
