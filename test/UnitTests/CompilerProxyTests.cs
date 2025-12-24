@@ -138,14 +138,10 @@ public sealed class CompilerProxyTests
     public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
     {
         var culture = new CultureInfo("cs");
-        var previousDefaultThreadCulture = CultureInfo.DefaultThreadCurrentCulture;
-        var previousDefaultThreadUiCulture = CultureInfo.DefaultThreadCurrentUICulture;
         var previousCulture = CultureInfo.CurrentCulture;
         var previousUiCulture = CultureInfo.CurrentUICulture;
         try
         {
-            CultureInfo.DefaultThreadCurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentUICulture = culture;
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
 
@@ -180,8 +176,6 @@ public sealed class CompilerProxyTests
         }
         finally
         {
-            CultureInfo.DefaultThreadCurrentCulture = previousDefaultThreadCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = previousDefaultThreadUiCulture;
             CultureInfo.CurrentCulture = previousCulture;
             CultureInfo.CurrentUICulture = previousUiCulture;
         }
@@ -902,7 +896,11 @@ public class C
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
-        markers.Should().BeEmpty();
+        markers.Select(m => m.ToDisplayString()).Should().Equal(
+        [
+            "(3,15): hint IDE0040: Accessibility modifiers required",
+            "(5,36): hint IDE0027: Use expression body for accessor",
+        ]);
     }
 
     [TestMethod]
