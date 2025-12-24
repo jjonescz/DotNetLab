@@ -317,7 +317,18 @@ public sealed class CompiledFileOutput
 
         if (text is Func<ValueTask<string>> factory)
         {
-            return factory().SelectAsTask(t =>
+            ValueTask<string> result;
+
+            try
+            {
+                result = factory();
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult(handleException(ex));
+            }
+
+            return result.SelectAsTask(t =>
             {
                 Text = t;
                 return new CompiledFileLazyResult { Text = t };
