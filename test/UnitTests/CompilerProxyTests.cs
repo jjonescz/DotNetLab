@@ -240,7 +240,7 @@ public sealed class CompilerProxyTests
     }
 
     [TestMethod]
-    [DataRow("9.0.0-preview.24413.5")]
+    [DataRow("9.0.0-preview.24413.5", true)]
     [DataRow("9.0.0-preview.25128.1")]
     [DataRow("10.0.0-preview.25252.1")]
     [DataRow("10.0.0-preview.25264.1")]
@@ -249,47 +249,70 @@ public sealed class CompilerProxyTests
     [DataRow("10.0.0-preview.25429.2")]
     [DataRow("main")] // test that we can download a branch
     [DataRow("latest")] // `latest` works
-    public async Task SpecifiedNuGetRazorVersion(string version)
+    public async Task SpecifiedNuGetRazorVersion(string version, bool sgUnsupported = false)
     {
         var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Razor, version, BuildConfiguration.Release);
 
-        var compiled = await services.GetRequiredService<CompilerProxy>()
-            .CompileAsync(new(new([new() { FileName = "TestComponent.razor", Text = "test" }])));
+        (bool UseApi, bool ExpectedErrors)[] runs = sgUnsupported
+            ? [(UseApi: false, ExpectedErrors: true), (UseApi: true, ExpectedErrors: false)]
+            : [(UseApi: false, ExpectedErrors: false)];
 
-        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
-        Assert.IsNotNull(diagnosticsText);
-        TestContext.WriteLine("Diagnostics:");
-        TestContext.WriteLine(diagnosticsText);
-        TestContext.WriteLine(string.Empty);
-        Assert.AreEqual(string.Empty, diagnosticsText);
+        foreach (var run in runs)
+        {
+            var compilationInput = new CompilationInput(new([new() { FileName = "TestComponent.razor", Text = "test" }]));
 
-        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
-        TestContext.WriteLine("C#:");
-        TestContext.WriteLine(cSharpText);
-        TestContext.WriteLine(string.Empty);
-        Assert.Contains("class TestComponent", cSharpText);
+            string? expectedError = null;
 
-        var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync()).Text;
-        TestContext.WriteLine("Syntax:");
-        TestContext.WriteLine(syntaxText);
-        TestContext.WriteLine(string.Empty);
-        Assert.Contains("RazorDocument", syntaxText);
+            if (run.UseApi)
+            {
+                Assert.IsFalse(run.ExpectedErrors);
+                compilationInput = compilationInput with { RazorToolchain = RazorToolchain.InternalApi };
+            }
+            else if (run.ExpectedErrors)
+            {
+                expectedError = """
+                    System.NotSupportedException: The selected version of Razor source generator does not support obtaining information about Razor internals.
+                    You can try selecting different Razor toolchain in Settings / Advanced.
+                    """;
+            }
 
-        var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync()).Text;
-        TestContext.WriteLine("IR:");
-        TestContext.WriteLine(irText);
-        TestContext.WriteLine(string.Empty);
-        Assert.Contains("component.1.0", irText);
-        Assert.Contains("TestComponent", irText);
+            var compiled = await services.GetRequiredService<CompilerProxy>().CompileAsync(compilationInput);
 
-        var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync()).Text;
-        TestContext.WriteLine("HTML:");
-        TestContext.WriteLine(htmlText);
-        TestContext.WriteLine(string.Empty);
-        Assert.Contains("test", htmlText);
+            var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+            Assert.IsNotNull(diagnosticsText);
+            TestContext.WriteLine("Diagnostics:");
+            TestContext.WriteLine(diagnosticsText);
+            TestContext.WriteLine(string.Empty);
+            Assert.AreEqual(string.Empty, diagnosticsText);
+
+            var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
+            TestContext.WriteLine("C#:");
+            TestContext.WriteLine(cSharpText);
+            TestContext.WriteLine(string.Empty);
+            Assert.Contains("class TestComponent", cSharpText);
+
+            var syntaxText = (await compiled.Files.First().Value.GetOutput("syntax")!.LoadAsync()).Text;
+            TestContext.WriteLine("Syntax:");
+            TestContext.WriteLine(syntaxText);
+            TestContext.WriteLine(string.Empty);
+            Assert.Contains(expectedError ?? "RazorDocument", syntaxText);
+
+            var irText = (await compiled.Files.First().Value.GetOutput("ir")!.LoadAsync()).Text;
+            TestContext.WriteLine("IR:");
+            TestContext.WriteLine(irText);
+            TestContext.WriteLine(string.Empty);
+            Assert.Contains(expectedError ?? "component.1.0", irText);
+            Assert.Contains(expectedError ?? "TestComponent", irText);
+
+            var htmlText = (await compiled.Files.First().Value.GetOutput("html")!.LoadAsync()).Text;
+            TestContext.WriteLine("HTML:");
+            TestContext.WriteLine(htmlText);
+            TestContext.WriteLine(string.Empty);
+            Assert.Contains(expectedError ?? "test", htmlText);
+        }
     }
 
     [TestMethod]
