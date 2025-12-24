@@ -429,6 +429,8 @@ internal sealed class WorkerController : IAsyncDisposable
         CancellationToken cancellationToken = default)
         where TOut : WorkerInputMessage<TIn>
     {
+        _ = deserializeAs; // unused, just to help type inference
+
         if (cancellationToken.CanBeCanceled)
         {
             cancellationToken.Register(() =>

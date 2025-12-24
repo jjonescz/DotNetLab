@@ -17,7 +17,6 @@ public sealed class ThrowingTraceListener : TraceListener
 
     public override void Fail(string? message, string? detailMessage)
     {
-        var stackTrace = new StackTrace(fNeedFileInfo: true);
         var logMessage = (string.IsNullOrEmpty(message) ? "Assertion failed" : message) +
             (string.IsNullOrEmpty(detailMessage) ? "" : Environment.NewLine + detailMessage);
 
