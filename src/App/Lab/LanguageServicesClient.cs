@@ -46,11 +46,16 @@ internal sealed class LanguageServicesClient(
         return true;
     }
 
-    private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken = default)
+    private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, bool skipDebounce = false, CancellationToken cancellationToken = default)
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
         info.CancellationTokenSource.Cancel();
         info = new(CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
+
+        if (skipDebounce)
+        {
+            return handler(args, cancellationToken);
+        }
 
         return debounceAsync(wait, info.CancellationTokenSource.Token, args, fallback, handler, cancellationToken);
 
@@ -154,7 +159,7 @@ internal sealed class LanguageServicesClient(
                     (worker, modelUri, position, context),
                     """{"suggestions":[],"isIncomplete":true}""",
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context, cancellationToken),
-                    cancellationToken);
+                    cancellationToken: cancellationToken);
             },
             ResolveCompletionItemFunc = worker.ResolveCompletionItemAsync,
         });
@@ -281,7 +286,7 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
-    public async void UpdateDiagnostics()
+    public async void UpdateDiagnostics(bool skipDebounce = false)
     {
         if (currentModelUrl == null ||
             !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
@@ -309,7 +314,8 @@ internal sealed class LanguageServicesClient(
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersLanguageServicesOwner, markers);
 
                 return 0;
-            });
+            },
+            skipDebounce: skipDebounce);
         }
         catch (Exception ex)
         {

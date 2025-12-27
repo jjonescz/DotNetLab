@@ -1008,7 +1008,8 @@
             await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersCompilerOwner, markers);
         }
 
-        LanguageServices.UpdateDiagnostics();
+        // Skip debounce to ensure compilation diagnostics are merged with IDE diangostics.
+        LanguageServices.UpdateDiagnostics(skipDebounce: true);
     }
 
     internal static List<MarkerData> GetMarkersForInputFile(CompiledAssembly compiled, string fileName)
