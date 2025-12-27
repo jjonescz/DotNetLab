@@ -37,7 +37,8 @@ $(AssemblyName)
 $(IndexHtmlGoatcounterPath)
 $(IndexHtmlLoadingInfoFooter)
 $(IndexHtmlScripts)"
-      Overwrite="true" />
+      Overwrite="true"
+      WriteOnlyWhenDifferent="true" />
   </Target>
 
   <Target Name="GenerateIndexHtml" DependsOnTargets="PrepareIndexHtmlInputsStamp" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath);$(IndexHtmlInputsPath)" Outputs="$(IndexHtmlOutputPath)">
