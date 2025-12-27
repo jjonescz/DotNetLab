@@ -1,0 +1,8 @@
+{
+  "mstest": {
+    "output": {
+      // Avoid capturing Console as that would interfere with our Executor capturing output of the built executable.
+      "captureTrace": false
+    }
+  }
+}
