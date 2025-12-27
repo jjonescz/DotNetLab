@@ -24,7 +24,10 @@
           "Type": "html",
           "Label": "HTML",
           "Language": "html",
-          "Text": "System.InvalidOperationException: Rendering Razor Pages (.cshtml) to HTML is currently not supported. Try Razor Components (.razor) instead."
+          "Text": "System.InvalidOperationException: Rendering Razor Pages (.cshtml) to HTML is currently not supported. Try Razor Components (.razor) instead.",
+          "Metadata": {
+            "MessageKind": 1
+          }
         }
       ]
     }
