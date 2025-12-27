@@ -1,5 +1,6 @@
 using BlazorMonaco.Editor;
 using DotNetLab.Lab;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -34,25 +35,17 @@ public sealed class WorkerJsonContext
 
     public new static WorkerJsonContext Default { get; } = new(new(DefaultOptions));
 
-    private static MethodInfo GetTypeInfoBaseMethod
-    {
-        get
-        {
-            return field ??= getNoCache();
-
-            static MethodInfo getNoCache()
-            {
-                var interfaceMap = typeof(WorkerJsonContext).BaseType!.GetInterfaceMap(typeof(IJsonTypeInfoResolver));
-                var interfaceMethod = typeof(IJsonTypeInfoResolver).GetMethod(nameof(IJsonTypeInfoResolver.GetTypeInfo))!;
-                var index = interfaceMap.InterfaceMethods.IndexOf(interfaceMethod);
-                return interfaceMap.TargetMethods[index];
-            }
-        }
-    }
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "global::System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver.GetTypeInfo")]
+    private static extern JsonTypeInfo? GetTypeInfoBase(
+#pragma warning disable CS0618 // Type or member is obsolete
+        WorkerJsonContextBase @this,
+#pragma warning restore CS0618
+        Type type,
+        JsonSerializerOptions options);
 
     JsonTypeInfo? IJsonTypeInfoResolver.GetTypeInfo(Type type, JsonSerializerOptions options)
     {
-        var typeInfo = (JsonTypeInfo?)GetTypeInfoBaseMethod.Invoke(this, [type, options]);
+        var typeInfo = GetTypeInfoBase(this, type, options);
 
         if (typeInfo is null)
         {
