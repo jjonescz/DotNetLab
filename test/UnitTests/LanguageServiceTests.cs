@@ -6,12 +6,15 @@ using System.Text.Json;
 
 namespace DotNetLab;
 
-public sealed class LanguageServiceTests(ITestOutputHelper output)
+[TestClass]
+public sealed class LanguageServiceTests
 {
-    [Theory]
-    [InlineData("void func() { }", "CS8321", "Remove unused function")]
-    [InlineData("Console.WriteLine();", "CS0103", "using System;")]
-    [InlineData("{ return 1; return 2; }", "CS0162", "Remove unreachable code")]
+    public required TestContext TestContext { get; set; }
+
+    [TestMethod]
+    [DataRow("void func() { }", "CS8321", "Remove unused function")]
+    [DataRow("Console.WriteLine();", "CS0103", "using System;")]
+    [DataRow("{ return 1; return 2; }", "CS0162", "Remove unreachable code")]
     public async Task CodeActions(string code, string expectedErrorCode, string expectedCodeActionTitle)
     {
         var services = WorkerServices.CreateTest();
@@ -21,19 +24,19 @@ public sealed class LanguageServiceTests(ITestOutputHelper output)
 
         var markers = await languageServices.GetDiagnosticsAsync("test.cs");
         markers.Should().NotBeEmpty();
-        output.WriteLine($"Diagnostics:\n{markers.Select(m => $"{m.Message} ({m.Code})").JoinToString("\n")}");
+        TestContext.WriteLine($"Diagnostics:\n{markers.Select(m => $"{m.Message} ({m.Code})").JoinToString("\n")}");
 
-        var codeActionsJson = await languageServices.ProvideCodeActionsAsync("test.cs", null, TestContext.Current.CancellationToken);
+        var codeActionsJson = await languageServices.ProvideCodeActionsAsync("test.cs", null, TestContext.CancellationToken);
         var codeActions = JsonSerializer.Deserialize(codeActionsJson!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
 
         codeActions.Should().NotBeEmpty();
-        output.WriteLine($"Code actions:\n{codeActions.Select(c => $"{c.Title}: {c.Edit?.Edits.Select(e => e.TextEdit.Text).JoinToString(", ") ?? "null"}").JoinToString("\n")}");
+        TestContext.WriteLine($"Code actions:\n{codeActions.Select(c => $"{c.Title}: {c.Edit?.Edits.Select(e => e.TextEdit.Text).JoinToString(", ") ?? "null"}").JoinToString("\n")}");
 
         markers.Select(m => m.Code.ToString()).Should().ContainMatch($"*{expectedErrorCode}*");
         codeActions.Select(c => c.Title).Should().Contain(expectedCodeActionTitle);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest();
@@ -48,7 +51,7 @@ public sealed class LanguageServiceTests(ITestOutputHelper output)
 
         var positionJson = JsonSerializer.Serialize(new Position { LineNumber = 1, Column = 5 }, BlazorMonacoJsonContext.Default.Position);
         var contextJson = JsonSerializer.Serialize(new SignatureHelpContext { TriggerKind = SignatureHelpTriggerKind.Invoke, IsRetrigger = false }, BlazorMonacoJsonContext.Default.SignatureHelpContext);
-        var signatureHelpJson = await languageServices.ProvideSignatureHelpAsync(file, positionJson, contextJson, TestContext.Current.CancellationToken);
+        var signatureHelpJson = await languageServices.ProvideSignatureHelpAsync(file, positionJson, contextJson, TestContext.CancellationToken);
         var signatureHelp = JsonSerializer.Deserialize(signatureHelpJson!, BlazorMonacoJsonContext.Default.SignatureHelp);
 
         signatureHelp!.Signatures.Should().ContainSingle()

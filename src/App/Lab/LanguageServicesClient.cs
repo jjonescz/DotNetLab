@@ -20,7 +20,6 @@ internal sealed class LanguageServicesClient(
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
-    private CancellationTokenSource? diagnosticsCts;
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
     private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
 
@@ -47,11 +46,16 @@ internal sealed class LanguageServicesClient(
         return true;
     }
 
-    private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, CancellationToken cancellationToken)
+    private static Task<TOut> DebounceAsync<TIn, TOut>(ref DebounceInfo info, TIn args, TOut fallback, Func<TIn, CancellationToken, Task<TOut>> handler, bool skipDebounce = false, CancellationToken cancellationToken = default)
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
         info.CancellationTokenSource.Cancel();
         info = new(CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
+
+        if (skipDebounce)
+        {
+            return handler(args, cancellationToken);
+        }
 
         return debounceAsync(wait, info.CancellationTokenSource.Token, args, fallback, handler, cancellationToken);
 
@@ -155,7 +159,7 @@ internal sealed class LanguageServicesClient(
                     (worker, modelUri, position, context),
                     """{"suggestions":[],"isIncomplete":true}""",
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context, cancellationToken),
-                    cancellationToken);
+                    cancellationToken: cancellationToken);
             },
             ResolveCompletionItemFunc = worker.ResolveCompletionItemAsync,
         });
@@ -282,15 +286,7 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
-    /// <summary>
-    /// Call this to prevent in-flight request for live diagnostics from completing.
-    /// </summary>
-    public void CancelDiagnostics()
-    {
-        diagnosticsCts?.Cancel();
-    }
-
-    private async void UpdateDiagnostics()
+    public async void UpdateDiagnostics(bool skipDebounce = false)
     {
         if (currentModelUrl == null ||
             !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
@@ -301,27 +297,29 @@ internal sealed class LanguageServicesClient(
 
         try
         {
-            diagnosticsCts?.Dispose();
-            diagnosticsCts = new();
             await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
                 var (worker, jsRuntime, currentModelUrl) = args;
-                var markers = await worker.GetDiagnosticsAsync(currentModelUrl);
+                var markers = (await worker.GetDiagnosticsAsync(currentModelUrl)).ToList();
                 var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
                 cancellationToken.ThrowIfCancellationRequested();
-                await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers.ToList());
+
+                var compilerMarkers = (await BlazorMonaco.Editor.Global
+                    .GetModelMarkers(jsRuntime, new() { Owner = MonacoConstants.MarkersCompilerOwner }))
+                    .Select(static m => m.ToMarkerData().ToDisplayString())
+                    .ToHashSet();
+
+                markers.RemoveAll(m => compilerMarkers.Contains(m.ToDisplayString()));
+
+                await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersLanguageServicesOwner, markers);
+
                 return 0;
             },
-            diagnosticsCts.Token);
+            skipDebounce: skipDebounce);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Updating diagnostics failed");
-        }
-        finally
-        {
-            diagnosticsCts?.Dispose();
-            diagnosticsCts = null;
         }
     }
 }

@@ -2,9 +2,10 @@
 
 namespace DotNetLab;
 
+[TestClass]
 public sealed class CompressorTests
 {
-    [Fact]
+    [TestMethod]
     public void RazorInitialCode()
     {
         var source = """
@@ -16,12 +17,12 @@ public sealed class CompressorTests
             """.ReplaceLineEndings("\r\n");
         var savedState = new SavedState() { Inputs = [new() { FileName = "", Text = source }] };
         var compressed = Compressor.Compress(savedState);
-        Assert.Equal((89, 114), (source.Length, compressed.Length));
+        Assert.AreEqual((89, 114), (source.Length, compressed.Length));
         var uncompressed = Compressor.Uncompress(compressed);
-        Assert.Equal(savedState.Inputs.Single(), uncompressed.Inputs.Single());
+        Assert.AreEqual(savedState.Inputs.Single(), uncompressed.Inputs.Single());
     }
 
-    [Fact]
+    [TestMethod]
     public void BackwardsCompatibility()
     {
         // Do not change this string, we need to ensure it's always successfully parsed
@@ -47,6 +48,6 @@ public sealed class CompressorTests
                 },
             ],
         };
-        Assert.Equal(expected.Inputs.Single(), actual.Inputs.Single());
+        Assert.AreEqual(expected.Inputs.Single(), actual.Inputs.Single());
     }
 }

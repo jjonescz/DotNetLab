@@ -24,7 +24,7 @@ public sealed record CompilationInput
 
     public Sequence<InputCode> Inputs { get; }
     public string? Configuration { get; init; }
-    public RazorToolchain RazorToolchain { get; init; }
+    public RazorToolchain RazorToolchain { get; init; } = RazorToolchain.SourceGeneratorOrInternalApi;
     public RazorStrategy RazorStrategy { get; init; }
     public CompilationPreferences Preferences { get; init; } = CompilationPreferences.Default;
 }
@@ -46,6 +46,7 @@ public sealed record CompilationPreferences
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
+    public bool IncludeHiddenDiagnostics { get; init; }
 }
 
 public enum RazorToolchain
@@ -77,6 +78,14 @@ public enum DiagnosticDataSeverity
     Info,
     Warning,
     Error,
+    Hint,
+}
+
+[Flags]
+public enum DiagnosticTags
+{
+    None = 0,
+    Unnecessary = 1 << 0,
 }
 
 public sealed record DiagnosticData(
@@ -88,8 +97,23 @@ public sealed record DiagnosticData(
     int StartLineNumber,
     int StartColumn,
     int EndLineNumber,
-    int EndColumn
-);
+    int EndColumn,
+    DiagnosticTags Tags = DiagnosticTags.None) : IComparable<DiagnosticData>
+{
+    public int CompareTo(DiagnosticData? other)
+    {
+        return Util.Compare(this, other, static x => (
+            x.FilePath,
+            x.StartLineNumber,
+            x.StartColumn,
+            x.Severity,
+            x.Id,
+            x.EndLineNumber,
+            x.EndColumn,
+            x.HelpLinkUri,
+            x.Message));
+    }
+}
 
 /// <remarks>
 /// <para>
@@ -110,7 +134,6 @@ public sealed record CompiledAssembly(
     /// <summary>
     /// Number of entries in <see cref="Diagnostics"/> (from the beginning) which belong to the special configuration file.
     /// </summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ConfigDiagnosticCount { get; init; }
 
     public const string DiagnosticsOutputType = "errors";
@@ -294,7 +317,18 @@ public sealed class CompiledFileOutput
 
         if (text is Func<ValueTask<string>> factory)
         {
-            return factory().SelectAsTask(t =>
+            ValueTask<string> result;
+
+            try
+            {
+                result = factory();
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult(handleException(ex));
+            }
+
+            return result.SelectAsTask(t =>
             {
                 Text = t;
                 return new CompiledFileLazyResult { Text = t };

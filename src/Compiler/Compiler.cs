@@ -142,8 +142,10 @@ public sealed class Compiler(
             if (!executeConfiguration(configuration, out configDiagnostics))
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
-                ImmutableArray<DiagnosticData> configDiagnosticData = configDiagnostics
-                    .Select(d => d.ToDiagnosticData())
+                ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
+                    .Select(static d => d.ToDiagnosticData())
+                    .Distinct()
+                    .Order()
                     .ToImmutableArray();
                 var configResult = new CompiledAssembly(
                     Files: ImmutableSortedDictionary<string, CompiledFile>.Empty,
@@ -157,12 +159,12 @@ public sealed class Compiler(
                             EagerText = configDiagnosticsText,
                         },
                     ],
-                    NumWarnings: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning),
-                    NumErrors: configDiagnostics.Count(d => d.Severity == DiagnosticSeverity.Error),
-                    Diagnostics: configDiagnosticData,
+                    NumWarnings: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning),
+                    NumErrors: configDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error),
+                    Diagnostics: failedConfigDiagnosticData,
                     BaseDirectory: directory)
                 {
-                    ConfigDiagnosticCount = configDiagnosticData.Length,
+                    ConfigDiagnosticCount = failedConfigDiagnosticData.Length,
                 };
                 return getResult(configResult);
             }
@@ -250,17 +252,28 @@ public sealed class Compiler(
 
         var peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
-        IEnumerable<Diagnostic> diagnostics = configDiagnostics
-            .Concat(processDirectiveDiagnostics())
+        var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
-            .Concat(additionalDiagnostics)
-            .Where(filterDiagnostic);
-        string diagnosticsText = diagnostics.GetDiagnosticsText(
-            excludeFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics && finalCompilation.SyntaxTrees is [CSharpSyntaxTree]);
-        int numWarnings = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
-        int numErrors = diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
-        ImmutableArray<DiagnosticData> diagnosticData = diagnostics
-            .Select(d => d.ToDiagnosticData())
+            .Concat(additionalDiagnostics);
+        IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
+            .Concat(nonConfigDiagnostics);
+        IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
+
+        string diagnosticsText = filteredDiagnostics.GetDiagnosticsText(
+            excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics);
+        int numWarnings = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning);
+        int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
+
+        var configDiagnosticData = configDiagnostics
+            .Select(static d => d.ToDiagnosticData())
+            .Distinct()
+            .Order();
+        var nonConfigDiagnosticData = nonConfigDiagnostics
+            .Select(static d => d.ToDiagnosticData())
+            .Distinct()
+            .Order();
+        ImmutableArray<DiagnosticData> diagnosticData = configDiagnosticData
+            .Concat(nonConfigDiagnosticData)
             .ToImmutableArray();
 
         var result = new CompiledAssembly(
@@ -442,7 +455,7 @@ public sealed class Compiler(
                 },
             ])
         {
-            ConfigDiagnosticCount = configDiagnostics.Count(filterDiagnostic),
+            ConfigDiagnosticCount = configDiagnostics.Length,
         };
 
         return getResult(result);
@@ -459,7 +472,7 @@ public sealed class Compiler(
             };
         }
 
-        static bool filterDiagnostic(Diagnostic d) => d.Severity != DiagnosticSeverity.Hidden;
+        bool filterDiagnostic(Diagnostic d) => compilationInput.Preferences.IncludeHiddenDiagnostics || d.Severity != DiagnosticSeverity.Hidden;
 
         bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
@@ -691,20 +704,17 @@ public sealed class Compiler(
 
         RazorCodeDocument? getRazorCodeDocument(string filePath, bool designTime)
         {
-            return compilationInput.RazorToolchain switch
+            return effectiveToolchain switch
             {
                 RazorToolchain.SourceGenerator => designTime
                     ? throw new NotSupportedException("Cannot use source generator to obtain design-time internals." + ToolchainHelpText)
-                    : getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: true),
+                    : getSourceGeneratorRazorCodeDocument(filePath),
                 RazorToolchain.InternalApi => getInternalApiRazorCodeDocument(filePath, designTime),
-                RazorToolchain.SourceGeneratorOrInternalApi => designTime
-                    ? getInternalApiRazorCodeDocument(filePath, designTime)
-                    : (getSourceGeneratorRazorCodeDocument(filePath, throwIfUnsupported: false) ?? getInternalApiRazorCodeDocument(filePath, designTime)),
-                _ => throw new InvalidOperationException($"Invalid Razor toolchain '{compilationInput.RazorToolchain}'."),
+                _ => throw new InvalidOperationException($"Invalid effective Razor toolchain '{compilationInput.RazorToolchain}'."),
             };
         }
 
-        RazorCodeDocument? getSourceGeneratorRazorCodeDocument(string filePath, bool throwIfUnsupported)
+        RazorCodeDocument? getSourceGeneratorRazorCodeDocument(string filePath)
         {
             if (razorResult.TryGetHostOutputSafe("RazorGeneratorResult", out var hostOutput) &&
                 hostOutput is not null)
@@ -717,12 +727,7 @@ public sealed class Compiler(
                 return null;
             }
 
-            if (throwIfUnsupported)
-            {
-                throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
-            }
-
-            return null;
+            throw new NotSupportedException("The selected version of Razor source generator does not support obtaining information about Razor internals." + ToolchainHelpText);
         }
 
         RazorCodeDocument? getInternalApiRazorCodeDocument(string filePath, bool designTime)

@@ -35,7 +35,7 @@ jobs:
 
       - name: Test
         if: ${{ always() && steps.build.outcome == 'success' }}
-        run: dotnet test --no-build --report-xunit
+        run: dotnet test --no-build --report-trx
 
       - name: Upload logs
         if: always()

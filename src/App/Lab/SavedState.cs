@@ -303,6 +303,9 @@ internal sealed record SavedState
     [ProtoMember(15)]
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
 
+    [ProtoMember(19)]
+    public bool IncludeHiddenDiagnostics { get; init; }
+
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
 
@@ -377,6 +380,7 @@ internal sealed record SavedState
             ShowSequencePoints = ShowSequencePoints,
             FullIl = FullIl,
             ExcludeSingleFileNameInDiagnostics = ExcludeSingleFileNameInDiagnostics,
+            IncludeHiddenDiagnostics = IncludeHiddenDiagnostics,
         };
     }
 
@@ -390,6 +394,7 @@ internal sealed record SavedState
             ShowSequencePoints = preferences.ShowSequencePoints,
             FullIl = preferences.FullIl,
             ExcludeSingleFileNameInDiagnostics = preferences.ExcludeSingleFileNameInDiagnostics,
+            IncludeHiddenDiagnostics = preferences.IncludeHiddenDiagnostics,
         };
     }
 

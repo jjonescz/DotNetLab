@@ -8,13 +8,13 @@ internal static class TestUtil
     extension(WorkerServices)
     {
         public static IServiceProvider CreateTest(
-            ITestOutputHelper output,
+            TestContext testContext,
             HttpMessageHandler? httpMessageHandler = null,
             Action<ServiceCollection>? configureServices = null)
         {
             return WorkerServices.CreateTest(httpMessageHandler, (services) =>
             {
-                services.AddSingleton<ILoggerProvider>(new TestLoggerProvider(output));
+                services.AddSingleton<ILoggerProvider>(new TestLoggerProvider(testContext));
                 configureServices?.Invoke(services);
             });
         }

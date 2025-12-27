@@ -127,6 +127,10 @@ code {
     height: 99%;
 }
 
+.no-squiggly-hint .monaco-editor .squiggly-hint {
+    background: none;
+}
+
 /* Workaround for https://github.com/microsoft/monaco-editor/issues/4984. */
 .quick-input-widget {
     margin-left: initial !important;

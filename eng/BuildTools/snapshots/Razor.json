@@ -5,39 +5,28 @@
         {
           "Type": "syntax",
           "Label": "Syntax",
-          "Priority": 0,
-          "Language": null,
-          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.0.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.0.Text.txt"
         },
         {
           "Type": "ir",
           "Label": "IR",
-          "Priority": 0,
           "Language": "csharp",
-          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.1.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.1.Text.txt"
         },
         {
           "Type": "gcs",
           "Label": "C#",
           "Priority": 1,
           "Language": "csharp",
-          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.2.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files._005F_Imports_002E_razor.Outputs.2.Text.txt"
         },
         {
           "Type": "html",
           "Label": "HTML",
-          "Priority": 0,
           "Language": "html",
           "Text": "System.ArgumentException: The type TestNamespace._Imports does not implement IComponent. (Parameter \u0027componentType\u0027)",
           "Metadata": {
-            "MessageKind": 1,
-            "SemanticTokens": null,
-            "InputToOutput": null,
-            "OutputToInput": null,
-            "OutputToOutput": null
+            "MessageKind": 1
           }
         }
       ]
@@ -47,34 +36,26 @@
         {
           "Type": "syntax",
           "Label": "Syntax",
-          "Priority": 0,
-          "Language": null,
-          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.0.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.0.Text.txt"
         },
         {
           "Type": "ir",
           "Label": "IR",
-          "Priority": 0,
           "Language": "csharp",
-          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.1.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.1.Text.txt"
         },
         {
           "Type": "gcs",
           "Label": "C#",
           "Priority": 1,
           "Language": "csharp",
-          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.2.Text.txt",
-          "Metadata": null
+          "Text": "Razor.Files.TestComponent_002E_razor.Outputs.2.Text.txt"
         },
         {
           "Type": "html",
           "Label": "HTML",
-          "Priority": 0,
           "Language": "html",
-          "Text": "\u003Cdiv\u003E0\u003C/div\u003E\u003Cdiv\u003E1\u003C/div\u003E",
-          "Metadata": null
+          "Text": "\u003Cdiv\u003E0\u003C/div\u003E\u003Cdiv\u003E1\u003C/div\u003E"
         }
       ]
     }
@@ -83,60 +64,240 @@
     {
       "Type": "il",
       "Label": "IL",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "Razor.GlobalOutputs.0.Text.txt",
-      "Metadata": null
+      "Text": "Razor.GlobalOutputs.0.Text.txt"
     },
     {
       "Type": "seq",
       "Label": "Sequence points",
-      "Priority": 0,
-      "Language": null,
-      "Text": "Razor.GlobalOutputs.1.Text.txt",
-      "Metadata": null
+      "Text": "Razor.GlobalOutputs.1.Text.txt"
     },
     {
       "Type": "cs",
       "Label": "C#",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "Razor.GlobalOutputs.2.Text.txt",
-      "Metadata": null
+      "Text": "Razor.GlobalOutputs.2.Text.txt"
     },
     {
       "Type": "asm",
       "Label": "Asm",
-      "Priority": 0,
-      "Language": null,
       "Text": "JIT disassembler is not available.",
       "Metadata": {
-        "MessageKind": 2,
-        "SemanticTokens": null,
-        "InputToOutput": null,
-        "OutputToInput": null,
-        "OutputToOutput": null
+        "MessageKind": 2
       }
     },
     {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
-      "Language": null,
-      "Text": "Razor.GlobalOutputs.4.Text.txt",
-      "Metadata": null
+      "Text": "Razor.GlobalOutputs.4.Text.txt"
     },
     {
       "Type": "errors",
       "Label": "Error List",
-      "Priority": 0,
       "Language": "csharp",
-      "Text": "",
-      "Metadata": null
+      "Text": ""
     }
   ],
-  "NumWarnings": 0,
-  "NumErrors": 0,
-  "Diagnostics": [],
+  "Diagnostics": [
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 1,
+      "StartColumn": 2,
+      "EndLineNumber": 4,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 2,
+      "StartColumn": 2,
+      "EndLineNumber": 5,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 3,
+      "StartColumn": 2,
+      "EndLineNumber": 6,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 4,
+      "StartColumn": 2,
+      "EndLineNumber": 7,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 5,
+      "StartColumn": 2,
+      "EndLineNumber": 8,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 6,
+      "StartColumn": 2,
+      "EndLineNumber": 9,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 7,
+      "StartColumn": 2,
+      "EndLineNumber": 10,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 8,
+      "StartColumn": 2,
+      "EndLineNumber": 11,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "/_Imports.razor",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 9,
+      "StartColumn": 2,
+      "EndLineNumber": 12,
+      "EndColumn": 6
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/__Imports_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 7,
+      "StartColumn": 5,
+      "EndLineNumber": 7,
+      "EndColumn": 26
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/__Imports_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 8,
+      "StartColumn": 5,
+      "EndLineNumber": 8,
+      "EndColumn": 46
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/__Imports_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 9,
+      "StartColumn": 5,
+      "EndLineNumber": 9,
+      "EndColumn": 31
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/__Imports_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 10,
+      "StartColumn": 5,
+      "EndLineNumber": 10,
+      "EndColumn": 42
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/__Imports_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 11,
+      "StartColumn": 5,
+      "EndLineNumber": 11,
+      "EndColumn": 51
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestComponent_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 7,
+      "StartColumn": 5,
+      "EndLineNumber": 7,
+      "EndColumn": 26
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestComponent_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 8,
+      "StartColumn": 5,
+      "EndLineNumber": 8,
+      "EndColumn": 46
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestComponent_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 9,
+      "StartColumn": 5,
+      "EndLineNumber": 9,
+      "EndColumn": 31
+    },
+    {
+      "FilePath": "Microsoft.CodeAnalysis.Razor.Compiler/Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator/_TestComponent_razor.g.cs",
+      "Severity": 3,
+      "Id": "CS8019",
+      "HelpLinkUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn\u0026k=k(CS8019)",
+      "Message": "Unnecessary using directive.",
+      "StartLineNumber": 10,
+      "StartColumn": 5,
+      "EndLineNumber": 10,
+      "EndColumn": 42
+    }
+  ],
   "BaseDirectory": "/"
 }
