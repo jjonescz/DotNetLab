@@ -63,8 +63,12 @@ public sealed class TemplateCacheTests
                 """);
         }
 
-        var snapshotDirectory = Path.GetFullPath(Path.Join(TestContext.TestRunDirectory,
-            "..", "..", "..", "..", "..", "eng", "BuildTools", "snapshots"));
+        TestContext.WriteLine($"Test run directory: {TestContext.TestRunDirectory}");
+        var repoRoot = findRepoRoot(TestContext.TestRunDirectory);
+        Assert.IsNotNull(repoRoot);
+        TestContext.WriteLine($"Repo root: {repoRoot}");
+        var snapshotDirectory = Path.Join(repoRoot, "eng", "BuildTools", "snapshots");
+        TestContext.WriteLine($"Snapshot directory: {snapshotDirectory}");
 
         // Compare on-disk snapshot with expected snapshot from memory.
         var actualNode = JsonSerializer.SerializeToNode(actualOutput, WorkerJsonContext.Default.CompiledAssembly)!.AsObject();
@@ -96,6 +100,16 @@ public sealed class TemplateCacheTests
 
         // Do this last because errors from above assertions would be better.
         match.Should().BeTrue();
+
+        static string? findRepoRoot(string? directory)
+        {
+            while (directory != null && !File.Exists(Path.Join(directory, "DotNetLab.slnx")))
+            {
+                directory = Path.GetDirectoryName(directory);
+            }
+
+            return directory;
+        }
     }
 
     public static IEnumerable<string> GetKeys()
