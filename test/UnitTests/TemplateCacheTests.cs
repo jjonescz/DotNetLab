@@ -29,7 +29,7 @@ public sealed class TemplateCacheTests
         var (_, input, embeddedJsonFactory) = entry;
 
         // Compile to get the output corresponding to a template input.
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var actualOutput = await compiler.CompileAsync(input);
 

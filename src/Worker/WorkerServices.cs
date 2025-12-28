@@ -7,6 +7,7 @@ namespace DotNetLab;
 
 public static class WorkerServices
 {
+    [Obsolete("Use the overload from TestUtil which takes TestContext if possible.")]
     public static IServiceProvider CreateTest(
         HttpMessageHandler? httpMessageHandler = null,
         Action<ServiceCollection>? configureServices = null)

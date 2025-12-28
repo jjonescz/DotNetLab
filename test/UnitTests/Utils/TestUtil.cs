@@ -12,11 +12,25 @@ internal static class TestUtil
             HttpMessageHandler? httpMessageHandler = null,
             Action<ServiceCollection>? configureServices = null)
         {
-            return WorkerServices.CreateTest(httpMessageHandler, (services) =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            var services = WorkerServices.CreateTest(httpMessageHandler, configureServicesOuter);
+#pragma warning restore CS0618
+
+            var logger = services.GetRequiredService<ILogger<TestLogging>>();
+            logger.LogDebug("Running test {ClassName}.{TestName}", testContext.FullyQualifiedTestClassName, testContext.TestDisplayName);
+
+            return services;
+
+            void configureServicesOuter(ServiceCollection services)
             {
                 services.AddSingleton<ILoggerProvider>(new TestLoggerProvider(testContext));
                 configureServices?.Invoke(services);
-            });
+            }
         }
     }
+}
+
+internal sealed class TestLogging
+{
+    private TestLogging() { }
 }

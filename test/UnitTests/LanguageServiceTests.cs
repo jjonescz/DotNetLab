@@ -17,7 +17,7 @@ public sealed class LanguageServiceTests
     [DataRow("{ return 1; return 2; }", "CS0162", "Remove unreachable code")]
     public async Task CodeActions(string code, string expectedErrorCode, string expectedCodeActionTitle)
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("test.cs", "test.cs") { NewContent = code }]);
@@ -39,7 +39,7 @@ public sealed class LanguageServiceTests
     [TestMethod]
     public async Task SignatureHelp()
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         var code = """

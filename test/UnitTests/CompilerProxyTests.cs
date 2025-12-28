@@ -19,7 +19,7 @@ public sealed class CompilerProxyTests
     [DataRow("latest", "5.0.0")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -103,7 +103,7 @@ public sealed class CompilerProxyTests
     [DataRow("5.0.0-1.25252.6", "b6ec1031", "10.0.0-preview.25523.111")]
     public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string roslynVersion, string expectedRoslynCommit, string razorVersion)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
         await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, roslynVersion, BuildConfiguration.Release);
@@ -251,7 +251,7 @@ public sealed class CompilerProxyTests
     [DataRow("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version, bool sgUnsupported = false)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Razor, version, BuildConfiguration.Release);
@@ -321,7 +321,7 @@ public sealed class CompilerProxyTests
     [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
     public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy)
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         string code = """
             <div>@Param</div>
@@ -360,7 +360,7 @@ public sealed class CompilerProxyTests
     [TestMethod]
     public async Task ConfigurationFile()
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
         var source = "unsafe { int* p = null; }";
 
@@ -555,7 +555,7 @@ public sealed class CompilerProxyTests
     [TestMethod]
     public async Task ILDecompilationUsesSpacesForIndentation()
     {
-        var services = WorkerServices.CreateTest(new MockHttpMessageHandler(TestContext));
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
         var compiler = services.GetRequiredService<CompilerProxy>();
 
         var code = """
@@ -616,7 +616,7 @@ public class C
     [TestMethod, CombinatorialData]
     public async Task Directives_Configuration(bool debug)
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = $"""
             #:property Configuration={(debug ? "Debug" : "Release")}
@@ -639,7 +639,7 @@ public class C
     [TestMethod, CombinatorialData]
     public async Task Directives_LangVersion(bool old)
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
 
         var source = $"""
             #:property LangVersion={(old ? "12" : "13")}
@@ -930,7 +930,7 @@ public class C
     [TestMethod]
     public async Task FormatCode_01()
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
 
         var unformatted = """
@@ -960,7 +960,7 @@ public class C
     [TestMethod]
     public async Task FormatCode_02()
     {
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
 
         var unformatted = """
