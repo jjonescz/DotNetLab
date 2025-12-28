@@ -23,7 +23,11 @@ internal static class TestUtil
 
             void configureServicesOuter(ServiceCollection services)
             {
-                services.AddSingleton<ILoggerProvider>(new TestLoggerProvider(testContext));
+                services.AddLogging(builder =>
+                {
+                    builder.ClearProviders();
+                    builder.AddProvider(new TestLoggerProvider(testContext));
+                });
                 configureServices?.Invoke(services);
             }
         }
