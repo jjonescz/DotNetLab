@@ -456,11 +456,6 @@ public static class MonacoConversions
             new LinePosition(range.EndLineNumber - 1, range.EndColumn - 1));
     }
 
-    public static MarkerData ToMarkerData(this Diagnostic d)
-    {
-        return SimpleMonacoConversions.ToMarkerData(d.ToDiagnosticData());
-    }
-
     public static MonacoRange ToRange(this LinePositionSpan span)
     {
         return new MonacoRange

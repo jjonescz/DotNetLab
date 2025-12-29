@@ -705,7 +705,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         var diagnostics = await document.GetDiagnosticsAsync();
-        return diagnostics.SelectAsArray(static d => d.ToMarkerData());
+        return diagnostics.SelectAsArray(static d => d.ToMarkerData(downgradeInfo: true));
     }
 
     private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)

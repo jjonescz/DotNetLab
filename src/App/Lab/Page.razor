@@ -1017,7 +1017,7 @@
         return compiled.Diagnostics
             .Skip(compiled.ConfigDiagnosticCount)
             .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
-            .Select(static d => d.ToMarkerData())
+            .Select(static d => d.ToMarkerData(downgradeInfo: false))
             .ToList();
     }
 
@@ -1026,7 +1026,7 @@
         return compiled.Diagnostics
             .Take(compiled.ConfigDiagnosticCount)
             .Where(static d => d.FilePath == "Configuration.cs")
-            .Select(static d => d.ToMarkerData())
+            .Select(static d => d.ToMarkerData(downgradeInfo: false))
             .ToList();
     }
 

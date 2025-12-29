@@ -306,10 +306,10 @@ internal sealed class LanguageServicesClient(
 
                 var compilerMarkers = (await BlazorMonaco.Editor.Global
                     .GetModelMarkers(jsRuntime, new() { Owner = MonacoConstants.MarkersCompilerOwner }))
-                    .Select(static m => m.ToMarkerData().ToDisplayString())
+                    .Select(static m => toDisplayString(m.ToMarkerData()))
                     .ToHashSet();
 
-                markers.RemoveAll(m => compilerMarkers.Contains(m.ToDisplayString()));
+                markers.RemoveAll(m => compilerMarkers.Contains(toDisplayString(m)));
 
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersLanguageServicesOwner, markers);
 
@@ -320,6 +320,12 @@ internal sealed class LanguageServicesClient(
         catch (Exception ex)
         {
             logger.LogError(ex, "Updating diagnostics failed");
+        }
+
+        static string toDisplayString(MarkerData markerData)
+        {
+            // IDE markers have downgraded info severity, so we exclude severity when comparing them with compiler markers.
+            return markerData.ToDisplayString(excludeSeverity: true);
         }
     }
 }

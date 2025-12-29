@@ -160,15 +160,17 @@ public static class SimpleMonacoConversions
             };
         }
 
-        public string ToDisplayString()
+        public string ToDisplayString(bool excludeSeverity = false)
         {
-            var severity = markerData.Severity.ToString().ToLowerInvariant();
+            var severity = excludeSeverity
+                ? null
+                : $"{markerData.Severity.ToString().ToLowerInvariant()} ";
             var code = markerData.GetCode();
-            return $"{markerData.Source}({markerData.StartLineNumber},{markerData.StartColumn}): {severity} {code}: {markerData.Message}";
+            return $"{markerData.Source}({markerData.StartLineNumber},{markerData.StartColumn}): {severity}{code}: {markerData.Message}";
         }
     }
 
-    public static MarkerData ToMarkerData(this DiagnosticData d)
+    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo)
     {
         return new MarkerData
         {
@@ -186,8 +188,8 @@ public static class SimpleMonacoConversions
             {
                 DiagnosticDataSeverity.Error => MarkerSeverity.Error,
                 DiagnosticDataSeverity.Warning => MarkerSeverity.Warning,
-                DiagnosticDataSeverity.Hint => MarkerSeverity.Hint,
-                _ => MarkerSeverity.Info,
+                DiagnosticDataSeverity.Info when !downgradeInfo => MarkerSeverity.Info,
+                _ => MarkerSeverity.Hint,
             },
             Tags = d.Tags.HasFlag(DiagnosticTags.Unnecessary)
                 ? WellKnownMarkerTags.Unnecessary
