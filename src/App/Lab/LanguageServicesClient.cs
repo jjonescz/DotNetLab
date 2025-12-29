@@ -286,7 +286,12 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
-    public async void UpdateDiagnostics(bool skipDebounce = false)
+    public void OnCompilerMarkersSet()
+    {
+        UpdateDiagnostics(compilerMarkersSet: true);
+    }
+
+    private async void UpdateDiagnostics(bool compilerMarkersSet = false)
     {
         if (currentModelUrl == null ||
             !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
@@ -297,25 +302,35 @@ internal sealed class LanguageServicesClient(
 
         try
         {
-            await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
+            await DebounceAsync(ref diagnosticsDebounce, (compilerMarkersSet, worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
-                var (worker, jsRuntime, currentModelUrl) = args;
+                var (compilerMarkersSet, worker, jsRuntime, currentModelUrl) = args;
                 var markers = (await worker.GetDiagnosticsAsync(currentModelUrl)).ToList();
                 var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var compilerMarkers = (await BlazorMonaco.Editor.Global
-                    .GetModelMarkers(jsRuntime, new() { Owner = MonacoConstants.MarkersCompilerOwner }))
-                    .Select(static m => toDisplayString(m.ToMarkerData()))
-                    .ToHashSet();
+                if (compilerMarkersSet)
+                {
+                    var compilerMarkers = await BlazorMonaco.Editor.Global
+                        .GetModelMarkers(jsRuntime, new() { Owner = MonacoConstants.MarkersCompilerOwner });
 
-                markers.RemoveAll(m => compilerMarkers.Contains(toDisplayString(m)));
+                    var compilerMarkerDisplays = compilerMarkers
+                        .Select(static m => toDisplayString(m.ToMarkerData()))
+                        .ToHashSet();
+
+                    markers.RemoveAll(m => compilerMarkerDisplays.Contains(toDisplayString(m)));
+                }
+                else
+                {
+                    await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersCompilerOwner, []);
+                }
 
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersLanguageServicesOwner, markers);
 
                 return 0;
             },
-            skipDebounce: skipDebounce);
+            // Skip debounce to ensure compiler diagnostics are merged with IDE diangostics.
+            skipDebounce: compilerMarkersSet);
         }
         catch (Exception ex)
         {
