@@ -12,10 +12,11 @@ public static class RoslynAccessors
         return new CSharpCompilerDiagnosticAnalyzer();
     }
 
-    public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual, bool excludeFileName = false)
+    public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual, bool excludeSingleFileName = false)
     {
+        excludeSingleFileName = excludeSingleFileName && hasSingleFileName(actual);
         var sb = new StringBuilder();
-        var e = actual.GetEnumerator();
+        using var e = actual.GetEnumerator();
         for (int i = 0; e.MoveNext(); i++)
         {
             Diagnostic d = e.Current;
@@ -23,12 +24,16 @@ public static class RoslynAccessors
 
             // Remove file name to resemble Roslyn test output.
             var l = d.Location;
-            if (excludeFileName && l.IsInSource)
+            if (excludeSingleFileName)
             {
-                var parenIndex = message.IndexOf('(');
-                if (parenIndex > 0)
+                var colonIndex = message.IndexOf(':');
+                if (colonIndex > 0)
                 {
-                    message = message[parenIndex..];
+                    var parenIndex = message[..colonIndex].IndexOf('(');
+                    if (parenIndex > 0)
+                    {
+                        message = message[parenIndex..];
+                    }
                 }
             }
 
@@ -37,9 +42,13 @@ public static class RoslynAccessors
                 sb.AppendLine(",");
             }
 
-            sb.Append("// ");
-            sb.Append(message);
-            sb.AppendLine();
+            foreach (var messageLine in message.EnumerateLines())
+            {
+                sb.Append("// ");
+                sb.Append(messageLine);
+                sb.AppendLine();
+            }
+
             if (l.IsInSource)
             {
                 sb.Append("// ");
@@ -49,6 +58,44 @@ public static class RoslynAccessors
             var description = new DiagnosticDescription(d, errorCodeOnly: false);
             sb.Append(description.ToString());
         }
+
         return sb.ToString();
+
+        static bool hasSingleFileName(IEnumerable<Diagnostic> diagnostics)
+        {
+            string? fileName = null;
+            foreach (var d in diagnostics)
+            {
+                var l = d.Location;
+                if (l.IsInSource)
+                {
+                    var currentFileName = l.SourceTree.FilePath;
+
+                    if (currentFileName == null)
+                    {
+                        return false;
+                    }
+
+                    if (fileName == null)
+                    {
+                        fileName = currentFileName;
+                    }
+                    else if (fileName != currentFileName)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+    }
+
+    public static IEnumerable<string> GetFeatureNames()
+    {
+        return typeof(Feature)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(f => f.FieldType == typeof(string) && f.IsLiteral)
+            .Select(f => (string)f.GetRawConstantValue()!);
     }
 }

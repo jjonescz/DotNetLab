@@ -6,26 +6,30 @@ using System.Text.Json;
 
 namespace DotNetLab;
 
-public sealed class TemplateCacheTests(ITestOutputHelper output)
+[TestClass]
+public sealed class TemplateCacheTests
 {
     private static readonly TemplateCache cache = new();
 
-    [Fact]
+    public required TestContext TestContext { get; set; }
+
+    [TestMethod]
     public void NumberOfEntries()
     {
         var count = 3;
-        Assert.Equal(count, cache.Entries.Length);
-        Assert.Equal(count, GetKeys().Distinct().Count());
+        Assert.HasCount(count, cache.Entries);
+        Assert.AreEqual(count, GetKeys().Distinct().Count());
     }
 
-    [Theory, MemberData(nameof(GetKeys))]
+    [TestMethod]
+    [DynamicData(nameof(GetKeysAsObjects))]
     public async Task UpToDate(string key)
     {
         var entry = cache.Entries.Single(e => e.Name == key);
         var (_, input, embeddedJsonFactory) = entry;
 
         // Compile to get the output corresponding to a template input.
-        var services = WorkerServices.CreateTest();
+        var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var actualOutput = await compiler.CompileAsync(input);
 
@@ -45,22 +49,26 @@ public sealed class TemplateCacheTests(ITestOutputHelper output)
                 output.SetEagerText(value);
             }
 
-            Assert.NotNull(value);
-            Assert.Equal(value, output.Text);
+            Assert.IsNotNull(value);
+            Assert.AreEqual(value, output.Text);
         }
 
-        Assert.True(cache.TryGetOutput(SavedState.From(input), out _, out var expectedOutput));
+        Assert.IsTrue(cache.TryGetOutput(SavedState.From(input), out _, out var expectedOutput));
 
         // Code generation depends on system new line sequence, so continue only on systems where new line is '\n'.
         if (Environment.NewLine is not "\n")
         {
-            Assert.Skip($"""
+            Assert.Inconclusive($"""
                 Only "\n" is supported, got {SymbolDisplay.FormatPrimitive(Environment.NewLine, quoteStrings: true, useHexadecimalNumbers: false)}.
                 """);
         }
 
-        var snapshotDirectory = Path.GetFullPath(Path.Join(TestContext.Current.TestAssembly!.AssemblyPath,
-            "..", "..", "..", "..", "..", "eng", "BuildTools", "snapshots"));
+        TestContext.WriteLine($"Test run directory: {TestContext.TestRunDirectory}");
+        var repoRoot = findRepoRoot(TestContext.TestRunDirectory);
+        Assert.IsNotNull(repoRoot);
+        TestContext.WriteLine($"Repo root: {repoRoot}");
+        var snapshotDirectory = Path.Join(repoRoot, "eng", "BuildTools", "snapshots");
+        TestContext.WriteLine($"Snapshot directory: {snapshotDirectory}");
 
         // Compare on-disk snapshot with expected snapshot from memory.
         var actualNode = JsonSerializer.SerializeToNode(actualOutput, WorkerJsonContext.Default.CompiledAssembly)!.AsObject();
@@ -70,12 +78,12 @@ public sealed class TemplateCacheTests(ITestOutputHelper output)
         if (!match)
         {
             // If snapshots don't match, regenerate.
-            output.WriteLine($"Regenerating snapshot '{expectedSnapshot}' -> '{actualSnapshot}' at '{snapshotDirectory}'.");
+            TestContext.WriteLine($"Regenerating snapshot '{expectedSnapshot}' -> '{actualSnapshot}' at '{snapshotDirectory}'.");
             actualSnapshot.SaveToDisk(snapshotDirectory);
         }
         else
         {
-            output.WriteLine($"Expected snapshot '{expectedSnapshot}' at '{snapshotDirectory}' matches actual '{actualSnapshot}'.");
+            TestContext.WriteLine($"Expected snapshot '{expectedSnapshot}' at '{snapshotDirectory}' matches actual '{actualSnapshot}'.");
         }
 
         // Check that snapshot API works.
@@ -92,10 +100,28 @@ public sealed class TemplateCacheTests(ITestOutputHelper output)
 
         // Do this last because errors from above assertions would be better.
         match.Should().BeTrue();
+
+        static string? findRepoRoot(string? directory)
+        {
+            while (directory != null && !File.Exists(Path.Join(directory, "DotNetLab.slnx")))
+            {
+                directory = Path.GetDirectoryName(directory);
+            }
+
+            return directory;
+        }
     }
 
-    public static TheoryData<string> GetKeys()
+    public static IEnumerable<string> GetKeys()
     {
-        return new(cache.Entries.Select(static entry => entry.Name));
+        return cache.Entries.Select(static entry => entry.Name);
+    }
+
+    public static IEnumerable<object[]> GetKeysAsObjects()
+    {
+        foreach (var key in GetKeys())
+        {
+            yield return new object[] { key };
+        }
     }
 }

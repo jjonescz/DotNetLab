@@ -102,17 +102,17 @@ public static class CodeAnalysisUtil
 
     public static DiagnosticData ToDiagnosticData(this Diagnostic d)
     {
-        string? filePath = d.Location.SourceTree?.FilePath;
+        string? filePath;
         FileLinePositionSpan lineSpan;
 
-        if (string.IsNullOrEmpty(filePath) &&
-            d.Location.GetMappedLineSpan() is { IsValid: true } mappedLineSpan)
+        if (d.Location.GetMappedLineSpan() is { IsValid: true } mappedLineSpan)
         {
             filePath = mappedLineSpan.Path;
             lineSpan = mappedLineSpan;
         }
         else
         {
+            filePath = d.Location.SourceTree?.FilePath;
             lineSpan = d.Location.GetLineSpan();
         }
 
@@ -122,6 +122,7 @@ public static class CodeAnalysisUtil
             {
                 DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
                 DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
+                DiagnosticSeverity.Hidden => DiagnosticDataSeverity.Hint,
                 _ => DiagnosticDataSeverity.Info,
             },
             Id: d.Id,

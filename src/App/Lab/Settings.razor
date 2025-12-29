@@ -19,6 +19,7 @@
     <FluentDialogBody Style="overflow-y: auto; overflow-x: hidden; padding-bottom: 1em">
         <SettingsGroup>
             <ChildContent>
+                @* Configuration file *@
                 <SettingsButton Class="settings-nowarp" OnClick="GoToConfigurationAsync" title="Open the configuration file">
                     <Icon>
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.DocumentSettings()" />
@@ -426,6 +427,27 @@
                     <FluentMessageBar Title="No update found." Intent="MessageIntent.Info" AllowDismiss="false" />
                 }
 
+                @* Desktop app link *@
+                @if (OperatingSystem.IsBrowser())
+                {
+                    <a href="@App.DesktopAppLink" target="_blank" style="text-decoration: none">
+                        <SettingsButton Class="settings-nowarp">
+                            <Icon>
+                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.StoreMicrosoft()" />
+                            </Icon>
+                            <Header>
+                                <h4 class="unset">Desktop App</h4>
+                            </Header>
+                            <Description>
+                                Faster version of .NET Lab running on full .NET.
+                            </Description>
+                            <ActionIcon>
+                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ChevronRight()" />
+                            </ActionIcon>
+                        </SettingsButton>
+                    </a>
+                }
+
                 @* Theme select *@
                 <SettingsCard>
                     <Icon>
@@ -585,27 +607,27 @@
         UpdateChecker.UpdateStatusChanged += StateHasChanged;
 
         // Load settings from local storage.
-        WordWrap = await loadOptionAsync(nameof(WordWrap), defaultValue: false);
+        WordWrap = await LocalStorage.TryLoadOptionAsync(nameof(WordWrap), defaultValue: false);
         if (WordWrap)
         {
             await OnWordWrapChanged();
         }
-        UseVim = await loadOptionAsync(nameof(UseVim), defaultValue: false);
+        UseVim = await LocalStorage.TryLoadOptionAsync(nameof(UseVim), defaultValue: false);
         if (UseVim)
         {
             await OnVimChanged();
         }
-        DebugLogs = await loadOptionAsync(nameof(DebugLogs), defaultValue: HostEnvironment.IsDevelopment);
-        TraceLogs = await loadOptionAsync(nameof(TraceLogs), defaultValue: false);
-        EnableMemoryUsageView = await loadOptionAsync(nameof(EnableMemoryUsageView), defaultValue: false);
+        DebugLogs = await LocalStorage.TryLoadOptionAsync(nameof(DebugLogs), defaultValue: HostEnvironment.IsDevelopment);
+        TraceLogs = await LocalStorage.TryLoadOptionAsync(nameof(TraceLogs), defaultValue: false);
+        EnableMemoryUsageView = await LocalStorage.TryLoadOptionAsync(nameof(EnableMemoryUsageView), defaultValue: false);
         if (EnableMemoryUsageView)
         {
             await EnableMemoryUsageViewChanged.InvokeAsync(EnableMemoryUsageView);
         }
-        EnableLanguageServices = await loadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
-        EnableWorker = await loadOptionAsync(nameof(EnableWorker), defaultValue: true);
-        EnableCaching = await loadOptionAsync(nameof(EnableCaching), defaultValue: true);
-        AutoCompileOnStart = await loadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
+        EnableLanguageServices = await LocalStorage.TryLoadOptionAsync(EnableLanguageServicesKey, defaultValue: true);
+        EnableWorker = await LocalStorage.TryLoadOptionAsync(nameof(EnableWorker), defaultValue: true);
+        EnableCaching = await LocalStorage.TryLoadOptionAsync(nameof(EnableCaching), defaultValue: true);
+        AutoCompileOnStart = await LocalStorage.TryLoadOptionAsync(nameof(AutoCompileOnStart), defaultValue: true);
         RazorToolchain = RazorToolchain.SourceGeneratorOrInternalApi;
 
         await UpdateLanguageServicesAsync();
@@ -613,13 +635,6 @@
         if (HostEnvironment.SupportsWebWorkers)
         {
             Worker.Disabled = !EnableWorker;
-        }
-
-        async Task<T?> loadOptionAsync<T>(string name, T? defaultValue = default)
-        {
-            return await LocalStorage.ContainKeyAsync(name)
-                ? await LocalStorage.GetItemAsync<T>(name)
-                : defaultValue;
         }
     }
 

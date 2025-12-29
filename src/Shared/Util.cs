@@ -18,6 +18,8 @@ public static partial class Util
     [GeneratedRegex("^file:///out/[^/]+/(?<type>[^/]+)(?<input>(/.*)?)$")]
     internal static partial Regex OutputModelUri { get; }
 
+    private static readonly AsyncLock ConsoleCaptureLock = new();
+
     extension(AsyncEnumerable)
     {
         public static IAsyncEnumerable<T> Create<T>(T item)
@@ -211,22 +213,30 @@ public static partial class Util
     {
         using var stdoutWriter = new StringWriter();
         using var stderrWriter = new StringWriter();
-        var originalOut = Console.Out;
-        var originalError = Console.Error;
-        Console.SetOut(stdoutWriter);
-        Console.SetError(stderrWriter);
-        try
+        using (await ConsoleCaptureLock.LockAsync())
         {
-            await action();
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-            Console.SetError(originalError);
+            var originalOut = Console.Out;
+            var originalError = Console.Error;
+            Console.SetOut(stdoutWriter);
+            Console.SetError(stderrWriter);
+            try
+            {
+                await action();
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetError(originalError);
+            }
         }
         var stdout = stdoutWriter.ToString();
         var stderr = stderrWriter.ToString();
         return (stdout, stderr);
+    }
+
+    public static int Compare<T, R>(T a, T? b, Func<T, R> selector) where R : IComparable
+    {
+        return selector(a).CompareTo(b is null ? null : selector(b));
     }
 
     public static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> a, IEnumerable<T> b)

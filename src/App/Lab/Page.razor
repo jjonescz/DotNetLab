@@ -135,7 +135,7 @@
 
 @* Input / output panels *@
 @* Panels have `overflow: hidden` by default, which would cause Monaco Editor popups to get cropped, hence we reset it to `overflow: initial`. *@
-<FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1">
+<FluentMultiSplitter Orientation="orientation" Style="flex-grow: 1" Class="@(displayHintSquiggles ? null : "no-squiggly-hint")">
     @* Input panel *@
     <FluentMultiSplitterPane Collapsible Style="overflow: initial">
         <div style="display: flex; flex-direction: column; height: 100%">
@@ -170,7 +170,8 @@
                         <FluentMenuItem Id="razor">.razor</FluentMenuItem>
                         <FluentMenuItem Id="cshtml">.cshtml</FluentMenuItem>
                         <FluentDivider />
-                        <FluentMenuItem Id="config">
+                        <FluentMenuItem Id="directives" title="Simple configuration using #: directives">Directives</FluentMenuItem>
+                        <FluentMenuItem Id="config" title="Complex configuration using Roslyn APIs">
                             <FluentIcon Slot="start" Value="@(new Icons.Regular.Size16.DocumentSettings())" />
                             Configuration
                         </FluentMenuItem>
@@ -272,6 +273,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.ExcludeSingleFileNameInDiagnostics"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ExcludeSingleFileNameInDiagnostics = v })"
                                                 Label="Exclude single file name" />
+                                <FluentCheckbox @bind-Value:get="savedState.IncludeHiddenDiagnostics"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { IncludeHiddenDiagnostics = v })"
+                                                Label="Include hidden diagnostics" />
                             }
                             break;
                     }
@@ -326,6 +330,7 @@
     private bool wordWrap;
     private bool useVim;
     private bool enableMemoryUsageView;
+    private bool displayHintSquiggles;
     private Orientation orientation;
     private string? workerError;
 
@@ -433,7 +438,7 @@
     private bool OutputHasPreferences
         => selectedOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         orientation = GetAutoOrientation();
 
@@ -441,6 +446,54 @@
         UpdateChecker.UpdateStatusChanged += StateHasChanged;
         ScreenInfo.Updated += OnScreenInfoUpdated;
         Worker.Failed += OnWorkerFailed;
+
+        displayHintSquiggles = await LocalStorage.TryLoadOptionAsync(nameof(displayHintSquiggles), defaultValue: false);
+    }
+
+    private async Task EditorInitAsync()
+    {
+        // This might get called twice when an editor is hidden and unhidden, or during hot reload,
+        // but we don't want to continue initialization in those cases.
+        if (editorInitializationStarted)
+        {
+            return;
+        }
+
+        editorInitializationStarted = true;
+
+        await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
+        await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
+        await DefineMonacoThemeAsync();
+        await RegisterWordWrapActionAsync();
+        await RegisterFormatActionAsync();
+        await RegisterSquigglyHintActionAsync();
+        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
+
+        cursorSynchronizer = new CursorSynchronizer(CursorSynchronizerServices, inputEditor, outputEditor);
+        await cursorSynchronizer.InitAsync();
+
+        await settings.InitializeAsync();
+
+        await LoadStateFromUrlAsync();
+
+        if (!editorInitialized.TrySetResult())
+        {
+            Logger.LogError("Failed to set editor initialized result.");
+        }
+
+        initialized = true;
+        StateHasChanged();
+
+        if (settings.AutoCompileOnStart && !compilationInProgress)
+        {
+            // Avoid storing the first auto compilation in cache
+            // (the same shared snippet would be stored multiple times unnecessarily and
+            // users can always store their snippet separately by compiling manually).
+            await CompileAsync(storeInCache: false);
+        }
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -599,6 +652,24 @@
         await outputEditor.AddAction(action);
     }
 
+    private async Task RegisterSquigglyHintActionAsync()
+    {
+        var action = new ActionDescriptor
+        {
+            Id = "squiggly-hint",
+            Label = ".NET Lab: Toggle Squiggly Hint (Hidden Diagnostic Decoration)",
+            Run = _ => InvokeAsync(ToggleSquigglyHintAsync),
+        };
+        await inputEditor.AddAction(action);
+
+        async Task ToggleSquigglyHintAsync()
+        {
+            displayHintSquiggles = !displayHintSquiggles;
+            StateHasChanged();
+            await LocalStorage.SetItemAsync(nameof(displayHintSquiggles), displayHintSquiggles);
+        }
+    }
+
     private async Task OnInputPresetSelectedAsync(MenuChangeEventArgs args)
     {
         if (args.Id is { } slug && NavigateToSlug(slug))
@@ -709,6 +780,7 @@
             "cs" => InitialCode.CSharp,
             "razor" => InitialCode.Razor,
             "cshtml" => InitialCode.Cshtml,
+            "directives" => InitialCode.Directives,
             _ => null,
         } is { } initialCode)
         {
@@ -918,33 +990,43 @@
                 // Avoid overwriting live diagnostics which are newer.
                 return;
             }
-
-            // Prevent possibly delayed live diagnostics from a previous document version from overwriting the compiler diagnostics.
-            LanguageServices.CancelDiagnostics();
         }
 
         foreach (var input in inputs)
         {
-            List<MarkerData> markers = compiled is { } result ? result.Output.Diagnostics
-                .Skip(result.Output.ConfigDiagnosticCount)
-                .Where(d => d.FilePath == result.Output.BaseDirectory + input.FileName)
-                .Select(d => d.ToMarkerData())
-                .ToList() : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
+            List<MarkerData> markers = compiled is { } result
+                ? GetMarkersForInputFile(result.Output, input.FileName)
+                : [];
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersCompilerOwner, markers);
         }
 
         if (configuration != null)
         {
-            if (compiled is { } result)
-            {
-                List<MarkerData> markers = result.Output.Diagnostics
-                    .Take(result.Output.ConfigDiagnosticCount)
-                    .Where(d => d.FilePath == "Configuration.cs")
-                    .Select(d => d.ToMarkerData())
-                    .ToList();
-                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
-            }
+            List<MarkerData> markers = compiled is { } result
+                ? GetMarkersForConfiguration(result.Output)
+                : [];
+            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersCompilerOwner, markers);
         }
+
+        LanguageServices.OnCompilerMarkersSet();
+    }
+
+    internal static List<MarkerData> GetMarkersForInputFile(CompiledAssembly compiled, string fileName)
+    {
+        return compiled.Diagnostics
+            .Skip(compiled.ConfigDiagnosticCount)
+            .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
+            .Select(static d => d.ToMarkerData(downgradeInfo: false))
+            .ToList();
+    }
+
+    internal static List<MarkerData> GetMarkersForConfiguration(CompiledAssembly compiled)
+    {
+        return compiled.Diagnostics
+            .Take(compiled.ConfigDiagnosticCount)
+            .Where(static d => d.FilePath == "Configuration.cs")
+            .Select(static d => d.ToMarkerData(downgradeInfo: false))
+            .ToList();
     }
 
     private async Task UpdateOutputDisplayAsync()
@@ -1241,51 +1323,6 @@
             return compiled?.CachedOutput?.Files.TryGetValue(CurrentFileName, out var file) == true
                 ? file
                 : null;
-        }
-    }
-
-    private async Task EditorInitAsync()
-    {
-        // This might get called twice when an editor is hidden and unhidden, or during hot reload,
-        // but we don't want to continue initialization in those cases.
-        if (editorInitializationStarted)
-        {
-            return;
-        }
-
-        editorInitializationStarted = true;
-
-        await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
-        await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
-        await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
-        await DefineMonacoThemeAsync();
-        await RegisterWordWrapActionAsync();
-        await RegisterFormatActionAsync();
-        module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/DotNetLab.App/Lab/Page.razor.js");
-        dotNetObjectReference = DotNetObjectReference.Create(this);
-        unregisterEventListeners = await module.InvokeAsync<Action>("registerEventListeners", dotNetObjectReference);
-
-        cursorSynchronizer = new CursorSynchronizer(CursorSynchronizerServices, inputEditor, outputEditor);
-        await cursorSynchronizer.InitAsync();
-
-        await settings.InitializeAsync();
-
-        await LoadStateFromUrlAsync();
-
-        if (!editorInitialized.TrySetResult())
-        {
-            Logger.LogError("Failed to set editor initialized result.");
-        }
-
-        initialized = true;
-        StateHasChanged();
-
-        if (settings.AutoCompileOnStart && !compilationInProgress)
-        {
-            // Avoid storing the first auto compilation in cache
-            // (the same shared snippet would be stored multiple times unnecessarily and
-            // users can always store their snippet separately by compiling manually).
-            await CompileAsync(storeInCache: false);
         }
     }
 

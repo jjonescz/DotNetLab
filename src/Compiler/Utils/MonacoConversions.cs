@@ -22,30 +22,6 @@ namespace DotNetLab;
 
 public static class MonacoConversions
 {
-    extension(SourceText text)
-    {
-        public TextSpan FullRange => new TextSpan(0, text.Length);
-
-        public void GetLineAndOffset(int position, out int lineNumber, out int offset)
-        {
-            var line = text.Lines.GetLineFromPosition(position);
-
-            lineNumber = line.LineNumber;
-            offset = position - line.Start;
-        }
-
-        public void GetLinesAndOffsets(
-            TextSpan textSpan,
-            out int startLineNumber,
-            out int startOffset,
-            out int endLineNumber,
-            out int endOffset)
-        {
-            text.GetLineAndOffset(textSpan.Start, out startLineNumber, out startOffset);
-            text.GetLineAndOffset(textSpan.End, out endLineNumber, out endOffset);
-        }
-    }
-
     extension(Classifier)
     {
         /// <summary>
@@ -203,6 +179,30 @@ public static class MonacoConversions
             }
 
             return MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data));
+        }
+    }
+
+    extension(SourceText text)
+    {
+        public TextSpan FullRange => new TextSpan(0, text.Length);
+
+        public void GetLineAndOffset(int position, out int lineNumber, out int offset)
+        {
+            var line = text.Lines.GetLineFromPosition(position);
+
+            lineNumber = line.LineNumber;
+            offset = position - line.Start;
+        }
+
+        public void GetLinesAndOffsets(
+            TextSpan textSpan,
+            out int startLineNumber,
+            out int startOffset,
+            out int endLineNumber,
+            out int endOffset)
+        {
+            text.GetLineAndOffset(textSpan.Start, out startLineNumber, out startOffset);
+            text.GetLineAndOffset(textSpan.End, out endLineNumber, out endOffset);
         }
     }
 
@@ -454,11 +454,6 @@ public static class MonacoConversions
         return new LinePositionSpan(
             new LinePosition(range.StartLineNumber - 1, range.StartColumn - 1),
             new LinePosition(range.EndLineNumber - 1, range.EndColumn - 1));
-    }
-
-    public static MarkerData ToMarkerData(this Diagnostic d)
-    {
-        return SimpleMonacoConversions.ToMarkerData(d.ToDiagnosticData());
     }
 
     public static MonacoRange ToRange(this LinePositionSpan span)

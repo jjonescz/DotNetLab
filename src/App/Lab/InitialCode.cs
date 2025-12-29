@@ -80,7 +80,7 @@ internal sealed record InitialCode
 
     // IMPORTANT: Keep in sync with `Compiler.Compile`.
     public static readonly InitialCode Configuration = new("Configuration.cs", """
-        // 💡 TIP: Instead of this, you can use directives in C# files directly, for example:
+        // 💡 TIP: Instead of this, you can use directives in C# files directly (or Add > Directives), for example:
         //   #:property Configuration=Debug
 
         Config.CSharpParseOptions(options => options
@@ -107,6 +107,15 @@ internal sealed record InitialCode
         Config.EmitOptions(options => options
             .WithEmitMetadataOnly(false)
         );
+
+        """);
+
+    public static readonly InitialCode Directives = new("Directives.cs", """
+        #:property LangVersion=preview
+        #:property Configuration=Debug
+        #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
+        #:property AllowUnsafeBlocks=true
+        #:property Nullable=enable
 
         """);
 
@@ -147,14 +156,9 @@ internal sealed record InitialCode
 
     public SavedState ToSavedState()
     {
-        return new()
+        return SavedState.Initial with
         {
             Inputs = [ToInputCode()],
         };
-    }
-
-    public CompilationInput ToCompilationInput()
-    {
-        return new(new([ToInputCode()]));
     }
 }

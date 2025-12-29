@@ -10,5 +10,6 @@ internal static class AppColors
 
 internal static class MonacoConstants
 {
-    public static readonly string MarkersOwner = "Lab";
+    public static readonly string MarkersCompilerOwner = "Compiler";
+    public static readonly string MarkersLanguageServicesOwner = "IDE";
 }

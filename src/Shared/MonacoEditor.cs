@@ -1,6 +1,7 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DotNetLab;
@@ -123,7 +124,53 @@ public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;
 
 public static class SimpleMonacoConversions
 {
-    public static MarkerData ToMarkerData(this DiagnosticData d)
+    extension(Marker marker)
+    {
+        public MarkerData ToMarkerData()
+        {
+            return new()
+            {
+                Code = marker.Code,
+                Severity = marker.Severity,
+                Message = marker.Message,
+                Source = marker.Source,
+                StartLineNumber = marker.StartLineNumber,
+                StartColumn = marker.StartColumn,
+                EndLineNumber = marker.EndLineNumber,
+                EndColumn = marker.EndColumn,
+                ModelVersionId = marker.ModelVersionId,
+                RelatedInformation = marker.RelatedInformation,
+                Tags = marker.Tags,
+                Origin = marker.Origin,
+            };
+        }
+    }
+
+    extension(MarkerData markerData)
+    {
+        public string? GetCode()
+        {
+            // Cannot use markerData.CodeAsObject because it's not deserialized properly ("value" isn't deserialized to "Value").
+            return markerData.Code switch
+            {
+                null => null,
+                { ValueKind: JsonValueKind.String } s => s.GetString(),
+                { ValueKind: JsonValueKind.Object } o => o.GetProperty("value").GetString(),
+                { } other => throw new InvalidOperationException($"Unknown marker data code kind: {other.ValueKind} ({other})"),
+            };
+        }
+
+        public string ToDisplayString(bool excludeSeverity = false)
+        {
+            var severity = excludeSeverity
+                ? null
+                : $"{markerData.Severity.ToString().ToLowerInvariant()} ";
+            var code = markerData.GetCode();
+            return $"{markerData.Source}({markerData.StartLineNumber},{markerData.StartColumn}): {severity}{code}: {markerData.Message}";
+        }
+    }
+
+    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo)
     {
         return new MarkerData
         {
@@ -141,8 +188,17 @@ public static class SimpleMonacoConversions
             {
                 DiagnosticDataSeverity.Error => MarkerSeverity.Error,
                 DiagnosticDataSeverity.Warning => MarkerSeverity.Warning,
-                _ => MarkerSeverity.Info,
+                DiagnosticDataSeverity.Info when !downgradeInfo => MarkerSeverity.Info,
+                _ => MarkerSeverity.Hint,
             },
+            Tags = d.Tags.HasFlag(DiagnosticTags.Unnecessary)
+                ? WellKnownMarkerTags.Unnecessary
+                : null,
         };
     }
+}
+
+file sealed class WellKnownMarkerTags
+{
+    public static List<MarkerTag> Unnecessary => field ??= [MarkerTag.Unnecessary];
 }
