@@ -445,7 +445,7 @@ internal sealed class WorkerController : IAsyncDisposable
             WorkerOutputMessage.Success success => success.Result switch
             {
                 null => default!,
-                JsonElement jsonElement => jsonElement.Deserialize<TIn>()!,
+                JsonElement jsonElement => jsonElement.Deserialize<TIn>(WorkerJsonContext.Default.Options)!,
                 // Can happen when worker is turned off and we do not use serialization.
                 TIn result => result,
                 var other => throw new InvalidOperationException($"Expected result of type '{typeof(TIn)}', got '{other.GetType()}': {other}"),
