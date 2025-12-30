@@ -15,16 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Install workloads
-        run: dotnet workload install wasm-tools wasm-experimental
+      - uses: ./.github/actions/setup
 
       - name: Build
         id: build
