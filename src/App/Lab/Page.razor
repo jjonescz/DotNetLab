@@ -960,8 +960,7 @@
             storeInCacheMode: mode);
 
         // Reset workspace state in case incremental updates were applied incorrectly.
-        // We don't want diagnostics from the workspace though, we just set the ones from compiler.
-        await ResetWorkspaceAsync(updateDiagnostics: false);
+        await ResetWorkspaceAsync();
     }
 
     private void TryStoreInCache(SavedState state, CompiledAssembly output)
@@ -1448,7 +1447,7 @@
     /// <summary>
     /// Sends the current workspace full state to language services.
     /// </summary>
-    public async Task ResetWorkspaceAsync(bool updateDiagnostics = true)
+    public async Task ResetWorkspaceAsync()
     {
         if (!LanguageServices.Enabled)
         {
@@ -1461,7 +1460,7 @@
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        await LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics: updateDiagnostics, refresh: true);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, refresh: true);
     }
 
     private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)

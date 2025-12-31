@@ -232,7 +232,7 @@ internal sealed class LanguageServicesClient(
         lastCodeActions = null;
     }
 
-    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool updateDiagnostics = true, bool refresh = false)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh = false)
     {
         if (!Enabled)
         {
@@ -243,10 +243,7 @@ internal sealed class LanguageServicesClient(
         modelUrlToFileName = models.ToDictionary(m => m.Uri, m => m.FileName);
         worker.OnDidChangeWorkspace(models);
 
-        if (updateDiagnostics)
-        {
-            UpdateDiagnostics();
-        }
+        UpdateDiagnostics();
 
         if (refresh)
         {
