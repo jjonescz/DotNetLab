@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "zignd.html-css-class-completion"
+        "ms-dotnettools.csdevkit",
+        "zignd.html-css-class-completion",
     ]
 }
