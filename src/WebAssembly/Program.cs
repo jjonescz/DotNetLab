@@ -33,6 +33,8 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
     public string Environment => webAssemblyHostEnvironment.Environment;
     public string BaseAddress => webAssemblyHostEnvironment.BaseAddress;
 
+    public string? LabUrlPrefix => null;
+
     public DesktopAppLink DesktopAppLink { get; } = new()
     {
         Url = App.DesktopAppLink,

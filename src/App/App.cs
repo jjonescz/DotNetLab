@@ -55,6 +55,8 @@ public interface IAppHostEnvironment
     string Environment { get; }
     string BaseAddress { get; }
 
+    string? LabUrlPrefix { get; }
+
     DesktopAppLink? DesktopAppLink { get; }
 
     bool SupportsWebWorkers { get; }

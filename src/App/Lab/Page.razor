@@ -9,6 +9,7 @@
 @inject BlazorMonacoInterop BlazorMonacoInterop
 @inject ILocalStorageService LocalStorage
 @inject CursorSynchronizer.Services CursorSynchronizerServices
+@inject IAppHostEnvironment HostEnvironment
 @inject IUpdateChecker UpdateChecker
 @inject IScreenInfo ScreenInfo
 @inject ICompilerOutputPlugin CompilerOutputPlugin
@@ -544,7 +545,7 @@
     public async Task CopyUrlToClipboardAsync()
     {
         await SaveStateToUrlAsync();
-        await module.InvokeVoidAsync("copyUrlToClipboard");
+        await module.InvokeVoidAsync("copyUrlToClipboard", HostEnvironment.LabUrlPrefix);
         urlCopied = true;
         StateHasChanged();
         var token = Interlocked.Increment(ref urlCopiedToken);

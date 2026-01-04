@@ -30,8 +30,8 @@ export function restoreMonacoEditorViewState(editorId, state) {
     blazorMonaco.editor.getEditor(editorId)?.restoreViewState(state);
 }
 
-export function copyUrlToClipboard() {
-    navigator.clipboard.writeText(window.location.href);
+export function copyUrlToClipboard(urlPrefix) {
+    navigator.clipboard.writeText(urlPrefix ? `${urlPrefix}${location.hash}` : location.href);
 }
 
 export function getClipboardText() {
