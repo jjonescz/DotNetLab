@@ -11,6 +11,7 @@ namespace DotNetLab.Lab;
 /// </remarks>
 internal sealed class DependencyRegistry
 {
+    private readonly Lock guard = new();
     private readonly Dictionary<object, Func<Task<ImmutableArray<LoadedAssembly>>>> dependencies = new();
 
     /// <summary>
@@ -22,7 +23,13 @@ internal sealed class DependencyRegistry
 
     public async IAsyncEnumerable<LoadedAssembly> GetAssembliesAsync()
     {
-        foreach (var group in dependencies.Values)
+        Func<Task<ImmutableArray<LoadedAssembly>>>[] values;
+        lock (guard)
+        {
+            values = dependencies.Values.ToArray();
+        }
+
+        foreach (var group in values)
         {
             foreach (var assembly in await group())
             {
@@ -33,15 +40,21 @@ internal sealed class DependencyRegistry
 
     public void Set(object key, Func<Task<ImmutableArray<LoadedAssembly>>> group)
     {
-        dependencies[key] = group;
-        Iteration++;
+        lock (guard)
+        {
+            dependencies[key] = group;
+            Iteration++;
+        }
     }
 
     public void Remove(object key)
     {
-        if (dependencies.Remove(key))
+        lock (guard)
         {
-            Iteration++;
+            if (dependencies.Remove(key))
+            {
+                Iteration++;
+            }
         }
     }
 }
