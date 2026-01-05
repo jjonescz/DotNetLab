@@ -335,14 +335,14 @@ public sealed class Compiler(
                         EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNodeSafe().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
-                        ? ImmutableArray<CompiledFileOutput>.Empty
+                        ? default(ReadOnlySpan<CompiledFileOutput>)
                         : [
                             new()
                             {
                                 Type = "razorErrors",
                                 Label = "Razor Error List",
                                 EagerText = razorDiagnostics,
-                            }
+                            },
                         ],
                     new()
                     {
