@@ -683,6 +683,15 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     Constant(["0", "512", "1024", "2048", "4096", "8192"]),
                     parserErrorSuffix: "Integer expected."),
                 CreateBool(
+                    "GenerateDocumentationFile",
+                    static (context, result) =>
+                    {
+                        if (result is { } b)
+                        {
+                            context.Config.CSharpParseOptions(options => options.WithDocumentationMode(DocumentationMode.Diagnose));
+                        }
+                    }),
+                CreateBool(
                     "HighEntropyVA",
                     static (context, result) =>
                     {
