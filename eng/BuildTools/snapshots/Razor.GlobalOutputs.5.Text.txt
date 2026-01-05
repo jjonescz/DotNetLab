@@ -1,0 +1,2 @@
+﻿Cannot execute due to compilation errors:
+error CS5001: Program does not contain a static 'Main' method suitable for an entry point

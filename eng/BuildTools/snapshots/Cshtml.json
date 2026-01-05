@@ -59,10 +59,16 @@
       }
     },
     {
+      "Type": "xml",
+      "Label": "Docs",
+      "Language": "xml",
+      "Text": "Cshtml.GlobalOutputs.4.Text.txt"
+    },
+    {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
-      "Text": "Cshtml.GlobalOutputs.4.Text.txt"
+      "Text": "Cshtml.GlobalOutputs.5.Text.txt"
     },
     {
       "Type": "errors",

@@ -1,0 +1,5 @@
+﻿Exit code: 0
+Stdout:
+Hello.
+
+Stderr:

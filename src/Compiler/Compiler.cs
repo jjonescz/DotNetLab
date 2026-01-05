@@ -432,6 +432,7 @@ public sealed class Compiler(
                     },
                 },
                 getAsmOutput(),
+                getXmlDocsOutput(),
                 new()
                 {
                     Type = "run",
@@ -969,6 +970,28 @@ public sealed class Compiler(
                         ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
                         : error;
                     return new(output);
+                },
+            };
+        }
+
+        CompiledFileOutput getXmlDocsOutput()
+        {
+            return new()
+            {
+                Type = "xml",
+                Label = "Docs",
+                Language = "xml",
+                LazyText = () =>
+                {
+                    using var stream = new MemoryStream();
+                    finalCompilation.GenerateDocumentationCommentsInternal(
+                        stream,
+                        outputNameOverride: null,
+                        diagnostics: out _,
+                        cancellationToken: default);
+                    stream.Position = 0;
+                    using var reader = new StreamReader(stream);
+                    return new(reader.ReadToEnd());
                 },
             };
         }

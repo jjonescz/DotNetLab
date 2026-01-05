@@ -44,10 +44,16 @@
       }
     },
     {
+      "Type": "xml",
+      "Label": "Docs",
+      "Language": "xml",
+      "Text": "CSharp.GlobalOutputs.4.Text.txt"
+    },
+    {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
-      "Text": "CSharp.GlobalOutputs.4.Text.txt"
+      "Text": "CSharp.GlobalOutputs.5.Text.txt"
     },
     {
       "Type": "errors",
