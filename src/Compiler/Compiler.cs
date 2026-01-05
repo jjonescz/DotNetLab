@@ -197,7 +197,7 @@ public sealed class Compiler(
         };
 
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
-        var additionalSources = new List<InputCode>();
+        var nonCSharpSources = new List<InputCode>();
 
         CSharpParseOptions? scriptOptions = null;
 
@@ -217,7 +217,7 @@ public sealed class Compiler(
             }
             else
             {
-                additionalSources.Add(input);
+                nonCSharpSources.Add(input);
             }
         }
 
@@ -308,7 +308,7 @@ public sealed class Compiler(
                     },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
-            }).Concat(additionalSources.Select((input) =>
+            }).Concat(nonCSharpSources.Select((input) =>
             {
                 var filePath = getFilePath(input);
                 Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: compilationInput.RazorStrategy == RazorStrategy.DesignTime));
@@ -538,7 +538,7 @@ public sealed class Compiler(
         {
             var additionalTextsBuilder = ImmutableArray.CreateBuilder<AdditionalText>();
 
-            foreach (var input in additionalSources)
+            foreach (var input in nonCSharpSources)
             {
                 var filePath = getFilePath(input);
                 additionalTextsBuilder.Add(new TestAdditionalText(text: input.Text, encoding: Encoding.UTF8, path: filePath));
@@ -551,7 +551,7 @@ public sealed class Compiler(
                 if (input.FileName.IsRazorFileName())
                 {
                     string cssFileName = input.FileName + ".css";
-                    if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
+                    if (nonCSharpSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
                     {
                         optionsProvider.AdditionalTextOptions[filePath]["build_metadata.AdditionalFiles.CssScope"] =
                             RazorUtil.GenerateScope(projectName, filePath);
@@ -596,7 +596,7 @@ public sealed class Compiler(
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorInternalApi()
         {
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
-            foreach (var input in additionalSources)
+            foreach (var input in nonCSharpSources)
             {
                 if (input.FileName.IsRazorFileName())
                 {
