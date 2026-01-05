@@ -111,10 +111,10 @@ internal sealed record InitialCode
         """);
 
     public static readonly InitialCode Directives = new("Directives.cs", """
-        #:property LangVersion=preview
+        #:property AllowUnsafeBlocks=true
         #:property Configuration=Debug
         #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
-        #:property AllowUnsafeBlocks=true
+        #:property LangVersion=preview
         #:property Nullable=enable
 
         """);
