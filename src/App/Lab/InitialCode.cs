@@ -116,6 +116,7 @@ internal sealed record InitialCode
         #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
         #:property LangVersion=preview
         #:property Nullable=enable
+        // 💡 TIP: More directives are supported, you can discover them via IDE suggestions.
 
         """);
 
