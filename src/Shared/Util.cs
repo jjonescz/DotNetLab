@@ -133,6 +133,11 @@ public static partial class Util
 
     extension<T>(ImmutableArray<T> array)
     {
+        public ImmutableArray<T> EmptyIfDefault()
+        {
+            return array.IsDefault ? [] : array;
+        }
+
         public ImmutableArray<T>.Builder ToBuilder(int additionalCapacity)
         {
             var builder = ImmutableArray.CreateBuilder<T>(array.Length + additionalCapacity);
