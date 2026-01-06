@@ -983,15 +983,6 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        if (LanguageServices.Enabled)
-        {
-            if (IsOutputOutdated)
-            {
-                // Avoid overwriting live diagnostics which are newer.
-                return;
-            }
-        }
-
         foreach (var input in inputs)
         {
             List<MarkerData> markers = compiled is { } result
