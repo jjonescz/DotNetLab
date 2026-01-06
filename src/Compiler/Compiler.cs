@@ -166,7 +166,7 @@ public sealed class Compiler(
                 {
                     ConfigDiagnosticCount = failedConfigDiagnosticData.Length,
                 };
-                return getResult(configResult);
+                return getResult(configResult, additionalSyntaxTrees: []);
             }
         }
         else
@@ -205,21 +205,22 @@ public sealed class Compiler(
         {
             if (input.FileName.IsCSharpFileName(out bool script))
             {
-                if (script)
-                {
-                    scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
-                }
-
-                var filePath = getFilePath(input);
-                var currentParseOptions = script ? scriptOptions : parseOptions;
-                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
-                cSharpSources.Add((input, syntaxTree));
+                cSharpSources.Add((input, parseCSharpFile(script, input)));
             }
             else
             {
                 nonCSharpSources.Add(input);
             }
         }
+
+        var additionalSyntaxTrees = Config.Instance
+            .ConfigureAdditionalSources([])
+            .EmptyIfDefault()
+            .SelectAsArray(source =>
+            {
+                bool script = source.FileName?.IsCSharpFileName(out bool isScript) == true && isScript;
+                return parseCSharpFile(script, source.ToInputCode());
+            });
 
         var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
@@ -459,16 +460,19 @@ public sealed class Compiler(
             ConfigDiagnosticCount = configDiagnostics.Length,
         };
 
-        return getResult(result);
+        return getResult(result, additionalSyntaxTrees);
 
-        LiveCompilationResult getResult(CompiledAssembly result)
+        LiveCompilationResult getResult(CompiledAssembly result, ImmutableArray<CSharpSyntaxTree> additionalSyntaxTrees)
         {
+            Debug.Assert(!additionalSyntaxTrees.IsDefault);
+
             return new LiveCompilationResult
             {
                 CompiledAssembly = result,
                 CompilerAssemblies = compilerAssembliesUsed,
                 CSharpParseOptions = Config.Instance.HasParseOptions ? parseOptions : null,
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
+                AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
             };
         }
@@ -532,6 +536,19 @@ public sealed class Compiler(
             ];
         }
 
+        CSharpSyntaxTree parseCSharpFile(bool script, InputCode input)
+        {
+            if (script)
+            {
+                scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
+            }
+
+            var filePath = getFilePath(input);
+            var currentParseOptions = script ? scriptOptions : parseOptions;
+            var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
+            return syntaxTree;
+        }
+
         static string getFilePath(InputCode input) => directory + input.FileName;
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
@@ -561,7 +578,9 @@ public sealed class Compiler(
 
             var initialCompilation = CSharpCompilation.Create(
                 assemblyName: projectName,
-                syntaxTrees: cSharpSources.Select(static s => s.SyntaxTree),
+                syntaxTrees: cSharpSources
+                    .Select(static s => s.SyntaxTree)
+                    .Concat(additionalSyntaxTrees),
                 references: references.Metadata,
                 options: options);
 
@@ -611,7 +630,9 @@ public sealed class Compiler(
                 }
             }
 
-            var cSharpSyntaxTrees = cSharpSources.Select(static s => s.SyntaxTree);
+            var cSharpSyntaxTrees = cSharpSources
+                .Select(static s => s.SyntaxTree)
+                .Concat(additionalSyntaxTrees);
 
             var config = RazorConfiguration.Default;
 
@@ -1537,6 +1558,12 @@ internal sealed class LiveCompilationResult
     /// Set to <see langword="null"/> if the default options were used.
     /// </summary>
     public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
+
+    /// <summary>
+    /// Additional sources provided by <see cref="IConfig.AdditionalSources"/>.
+    /// This is never <see langword="default"/>.
+    /// </summary>
+    public required ImmutableArray<CSharpSyntaxTree> AdditionalSources { get; init; }
 
     /// <summary>
     /// Reference assemblies used by the main compilation.

@@ -31,6 +31,7 @@ internal sealed class LanguageServices : ILanguageServices
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
+    private ImmutableArray<DocumentId> additionalSourceDocuments;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
@@ -558,6 +559,30 @@ internal sealed class LanguageServices : ILanguageServices
                 else
                 {
                     project = project.WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(defaultOutputKind));
+                }
+
+                if (!additionalSourceDocuments.IsDefaultOrEmpty)
+                {
+                    project = project.RemoveDocuments(additionalSourceDocuments);
+                }
+
+                if (compiler.LastResult?.Output.AdditionalSources is { IsDefaultOrEmpty: false } additionalSources)
+                {
+                    var additionalSourceDocumentBuilder = ImmutableArray.CreateBuilder<DocumentId>(additionalSources.Length);
+                    foreach (var tree in additionalSources)
+                    {
+                        var document = project.AddDocument(
+                            name: tree.FilePath,
+                            text: tree.GetText(),
+                            filePath: tree.FilePath);
+                        additionalSourceDocumentBuilder.Add(document.Id);
+                        project = document.Project;
+                    }
+                    additionalSourceDocuments = additionalSourceDocumentBuilder.DrainToImmutable();
+                }
+                else
+                {
+                    additionalSourceDocuments = [];
                 }
 
                 if (compiler.LastResult?.Output.ReferenceAssemblies is { } references)
