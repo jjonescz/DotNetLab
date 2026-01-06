@@ -239,6 +239,11 @@ public static partial class Util
         return (stdout, stderr);
     }
 
+    public static int Compare<T, A, R>(T a, T? b, A arg, Func<T, A, R> selector) where R : IComparable
+    {
+        return selector(a, arg).CompareTo(b is null ? null : selector(b, arg));
+    }
+
     public static int Compare<T, R>(T a, T? b, Func<T, R> selector) where R : IComparable
     {
         return selector(a).CompareTo(b is null ? null : selector(b));

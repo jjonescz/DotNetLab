@@ -100,18 +100,47 @@ public sealed record DiagnosticData(
     int EndColumn,
     DiagnosticTags Tags = DiagnosticTags.None) : IComparable<DiagnosticData>
 {
-    public int CompareTo(DiagnosticData? other)
+    int IComparable<DiagnosticData>.CompareTo(DiagnosticData? other) => CompareTo(other);
+
+    public int CompareTo(DiagnosticData? other,
+        bool excludeFilePath = false,
+        bool excludeSeverity = false)
     {
-        return Util.Compare(this, other, static x => (
-            x.FilePath,
-            x.StartLineNumber,
-            x.StartColumn,
-            x.Severity,
-            x.Id,
-            x.EndLineNumber,
-            x.EndColumn,
-            x.HelpLinkUri,
-            x.Message));
+        return Util.Compare(this, other,
+            (excludeFilePath, excludeSeverity), 
+            static (x, arg) => (
+                arg.excludeFilePath ? null : x.FilePath,
+                x.StartLineNumber,
+                x.StartColumn,
+                arg.excludeSeverity ? default : x.Severity,
+                x.Id,
+                x.EndLineNumber,
+                x.EndColumn,
+                x.HelpLinkUri,
+                x.Message));
+    }
+}
+
+public sealed class DiagnosticDataComparer(
+    bool excludeFilePath = false,
+    bool excludeSeverity = false)
+    : IEqualityComparer<DiagnosticData>
+{
+    public bool Equals(DiagnosticData? x, DiagnosticData? y)
+    {
+        if (x is null)
+        {
+            return y is null;
+        }
+
+        return x.CompareTo(y,
+            excludeFilePath: excludeFilePath,
+            excludeSeverity: excludeSeverity) == 0;
+    }
+
+    public int GetHashCode(DiagnosticData obj)
+    {
+        return obj.Message.GetHashCode();
     }
 }
 

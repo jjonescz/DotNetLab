@@ -170,7 +170,7 @@ public static class SimpleMonacoConversions
         }
     }
 
-    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo)
+    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo = false)
     {
         return new MarkerData
         {
