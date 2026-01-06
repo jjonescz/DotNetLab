@@ -114,6 +114,7 @@ internal sealed record InitialCode
         #:property AllowUnsafeBlocks=true
         #:property Configuration=Debug
         #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
+        #:property ImplicitUsings=disable
         #:property LangVersion=preview
         #:property Nullable=enable
         // 💡 TIP: More directives are supported, you can discover them via IDE suggestions.
