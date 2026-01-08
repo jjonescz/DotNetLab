@@ -79,7 +79,7 @@ internal sealed record InitialCode
         """.ReplaceLineEndings());
 
     // IMPORTANT: Keep in sync with `Compiler.Compile`.
-    public static readonly InitialCode Configuration = new("Configuration.cs", """
+    public static readonly InitialCode Configuration = new(CompiledAssembly.ConfigurationFileName, """
         // 💡 TIP: Instead of this, you can use directives in C# files directly (or Add > Directives), for example:
         //   #:property Configuration=Debug
 

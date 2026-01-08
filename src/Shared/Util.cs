@@ -15,6 +15,9 @@ public static partial class Util
     [GeneratedRegex("""\s+""")]
     public static partial Regex Whitespace { get; }
 
+    [GeneratedRegex("^file:///in/[^/]+/(?<input>.*)$")]
+    internal static partial Regex InputModelUri { get; }
+
     [GeneratedRegex("^file:///out/[^/]+/(?<type>[^/]+)(?<input>(/.*)?)$")]
     internal static partial Regex OutputModelUri { get; }
 

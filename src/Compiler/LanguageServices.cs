@@ -30,6 +30,7 @@ internal sealed class LanguageServices : ILanguageServices
 
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
+    private CompiledAssembly? compilerDiagnostics;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
@@ -509,6 +510,8 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async void OnCompilationFinished()
     {
+        compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
+
         try
         {
             using var _ = await workspaceLock.LockAsync();
@@ -603,8 +606,15 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    private void InvalidateCompilerCache()
+    {
+        compilerDiagnostics = null;
+    }
+
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)
     {
+        InvalidateCompilerCache();
+
         using var _ = await workspaceLock.LockAsync();
 
         var modelLookupByUri = models.ToDictionary(m => m.Uri);
@@ -703,6 +713,8 @@ internal sealed class LanguageServices : ILanguageServices
             return;
         }
 
+        InvalidateCompilerCache();
+
         using var _ = await workspaceLock.LockAsync();
 
         var text = await document.GetTextAsync();
@@ -721,16 +733,38 @@ internal sealed class LanguageServices : ILanguageServices
         await UpdateOptionsIfNecessaryAsync();
     }
 
+    private static readonly DiagnosticDataComparer s_diagnosticDataComparer = new(
+        // The file path is not preserved (since we only gather diagnostics for a single file) and can differ slightly (e.g., leading slash).
+        excludeFilePath: true,
+        // IDE markers have downgraded info severity, so we exclude severity when comparing them with compiler markers.
+        excludeSeverity: true);
+
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        if (!TryGetDocument(modelUri, out var document) ||
-            !document.TryGetSyntaxTree(out var tree))
+        var ideDiagnostics = TryGetDocument(modelUri, out var document)
+            ? await document.GetDiagnosticsAsync()
+            : [];
+
+        DiagnosticData[] compilerDiagnostics;
+        if (this.compilerDiagnostics is { } compiled &&
+            compiled?.Diagnostics.Length > 0 &&
+            CompiledAssembly.TryParseInputModelUri(modelUri, out var fileName))
         {
-            return [];
+            compilerDiagnostics = compiled.Diagnostics
+                .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
+                .ToArray();
+        }
+        else
+        {
+            compilerDiagnostics = [];
         }
 
-        var diagnostics = await document.GetDiagnosticsAsync();
-        return diagnostics.SelectAsArray(static d => d.ToMarkerData(downgradeInfo: true));
+        var filteredIdeDiagnostics = ideDiagnostics
+            .Except(compilerDiagnostics, s_diagnosticDataComparer);
+
+        return compilerDiagnostics.Select(static d => d.ToMarkerData())
+            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(downgradeInfo: true)))
+            .ToImmutableArray();
     }
 
     private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)

@@ -165,6 +165,7 @@ public sealed record CompiledAssembly(
     /// </summary>
     public int ConfigDiagnosticCount { get; init; }
 
+    public const string ConfigurationFileName = "Configuration.cs";
     public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
     public static readonly string CSharpLanguageId = "csharp";
@@ -187,6 +188,21 @@ public sealed record CompiledAssembly(
             ],
             NumErrors: 1,
             NumWarnings: 0);
+    }
+
+    public IEnumerable<DiagnosticData> GetDiagnosticsForFile(string fileName)
+    {
+        return Diagnostics
+            .Skip(ConfigDiagnosticCount)
+            .Where(d => d.FilePath == BaseDirectory + fileName);
+    }
+
+    public IEnumerable<DiagnosticData> GetDiagnosticsForConfiguration()
+    {
+        var result = Diagnostics
+            .Take(ConfigDiagnosticCount);
+        Debug.Assert(result.All(static d => d.FilePath == ConfigurationFileName));
+        return result;
     }
 
     public CompiledFileOutput? GetGlobalOutput(string type)
@@ -224,9 +240,28 @@ public sealed record CompiledAssembly(
         return GetRequiredGlobalOutput(outputType);
     }
 
+    public static string GetInputModelUri(string fileName, string? guidOverride = null)
+    {
+        // Needs to be unique otherwise renaming this model and then adding an input by the same name would crash.
+        return $"file:///in/{guidOverride ?? Guid.CreateVersion7().ToString()}/{fileName}";
+    }
+
+    public static bool TryParseInputModelUri(string modelUri,
+        [NotNullWhen(returnValue: true)] out string? inputFileName)
+    {
+        if (Util.InputModelUri.Match(modelUri) is { Success: true } match)
+        {
+            inputFileName = match.Groups["input"].Value;
+            return true;
+        }
+
+        inputFileName = null;
+        return false;
+    }
+
     public static string GetOutputModelUri(string? inputFileName, string outputType)
     {
-        return $"out/{Guid.CreateVersion7()}/{outputType}/{inputFileName}";
+        return $"file:///out/{Guid.CreateVersion7()}/{outputType}/{inputFileName}";
     }
 
     public static bool TryParseOutputModelUri(string modelUri,

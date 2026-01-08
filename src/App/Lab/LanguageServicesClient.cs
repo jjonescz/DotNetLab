@@ -14,7 +14,6 @@ internal sealed class LanguageServicesClient(
 {
     private readonly LanguageSelector cSharpLanguageSelector = new(CompiledAssembly.CSharpLanguageId);
     private readonly LanguageSelector outputLanguageSelector = new(CompiledAssembly.OutputLanguageId);
-    private Dictionary<string, string> modelUrlToFileName = [];
     private IAsyncDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
     private int outputRegistered;
     private string? currentModelUrl;
@@ -240,7 +239,6 @@ internal sealed class LanguageServicesClient(
         }
 
         InvalidateCaches();
-        modelUrlToFileName = models.ToDictionary(m => m.Uri, m => m.FileName);
         worker.OnDidChangeWorkspace(models);
 
         UpdateDiagnostics();
@@ -283,61 +281,35 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
-    public void OnCompilerMarkersSet()
+    public void UpdateDiagnosticsAfterCompilation()
     {
-        UpdateDiagnostics(compilerMarkersSet: true);
+        UpdateDiagnostics(afterCompilation: true);
     }
 
-    private async void UpdateDiagnostics(bool compilerMarkersSet = false)
+    private async void UpdateDiagnostics(bool afterCompilation = false)
     {
-        if (currentModelUrl == null ||
-            !modelUrlToFileName.TryGetValue(currentModelUrl, out var currentModelFileName) ||
-            !currentModelFileName.IsCSharpFileName())
+        if (currentModelUrl == null)
         {
             return;
         }
 
         try
         {
-            await DebounceAsync(ref diagnosticsDebounce, (compilerMarkersSet, worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
+            await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
-                var (compilerMarkersSet, worker, jsRuntime, currentModelUrl) = args;
+                var (worker, jsRuntime, currentModelUrl) = args;
                 var markers = (await worker.GetDiagnosticsAsync(currentModelUrl)).ToList();
                 var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
                 cancellationToken.ThrowIfCancellationRequested();
-
-                if (compilerMarkersSet)
-                {
-                    var compilerMarkers = await BlazorMonaco.Editor.Global
-                        .GetModelMarkers(jsRuntime, new() { Owner = MonacoConstants.MarkersCompilerOwner });
-
-                    var compilerMarkerDisplays = compilerMarkers
-                        .Select(static m => toDisplayString(m.ToMarkerData()))
-                        .ToHashSet();
-
-                    markers.RemoveAll(m => compilerMarkerDisplays.Contains(toDisplayString(m)));
-                }
-                else
-                {
-                    await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersCompilerOwner, []);
-                }
-
-                await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersLanguageServicesOwner, markers);
-
+                await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers);
                 return 0;
             },
             // Skip debounce to ensure compiler diagnostics are merged with IDE diangostics.
-            skipDebounce: compilerMarkersSet);
+            skipDebounce: afterCompilation);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Updating diagnostics failed");
-        }
-
-        static string toDisplayString(MarkerData markerData)
-        {
-            // IDE markers have downgraded info severity, so we exclude severity when comparing them with compiler markers.
-            return markerData.ToDisplayString(excludeSeverity: true);
         }
     }
 }
