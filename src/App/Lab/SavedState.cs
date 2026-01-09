@@ -213,9 +213,9 @@ partial class Page
 
         async Task<ImmutableArray<InputCode>> getInputsAsync()
         {
-            var inputsSnapshot = inputs.ToArray(); // to avoid modifications during enumeration
-            var builder = ImmutableArray.CreateBuilder<InputCode>(inputsSnapshot.Length);
-            foreach (var (fileName, model) in inputsSnapshot)
+            using var _ = await inputsLock.LockAsync();
+            var builder = ImmutableArray.CreateBuilder<InputCode>(inputs.Count);
+            foreach (var (fileName, model) in inputs)
             {
                 var text = await model.GetTextAsync();
                 builder.Add(new() { FileName = fileName, Text = text });
