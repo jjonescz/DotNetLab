@@ -179,6 +179,14 @@ public sealed class WorkerExecutor(
         return NoOutput.Instance;
     }
 
+    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnCachedCompilationLoaded message)
+    {
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        languageServices.OnCachedCompilationLoaded(message.Output);
+        return NoOutput.Instance;
+    }
+
     public async Task<ImmutableArray<MarkerData>> HandleAsync(WorkerInputMessage.GetDiagnostics message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();

@@ -1380,7 +1380,15 @@
             End = timestamp
         };
         StateHasChanged();
-        await DisplaySquigglesAsync();
+
+        if (LanguageServices.Enabled)
+        {
+            await LanguageServices.OnCachedCompilationLoadedAsync(output);
+        }
+        else
+        {
+            await DisplaySquigglesAsync();
+        }
 
         if (updateOutput)
         {

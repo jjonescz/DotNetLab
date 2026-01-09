@@ -508,6 +508,11 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    public void OnCachedCompilationLoaded(CompiledAssembly output)
+    {
+        compilerDiagnostics = output;
+    }
+
     public async void OnCompilationFinished()
     {
         compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;

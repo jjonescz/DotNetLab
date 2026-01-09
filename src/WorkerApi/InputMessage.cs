@@ -24,6 +24,7 @@ namespace DotNetLab;
 [JsonDerivedType(typeof(ProvideSignatureHelp), nameof(ProvideSignatureHelp))]
 [JsonDerivedType(typeof(OnDidChangeWorkspace), nameof(OnDidChangeWorkspace))]
 [JsonDerivedType(typeof(OnDidChangeModelContent), nameof(OnDidChangeModelContent))]
+[JsonDerivedType(typeof(OnCachedCompilationLoaded), nameof(OnCachedCompilationLoaded))]
 [JsonDerivedType(typeof(GetDiagnostics), nameof(GetDiagnostics))]
 public abstract record WorkerInputMessage
 {
@@ -195,6 +196,14 @@ public abstract record WorkerInputMessage
         }
     }
 
+    public sealed record OnCachedCompilationLoaded(CompiledAssembly Output) : WorkerInputMessage<NoOutput>
+    {
+        public override Task<NoOutput> HandleAsync(IExecutor executor)
+        {
+            return executor.HandleAsync(this);
+        }
+    }
+
     public sealed record GetDiagnostics(string ModelUri) : WorkerInputMessage<ImmutableArray<MarkerData>>
     {
         public override Task<ImmutableArray<MarkerData>> HandleAsync(IExecutor executor)
@@ -223,6 +232,7 @@ public abstract record WorkerInputMessage
         Task<string?> HandleAsync(ProvideSignatureHelp message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);
+        Task<NoOutput> HandleAsync(OnCachedCompilationLoaded message);
         Task<ImmutableArray<MarkerData>> HandleAsync(GetDiagnostics message);
     }
 

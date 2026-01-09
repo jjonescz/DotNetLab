@@ -281,6 +281,12 @@ internal sealed class LanguageServicesClient(
         UpdateDiagnostics();
     }
 
+    public async Task OnCachedCompilationLoadedAsync(CompiledAssembly output)
+    {
+        await worker.OnCachedCompilationLoadedAsync(output);
+        UpdateDiagnosticsAfterCompilation();
+    }
+
     public void UpdateDiagnosticsAfterCompilation()
     {
         UpdateDiagnostics(afterCompilation: true);
