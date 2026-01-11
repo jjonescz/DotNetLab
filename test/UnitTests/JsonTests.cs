@@ -37,43 +37,50 @@ public sealed class JsonTests
 
     private static IEnumerable<object[]> GetContextsIgnoringDefaultValues()
     {
-        var seenTypes = new HashSet<Type>();
-        var seenAssemblies = new HashSet<AssemblyName>();
-        var queue = new Queue<Assembly>(1);
-        queue.Enqueue(typeof(JsonTests).Assembly);
-        while (queue.TryDequeue(out var assembly))
+        var result = enumerate().ToArray();
+        Assert.HasCount(2, result);
+        return result;
+
+        static IEnumerable<object[]> enumerate()
         {
-            foreach (var type in assembly.GetTypes())
+            var seenTypes = new HashSet<Type>();
+            var seenAssemblies = new HashSet<AssemblyName>();
+            var queue = new Queue<Assembly>(1);
+            queue.Enqueue(typeof(JsonTests).Assembly);
+            while (queue.TryDequeue(out var assembly))
             {
-                if (!type.IsSubclassOf(typeof(JsonSerializerContext)) ||
-                    !seenTypes.Add(type) ||
-                    type.GetCustomAttributes<ObsoleteAttribute>().Any())
+                foreach (var type in assembly.GetTypes())
                 {
-                    continue;
+                    if (!type.IsSubclassOf(typeof(JsonSerializerContext)) ||
+                        !seenTypes.Add(type) ||
+                        type.GetCustomAttributes<ObsoleteAttribute>().Any())
+                    {
+                        continue;
+                    }
+
+                    var context = (JsonSerializerContext)type
+                        .GetProperty("Default", BindingFlags.Public | BindingFlags.Static)!
+                        .GetValue(null)!;
+
+                    if (context.Options.DefaultIgnoreCondition != JsonIgnoreCondition.WhenWritingDefault)
+                    {
+                        continue;
+                    }
+
+                    yield return [context];
                 }
 
-                var context = (JsonSerializerContext)type
-                    .GetProperty("Default", BindingFlags.Public | BindingFlags.Static)!
-                    .GetValue(null)!;
-
-                if (context.Options.DefaultIgnoreCondition != JsonIgnoreCondition.WhenWritingDefault)
+                foreach (var referenced in assembly.GetReferencedAssemblies())
                 {
-                    continue;
-                }
+                    if (referenced.Name?.StartsWith("DotNetLab.") != true)
+                    {
+                        continue;
+                    }
 
-                yield return [context];
-            }
-
-            foreach (var referenced in assembly.GetReferencedAssemblies())
-            {
-                if (referenced.Name?.StartsWith("DotNetLab.") != true)
-                {
-                    continue;
-                }
-
-                if (seenAssemblies.Add(referenced))
-                {
-                    queue.Enqueue(Assembly.Load(referenced));
+                    if (seenAssemblies.Add(referenced))
+                    {
+                        queue.Enqueue(Assembly.Load(referenced));
+                    }
                 }
             }
         }
