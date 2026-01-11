@@ -38,11 +38,16 @@ export function registerCompletionProvider(language, triggerCharacters, completi
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
+            const versionId = model.getAlternativeVersionId();
             const tokenRef = wrapToken(token);
             try {
                 /** @type {monaco.languages.CompletionList} */
                 const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
                     completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
+
+                if (versionId != model.getAlternativeVersionId()) {
+                    throw new Error('busy');
+                }
 
                 for (const item of result.suggestions) {
                     // `insertText` is missing if it's equal to `label` to save bandwidth
