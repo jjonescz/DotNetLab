@@ -167,7 +167,7 @@ public sealed class WorkerExecutor(
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
-        await languageServices.OnDidChangeWorkspaceAsync(message.Models);
+        await languageServices.OnDidChangeWorkspaceAsync(message.Models, message.Refresh);
         return NoOutput.Instance;
     }
 
@@ -176,6 +176,14 @@ public sealed class WorkerExecutor(
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeModelContentAsync(message.ModelUri, message.Args);
+        return NoOutput.Instance;
+    }
+
+    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnCachedCompilationLoaded message)
+    {
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        languageServices.OnCachedCompilationLoaded(message.Output);
         return NoOutput.Instance;
     }
 

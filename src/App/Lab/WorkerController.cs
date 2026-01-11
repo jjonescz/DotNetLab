@@ -571,16 +571,22 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models)
+    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool refresh)
     {
         PostMessage(
-            new WorkerInputMessage.OnDidChangeWorkspace(models) { Id = messageId++ });
+            new WorkerInputMessage.OnDidChangeWorkspace(models, refresh) { Id = messageId++ });
     }
 
     public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
         await PostMessageAsync(
             new WorkerInputMessage.OnDidChangeModelContent(modelUri, args) { Id = messageId++ });
+    }
+
+    public Task OnCachedCompilationLoadedAsync(CompiledAssembly output)
+    {
+        return PostMessageAsync(
+            new WorkerInputMessage.OnCachedCompilationLoaded(output) { Id = messageId++ });
     }
 
     public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)

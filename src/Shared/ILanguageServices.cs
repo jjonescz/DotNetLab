@@ -12,8 +12,9 @@ public interface ILanguageServices
     Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken);
     Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken);
     void OnCompilationFinished();
-    Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models);
+    Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh = false);
     Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);
+    void OnCachedCompilationLoaded(CompiledAssembly output);
     Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri);
 }
 

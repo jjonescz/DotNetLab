@@ -31,7 +31,7 @@
                         C# version, feature flags, and more
                     </Description>
                     <ActionIcon>
-                        <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ChevronRight()" />
+                        <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size12.ChevronRight()" />
                     </ActionIcon>
                 </SettingsButton>
 
@@ -93,7 +93,7 @@
                                     <h5 class="unset">Language Services</h5>
                                 </Header>
                                 <Description>
-                                    Completions, live diagnostics. (currently uses only the built-in compiler and default configuration)
+                                    Completions, live diagnostics (currently uses only the built-in compiler and default configuration).
                                 </Description>
                                 <ActionContent>
                                     <FluentSwitch @bind-Value="EnableLanguageServices" @bind-Value:after="OnSetEnableLanguageServicesAsync">
@@ -428,21 +428,23 @@
                 }
 
                 @* Desktop app link *@
-                @if (OperatingSystem.IsBrowser())
+                @if (HostEnvironment.DesktopAppLink is { } desktopAppLink)
                 {
-                    <a href="@App.DesktopAppLink" target="_blank" style="text-decoration: none">
+                    <a href="@desktopAppLink.Url" target="_blank" style="text-decoration: none"
+                       @onclick="desktopAppLink.OnClick == null ? null! : () => desktopAppLink.OnClick(JSRuntime)"
+                       @onclick:preventDefault="desktopAppLink.OnClick != null">
                         <SettingsButton Class="settings-nowarp">
                             <Icon>
                                 <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.StoreMicrosoft()" />
                             </Icon>
                             <Header>
-                                <h4 class="unset">Desktop App</h4>
+                                <h4 class="unset">@desktopAppLink.Title</h4>
                             </Header>
                             <Description>
-                                Faster version of .NET Lab running on full .NET.
+                                @desktopAppLink.Description
                             </Description>
                             <ActionIcon>
-                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ChevronRight()" />
+                                <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size12.ChevronRight()" />
                             </ActionIcon>
                         </SettingsButton>
                     </a>

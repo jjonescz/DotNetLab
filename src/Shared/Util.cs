@@ -15,6 +15,9 @@ public static partial class Util
     [GeneratedRegex("""\s+""")]
     public static partial Regex Whitespace { get; }
 
+    [GeneratedRegex("^file:///in/[^/]+/(?<input>.*)$")]
+    internal static partial Regex InputModelUri { get; }
+
     [GeneratedRegex("^file:///out/[^/]+/(?<type>[^/]+)(?<input>(/.*)?)$")]
     internal static partial Regex OutputModelUri { get; }
 
@@ -133,6 +136,11 @@ public static partial class Util
 
     extension<T>(ImmutableArray<T> array)
     {
+        public ImmutableArray<T> EmptyIfDefault()
+        {
+            return array.IsDefault ? [] : array;
+        }
+
         public ImmutableArray<T>.Builder ToBuilder(int additionalCapacity)
         {
             var builder = ImmutableArray.CreateBuilder<T>(array.Length + additionalCapacity);
@@ -232,6 +240,11 @@ public static partial class Util
         var stdout = stdoutWriter.ToString();
         var stderr = stderrWriter.ToString();
         return (stdout, stderr);
+    }
+
+    public static int Compare<T, A, R>(T a, T? b, A arg, Func<T, A, R> selector) where R : IComparable
+    {
+        return selector(a, arg).CompareTo(b is null ? null : selector(b, arg));
     }
 
     public static int Compare<T, R>(T a, T? b, Func<T, R> selector) where R : IComparable

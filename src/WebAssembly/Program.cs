@@ -1,6 +1,7 @@
 using DotNetLab;
 using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.JSInterop;
 using System.Runtime.Versioning;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -31,6 +32,16 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
 {
     public string Environment => webAssemblyHostEnvironment.Environment;
     public string BaseAddress => webAssemblyHostEnvironment.BaseAddress;
+
+    public string? LabUrlPrefix => null;
+
+    public DesktopAppLink DesktopAppLink { get; } = new()
+    {
+        Url = App.DesktopAppLink,
+        Title = "Desktop App",
+        Description = "Faster version of .NET Lab running on full .NET.",
+    };
+
     public bool SupportsWebWorkers => true;
     public bool SupportsThreads => false;
 }

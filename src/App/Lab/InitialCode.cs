@@ -79,7 +79,7 @@ internal sealed record InitialCode
         """.ReplaceLineEndings());
 
     // IMPORTANT: Keep in sync with `Compiler.Compile`.
-    public static readonly InitialCode Configuration = new("Configuration.cs", """
+    public static readonly InitialCode Configuration = new(CompiledAssembly.ConfigurationFileName, """
         // 💡 TIP: Instead of this, you can use directives in C# files directly (or Add > Directives), for example:
         //   #:property Configuration=Debug
 
@@ -111,11 +111,13 @@ internal sealed record InitialCode
         """);
 
     public static readonly InitialCode Directives = new("Directives.cs", """
-        #:property LangVersion=preview
+        #:property AllowUnsafeBlocks=true
         #:property Configuration=Debug
         #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
-        #:property AllowUnsafeBlocks=true
+        #:property ImplicitUsings=disable
+        #:property LangVersion=preview
         #:property Nullable=enable
+        // 💡 TIP: More directives are supported, you can discover them via IDE suggestions.
 
         """);
 

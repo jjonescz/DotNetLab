@@ -5,7 +5,10 @@ namespace DotNetLab;
 
 public static class Config
 {
-    internal static ConfigCollector Instance { get; } = new();
+    // Using async local to allow parallel test execution without interference.
+    private static readonly AsyncLocal<ConfigCollector> s_instance = new();
+
+    internal static ConfigCollector Instance => s_instance.Value ??= new();
 
     public static void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
         => Instance.CSharpParseOptions(configure);
@@ -26,12 +29,14 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
     private readonly List<Func<ExtendedEmitOptions, ExtendedEmitOptions>> extendedEmitOptions = new();
+    private readonly List<Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>>> additionalSources = new();
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
     private readonly List<Func<RefAssemblyList>> additionalReferences = new();
 
     public bool HasParseOptions => cSharpParseOptions.Count > 0;
     public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
     public bool HasEmitOptions => emitOptions.Count > 0 || extendedEmitOptions.Count > 0;
+    public bool HasAdditionalSources => additionalSources.Count > 0;
     public bool HasReferences => references.Count > 0 || additionalReferences.Count > 0;
 
     public void Reset()
@@ -40,6 +45,7 @@ internal sealed class ConfigCollector : IConfig
         cSharpCompilationOptions.Clear();
         emitOptions.Clear();
         extendedEmitOptions.Clear();
+        additionalSources.Clear();
         references.Clear();
         additionalReferences.Clear();
     }
@@ -64,6 +70,11 @@ internal sealed class ConfigCollector : IConfig
         extendedEmitOptions.Add(configure);
     }
 
+    public void AdditionalSources(Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>> configure)
+    {
+        additionalSources.Add(configure);
+    }
+
     public void References(Func<RefAssemblyList, RefAssemblyList> configure)
     {
         references.Add(configure);
@@ -82,6 +93,11 @@ internal sealed class ConfigCollector : IConfig
     {
         options = options with { EmitOptions = Configure(options.EmitOptions, emitOptions) };
         return Configure(options, extendedEmitOptions);
+    }
+
+    public ImmutableArray<SourceFile> ConfigureAdditionalSources(ImmutableArray<SourceFile> options)
+    {
+        return Configure(options, additionalSources);
     }
 
     public RefAssemblyList ConfigureReferences(RefAssemblyList options)
@@ -114,6 +130,7 @@ internal interface IConfig
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);
     void ExtendedEmitOptions(Func<ExtendedEmitOptions, ExtendedEmitOptions> configure);
+    void AdditionalSources(Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>> configure);
     void References(Func<RefAssemblyList, RefAssemblyList> configure);
     void AdditionalReferences(Func<RefAssemblyList> configure);
 }
@@ -141,4 +158,16 @@ public sealed record ExtendedEmitOptions(EmitOptions EmitOptions)
                 EmbedTexts = true,
             };
     }
+}
+
+public sealed record SourceFile
+{
+    public required string FileName { get; init; }
+    public required string Text { get; init; }
+
+    internal InputCode ToInputCode() => new()
+    {
+        FileName = FileName,
+        Text = Text,
+    };
 }

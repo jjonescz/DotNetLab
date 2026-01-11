@@ -7,6 +7,25 @@ namespace DotNetLab;
 
 public static class RoslynAccessors
 {
+    extension(Compilation compilation)
+    {
+        public bool GenerateDocumentationCommentsInternal(
+            Stream? xmlDocStream,
+            string? outputNameOverride,
+            out ImmutableArray<Diagnostic> diagnostics,
+            CancellationToken cancellationToken)
+        {
+            var diagnosticBag = DiagnosticBag.GetInstance();
+            var result = compilation.GenerateDocumentationComments(
+                xmlDocStream,
+                outputNameOverride,
+                diagnosticBag,
+                cancellationToken);
+            diagnostics = diagnosticBag.ToReadOnlyAndFree();
+            return result;
+        }
+    }
+
     public static DiagnosticAnalyzer GetCSharpCompilerDiagnosticAnalyzer()
     {
         return new CSharpCompilerDiagnosticAnalyzer();

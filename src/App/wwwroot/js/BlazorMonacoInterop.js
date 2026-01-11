@@ -34,15 +34,20 @@ export function setSelection(editorId, start, end) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCompletionItemProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
+            const versionId = model.getAlternativeVersionId();
             const tokenRef = wrapToken(token);
             try {
                 /** @type {monaco.languages.CompletionList} */
                 const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
                     completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
+
+                if (versionId != model.getAlternativeVersionId()) {
+                    throw new Error('busy');
+                }
 
                 for (const item of result.suggestions) {
                     // `insertText` is missing if it's equal to `label` to save bandwidth
@@ -55,6 +60,9 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 }
 
                 return result;
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -64,7 +72,17 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             try {
                 const json = await DotNet.invokeMethodAsync('DotNetLab.App', 'ResolveCompletionItemAsync',
                     completionItemProvider, JSON.stringify(completionItem), tokenRef);
-                return json ? JSON.parse(json) : completionItem;
+
+                if (json) {
+                    const result = JSON.parse(json);
+                    result.range ??= completionItem.range;
+                    return result;
+                }
+
+                return completionItem;
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -95,7 +113,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
     const languageParsed = JSON.parse(language);
     const legendParsed = JSON.parse(legend);
 
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentSemanticTokensProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDocumentSemanticTokensProvider.html
     disposables.add(monaco.languages.registerDocumentSemanticTokensProvider(languageParsed, {
         getLegend: () => legendParsed,
         provideDocumentSemanticTokens: async (model, lastResultId, token) => {
@@ -104,6 +122,9 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                 const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
                     provider, decodeURI(model.uri.toString()), null, debugSemanticTokens, tokenRef);
                 return decodeResult(result, legendParsed);
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -114,7 +135,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
     }));
 
     if (registerRangeProvider) {
-        // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
+        // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDocumentRangeSemanticTokensProvider.html
         disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
             getLegend: () => legendParsed,
             provideDocumentRangeSemanticTokens: async (model, range, token) => {
@@ -123,6 +144,9 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                     const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
                         provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, tokenRef);
                     return decodeResult(result, legendParsed);
+                } catch (e) {
+                    console.error(e);
+                    throw e;
                 } finally {
                     DotNet.disposeJSObjectReference(tokenRef);
                 }
@@ -160,7 +184,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
 }
 
 export function registerCodeActionProvider(language, codeActionProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCodeActionProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCodeActionProvider.html
     return monaco.languages.registerCodeActionProvider(JSON.parse(language), {
         provideCodeActions: async (model, range, context, token) => {
             const tokenRef = wrapToken(token);
@@ -185,6 +209,9 @@ export function registerCodeActionProvider(language, codeActionProvider) {
                     actions: result,
                     dispose: () => { }, // Currently not used.
                 };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -195,33 +222,38 @@ export function registerCodeActionProvider(language, codeActionProvider) {
 }
 
 export function registerDefinitionProvider(language, definitionProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDefinitionProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDefinitionProvider.html
     return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
         provideDefinition: async (model, position, token) => {
-            const offset = model.getOffsetAt(position);
-            const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideDefinition',
-                definitionProvider, decodeURI(model.uri.toString()), offset);
+            try {
+                const offset = model.getOffsetAt(position);
+                const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideDefinition',
+                    definitionProvider, decodeURI(model.uri.toString()), offset);
 
-            if (result === null) {
-                return null;
+                if (result === null) {
+                    return null;
+                }
+
+                const [start, end] = result.split(';');
+                const startPosition = model.getPositionAt(start);
+                const endPosition = model.getPositionAt(end);
+                const range = new monaco.Range(
+                    startPosition.lineNumber, startPosition.column,
+                    endPosition.lineNumber, endPosition.column);
+                return {
+                    uri: model.uri,
+                    range,
+                };
+            } catch (e) {
+                console.error(e);
+                throw e;
             }
-
-            const [start, end] = result.split(';');
-            const startPosition = model.getPositionAt(start);
-            const endPosition = model.getPositionAt(end);
-            const range = new monaco.Range(
-                startPosition.lineNumber, startPosition.column,
-                endPosition.lineNumber, endPosition.column);
-            return {
-                uri: model.uri,
-                range,
-            };
         },
     });
 }
 
 export function registerHoverProvider(language, hoverProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerHoverProvider.html
     return monaco.languages.registerHoverProvider(JSON.parse(language), {
         provideHover: async (model, position, token, context) => {
             const tokenRef = wrapToken(token);
@@ -237,6 +269,9 @@ export function registerHoverProvider(language, hoverProvider) {
                 }
 
                 return { contents: [{ value: result }] };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -245,7 +280,7 @@ export function registerHoverProvider(language, hoverProvider) {
 }
 
 export function registerSignatureHelpProvider(language, hoverProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerSignatureHelpProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerSignatureHelpProvider.html
     return monaco.languages.registerSignatureHelpProvider(JSON.parse(language), {
         signatureHelpTriggerCharacters: ['(', ','],
         provideSignatureHelp: async (model, position, token, context) => {
@@ -277,6 +312,9 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
                     value: parsed,
                     dispose: () => { }, // Currently not used.
                 };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }

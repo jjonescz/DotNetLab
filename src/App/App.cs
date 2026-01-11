@@ -3,6 +3,7 @@ using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Hosting;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace DotNetLab;
 
@@ -53,8 +54,21 @@ public interface IAppHostEnvironment
 {
     string Environment { get; }
     string BaseAddress { get; }
+
+    string? LabUrlPrefix { get; }
+
+    DesktopAppLink? DesktopAppLink { get; }
+
     bool SupportsWebWorkers { get; }
     bool SupportsThreads { get; }
 
     sealed bool IsDevelopment => Environments.Development.Equals(Environment, StringComparison.OrdinalIgnoreCase);
+}
+
+public sealed record DesktopAppLink
+{
+    public required string Url { get; init; }
+    public required string Title { get; init; }
+    public required string Description { get; init; }
+    public Func<IJSRuntime, Task>? OnClick { get; init; }
 }

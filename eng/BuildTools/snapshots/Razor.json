@@ -87,10 +87,16 @@
       }
     },
     {
+      "Type": "xml",
+      "Label": "Docs",
+      "Language": "xml",
+      "Text": "Razor.GlobalOutputs.4.Text.txt"
+    },
+    {
       "Type": "run",
       "Label": "Run",
       "Priority": 1,
-      "Text": "Razor.GlobalOutputs.4.Text.txt"
+      "Text": "Razor.GlobalOutputs.5.Text.txt"
     },
     {
       "Type": "errors",

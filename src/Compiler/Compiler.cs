@@ -166,7 +166,7 @@ public sealed class Compiler(
                 {
                     ConfigDiagnosticCount = failedConfigDiagnosticData.Length,
                 };
-                return getResult(configResult);
+                return getResult(configResult, additionalSyntaxTrees: []);
             }
         }
         else
@@ -197,7 +197,7 @@ public sealed class Compiler(
         };
 
         var cSharpSources = new List<(InputCode Input, CSharpSyntaxTree SyntaxTree)>();
-        var additionalSources = new List<InputCode>();
+        var nonCSharpSources = new List<InputCode>();
 
         CSharpParseOptions? scriptOptions = null;
 
@@ -205,21 +205,22 @@ public sealed class Compiler(
         {
             if (input.FileName.IsCSharpFileName(out bool script))
             {
-                if (script)
-                {
-                    scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
-                }
-
-                var filePath = getFilePath(input);
-                var currentParseOptions = script ? scriptOptions : parseOptions;
-                var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
-                cSharpSources.Add((input, syntaxTree));
+                cSharpSources.Add((input, parseCSharpFile(script, input)));
             }
             else
             {
-                additionalSources.Add(input);
+                nonCSharpSources.Add(input);
             }
         }
+
+        var additionalSyntaxTrees = Config.Instance
+            .ConfigureAdditionalSources([])
+            .EmptyIfDefault()
+            .SelectAsArray(source =>
+            {
+                bool script = source.FileName?.IsCSharpFileName(out bool isScript) == true && isScript;
+                return parseCSharpFile(script, source.ToInputCode());
+            });
 
         var outputKind = GetDefaultOutputKind(cSharpSources.Select(s => s.SyntaxTree));
 
@@ -308,7 +309,7 @@ public sealed class Compiler(
                     },
                 ]);
                 return KeyValuePair.Create(cSharpSource.Input.FileName, compiledFile);
-            }).Concat(additionalSources.Select((input) =>
+            }).Concat(nonCSharpSources.Select((input) =>
             {
                 var filePath = getFilePath(input);
                 Result<RazorCodeDocument?> codeDocument = new(() => getRazorCodeDocument(filePath, designTime: compilationInput.RazorStrategy == RazorStrategy.DesignTime));
@@ -335,14 +336,14 @@ public sealed class Compiler(
                         EagerText = codeDocument.Map(d => d?.GetDocumentIntermediateNodeSafe().Serialize() ?? "").Serialize(),
                     },
                     .. string.IsNullOrEmpty(razorDiagnostics)
-                        ? ImmutableArray<CompiledFileOutput>.Empty
+                        ? default(ReadOnlySpan<CompiledFileOutput>)
                         : [
                             new()
                             {
                                 Type = "razorErrors",
                                 Label = "Razor Error List",
                                 EagerText = razorDiagnostics,
-                            }
+                            },
                         ],
                     new()
                     {
@@ -432,6 +433,7 @@ public sealed class Compiler(
                     },
                 },
                 getAsmOutput(),
+                getXmlDocsOutput(),
                 new()
                 {
                     Type = "run",
@@ -458,16 +460,19 @@ public sealed class Compiler(
             ConfigDiagnosticCount = configDiagnostics.Length,
         };
 
-        return getResult(result);
+        return getResult(result, additionalSyntaxTrees);
 
-        LiveCompilationResult getResult(CompiledAssembly result)
+        LiveCompilationResult getResult(CompiledAssembly result, ImmutableArray<CSharpSyntaxTree> additionalSyntaxTrees)
         {
+            Debug.Assert(!additionalSyntaxTrees.IsDefault);
+
             return new LiveCompilationResult
             {
                 CompiledAssembly = result,
                 CompilerAssemblies = compilerAssembliesUsed,
                 CSharpParseOptions = Config.Instance.HasParseOptions ? parseOptions : null,
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
+                AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
             };
         }
@@ -531,13 +536,26 @@ public sealed class Compiler(
             ];
         }
 
+        CSharpSyntaxTree parseCSharpFile(bool script, InputCode input)
+        {
+            if (script)
+            {
+                scriptOptions ??= parseOptions.WithKind(SourceCodeKind.Script);
+            }
+
+            var filePath = getFilePath(input);
+            var currentParseOptions = script ? scriptOptions : parseOptions;
+            var syntaxTree = (CSharpSyntaxTree)CSharpSyntaxTree.ParseText(input.Text, currentParseOptions, filePath, Encoding.UTF8);
+            return syntaxTree;
+        }
+
         static string getFilePath(InputCode input) => directory + input.FileName;
 
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorSourceGenerator()
         {
             var additionalTextsBuilder = ImmutableArray.CreateBuilder<AdditionalText>();
 
-            foreach (var input in additionalSources)
+            foreach (var input in nonCSharpSources)
             {
                 var filePath = getFilePath(input);
                 additionalTextsBuilder.Add(new TestAdditionalText(text: input.Text, encoding: Encoding.UTF8, path: filePath));
@@ -550,7 +568,7 @@ public sealed class Compiler(
                 if (input.FileName.IsRazorFileName())
                 {
                     string cssFileName = input.FileName + ".css";
-                    if (additionalSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
+                    if (nonCSharpSources.Any(c => c.FileName.Equals(cssFileName, StringComparison.OrdinalIgnoreCase)))
                     {
                         optionsProvider.AdditionalTextOptions[filePath]["build_metadata.AdditionalFiles.CssScope"] =
                             RazorUtil.GenerateScope(projectName, filePath);
@@ -560,7 +578,9 @@ public sealed class Compiler(
 
             var initialCompilation = CSharpCompilation.Create(
                 assemblyName: projectName,
-                syntaxTrees: cSharpSources.Select(static s => s.SyntaxTree),
+                syntaxTrees: cSharpSources
+                    .Select(static s => s.SyntaxTree)
+                    .Concat(additionalSyntaxTrees),
                 references: references.Metadata,
                 options: options);
 
@@ -595,7 +615,7 @@ public sealed class Compiler(
         (CSharpCompilation FinalCompilation, ImmutableArray<Diagnostic> AdditionalDiagnostics) runRazorInternalApi()
         {
             var fileSystem = new VirtualRazorProjectFileSystemProxy();
-            foreach (var input in additionalSources)
+            foreach (var input in nonCSharpSources)
             {
                 if (input.FileName.IsRazorFileName())
                 {
@@ -610,7 +630,9 @@ public sealed class Compiler(
                 }
             }
 
-            var cSharpSyntaxTrees = cSharpSources.Select(static s => s.SyntaxTree);
+            var cSharpSyntaxTrees = cSharpSources
+                .Select(static s => s.SyntaxTree)
+                .Concat(additionalSyntaxTrees);
 
             var config = RazorConfiguration.Default;
 
@@ -969,6 +991,28 @@ public sealed class Compiler(
                         ? disassembler.Disassemble(emitStreams.Value.PeStream, references.Assemblies)
                         : error;
                     return new(output);
+                },
+            };
+        }
+
+        CompiledFileOutput getXmlDocsOutput()
+        {
+            return new()
+            {
+                Type = "xml",
+                Label = "Docs",
+                Language = "xml",
+                LazyText = () =>
+                {
+                    using var stream = new MemoryStream();
+                    finalCompilation.GenerateDocumentationCommentsInternal(
+                        stream,
+                        outputNameOverride: null,
+                        diagnostics: out _,
+                        cancellationToken: default);
+                    stream.Position = 0;
+                    using var reader = new StreamReader(stream);
+                    return new(reader.ReadToEnd());
                 },
             };
         }
@@ -1514,6 +1558,12 @@ internal sealed class LiveCompilationResult
     /// Set to <see langword="null"/> if the default options were used.
     /// </summary>
     public required CSharpCompilationOptions? CSharpCompilationOptions { get; init; }
+
+    /// <summary>
+    /// Additional sources provided by <see cref="IConfig.AdditionalSources"/>.
+    /// This is never <see langword="default"/>.
+    /// </summary>
+    public required ImmutableArray<CSharpSyntaxTree> AdditionalSources { get; init; }
 
     /// <summary>
     /// Reference assemblies used by the main compilation.

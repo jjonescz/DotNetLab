@@ -9,6 +9,7 @@
 @inject BlazorMonacoInterop BlazorMonacoInterop
 @inject ILocalStorageService LocalStorage
 @inject CursorSynchronizer.Services CursorSynchronizerServices
+@inject IAppHostEnvironment HostEnvironment
 @inject IUpdateChecker UpdateChecker
 @inject IScreenInfo ScreenInfo
 @inject ICompilerOutputPlugin CompilerOutputPlugin
@@ -302,6 +303,11 @@
 </FluentMultiSplitter>
 
 @code {
+    /// <summary>
+    /// Should be used whenever <see cref="inputs"/> are manipulated across <see langword="await"/>.
+    /// </summary>
+    private readonly AsyncLock inputsLock = new();
+
     private readonly TaskCompletionSource editorInitialized = new();
     private readonly List<Input> inputs = new();
     private readonly Dictionary<string, EditorState> outputStates = new();
@@ -544,7 +550,7 @@
     public async Task CopyUrlToClipboardAsync()
     {
         await SaveStateToUrlAsync();
-        await module.InvokeVoidAsync("copyUrlToClipboard");
+        await module.InvokeVoidAsync("copyUrlToClipboard", HostEnvironment.LabUrlPrefix);
         urlCopied = true;
         StateHasChanged();
         var token = Interlocked.Increment(ref urlCopiedToken);
@@ -731,6 +737,7 @@
         }
         else if (inputs.Count > 1)
         {
+            using var _ = await inputsLock.LockAsync();
             var removedInput = inputs[i];
             inputs.RemoveAt(i);
             await removedInput.DisposeAsync();
@@ -960,8 +967,7 @@
             storeInCacheMode: mode);
 
         // Reset workspace state in case incremental updates were applied incorrectly.
-        // We don't want diagnostics from the workspace though, we just set the ones from compiler.
-        await ResetWorkspaceAsync(updateDiagnostics: false);
+        await ResetWorkspaceAsync();
     }
 
     private void TryStoreInCache(SavedState state, CompiledAssembly output)
@@ -983,50 +989,37 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        if (LanguageServices.Enabled)
+        if (!LanguageServices.Enabled)
         {
-            if (IsOutputOutdated)
+            using var _ = await inputsLock.LockAsync();
+
+            foreach (var input in inputs)
             {
-                // Avoid overwriting live diagnostics which are newer.
-                return;
+                List<MarkerData> markers = compiled is { } result
+                    ? toMarkerData(result.Output.GetDiagnosticsForFile(input.FileName))
+                    : [];
+                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
+            }
+
+            if (configuration != null)
+            {
+                List<MarkerData> markers = compiled is { } result
+                    ? toMarkerData(result.Output.GetDiagnosticsForConfiguration())
+                    : [];
+                await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
         }
-
-        foreach (var input in inputs)
+        else
         {
-            List<MarkerData> markers = compiled is { } result
-                ? GetMarkersForInputFile(result.Output, input.FileName)
-                : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersCompilerOwner, markers);
+            LanguageServices.UpdateDiagnosticsAfterCompilation();
         }
 
-        if (configuration != null)
+        static List<MarkerData> toMarkerData(IEnumerable<DiagnosticData> diagnostics)
         {
-            List<MarkerData> markers = compiled is { } result
-                ? GetMarkersForConfiguration(result.Output)
-                : [];
-            await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersCompilerOwner, markers);
+            return diagnostics
+                .Select(static d => d.ToMarkerData(downgradeInfo: false))
+                .ToList();
         }
-
-        LanguageServices.OnCompilerMarkersSet();
-    }
-
-    internal static List<MarkerData> GetMarkersForInputFile(CompiledAssembly compiled, string fileName)
-    {
-        return compiled.Diagnostics
-            .Skip(compiled.ConfigDiagnosticCount)
-            .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
-            .Select(static d => d.ToMarkerData(downgradeInfo: false))
-            .ToList();
-    }
-
-    internal static List<MarkerData> GetMarkersForConfiguration(CompiledAssembly compiled)
-    {
-        return compiled.Diagnostics
-            .Take(compiled.ConfigDiagnosticCount)
-            .Where(static d => d.FilePath == "Configuration.cs")
-            .Select(static d => d.ToMarkerData(downgradeInfo: false))
-            .ToList();
     }
 
     private async Task UpdateOutputDisplayAsync()
@@ -1387,7 +1380,15 @@
             End = timestamp
         };
         StateHasChanged();
-        await DisplaySquigglesAsync();
+
+        if (LanguageServices.Enabled)
+        {
+            await LanguageServices.OnCachedCompilationLoadedAsync(output);
+        }
+        else
+        {
+            await DisplaySquigglesAsync();
+        }
 
         if (updateOutput)
         {
@@ -1403,8 +1404,7 @@
             JSRuntime,
             value: inputCode.Text,
             language: GetLanguageForFileExtension(inputCode.FileExtension),
-            // Needs to be unique otherwise renaming this model and then adding an input by the same name would crash.
-            uri: $"in/{Guid.CreateVersion7()}/{inputCode.FileName}");
+            uri: CompiledAssembly.GetInputModelUri(inputCode.FileName));
     }
 
     private static string? GetLanguageForFileExtension(string extension)
@@ -1448,7 +1448,7 @@
     /// <summary>
     /// Sends the current workspace full state to language services.
     /// </summary>
-    public async Task ResetWorkspaceAsync(bool updateDiagnostics = true)
+    public async Task ResetWorkspaceAsync()
     {
         if (!LanguageServices.Enabled)
         {
@@ -1461,7 +1461,7 @@
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        await LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics: updateDiagnostics, refresh: true);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, refresh: true);
     }
 
     private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)

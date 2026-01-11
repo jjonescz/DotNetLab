@@ -1,8 +1,10 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
@@ -29,7 +31,7 @@ public sealed class MonacoCompletionItem
     public int Index { get; init; }
     public required string Label { get; init; }
     public required CompletionItemKind Kind { get; init; }
-    public string? InsertText { get; init; }
+    public string? InsertText { get; set; }
     public string? FilterText { get; init; }
     public string? SortText { get; init; }
     public string? Documentation { get; set; }
@@ -39,7 +41,7 @@ public sealed class MonacoCompletionItem
 }
 
 /// <remarks>
-/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.CodeAction.html"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.CodeAction.html"/>.
 /// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CodeAction"/>.
 /// </remarks>
 public sealed class MonacoCodeAction
@@ -73,7 +75,7 @@ public sealed class SemanticTokensLegend
 }
 
 /// <remarks>
-/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.SignatureHelp.html"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.SignatureHelp.html"/>.
 /// </remarks>
 public sealed class SignatureHelp
 {
@@ -119,8 +121,50 @@ public enum SignatureHelpTriggerKind
 [JsonSerializable(typeof(SignatureHelpContext))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
+[Obsolete($"Use {nameof(BlazorMonacoJsonContext)} instead.")]
+public partial class BlazorMonacoJsonContextBase : JsonSerializerContext
+{
+    protected internal static JsonSerializerOptions DefaultOptions => s_defaultOptions;
+}
+
+public sealed class BlazorMonacoJsonContext
+#pragma warning disable CS0618 // Type or member is obsolete
+    : BlazorMonacoJsonContextBase
+#pragma warning restore CS0618
+    , IJsonTypeInfoResolver
+{
+    public BlazorMonacoJsonContext() { }
+
+    public BlazorMonacoJsonContext(JsonSerializerOptions options) : base(options) { }
+
+    public new static BlazorMonacoJsonContext Default { get; } = new(new(DefaultOptions));
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "global::System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver.GetTypeInfo")]
+    private static extern JsonTypeInfo? GetTypeInfoBase(
+#pragma warning disable CS0618 // Type or member is obsolete
+        BlazorMonacoJsonContextBase @this,
+#pragma warning restore CS0618
+        Type type,
+        JsonSerializerOptions options);
+
+    JsonTypeInfo? IJsonTypeInfoResolver.GetTypeInfo(Type type, JsonSerializerOptions options)
+    {
+        var typeInfo = GetTypeInfoBase(this, type, options);
+
+        if (typeInfo is null)
+        {
+            return null;
+        }
+
+        foreach (var prop in typeInfo.Properties)
+        {
+            prop.IsRequired = false;
+        }
+
+        return typeInfo;
+    }
+}
 
 public static class SimpleMonacoConversions
 {
@@ -170,7 +214,7 @@ public static class SimpleMonacoConversions
         }
     }
 
-    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo)
+    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo = false)
     {
         return new MarkerData
         {
