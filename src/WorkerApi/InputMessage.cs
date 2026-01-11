@@ -180,7 +180,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models) : WorkerInputMessage<NoOutput>
+    public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models, bool Refresh) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
         {

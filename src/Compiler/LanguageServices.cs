@@ -616,9 +616,9 @@ internal sealed class LanguageServices : ILanguageServices
         compilerDiagnostics = null;
     }
 
-    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh)
     {
-        InvalidateCompilerCache();
+        if (!refresh) InvalidateCompilerCache();
 
         using var _ = await workspaceLock.LockAsync();
 

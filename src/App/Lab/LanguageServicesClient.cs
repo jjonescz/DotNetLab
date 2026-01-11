@@ -239,7 +239,7 @@ internal sealed class LanguageServicesClient(
         }
 
         InvalidateCaches();
-        worker.OnDidChangeWorkspace(models);
+        worker.OnDidChangeWorkspace(models, refresh);
 
         UpdateDiagnostics();
 
