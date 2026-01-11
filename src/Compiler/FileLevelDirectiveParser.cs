@@ -702,7 +702,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     "GenerateDocumentationFile",
                     static (context, result) =>
                     {
-                        if (result is { } b)
+                        if (result is { } b && b)
                         {
                             context.Config.CSharpParseOptions(options => options.WithDocumentationMode(DocumentationMode.Diagnose));
                         }

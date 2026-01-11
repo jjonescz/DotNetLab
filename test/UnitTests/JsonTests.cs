@@ -44,7 +44,7 @@ public sealed class JsonTests
         static IEnumerable<object[]> enumerate()
         {
             var seenTypes = new HashSet<Type>();
-            var seenAssemblies = new HashSet<AssemblyName>();
+            var seenAssemblies = new HashSet<string>();
             var queue = new Queue<Assembly>(1);
             queue.Enqueue(typeof(JsonTests).Assembly);
             while (queue.TryDequeue(out var assembly))
@@ -77,7 +77,7 @@ public sealed class JsonTests
                         continue;
                     }
 
-                    if (seenAssemblies.Add(referenced))
+                    if (seenAssemblies.Add(referenced.ToString()))
                     {
                         queue.Enqueue(Assembly.Load(referenced));
                     }

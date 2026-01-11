@@ -758,7 +758,7 @@ internal sealed class LanguageServices : ILanguageServices
 
         DiagnosticData[] compilerDiagnostics;
         if (this.compilerDiagnostics is { } compiled &&
-            compiled?.Diagnostics.Length > 0 &&
+            compiled.Diagnostics.Length > 0 &&
             CompiledAssembly.TryParseInputModelUri(modelUri, out var fileName))
         {
             compilerDiagnostics = compiled.Diagnostics
