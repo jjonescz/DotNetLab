@@ -188,11 +188,12 @@ internal sealed class LanguageServices : ILanguageServices
                     }
                     else
                     {
-                    item.AdditionalTextEdits.Add(new()
-                    {
-                        Text = change.NewText,
+                        item.AdditionalTextEdits.Add(new()
+                        {
+                            Text = change.NewText,
                             Range = change.Span.ToRange(text.Lines),
-                    });
+                        });
+                    }
                 }
             }
 
