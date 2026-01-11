@@ -55,6 +55,9 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 }
 
                 return result;
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -65,6 +68,9 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 const json = await DotNet.invokeMethodAsync('DotNetLab.App', 'ResolveCompletionItemAsync',
                     completionItemProvider, JSON.stringify(completionItem), tokenRef);
                 return json ? JSON.parse(json) : completionItem;
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -104,6 +110,9 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                 const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
                     provider, decodeURI(model.uri.toString()), null, debugSemanticTokens, tokenRef);
                 return decodeResult(result, legendParsed);
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -123,6 +132,9 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                     const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideSemanticTokensAsync',
                         provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, tokenRef);
                     return decodeResult(result, legendParsed);
+                } catch (e) {
+                    console.error(e);
+                    throw e;
                 } finally {
                     DotNet.disposeJSObjectReference(tokenRef);
                 }
@@ -185,6 +197,9 @@ export function registerCodeActionProvider(language, codeActionProvider) {
                     actions: result,
                     dispose: () => { }, // Currently not used.
                 };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -198,24 +213,29 @@ export function registerDefinitionProvider(language, definitionProvider) {
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDefinitionProvider.html
     return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
         provideDefinition: async (model, position, token) => {
-            const offset = model.getOffsetAt(position);
-            const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideDefinition',
-                definitionProvider, decodeURI(model.uri.toString()), offset);
+            try {
+                const offset = model.getOffsetAt(position);
+                const result = await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideDefinition',
+                    definitionProvider, decodeURI(model.uri.toString()), offset);
 
-            if (result === null) {
-                return null;
+                if (result === null) {
+                    return null;
+                }
+
+                const [start, end] = result.split(';');
+                const startPosition = model.getPositionAt(start);
+                const endPosition = model.getPositionAt(end);
+                const range = new monaco.Range(
+                    startPosition.lineNumber, startPosition.column,
+                    endPosition.lineNumber, endPosition.column);
+                return {
+                    uri: model.uri,
+                    range,
+                };
+            } catch (e) {
+                console.error(e);
+                throw e;
             }
-
-            const [start, end] = result.split(';');
-            const startPosition = model.getPositionAt(start);
-            const endPosition = model.getPositionAt(end);
-            const range = new monaco.Range(
-                startPosition.lineNumber, startPosition.column,
-                endPosition.lineNumber, endPosition.column);
-            return {
-                uri: model.uri,
-                range,
-            };
         },
     });
 }
@@ -237,6 +257,9 @@ export function registerHoverProvider(language, hoverProvider) {
                 }
 
                 return { contents: [{ value: result }] };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -277,6 +300,9 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
                     value: parsed,
                     dispose: () => { }, // Currently not used.
                 };
+            } catch (e) {
+                console.error(e);
+                throw e;
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
