@@ -34,7 +34,7 @@ export function setSelection(editorId, start, end) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCompletionItemProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
@@ -95,7 +95,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
     const languageParsed = JSON.parse(language);
     const legendParsed = JSON.parse(legend);
 
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentSemanticTokensProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDocumentSemanticTokensProvider.html
     disposables.add(monaco.languages.registerDocumentSemanticTokensProvider(languageParsed, {
         getLegend: () => legendParsed,
         provideDocumentSemanticTokens: async (model, lastResultId, token) => {
@@ -114,7 +114,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
     }));
 
     if (registerRangeProvider) {
-        // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDocumentRangeSemanticTokensProvider.html
+        // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDocumentRangeSemanticTokensProvider.html
         disposables.add(monaco.languages.registerDocumentRangeSemanticTokensProvider(languageParsed, {
             getLegend: () => legendParsed,
             provideDocumentRangeSemanticTokens: async (model, range, token) => {
@@ -160,7 +160,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
 }
 
 export function registerCodeActionProvider(language, codeActionProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerCodeActionProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCodeActionProvider.html
     return monaco.languages.registerCodeActionProvider(JSON.parse(language), {
         provideCodeActions: async (model, range, context, token) => {
             const tokenRef = wrapToken(token);
@@ -195,7 +195,7 @@ export function registerCodeActionProvider(language, codeActionProvider) {
 }
 
 export function registerDefinitionProvider(language, definitionProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerDefinitionProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerDefinitionProvider.html
     return monaco.languages.registerDefinitionProvider(JSON.parse(language), {
         provideDefinition: async (model, position, token) => {
             const offset = model.getOffsetAt(position);
@@ -221,7 +221,7 @@ export function registerDefinitionProvider(language, definitionProvider) {
 }
 
 export function registerHoverProvider(language, hoverProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerHoverProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerHoverProvider.html
     return monaco.languages.registerHoverProvider(JSON.parse(language), {
         provideHover: async (model, position, token, context) => {
             const tokenRef = wrapToken(token);
@@ -245,7 +245,7 @@ export function registerHoverProvider(language, hoverProvider) {
 }
 
 export function registerSignatureHelpProvider(language, hoverProvider) {
-    // https://microsoft.github.io/monaco-editor/typedoc/functions/languages.registerSignatureHelpProvider.html
+    // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerSignatureHelpProvider.html
     return monaco.languages.registerSignatureHelpProvider(JSON.parse(language), {
         signatureHelpTriggerCharacters: ['(', ','],
         provideSignatureHelp: async (model, position, token, context) => {

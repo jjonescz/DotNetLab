@@ -39,7 +39,7 @@ public sealed class MonacoCompletionItem
 }
 
 /// <remarks>
-/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.CodeAction.html"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.CodeAction.html"/>.
 /// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CodeAction"/>.
 /// </remarks>
 public sealed class MonacoCodeAction
@@ -73,7 +73,7 @@ public sealed class SemanticTokensLegend
 }
 
 /// <remarks>
-/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.SignatureHelp.html"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.SignatureHelp.html"/>.
 /// </remarks>
 public sealed class SignatureHelp
 {
