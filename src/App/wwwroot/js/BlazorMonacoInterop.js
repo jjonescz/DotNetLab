@@ -67,7 +67,14 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             try {
                 const json = await DotNet.invokeMethodAsync('DotNetLab.App', 'ResolveCompletionItemAsync',
                     completionItemProvider, JSON.stringify(completionItem), tokenRef);
-                return json ? JSON.parse(json) : completionItem;
+
+                if (json) {
+                    const result = JSON.parse(json);
+                    result.range ??= completionItem.range;
+                    return result;
+                }
+
+                return completionItem;
             } catch (e) {
                 console.error(e);
                 throw e;
