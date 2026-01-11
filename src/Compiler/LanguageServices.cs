@@ -180,13 +180,18 @@ internal sealed class LanguageServices : ILanguageServices
                 var text = await document.GetTextAsync(cancellationToken);
                 foreach (var change in completionChange.TextChanges)
                 {
-                    // Complex edits have InsertionText="". So whatever user typed (e.g., `prop`) will be removed (replaced with the empty insertion text).
-                    // If this edit is for the same span, it would get truncated, so we change the span to be before the typed text.
-                    var realSpan = change.Span.Start == foundItem.Span.Start ? new TextSpan(foundItem.Span.Start, 0) : change.Span;
+                    // If this edit is for the original span, it should be in InsertText to work correctly.
+                    if (change.Span.Start == foundItem.Span.Start)
+                    {
+                        Debug.Assert(item.InsertText == "");
+                        item.InsertText = change.NewText;
+                    }
+                    else
+                    {
                     item.AdditionalTextEdits.Add(new()
                     {
                         Text = change.NewText,
-                        Range = realSpan.ToRange(text.Lines),
+                            Range = change.Span.ToRange(text.Lines),
                     });
                 }
             }

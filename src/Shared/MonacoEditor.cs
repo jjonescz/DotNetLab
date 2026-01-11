@@ -29,7 +29,7 @@ public sealed class MonacoCompletionItem
     public int Index { get; init; }
     public required string Label { get; init; }
     public required CompletionItemKind Kind { get; init; }
-    public string? InsertText { get; init; }
+    public string? InsertText { get; set; }
     public string? FilterText { get; init; }
     public string? SortText { get; init; }
     public string? Documentation { get; set; }
