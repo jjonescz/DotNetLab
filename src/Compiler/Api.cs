@@ -5,7 +5,10 @@ namespace DotNetLab;
 
 public static class Config
 {
-    internal static ConfigCollector Instance { get; } = new();
+    // Using async local to allow parallel test execution without interference.
+    private static readonly AsyncLocal<ConfigCollector> s_instance = new();
+
+    internal static ConfigCollector Instance => s_instance.Value ??= new();
 
     public static void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
         => Instance.CSharpParseOptions(configure);
