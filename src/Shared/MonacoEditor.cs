@@ -1,8 +1,10 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace DotNetLab;
 
@@ -119,8 +121,50 @@ public enum SignatureHelpTriggerKind
 [JsonSerializable(typeof(SignatureHelpContext))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-public sealed partial class BlazorMonacoJsonContext : JsonSerializerContext;
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
+[Obsolete($"Use {nameof(BlazorMonacoJsonContext)} instead.")]
+public partial class BlazorMonacoJsonContextBase : JsonSerializerContext
+{
+    protected internal static JsonSerializerOptions DefaultOptions => s_defaultOptions;
+}
+
+public sealed class BlazorMonacoJsonContext
+#pragma warning disable CS0618 // Type or member is obsolete
+    : BlazorMonacoJsonContextBase
+#pragma warning restore CS0618
+    , IJsonTypeInfoResolver
+{
+    public BlazorMonacoJsonContext() { }
+
+    public BlazorMonacoJsonContext(JsonSerializerOptions options) : base(options) { }
+
+    public new static BlazorMonacoJsonContext Default { get; } = new(new(DefaultOptions));
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "global::System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver.GetTypeInfo")]
+    private static extern JsonTypeInfo? GetTypeInfoBase(
+#pragma warning disable CS0618 // Type or member is obsolete
+        BlazorMonacoJsonContextBase @this,
+#pragma warning restore CS0618
+        Type type,
+        JsonSerializerOptions options);
+
+    JsonTypeInfo? IJsonTypeInfoResolver.GetTypeInfo(Type type, JsonSerializerOptions options)
+    {
+        var typeInfo = GetTypeInfoBase(this, type, options);
+
+        if (typeInfo is null)
+        {
+            return null;
+        }
+
+        foreach (var prop in typeInfo.Properties)
+        {
+            prop.IsRequired = false;
+        }
+
+        return typeInfo;
+    }
+}
 
 public static class SimpleMonacoConversions
 {
