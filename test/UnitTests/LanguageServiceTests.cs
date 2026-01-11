@@ -227,6 +227,39 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Diagnostics_Suppress()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    public class C
+                    {
+                        public extern void M1();
+                    #pragma warning disable CS0626 // extern without attributes
+                        public extern void M2();
+                    }
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await compiler.CompileAsync(input);
+        languageServices.OnCompilationFinished();
+
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            "(3,24): warning CS0626: Method, operator, or accessor 'C.M1()' is marked external and has no attributes on it. Consider adding a DllImport attribute to specify the external implementation.",
+        ]);
+    }
+
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest(TestContext);
