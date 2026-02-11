@@ -969,6 +969,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     Constant(
                     [
                         "empty",
+                        "net11.0",
                         "net10.0",
                         "net9.0",
                         "net8.0",
