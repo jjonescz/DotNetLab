@@ -14,7 +14,7 @@
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
 
     <!--
-        Needed to get diagnostics inside XML doc comments.
+      Needed to get diagnostics inside XML doc comments.
     -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1573;1591;0419</NoWarn>
