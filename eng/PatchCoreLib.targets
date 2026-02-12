@@ -36,7 +36,11 @@
 
     <ItemGroup>
       <ReferenceCopyLocalPaths Remove="@(_CoreLibCandidate)" />
-      <ReferenceCopyLocalPaths Include="$(_PatchedCoreLibPath)" />
+    </ItemGroup>
+
+    <!-- Use `->` to ensure the original metadata are preserved (only the path is replaced). -->
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Include="@(_CoreLibCandidate->'$(_PatchedCoreLibPath)')" KeepDuplicates="false" />
     </ItemGroup>
   </Target>
 </Project>
