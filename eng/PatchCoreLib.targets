@@ -43,4 +43,17 @@
       <ReferenceCopyLocalPaths Include="@(_CoreLibCandidate->'$(_PatchedCoreLibPath)')" KeepDuplicates="false" />
     </ItemGroup>
   </Target>
+
+  <Target Name="PublishPatchedCoreLib"
+          AfterTargets="_ResolveCopyLocalAssetsForPublish"
+          DependsOnTargets="PatchCoreLibFile">
+    <ItemGroup>
+      <_ResolvedCopyLocalPublishAssets Remove="@(_CoreLibCandidate)" />
+    </ItemGroup>
+
+    <!-- Use `->` to ensure the original metadata are preserved (only the path is replaced). -->
+    <ItemGroup>
+      <_ResolvedCopyLocalPublishAssets Include="@(_CoreLibCandidate->'$(_PatchedCoreLibPath)')" KeepDuplicates="false" />
+    </ItemGroup>
+  </Target>
 </Project>
