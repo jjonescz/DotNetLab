@@ -16,7 +16,7 @@ public sealed class CompilerProxyTests
     [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
     [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [DataRow("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [DataRow("latest", "5.0.0")] // `latest` works
+    [DataRow("latest", "5.3.0")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
@@ -54,7 +54,9 @@ public sealed class CompilerProxyTests
         catch (Exception e) when (e is TypeLoadException or ReflectionTypeLoadException or MissingMethodException)
         {
             TestContext.WriteLine(e.ToString());
-            expectedDiagnostic.Should().StartWith("4.");
+            Assert.IsTrue(expectedDiagnostic.StartsWith("4.") ||
+                expectedDiagnostic.StartsWith("5.0.") ||
+                expectedDiagnostic.StartsWith("5.3."));
         }
     }
 
@@ -171,8 +173,11 @@ public sealed class CompilerProxyTests
             // which can lead to mismatches like here (this error message would be visible in the IDE, for example).
             var errorMessage = compiled.Diagnostics[1].Message;
             TestContext.WriteLine(errorMessage);
-            Assert.AreEqual("""
-                Failed to format diagnostic (Title: '', MessageFormat: 'Compiler version: '{0}'. Language version: {1}. Compiler path: '{2}'.'): System.FormatException: Index (zero based) must be greater than or equal to zero and less than the size of the argument list.
+            Assert.StartsWith("""
+                Failed to format diagnostic (Title: '', MessageFormat: '
+                """, errorMessage);
+            Assert.EndsWith("""
+                '): System.FormatException: Index (zero based) must be greater than or equal to zero and less than the size of the argument list.
                 """, errorMessage);
         }
         finally

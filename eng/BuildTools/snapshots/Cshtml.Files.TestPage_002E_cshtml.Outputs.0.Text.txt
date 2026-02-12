@@ -15,7 +15,7 @@
         MarkupTextLiteral - [6..6) - Width: 0 - [] - Gen<Markup>
             Marker;[];
         CSharpCodeBlock - [6..51) - Width: 45
-            RazorDirective - [6..50) - Width: 44
+            RazorUsingDirective - [6..50) - Width: 44
                 CSharpTransition - [6..7) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [7..50) - Width: 43
