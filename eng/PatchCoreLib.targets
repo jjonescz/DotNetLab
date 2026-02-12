@@ -20,7 +20,7 @@
 
     <MakeDir Directories="$(_PatchedCoreLibDir)" />
 
-    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; &quot;$(MSBuildThisFileDirectory)patch-corelib.cs&quot; &quot;@(_CoreLibCandidate)&quot; &quot;$(_PatchedCoreLibPath)&quot;" />
+    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; run --file &quot;$(MSBuildThisFileDirectory)patch-corelib.cs&quot; &quot;@(_CoreLibCandidate)&quot; &quot;$(_PatchedCoreLibPath)&quot;" />
   </Target>
 
   <Target Name="UsePatchedCoreLib"
