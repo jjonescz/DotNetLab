@@ -37,6 +37,7 @@
   </ItemGroup>
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />
+  <Import Project="..\..\eng\PatchCoreLib.targets" />
   <Import Project="..\..\eng\CopyDotNetDTs.targets" />
   <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 

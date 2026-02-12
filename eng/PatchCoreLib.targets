@@ -1,0 +1,42 @@
+<!-- Workaround for https://github.com/jjonescz/DotNetLab/issues/129. -->
+<Project>
+  <PropertyGroup>
+    <_CoreLibAssemblyName>System.Private.CoreLib.dll</_CoreLibAssemblyName>
+    <_PatchedCoreLibDir>$(ArtifactsPath)\patches\$(MSBuildProjectName)</_PatchedCoreLibDir>
+    <_PatchedCoreLibPath>$(_PatchedCoreLibDir)\$(_CoreLibAssemblyName)</_PatchedCoreLibPath>
+  </PropertyGroup>
+
+  <Target Name="PatchCoreLibFile"
+          BeforeTargets="_ResolveWasmOutputs"
+          Inputs="@(ReferenceCopyLocalPaths->WithMetadataValue('FileName','System.Private.CoreLib')->WithMetadataValue('Extension','.dll'));$(MSBuildThisFileDirectory)patch-corelib.cs"
+          Outputs="$(_PatchedCoreLibPath)">
+    <ItemGroup>
+      <_CoreLibCandidate Include="@(ReferenceCopyLocalPaths)"
+                         Condition="'%(ReferenceCopyLocalPaths.FileName)%(ReferenceCopyLocalPaths.Extension)' == '$(_CoreLibAssemblyName)'" />
+    </ItemGroup>
+
+    <Error Condition="'@(_CoreLibCandidate)' == ''"
+           Text="$(_CoreLibAssemblyName) not found in ReferenceCopyLocalPaths." />
+
+    <MakeDir Directories="$(_PatchedCoreLibDir)" />
+
+    <Exec Command="dotnet &quot;$(MSBuildThisFileDirectory)patch-corelib.cs&quot; &quot;@(_CoreLibCandidate)&quot; &quot;$(_PatchedCoreLibPath)&quot;" />
+  </Target>
+
+  <Target Name="UsePatchedCoreLib"
+          BeforeTargets="_ResolveWasmOutputs"
+          DependsOnTargets="PatchCoreLibFile">
+    <ItemGroup>
+      <_CoreLibCandidate Include="@(ReferenceCopyLocalPaths)"
+                         Condition="'%(ReferenceCopyLocalPaths.FileName)%(ReferenceCopyLocalPaths.Extension)' == '$(_CoreLibAssemblyName)'" />
+    </ItemGroup>
+
+    <Error Condition="'@(_CoreLibCandidate)' == ''"
+           Text="$(_CoreLibAssemblyName) not found in ReferenceCopyLocalPaths." />
+
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(_CoreLibCandidate)" />
+      <ReferenceCopyLocalPaths Include="$(_PatchedCoreLibPath)" />
+    </ItemGroup>
+  </Target>
+</Project>
