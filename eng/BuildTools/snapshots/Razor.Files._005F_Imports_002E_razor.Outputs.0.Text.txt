@@ -3,7 +3,7 @@
         MarkupTextLiteral - [0..0) - Width: 0 - [] - Gen<Markup>
             Marker;[];
         CSharpCodeBlock - [0..23) - Width: 23
-            RazorDirective - [0..22) - Width: 22
+            RazorUsingDirective - [0..22) - Width: 22
                 CSharpTransition - [0..1) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [1..22) - Width: 21
@@ -18,7 +18,7 @@
             RazorMetaCode - [22..23) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [23..51) - Width: 28
-            RazorDirective - [23..50) - Width: 27
+            RazorUsingDirective - [23..50) - Width: 27
                 CSharpTransition - [23..24) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [24..50) - Width: 26
@@ -35,7 +35,7 @@
             RazorMetaCode - [50..51) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [51..104) - Width: 53
-            RazorDirective - [51..103) - Width: 52
+            RazorUsingDirective - [51..103) - Width: 52
                 CSharpTransition - [51..52) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [52..103) - Width: 51
@@ -52,7 +52,7 @@
             RazorMetaCode - [103..104) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [104..149) - Width: 45
-            RazorDirective - [104..148) - Width: 44
+            RazorUsingDirective - [104..148) - Width: 44
                 CSharpTransition - [104..105) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [105..148) - Width: 43
@@ -69,7 +69,7 @@
             RazorMetaCode - [148..149) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [149..196) - Width: 47
-            RazorDirective - [149..195) - Width: 46
+            RazorUsingDirective - [149..195) - Width: 46
                 CSharpTransition - [149..150) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [150..195) - Width: 45
@@ -86,7 +86,7 @@
             RazorMetaCode - [195..196) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [196..239) - Width: 43
-            RazorDirective - [196..238) - Width: 42
+            RazorUsingDirective - [196..238) - Width: 42
                 CSharpTransition - [196..197) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [197..238) - Width: 41
@@ -103,7 +103,7 @@
             RazorMetaCode - [238..239) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [239..300) - Width: 61
-            RazorDirective - [239..299) - Width: 60
+            RazorUsingDirective - [239..299) - Width: 60
                 CSharpTransition - [239..240) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [240..299) - Width: 59
@@ -124,7 +124,7 @@
             RazorMetaCode - [299..300) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [300..358) - Width: 58
-            RazorDirective - [300..357) - Width: 57
+            RazorUsingDirective - [300..357) - Width: 57
                 CSharpTransition - [300..301) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [301..357) - Width: 56
@@ -143,7 +143,7 @@
             RazorMetaCode - [357..358) - Width: 1 - Gen<None>
                 NewLine;[LF];
         CSharpCodeBlock - [358..385) - Width: 27
-            RazorDirective - [358..384) - Width: 26
+            RazorUsingDirective - [358..384) - Width: 26
                 CSharpTransition - [358..359) - Width: 1 - Gen<None>
                     Transition;[@];
                 RazorDirectiveBody - [359..384) - Width: 25

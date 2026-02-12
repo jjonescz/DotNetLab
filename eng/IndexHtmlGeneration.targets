@@ -16,7 +16,7 @@
     <!-- Mark as Content so it's included in `service-worker-assets.js`. -->
     <None Remove="$(IndexHtmlOutputPath)" />
     <Content Remove="$(IndexHtmlOutputPath)" />
-    <Content Include="$(IndexHtmlOutputPath)" />
+    <Content Include="$(IndexHtmlOutputPath)" CopyToPublishDirectory="PreserveNewest" />
 
     <UpToDateCheckBuilt Include="$(IndexHtmlOutputPath)" Original="$(IndexHtmlTemplatePath)" />
   </ItemGroup>
