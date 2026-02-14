@@ -14,7 +14,8 @@ public static class WorkerServices
     {
         return Create(
             logLevel: LogLevel.Debug,
-            httpClientFactory: sp => new HttpClient(httpMessageHandler ?? new HttpClientHandler())
+            httpClientFactory: sp => new HttpClient(handler: httpMessageHandler
+                ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp))
             {
                 BaseAddress = new Uri("http://localhost"),
                 DefaultRequestHeaders = { { "User-Agent", "DotNetLab Tests" } },
