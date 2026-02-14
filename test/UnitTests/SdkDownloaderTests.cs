@@ -14,6 +14,8 @@ public sealed class SdkDownloaderTests
     [DataRow("10.0.100-preview.5.25277.114", "5.0.0-1.25272.4", "10.0.0-preview.25272.1")]
     [DataRow("10.0.100-preview.7.25351.106", "5.0.0-1.25351.106", "10.0.0-preview.25351.106")]
     [DataRow("10.0.100", "5.0.0-2.25523.111", "10.0.0-preview.25523.111")]
+    [DataRow("10.0.102", "", "")] // broken (there is no release for it in the VMR repo), but seems to be one off, not worth fixing
+    [DataRow("10.0.103", "5.0.0-2.26075.103", "10.0.0-preview.26075.103")]
     public async Task CanDetermineSdkInfo(string version, string expectedRoslynVersion, string expectedRazorVersion)
     {
         var services = WorkerServices.CreateTest(TestContext);

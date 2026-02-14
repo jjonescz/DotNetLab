@@ -9,6 +9,7 @@ namespace DotNetLab.Lab;
 [JsonSerializable(typeof(GitHubErrorResponse))]
 [JsonSerializable(typeof(NuGetVersionListResponse))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
+[JsonSerializable(typeof(ReleaseManifest))]
 internal sealed partial class LabWorkerJsonContext : JsonSerializerContext;
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web, PropertyNamingPolicy = JsonKnownNamingPolicy.KebabCaseLower)]

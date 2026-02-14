@@ -77,7 +77,7 @@ internal sealed class SdkDownloader(
         async Task<SdkInfo> getInfoAsync(string version, CommitLink commit)
         {
             var url = $"https://api.github.com/repos/{sdkRepoOwner}/{sdkRepoName}/contents/{versionDetailsRelativePath}?ref={commit.Hash}";
-            using var response = await SendGitHubRequestAsync(url);
+            using var response = await SendRawGitHubRequestAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -114,18 +114,10 @@ internal sealed class SdkDownloader(
             if (string.IsNullOrEmpty(roslynVersion) || string.IsNullOrEmpty(razorVersion))
             {
                 // If we have a public version like 10.0.100, we cannot derive the build number from it.
-                // However, we can use the commit to find the corresponding NuGet feed and find the full version there.
+                // However, we can find official build ID in `release.json` asset attached to the corresponding release at the VMR repo.
                 if (!VersionUtil.TryGetBuildNumberFromVersionNumber(version, out var buildNumber))
                 {
-                    var versionFromNuGetFeed = await tryGetVersionFromNuGetFeedAsync(commit);
-                    if (versionFromNuGetFeed != null && VersionUtil.TryGetBuildNumberFromVersionNumber(versionFromNuGetFeed, out buildNumber))
-                    {
-                        version = versionFromNuGetFeed;
-                    }
-                    else
-                    {
-                        buildNumber = null;
-                    }
+                    buildNumber = await tryGetOfficialBuildIdFromVersionAsync(version);
                 }
 
                 // PackageVersion fields are removed from newer source manifests.
@@ -151,13 +143,13 @@ internal sealed class SdkDownloader(
             };
         }
 
-        async Task<string?> tryGetVersionFromNuGetFeedAsync(CommitLink vmrCommit)
+        async Task<string?> tryGetOfficialBuildIdFromVersionAsync(string version)
         {
-            var packageVersionListUrl = $"https://pkgs.dev.azure.com/dnceng/public/_packaging/{GetCommitBasedFeedName(vmrCommit.Hash)}/nuget/v3/flat2/Microsoft.CodeAnalysis/index.json";
-            var response = await client.GetAsync(packageVersionListUrl);
+            var url = $"https://github.com/{monoRepoOwner}/{monoRepoName}/releases/download/v{version}/release.json";
+            var response = await client.GetAsync(url);
             if (!response.IsSuccessStatusCode) return null;
-            var result = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.NuGetVersionListResponse);
-            return result?.Versions.FirstOrDefault();
+            var manifest = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.ReleaseManifest);
+            return manifest?.OfficialBuildId;
         }
     }
 
@@ -189,7 +181,7 @@ internal sealed class SdkDownloader(
 
     private async Task<SourceManifest?> TryGetMonoRepoSourceManifest(string monoRepoCommitHash)
     {
-        using var response = await SendGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
+        using var response = await SendRawGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
 
         if (!response.IsSuccessStatusCode)
         {
@@ -200,7 +192,7 @@ internal sealed class SdkDownloader(
         return await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.SourceManifest);
     }
 
-    private Task<HttpResponseMessage> SendGitHubRequestAsync(string url)
+    private Task<HttpResponseMessage> SendRawGitHubRequestAsync(string url)
     {
         return client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url)
         {
@@ -331,4 +323,9 @@ internal sealed class GitHubErrorResponse
 internal sealed class NuGetVersionListResponse
 {
     public ImmutableArray<string> Versions { get; init; }
+}
+
+internal sealed class ReleaseManifest
+{
+    public string? OfficialBuildId { get; init; }
 }
