@@ -56,8 +56,8 @@ internal sealed class SdkDownloader(
 
         async Task<CommitLink> getCommitAsync(string version)
         {
-            return await tryGetCommitAsync($"https://ci.dot.net/public/Sdk/{version}/productCommit-win-x64.json")
-                ?? await tryGetCommitAsync($"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json")
+            return await tryGetCommitAsync($"https://dotnetcli.azureedge.net/dotnet/Sdk/{version}/productCommit-win-x64.json")
+                ?? await tryGetCommitAsync($"https://ci.dot.net/public/Sdk/{version}/productCommit-win-x64.json")
                 ?? throw new InvalidOperationException($"Cannot find commit for .NET SDK version '{version}'.");
         }
 
