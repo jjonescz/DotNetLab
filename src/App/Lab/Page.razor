@@ -148,7 +148,8 @@
                 @foreach (var (index, input) in inputs.Index())
                 {
                     <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
-                               LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
+                               LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)"
+                               @onclick="OnInputTabClickAsync" />
                 }
 
                 @* Special configuration file *@
@@ -216,7 +217,7 @@
                 @foreach (var output in AllOutputs)
                 {
                     @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
-                    <FluentTab Id="@output.Type" Label="@output.Label">
+                    <FluentTab Id="@output.Type" Label="@output.Label" @onclick="OnOutputTabClickAsync">
                         <Header>
                             <span title="@output.Label (@output.Type)">@output.ShortLabel</span>
 
@@ -484,6 +485,8 @@
         await settings.InitializeAsync();
 
         await LoadStateFromUrlAsync();
+
+        await inputEditor.Focus();
 
         if (!editorInitialized.TrySetResult())
         {
@@ -1020,6 +1023,16 @@
                 .Select(static d => d.ToMarkerData(downgradeInfo: false))
                 .ToList();
         }
+    }
+    
+    private Task OnInputTabClickAsync()
+    {
+        return inputEditor.Focus();
+    }
+
+    private Task OnOutputTabClickAsync()
+    {
+        return outputEditor.Focus();
     }
 
     private async Task UpdateOutputDisplayAsync()
