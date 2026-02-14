@@ -251,6 +251,7 @@ internal sealed class AzDoDownloader(
         uri.AppendPathSegments("_apis", "build", "builds");
         uri.AppendQuery("definitions", definitionId.ToString());
         uri.AppendQuery("branchName", branchName);
+        uri.AppendQuery("reasonFilter", "ci"); // exclude manually triggered builds which might be for unrelated commits
         uri.AppendQuery("$top", top.ToString());
         uri.AppendQuery("api-version", "7.1");
 
