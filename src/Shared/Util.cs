@@ -219,8 +219,10 @@ public static partial class Util
 
     public static async Task<(string stdout, string stderr)> CaptureConsoleOutputAsync(Func<Task> action)
     {
-        using var stdoutWriter = new StringWriter();
-        using var stderrWriter = new StringWriter();
+        // Pass `formatProvider: null` to ensure current culture is not captured and can be changed by the executed code.
+        // See https://github.com/jjonescz/DotNetLab/issues/132.
+        using var stdoutWriter = new StringWriter(formatProvider: null);
+        using var stderrWriter = new StringWriter(formatProvider: null);
         using (await ConsoleCaptureLock.LockAsync())
         {
             var originalOut = Console.Out;
