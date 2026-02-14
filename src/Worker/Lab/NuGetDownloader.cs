@@ -120,7 +120,9 @@ internal sealed class NuGetDownloaderPlugin(
         string targetFramework,
         bool loadForExecution)
     {
-        var parsed = NuGetFramework.Parse(targetFramework);
+        var parsed = "empty".Equals(targetFramework, StringComparison.OrdinalIgnoreCase)
+            ? NuGetFramework.AnyFramework
+            : NuGetFramework.Parse(targetFramework);
         var filter = ActivatorUtilities.CreateInstance<LibNuGetDllFilter>(services, parsed);
         return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter, loadForExecution);
     }
