@@ -312,12 +312,18 @@
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRoslynVersionAsync("latest"))">latest</a>
                         }
-                        @if (!string.IsNullOrWhiteSpace(roslynVersion))
+                        @if (roslynVersion != "main")
                         {
                             if (roslynVersion != "latest")
                             {
                                 @(" or ")
                             }
+                            <a href="javascript:void" @onclick:preventDefault
+                               @onclick="@(() => UseRoslynVersionAsync("main"))">main</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(roslynVersion))
+                        {
+                            @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRoslynVersionAsync(null))">built-in</a>
                         }
@@ -353,12 +359,18 @@
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRazorVersionAsync("latest"))">latest</a>
                         }
-                        @if (!string.IsNullOrWhiteSpace(razorVersion))
+                        @if (razorVersion != "main")
                         {
                             if (razorVersion != "latest")
                             {
                                 @(" or ")
                             }
+                            <a href="javascript:void" @onclick:preventDefault
+                               @onclick="@(() => UseRazorVersionAsync("main"))">main</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(razorVersion))
+                        {
+                            @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRazorVersionAsync(null))">built-in</a>
                         }
