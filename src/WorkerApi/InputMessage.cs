@@ -196,7 +196,7 @@ public abstract record WorkerInputMessage
         }
     }
 
-    public sealed record OnCachedCompilationLoaded(CompiledAssembly Output) : WorkerInputMessage<NoOutput>
+    public sealed record OnCachedCompilationLoaded(CompilerConfiguration Config, CompiledAssembly Output) : WorkerInputMessage<NoOutput>
     {
         public override Task<NoOutput> HandleAsync(IExecutor executor)
         {

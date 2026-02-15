@@ -1,5 +1,4 @@
 ﻿using NuGet.Versioning;
-using ProtoBuf;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -90,13 +89,6 @@ public enum CompilerKind
 {
     Roslyn,
     Razor,
-}
-
-[ProtoContract]
-public enum BuildConfiguration
-{
-    Release,
-    Debug,
 }
 
 public sealed record CompilerInfo(

@@ -334,6 +334,18 @@ internal sealed record SavedState
         }
     }
 
+    public CompilerConfiguration GetCompilerConfiguration()
+    {
+        return new()
+        {
+            Configuration = Configuration,
+            RoslynVersion = RoslynVersion,
+            RoslynConfiguration = RoslynConfiguration,
+            RazorVersion = RazorVersion,
+            RazorConfiguration = RazorConfiguration,
+        };
+    }
+
     /// <summary>
     /// Trims down to a state that is important for compilation output.
     /// Used as cache key in <see cref="InputOutputCache"/>.

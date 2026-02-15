@@ -16,7 +16,7 @@ public interface ILanguageServices
     void OnCompilationFinished();
     Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh = false);
     Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);
-    void OnCachedCompilationLoaded(CompiledAssembly output);
+    void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output);
     Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri);
 }
 

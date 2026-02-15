@@ -33,6 +33,7 @@ internal sealed class LanguageServices : ILanguageServices
     private CompiledAssembly? compilerDiagnostics;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
+    private bool notFullyInitialized;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
@@ -514,14 +515,16 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public void OnCachedCompilationLoaded(CompiledAssembly output)
+    public void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output)
     {
         compilerDiagnostics = output;
+        notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
     }
 
     public async void OnCompilationFinished()
     {
         compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
+        notFullyInitialized = false;
 
         try
         {
@@ -622,6 +625,7 @@ internal sealed class LanguageServices : ILanguageServices
     private void InvalidateCompilerCache()
     {
         compilerDiagnostics = null;
+        notFullyInitialized = false;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh)
@@ -754,7 +758,8 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        var ideDiagnostics = TryGetDocument(modelUri, out var document)
+        Document? document = null;
+        var ideDiagnostics = !notFullyInitialized && TryGetDocument(modelUri, out document)
             ? await document.GetDiagnosticsAsync()
             : [];
 

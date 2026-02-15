@@ -30,6 +30,24 @@ public sealed record CompilationInput
     public CompilationPreferences Preferences { get; init; } = CompilationPreferences.Default;
 }
 
+[ProtoContract]
+public enum BuildConfiguration
+{
+    Release,
+    Debug,
+}
+
+public sealed record CompilerConfiguration
+{
+    public static CompilerConfiguration Empty => field ??= new();
+
+    public string? Configuration { get; init; }
+    public string? RoslynVersion { get; init; }
+    public BuildConfiguration RoslynConfiguration { get; init; }
+    public string? RazorVersion { get; init; }
+    public BuildConfiguration RazorConfiguration { get; init; }
+}
+
 /// <summary>
 /// These can be saved locally as user's preferences and
 /// also are saved with the input as they affect the output.

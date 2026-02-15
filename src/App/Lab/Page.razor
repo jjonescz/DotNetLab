@@ -1374,7 +1374,7 @@
 
         if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput);
 
             // Mark as outdated if we loaded with different preferences.
             if (preferencesDiffer)
@@ -1393,12 +1393,12 @@
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
+    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
@@ -1423,7 +1423,7 @@
         };
         StateHasChanged();
 
-        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(output))
+        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(config, output))
         {
             await DisplaySquigglesAsync();
         }
