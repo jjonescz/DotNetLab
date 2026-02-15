@@ -346,7 +346,7 @@ public static class MonacoConversions
         return range is null ? "[..)" : $"[{range.StartLineNumber}:{range.StartColumn}..{range.EndLineNumber}:{range.EndColumn})";
     }
 
-    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, SourceText text)
+    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions)
     {
         // VS implements a "soft" vs "hard" suggestion mode. The "soft" suggestion mode is when the completion list is shown,
         // but the user has to press enter to insert the completion. The "hard" suggestion mode is when the completion list is
@@ -370,9 +370,10 @@ public static class MonacoConversions
             completionItemsBuilder.Add(item);
         }
 
+        // Range is intentionally left blank, so Monaco properly applies "insert" suggestion mode,
+        // i.e., in a case like `[Obs$$class C` the `class` suffix is preserved and we get `[Obsolete$$class C` after the completion is applied.
         return new MonacoCompletionList
         {
-            Range = completions.Span.ToRange(text.Lines),
             Suggestions = completionItemsBuilder.DrainToImmutable(),
         };
     }

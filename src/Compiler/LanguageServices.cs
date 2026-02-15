@@ -136,7 +136,7 @@ internal sealed class LanguageServices : ILanguageServices
             lastCompletions = (document.Id, completions);
             var time1 = sw.ElapsedMilliseconds;
             sw.Restart();
-            var result = completions.ToCompletionList(text);
+            var result = completions.ToCompletionList();
             var time2 = sw.ElapsedMilliseconds;
             logger.LogDebug("Got completions ({Count}) for {Position} in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, position.Stringify(), time1.SeparateThousands(), time2.SeparateThousands());
             return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
