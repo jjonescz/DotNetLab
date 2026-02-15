@@ -122,7 +122,7 @@ partial class Page
             editingUserPreferences = loadPreferences;
             activeInputTabId = IndexToInputTabId(activeIndex);
             currentInput = selectInput;
-            selectedOutputType = savedState.SelectedOutputType;
+            DisplayOutputType = savedState.SelectedOutputType;
         }
 
         // Dispose old inputs.
@@ -245,7 +245,7 @@ internal sealed record SavedState
     public static SavedState CSharp { get; } = defaults with
     {
         Inputs = [InitialCode.CSharp.ToInputCode()],
-        SelectedOutputType = "run",
+        SelectedOutputType = "cs",
     };
 
     public static SavedState Razor { get; } = defaults with

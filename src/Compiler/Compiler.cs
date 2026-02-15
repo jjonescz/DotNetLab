@@ -351,7 +351,6 @@ public sealed class Compiler(
                         Label = "C#",
                         Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe().GetGeneratedCode() ?? "").Serialize(),
-                        Priority = 1,
                     },
                     new()
                     {
@@ -445,7 +444,6 @@ public sealed class Compiler(
                             : error;
                         return output;
                     },
-                    Priority = 1,
                 },
                 new()
                 {
@@ -453,7 +451,6 @@ public sealed class Compiler(
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
                     Language = CompiledAssembly.CSharpLanguageId,
                     EagerText = diagnosticsText,
-                    Priority = numErrors > 0 ? 2 : 0,
                 },
             ])
         {

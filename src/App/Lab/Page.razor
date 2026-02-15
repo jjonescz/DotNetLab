@@ -212,7 +212,7 @@
             @* NOTE: @key is needed - otherwise, when AllOutputs change,
             the FluentTabs might render incorrect selected tab
             even though ActiveTabId is set correctly (probably a bug). *@
-            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
+            <FluentTabs @bind-ActiveTabId="DisplayOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
                         Style="padding: 0 0.2em">
                 @foreach (var output in AllOutputs)
                 {
@@ -245,7 +245,7 @@
             @if (OutputHasPreferences)
             {
                 <div style="margin: 0.5em 0.5em 0.7em 0.5em">
-                    @switch (selectedOutputType)
+                    @switch (DisplayOutputType)
                     {
                         case "tree":
                             {
@@ -325,7 +325,8 @@
     private StandaloneCodeEditor outputEditor = null!;
     private Input? currentInput;
     private EditorState? currentOutput;
-    private string? selectedOutputType;
+    private string? userSelectedOutputType;
+    private bool temporarilyShowErrorListIfOutputTextEmpty;
     private int urlCopiedToken;
     private bool urlCopied;
     private bool compilationInProgress;
@@ -434,6 +435,32 @@
         get => AllOutputs.Select(o => o.Type).JoinToString(",");
     }
 
+    private bool TemporarilyShowErrorList
+    {
+        get
+        {
+            return temporarilyShowErrorListIfOutputTextEmpty &&
+                userSelectedOutputType is { } outputType &&
+                GetOutput(outputType) is { } output &&
+                HasEmptyText(output) == true;
+        }
+    }
+
+    private string? DisplayOutputType
+    {
+        get
+        {
+            return TemporarilyShowErrorList
+                ? CompiledAssembly.DiagnosticsOutputType
+                : userSelectedOutputType;
+        }
+        set
+        {
+            userSelectedOutputType = value;
+            temporarilyShowErrorListIfOutputTextEmpty = false;
+        }
+    }
+
     /// <remarks>
     /// We don't check equality of last compiled input and current input
     /// because we might not have current input fully loaded
@@ -443,7 +470,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasPreferences
-        => selectedOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
+        => DisplayOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1024,7 +1051,7 @@
                 .ToList();
         }
     }
-    
+
     private Task OnInputTabClickAsync()
     {
         return inputEditor.Focus();
@@ -1046,14 +1073,14 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
-        if (selectedOutputType is null ||
-            GetOutput(selectedOutputType) is not { } output ||
-            HasEmptyText(output) == true)
+        // Prefer C# output, or auto-select the first one available.
+        if (userSelectedOutputType is null || GetOutput(userSelectedOutputType) is null)
         {
-            selectedOutputType = !AllOutputs.Any()
-                ? null
-                : AllOutputs.MaxBy(static o => o.Priority)!.Type;
+            userSelectedOutputType = AllOutputs.FirstOrDefault(o => o.Type is "cs" or "gcs")?.Type
+                ?? AllOutputs.FirstOrDefault()?.Type;
         }
+
+        temporarilyShowErrorListIfOutputTextEmpty = compiled is { Output.NumErrors: > 0 };
 
         await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
     }
@@ -1069,7 +1096,8 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
-        if (compiled is not { } comp || selectedOutputType is null)
+        var outputType = DisplayOutputType;
+        if (compiled is not { } comp || outputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
             await setModelAsync(null, "", new() { Text = "" });
@@ -1077,7 +1105,6 @@
         else
         {
             var compiledOutput = comp.Output;
-            var outputType = selectedOutputType;
             var outputInfo = GetOutput(outputType);
             var (result, resolvedLazyText) = await LoadOutputTextAsync(outputInfo);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
@@ -1088,6 +1115,12 @@
                 // If a lazy text has been populated, re-cache.
                 TryStoreInCache(state, compiledOutput);
             }
+        }
+
+        // If we are temporarily switching to error list after we found out this output is empty, need to refresh that target output text.
+        if (TemporarilyShowErrorList && outputType != CompiledAssembly.DiagnosticsOutputType)
+        {
+            await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
         }
 
         static bool shouldPerformOutputAction(OutputActionMode mode, bool resolvedLazyText)
@@ -1107,7 +1140,7 @@
                 // After changing the selected input, we call this method anyway to update outputs,
                 // so we can save both selected input and output here.
                 SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
-                SelectedOutputType = selectedOutputType,
+                SelectedOutputType = userSelectedOutputType,
 
                 // If state is going to be cached, update the timestamp so the cache key is unique
                 // (it is not possible to overwrite cache entries

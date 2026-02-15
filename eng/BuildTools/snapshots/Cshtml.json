@@ -16,7 +16,6 @@
         {
           "Type": "gcs",
           "Label": "C#",
-          "Priority": 1,
           "Language": "csharp",
           "Text": "Cshtml.Files.TestPage_002E_cshtml.Outputs.2.Text.txt"
         },
@@ -67,7 +66,6 @@
     {
       "Type": "run",
       "Label": "Run",
-      "Priority": 1,
       "Text": "Cshtml.GlobalOutputs.5.Text.txt"
     },
     {

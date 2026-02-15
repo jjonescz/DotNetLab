@@ -303,7 +303,6 @@ public sealed class CompiledFileOutput
 
     public required string Type { get; init; }
     public required string Label { get; init; }
-    public int Priority { get; init; }
     public string? Language { get; init; }
 
     /// <remarks>
