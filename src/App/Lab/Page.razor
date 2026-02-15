@@ -1019,7 +1019,7 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        if (!LanguageServices.Enabled)
+        if (!LanguageServices.Enabled || !await LanguageServices.UpdateDiagnosticsAfterCompilationAsync())
         {
             using var _ = await inputsLock.LockAsync();
 
@@ -1038,10 +1038,6 @@
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
-        }
-        else
-        {
-            LanguageServices.UpdateDiagnosticsAfterCompilation();
         }
 
         static List<MarkerData> toMarkerData(IEnumerable<CompilerDiagnosticData> diagnostics)
@@ -1427,11 +1423,7 @@
         };
         StateHasChanged();
 
-        if (LanguageServices.Enabled)
-        {
-            await LanguageServices.OnCachedCompilationLoadedAsync(output);
-        }
-        else
+        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(output))
         {
             await DisplaySquigglesAsync();
         }
