@@ -283,7 +283,19 @@ internal sealed class LanguageServicesClient(
 
     public async Task<bool> OnCachedCompilationLoadedAsync(CompiledAssembly output)
     {
-        await worker.OnCachedCompilationLoadedAsync(output);
+        try
+        {
+            await worker.OnCachedCompilationLoadedAsync(output);
+        }
+        catch (Exception ex)
+        {
+            // Avoid crashing the whole front-end when language services are crashing (can happen if mismatched compiler version is loaded
+            // in which case we still want to allow users to use the compiler even though language services are busted).
+            logger.LogError(ex, "Informing language services about cached compilation failed");
+
+            return false;
+        }
+
         return await UpdateDiagnosticsAfterCompilationAsync();
     }
 
