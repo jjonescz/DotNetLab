@@ -48,7 +48,8 @@
             @* Load URL button *@
             <FluentButton OnClick="() => LoadUrlFromClipboardAsync()" Title="Load URL from clipboard"
                           Style="border-top-left-radius: 0; border-bottom-left-radius: 0"
-                          IconStart="@(new Icons.Regular.Size20.ClipboardPaste())" />
+                          IconStart="@(new Icons.Regular.Size20.ClipboardPaste())"
+                          Disabled="!canPasteUrlFromClipboard" />
         </FluentStack>
 
         @* Compile button *@
@@ -329,6 +330,7 @@
     private bool temporarilyShowErrorListIfOutputTextEmpty;
     private int urlCopiedToken;
     private bool urlCopied;
+    private bool canPasteUrlFromClipboard = true;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
     private bool outputLoading;
@@ -597,13 +599,36 @@
     public async Task LoadUrlFromClipboardAsync()
     {
         var text = await module.InvokeAsync<string>("getClipboardText");
-        text ??= "";
-        var hashIndex = text.IndexOf('#');
-        var slug = hashIndex >= 0 ? text[(hashIndex + 1)..] : text;
-        if (NavigateToSlug(slug))
+        if (NavigateToSlug(GetSlugFromClipboardText(text)))
         {
             await LoadStateFromUrlAsync();
         }
+    }
+
+    [JSInvokable]
+    public void OnClipboardTextChanged(string? text)
+    {
+        var slug = GetSlugFromClipboardText(text);
+        canPasteUrlFromClipboard = TryGetSavedStateFromSlug(slug, out _);
+        StateHasChanged();
+    }
+
+    private static string GetSlugFromClipboardText(string? text)
+    {
+        text ??= "";
+        var hashIndex = text.IndexOf('#');
+        return hashIndex >= 0 ? text[(hashIndex + 1)..] : text;
+    }
+
+    private static bool TryGetSavedStateFromSlug(string slug, out SavedState? state)
+    {
+        if (WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState))
+        {
+            state = wellKnownState;
+            return true;
+        }
+
+        return Compressor.TryUncompress(slug, out state, out _);
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)

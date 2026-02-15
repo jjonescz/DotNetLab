@@ -18,22 +18,39 @@ internal static class Compressor
 
     public static SavedState Uncompress(string slug)
     {
+        if (TryUncompress(slug, out var state, out var exception))
+        {
+            return state;
+        }
+
+        return new SavedState
+        {
+            Inputs =
+            [
+                new InputCode { FileName = "(error)", Text = $"Error when parsing '{slug}':\n{exception}" },
+            ],
+        };
+    }
+
+    public static bool TryUncompress(
+        string slug,
+        [NotNullWhen(true)] out SavedState? state,
+        [NotNullWhen(false)] out Exception? exception)
+    {
         try
         {
             var bytes = Base64Url.DecodeFromChars(slug);
             using var ms = new MemoryStream(bytes);
             using var compressor = new DeflateStream(ms, CompressionMode.Decompress);
-            return Serializer.Deserialize<SavedState>(compressor);
+            state = Serializer.Deserialize<SavedState>(compressor);
+            exception = null;
+            return true;
         }
         catch (Exception ex)
         {
-            return new SavedState
-            {
-                Inputs =
-                [
-                    new InputCode { FileName = "(error)", Text = ex.ToString() },
-                ],
-            };
+            state = null;
+            exception = ex;
+            return false;
         }
     }
 }
