@@ -5,6 +5,8 @@ namespace DotNetLab;
 
 public interface ILanguageServices
 {
+    CompiledAssembly? CompilerCache { get; }
+
     Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, BlazorMonaco.Languages.CompletionContext context, CancellationToken cancellationToken);
     Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item, CancellationToken cancellationToken);
     Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken);

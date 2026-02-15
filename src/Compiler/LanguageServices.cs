@@ -617,6 +617,8 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    CompiledAssembly? ILanguageServices.CompilerCache => compilerDiagnostics;
+
     private void InvalidateCompilerCache()
     {
         compilerDiagnostics = null;
@@ -756,14 +758,13 @@ internal sealed class LanguageServices : ILanguageServices
             ? await document.GetDiagnosticsAsync()
             : [];
 
-        DiagnosticData[] compilerDiagnostics;
+        IEnumerable<CompilerDiagnosticData> compilerDiagnostics;
         if (this.compilerDiagnostics is { } compiled &&
             compiled.Diagnostics.Length > 0 &&
             CompiledAssembly.TryParseInputModelUri(modelUri, out var fileName))
         {
-            compilerDiagnostics = compiled.Diagnostics
-                .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
-                .ToArray();
+            compilerDiagnostics = compiled.GetDiagnosticsForFile(fileName,
+                configuration: document?.Project.Id == configurationProjectId);
         }
         else
         {
@@ -771,10 +772,10 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         var filteredIdeDiagnostics = ideDiagnostics
-            .Except(compilerDiagnostics, s_diagnosticDataComparer);
+            .Except(compilerDiagnostics.Select(static d => d.Data), s_diagnosticDataComparer);
 
         return compilerDiagnostics.Select(static d => d.ToMarkerData())
-            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(downgradeInfo: true)))
+            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo: true)))
             .ToImmutableArray();
     }
 

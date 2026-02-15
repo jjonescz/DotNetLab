@@ -485,8 +485,8 @@ public sealed class Compiler(
                 assemblyName: $"Configuration_{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
                 syntaxTrees:
                 [
-                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());

@@ -62,23 +62,32 @@ public static class RoslynWorkspaceAccessors
             CancellationToken.None);
         return diagnostics
             .Where(static d => !d.IsSuppressed)
-            .SelectAsArray(static d => new DiagnosticData(
-                FilePath: d.DataLocation.MappedFileSpan.Path,
-                Severity: d.Severity switch
-                {
-                    DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
-                    DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
-                    DiagnosticSeverity.Hidden => DiagnosticDataSeverity.Hint,
-                    _ => DiagnosticDataSeverity.Info,
-                },
-                Id: d.Id,
-                HelpLinkUri: d.HelpLink,
-                Message: d.Message ?? string.Empty,
-                StartLineNumber: d.DataLocation.MappedFileSpan.StartLinePosition.Line + 1,
-                StartColumn: d.DataLocation.MappedFileSpan.StartLinePosition.Character + 1,
-                EndLineNumber: d.DataLocation.MappedFileSpan.EndLinePosition.Line + 1,
-                EndColumn: d.DataLocation.MappedFileSpan.EndLinePosition.Character + 1,
-                Tags: d.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary) ? DiagnosticTags.Unnecessary : DiagnosticTags.None));
+            .SelectAsArray(static d =>
+            {
+                var hasMappedLocation = d.DataLocation.MappedFileSpan != d.DataLocation.UnmappedFileSpan;
+                return new DiagnosticData(
+                    FilePath: d.DataLocation.MappedFileSpan.Path,
+                    Severity: d.Severity switch
+                    {
+                        DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
+                        DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
+                        DiagnosticSeverity.Hidden => DiagnosticDataSeverity.Hint,
+                        _ => DiagnosticDataSeverity.Info,
+                    },
+                    Id: d.Id,
+                    HelpLinkUri: d.HelpLink,
+                    Message: d.Message ?? string.Empty,
+                    StartLineNumber: d.DataLocation.MappedFileSpan.StartLinePosition.Line + 1,
+                    StartColumn: d.DataLocation.MappedFileSpan.StartLinePosition.Character + 1,
+                    EndLineNumber: d.DataLocation.MappedFileSpan.EndLinePosition.Line + 1,
+                    EndColumn: d.DataLocation.MappedFileSpan.EndLinePosition.Character + 1,
+                    UnmappedFilePath: hasMappedLocation ? d.DataLocation.UnmappedFileSpan.Path : null,
+                    UnmappedStartLineNumber: hasMappedLocation ? d.DataLocation.UnmappedFileSpan.StartLinePosition.Line + 1 : null,
+                    UnmappedStartColumn: hasMappedLocation ? d.DataLocation.UnmappedFileSpan.StartLinePosition.Character + 1 : null,
+                    UnmappedEndLineNumber: hasMappedLocation ? d.DataLocation.UnmappedFileSpan.EndLinePosition.Line + 1 : null,
+                    UnmappedEndColumn: hasMappedLocation ? d.DataLocation.UnmappedFileSpan.EndLinePosition.Character + 1 : null,
+                    Tags: d.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary) ? DiagnosticTags.Unnecessary : DiagnosticTags.None);
+            });
     }
 
     public static DocumentTextDifferencingService GetDocumentTextDifferencingService(this SolutionServices services)

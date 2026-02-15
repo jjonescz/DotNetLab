@@ -1026,7 +1026,7 @@
             foreach (var input in inputs)
             {
                 List<MarkerData> markers = compiled is { } result
-                    ? toMarkerData(result.Output.GetDiagnosticsForFile(input.FileName))
+                    ? toMarkerData(result.Output.GetDiagnosticsForFile(input.FileName, configuration: false))
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
             }
@@ -1034,7 +1034,7 @@
             if (configuration != null)
             {
                 List<MarkerData> markers = compiled is { } result
-                    ? toMarkerData(result.Output.GetDiagnosticsForConfiguration())
+                    ? toMarkerData(result.Output.GetDiagnosticsForFile(CompiledAssembly.ConfigurationFileName, configuration: true))
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
@@ -1044,10 +1044,10 @@
             LanguageServices.UpdateDiagnosticsAfterCompilation();
         }
 
-        static List<MarkerData> toMarkerData(IEnumerable<DiagnosticData> diagnostics)
+        static List<MarkerData> toMarkerData(IEnumerable<CompilerDiagnosticData> diagnostics)
         {
             return diagnostics
-                .Select(static d => d.ToMarkerData(downgradeInfo: false))
+                .Select(static d => d.ToMarkerData())
                 .ToList();
         }
     }

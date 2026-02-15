@@ -214,7 +214,7 @@ public static class SimpleMonacoConversions
         }
     }
 
-    public static MarkerData ToMarkerData(this DiagnosticData d, bool downgradeInfo = false)
+    public static MarkerData ToMarkerData(this DiagnosticData d, bool unmapped = false, bool downgradeInfo = false)
     {
         return new MarkerData
         {
@@ -224,10 +224,10 @@ public static class SimpleMonacoConversions
                 TargetUri = d.HelpLinkUri,
             },
             Message = d.Message,
-            StartLineNumber = d.StartLineNumber,
-            StartColumn = d.StartColumn,
-            EndLineNumber = d.EndLineNumber,
-            EndColumn = d.EndColumn,
+            StartLineNumber = unmapped ? d.UnmappedStartLineNumber!.Value : d.StartLineNumber,
+            StartColumn = unmapped ? d.UnmappedStartColumn!.Value : d.StartColumn,
+            EndLineNumber = unmapped ? d.UnmappedEndLineNumber!.Value : d.EndLineNumber,
+            EndColumn = unmapped ? d.UnmappedEndColumn!.Value : d.EndColumn,
             Severity = d.Severity switch
             {
                 DiagnosticDataSeverity.Error => MarkerSeverity.Error,

@@ -88,7 +88,9 @@ public static class RoslynAccessors
                 var l = d.Location;
                 if (l.IsInSource)
                 {
-                    var currentFileName = l.SourceTree.FilePath;
+                    var currentFileName = l.GetMappedLineSpan() is { IsValid: true } mapped
+                        ? mapped.Path
+                        : l.SourceTree.FilePath;
 
                     if (currentFileName == null)
                     {
