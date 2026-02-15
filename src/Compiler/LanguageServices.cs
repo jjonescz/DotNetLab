@@ -33,6 +33,7 @@ internal sealed class LanguageServices : ILanguageServices
     private CompiledAssembly? compilerDiagnostics;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
+    private bool notFullyInitialized;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
@@ -135,7 +136,7 @@ internal sealed class LanguageServices : ILanguageServices
             lastCompletions = (document.Id, completions);
             var time1 = sw.ElapsedMilliseconds;
             sw.Restart();
-            var result = completions.ToCompletionList(text);
+            var result = completions.ToCompletionList();
             var time2 = sw.ElapsedMilliseconds;
             logger.LogDebug("Got completions ({Count}) for {Position} in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, position.Stringify(), time1.SeparateThousands(), time2.SeparateThousands());
             return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
@@ -514,14 +515,16 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public void OnCachedCompilationLoaded(CompiledAssembly output)
+    public void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output)
     {
         compilerDiagnostics = output;
+        notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
     }
 
     public async void OnCompilationFinished()
     {
         compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
+        notFullyInitialized = false;
 
         try
         {
@@ -617,9 +620,12 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    CompiledAssembly? ILanguageServices.CompilerCache => compilerDiagnostics;
+
     private void InvalidateCompilerCache()
     {
         compilerDiagnostics = null;
+        notFullyInitialized = false;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh)
@@ -752,18 +758,18 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        var ideDiagnostics = TryGetDocument(modelUri, out var document)
+        Document? document = null;
+        var ideDiagnostics = !notFullyInitialized && TryGetDocument(modelUri, out document)
             ? await document.GetDiagnosticsAsync()
             : [];
 
-        DiagnosticData[] compilerDiagnostics;
+        IEnumerable<CompilerDiagnosticData> compilerDiagnostics;
         if (this.compilerDiagnostics is { } compiled &&
             compiled.Diagnostics.Length > 0 &&
             CompiledAssembly.TryParseInputModelUri(modelUri, out var fileName))
         {
-            compilerDiagnostics = compiled.Diagnostics
-                .Where(d => d.FilePath == compiled.BaseDirectory + fileName)
-                .ToArray();
+            compilerDiagnostics = compiled.GetDiagnosticsForFile(fileName,
+                configuration: document?.Project.Id == configurationProjectId);
         }
         else
         {
@@ -771,10 +777,10 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         var filteredIdeDiagnostics = ideDiagnostics
-            .Except(compilerDiagnostics, s_diagnosticDataComparer);
+            .Except(compilerDiagnostics.Select(static d => d.Data), s_diagnosticDataComparer);
 
         return compilerDiagnostics.Select(static d => d.ToMarkerData())
-            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(downgradeInfo: true)))
+            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo: true)))
             .ToImmutableArray();
     }
 

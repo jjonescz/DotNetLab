@@ -48,7 +48,8 @@
             @* Load URL button *@
             <FluentButton OnClick="() => LoadUrlFromClipboardAsync()" Title="Load URL from clipboard"
                           Style="border-top-left-radius: 0; border-bottom-left-radius: 0"
-                          IconStart="@(new Icons.Regular.Size20.ClipboardPaste())" />
+                          IconStart="@(new Icons.Regular.Size20.ClipboardPaste())"
+                          Disabled="!canPasteUrlFromClipboard" />
         </FluentStack>
 
         @* Compile button *@
@@ -148,7 +149,8 @@
                 @foreach (var (index, input) in inputs.Index())
                 {
                     <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
-                               LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)" />
+                               LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)"
+                               @onclick="OnInputTabClickAsync" />
                 }
 
                 @* Special configuration file *@
@@ -211,12 +213,12 @@
             @* NOTE: @key is needed - otherwise, when AllOutputs change,
             the FluentTabs might render incorrect selected tab
             even though ActiveTabId is set correctly (probably a bug). *@
-            <FluentTabs @bind-ActiveTabId="selectedOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
+            <FluentTabs @bind-ActiveTabId="DisplayOutputType" @bind-ActiveTabId:after="UpdateOutputDisplayAsync" @key="AllOutputsKey"
                         Style="padding: 0 0.2em">
                 @foreach (var output in AllOutputs)
                 {
                     @* NOTE: Label is shown in the overflow menu, so it needs to be set even though Header is also set. *@
-                    <FluentTab Id="@output.Type" Label="@output.Label">
+                    <FluentTab Id="@output.Type" Label="@output.Label" @onclick="OnOutputTabClickAsync">
                         <Header>
                             <span title="@output.Label (@output.Type)">@output.ShortLabel</span>
 
@@ -244,7 +246,7 @@
             @if (OutputHasPreferences)
             {
                 <div style="margin: 0.5em 0.5em 0.7em 0.5em">
-                    @switch (selectedOutputType)
+                    @switch (DisplayOutputType)
                     {
                         case "tree":
                             {
@@ -324,9 +326,11 @@
     private StandaloneCodeEditor outputEditor = null!;
     private Input? currentInput;
     private EditorState? currentOutput;
-    private string? selectedOutputType;
+    private string? userSelectedOutputType;
+    private bool temporarilyShowErrorListIfOutputTextEmpty;
     private int urlCopiedToken;
     private bool urlCopied;
+    private bool canPasteUrlFromClipboard = true;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
     private bool outputLoading;
@@ -433,6 +437,32 @@
         get => AllOutputs.Select(o => o.Type).JoinToString(",");
     }
 
+    private bool TemporarilyShowErrorList
+    {
+        get
+        {
+            return temporarilyShowErrorListIfOutputTextEmpty &&
+                userSelectedOutputType is { } outputType &&
+                GetOutput(outputType) is { } output &&
+                HasEmptyText(output) == true;
+        }
+    }
+
+    private string? DisplayOutputType
+    {
+        get
+        {
+            return TemporarilyShowErrorList
+                ? CompiledAssembly.DiagnosticsOutputType
+                : userSelectedOutputType;
+        }
+        set
+        {
+            userSelectedOutputType = value;
+            temporarilyShowErrorListIfOutputTextEmpty = false;
+        }
+    }
+
     /// <remarks>
     /// We don't check equality of last compiled input and current input
     /// because we might not have current input fully loaded
@@ -442,7 +472,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasPreferences
-        => selectedOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
+        => DisplayOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override async Task OnInitializedAsync()
     {
@@ -484,6 +514,8 @@
         await settings.InitializeAsync();
 
         await LoadStateFromUrlAsync();
+
+        await inputEditor.Focus();
 
         if (!editorInitialized.TrySetResult())
         {
@@ -567,13 +599,36 @@
     public async Task LoadUrlFromClipboardAsync()
     {
         var text = await module.InvokeAsync<string>("getClipboardText");
-        text ??= "";
-        var hashIndex = text.IndexOf('#');
-        var slug = hashIndex >= 0 ? text[(hashIndex + 1)..] : text;
-        if (NavigateToSlug(slug))
+        if (NavigateToSlug(GetSlugFromClipboardText(text)))
         {
             await LoadStateFromUrlAsync();
         }
+    }
+
+    [JSInvokable]
+    public void OnClipboardTextChanged(string? text)
+    {
+        var slug = GetSlugFromClipboardText(text);
+        canPasteUrlFromClipboard = TryGetSavedStateFromSlug(slug, out _);
+        StateHasChanged();
+    }
+
+    private static string GetSlugFromClipboardText(string? text)
+    {
+        text ??= "";
+        var hashIndex = text.IndexOf('#');
+        return hashIndex >= 0 ? text[(hashIndex + 1)..] : text;
+    }
+
+    private static bool TryGetSavedStateFromSlug(string slug, out SavedState? state)
+    {
+        if (WellKnownSlugs.ShorthandToState.TryGetValue(slug, out var wellKnownState))
+        {
+            state = wellKnownState;
+            return true;
+        }
+
+        return Compressor.TryUncompress(slug, out state, out _);
     }
 
     private StandaloneEditorConstructionOptions InputConstructionOptions(StandaloneCodeEditor editor)
@@ -905,8 +960,9 @@
             if (formattedCode != currentCode)
             {
                 var viewState = await inputEditor.SaveViewStateAsync(module);
-                await input.Model.SetValue(formattedCode);
+                await BlazorMonacoInterop.SetModelValueUndoable(inputEditor.Id, input.Model.Uri, formattedCode);
                 await inputEditor.RestoreViewStateAsync(viewState, module);
+                await inputEditor.Focus();
             }
         }
         catch (Exception ex)
@@ -989,14 +1045,14 @@
 
     public async Task DisplaySquigglesAsync()
     {
-        if (!LanguageServices.Enabled)
+        if (!LanguageServices.Enabled || !await LanguageServices.UpdateDiagnosticsAfterCompilationAsync())
         {
             using var _ = await inputsLock.LockAsync();
 
             foreach (var input in inputs)
             {
                 List<MarkerData> markers = compiled is { } result
-                    ? toMarkerData(result.Output.GetDiagnosticsForFile(input.FileName))
+                    ? toMarkerData(result.Output.GetDiagnosticsForFile(input.FileName, configuration: false))
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, input.Model, MonacoConstants.MarkersOwner, markers);
             }
@@ -1004,22 +1060,28 @@
             if (configuration != null)
             {
                 List<MarkerData> markers = compiled is { } result
-                    ? toMarkerData(result.Output.GetDiagnosticsForConfiguration())
+                    ? toMarkerData(result.Output.GetDiagnosticsForFile(CompiledAssembly.ConfigurationFileName, configuration: true))
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(JSRuntime, configuration.Model, MonacoConstants.MarkersOwner, markers);
             }
         }
-        else
-        {
-            LanguageServices.UpdateDiagnosticsAfterCompilation();
-        }
 
-        static List<MarkerData> toMarkerData(IEnumerable<DiagnosticData> diagnostics)
+        static List<MarkerData> toMarkerData(IEnumerable<CompilerDiagnosticData> diagnostics)
         {
             return diagnostics
-                .Select(static d => d.ToMarkerData(downgradeInfo: false))
+                .Select(static d => d.ToMarkerData())
                 .ToList();
         }
+    }
+
+    private Task OnInputTabClickAsync()
+    {
+        return inputEditor.Focus();
+    }
+
+    private Task OnOutputTabClickAsync()
+    {
+        return outputEditor.Focus();
     }
 
     private async Task UpdateOutputDisplayAsync()
@@ -1033,14 +1095,14 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
-        if (selectedOutputType is null ||
-            GetOutput(selectedOutputType) is not { } output ||
-            HasEmptyText(output) == true)
+        // Prefer C# output, or auto-select the first one available.
+        if (userSelectedOutputType is null || GetOutput(userSelectedOutputType) is null)
         {
-            selectedOutputType = !AllOutputs.Any()
-                ? null
-                : AllOutputs.MaxBy(static o => o.Priority)!.Type;
+            userSelectedOutputType = AllOutputs.FirstOrDefault(o => o.Type is "cs" or "gcs")?.Type
+                ?? AllOutputs.FirstOrDefault()?.Type;
         }
+
+        temporarilyShowErrorListIfOutputTextEmpty = compiled is { Output.NumErrors: > 0 };
 
         await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
     }
@@ -1056,7 +1118,8 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
-        if (compiled is not { } comp || selectedOutputType is null)
+        var outputType = DisplayOutputType;
+        if (compiled is not { } comp || outputType is null)
         {
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText: false));
             await setModelAsync(null, "", new() { Text = "" });
@@ -1064,7 +1127,6 @@
         else
         {
             var compiledOutput = comp.Output;
-            var outputType = selectedOutputType;
             var outputInfo = GetOutput(outputType);
             var (result, resolvedLazyText) = await LoadOutputTextAsync(outputInfo);
             var state = await saveStateAsync(updateTimestamp: shouldPerformOutputAction(updateTimestampMode, resolvedLazyText));
@@ -1075,6 +1137,12 @@
                 // If a lazy text has been populated, re-cache.
                 TryStoreInCache(state, compiledOutput);
             }
+        }
+
+        // If we are temporarily switching to error list after we found out this output is empty, need to refresh that target output text.
+        if (TemporarilyShowErrorList && outputType != CompiledAssembly.DiagnosticsOutputType)
+        {
+            await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
         }
 
         static bool shouldPerformOutputAction(OutputActionMode mode, bool resolvedLazyText)
@@ -1094,7 +1162,7 @@
                 // After changing the selected input, we call this method anyway to update outputs,
                 // so we can save both selected input and output here.
                 SelectedInputIndex = activeInputTabId is { } tabId ? InputTabIdToIndex(tabId) : 0,
-                SelectedOutputType = selectedOutputType,
+                SelectedOutputType = userSelectedOutputType,
 
                 // If state is going to be cached, update the timestamp so the cache key is unique
                 // (it is not possible to overwrite cache entries
@@ -1332,7 +1400,7 @@
 
         if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(input, output, new(null), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput);
 
             // Mark as outdated if we loaded with different preferences.
             if (preferencesDiffer)
@@ -1351,12 +1419,12 @@
         var result = await Cache.LoadAsync(state);
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
+    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
     {
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
@@ -1381,11 +1449,7 @@
         };
         StateHasChanged();
 
-        if (LanguageServices.Enabled)
-        {
-            await LanguageServices.OnCachedCompilationLoadedAsync(output);
-        }
-        else
+        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(config, output))
         {
             await DisplaySquigglesAsync();
         }

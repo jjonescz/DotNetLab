@@ -922,6 +922,16 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     "TargetFramework",
                     static async (context, info, value) =>
                     {
+                        if (value.Span.Equals("empty", StringComparison.OrdinalIgnoreCase))
+                        {
+                            context.Config.References(_ => new()
+                            {
+                                Metadata = [],
+                                Assemblies = [],
+                            });
+                            return;
+                        }
+
                         var downloader = context.Services.GetRequiredService<IRefAssemblyDownloader>();
 
                         NuGetResults result;
@@ -958,6 +968,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     },
                     Constant(
                     [
+                        "empty",
                         "net10.0",
                         "net9.0",
                         "net8.0",

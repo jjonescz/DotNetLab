@@ -136,7 +136,7 @@ public sealed class Compiler(
 
         // If we have a configuration, compile and execute it.
         ImmutableArray<Diagnostic> configDiagnostics;
-        ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssembliesUsed = null;
+        ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies = null;
         if (compilationInput.Configuration is { } configuration)
         {
             if (!executeConfiguration(configuration, out configDiagnostics))
@@ -351,7 +351,6 @@ public sealed class Compiler(
                         Label = "C#",
                         Language = CompiledAssembly.CSharpLanguageId,
                         EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe().GetGeneratedCode() ?? "").Serialize(),
-                        Priority = 1,
                     },
                     new()
                     {
@@ -445,7 +444,6 @@ public sealed class Compiler(
                             : error;
                         return output;
                     },
-                    Priority = 1,
                 },
                 new()
                 {
@@ -453,7 +451,6 @@ public sealed class Compiler(
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
                     Language = CompiledAssembly.CSharpLanguageId,
                     EagerText = diagnosticsText,
-                    Priority = numErrors > 0 ? 2 : 0,
                 },
             ])
         {
@@ -469,7 +466,7 @@ public sealed class Compiler(
             return new LiveCompilationResult
             {
                 CompiledAssembly = result,
-                CompilerAssemblies = compilerAssembliesUsed,
+                CompilerAssemblies = compilerAssemblies,
                 CSharpParseOptions = Config.Instance.HasParseOptions ? parseOptions : null,
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
                 AdditionalSources = additionalSyntaxTrees,
@@ -488,8 +485,8 @@ public sealed class Compiler(
                 assemblyName: $"Configuration_{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
                 syntaxTrees:
                 [
-                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8)
                 ],
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
@@ -498,7 +495,7 @@ public sealed class Compiler(
 
             if (emitStreams != null)
             {
-                compilerAssembliesUsed = assemblies;
+                compilerAssemblies = assemblies;
             }
             else
             {
@@ -508,12 +505,15 @@ public sealed class Compiler(
                 if (emitStreams != null)
                 {
                     diagnostics = diagnosticsWithBuiltInReferences;
-                    compilerAssembliesUsed = builtInAssemblies;
+                    compilerAssemblies = builtInAssemblies;
                 }
             }
 
             if (emitStreams == null)
             {
+                // Return some compiler assemblies anyway, so language services in the Configuration file keep working.
+                compilerAssemblies = assemblies;
+
                 return false;
             }
 

@@ -241,7 +241,7 @@ internal sealed class LanguageServicesClient(
         InvalidateCaches();
         worker.OnDidChangeWorkspace(models, refresh);
 
-        UpdateDiagnostics();
+        _ = UpdateDiagnosticsAsync();
 
         if (refresh)
         {
@@ -259,7 +259,7 @@ internal sealed class LanguageServicesClient(
         }
 
         currentModelUrl = args.NewModelUrl;
-        UpdateDiagnostics();
+        _ = UpdateDiagnosticsAsync();
     }
 
     public async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
@@ -278,25 +278,37 @@ internal sealed class LanguageServicesClient(
         }
 
         await worker.OnDidChangeModelContentAsync(modelUri: currentModelUrl, args);
-        UpdateDiagnostics();
+        _ = UpdateDiagnosticsAsync();
     }
 
-    public async Task OnCachedCompilationLoadedAsync(CompiledAssembly output)
+    public async Task<bool> OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output)
     {
-        await worker.OnCachedCompilationLoadedAsync(output);
-        UpdateDiagnosticsAfterCompilation();
+        try
+        {
+            await worker.OnCachedCompilationLoadedAsync(config, output);
+        }
+        catch (Exception ex)
+        {
+            // Avoid crashing the whole front-end when language services are crashing (can happen if mismatched compiler version is loaded
+            // in which case we still want to allow users to use the compiler even though language services are busted).
+            logger.LogError(ex, "Informing language services about cached compilation failed");
+
+            return false;
+        }
+
+        return await UpdateDiagnosticsAfterCompilationAsync();
     }
 
-    public void UpdateDiagnosticsAfterCompilation()
+    public Task<bool> UpdateDiagnosticsAfterCompilationAsync()
     {
-        UpdateDiagnostics(afterCompilation: true);
+        return UpdateDiagnosticsAsync(afterCompilation: true);
     }
 
-    private async void UpdateDiagnostics(bool afterCompilation = false)
+    private async Task<bool> UpdateDiagnosticsAsync(bool afterCompilation = false)
     {
         if (currentModelUrl == null)
         {
-            return;
+            return false;
         }
 
         try
@@ -312,10 +324,14 @@ internal sealed class LanguageServicesClient(
             },
             // Skip debounce to ensure compiler diagnostics are merged with IDE diangostics.
             skipDebounce: afterCompilation);
+
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Updating diagnostics failed");
+
+            return false;
         }
     }
 }

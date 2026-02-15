@@ -14,10 +14,63 @@
         }
     };
 
+    let lastClipboardText = null;
+    let clipboardTimerId = null;
+    let clipboardMonitoringStarted = false;
+
+    const readClipboard = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text !== lastClipboardText) {
+                lastClipboardText = text;
+                dotNetObj.invokeMethodAsync('OnClipboardTextChanged', text);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const focusHandler = () => {
+        readClipboard();
+    };
+
+    const startClipboardMonitoring = () => {
+        if (clipboardMonitoringStarted) {
+            return;
+        }
+
+        clipboardMonitoringStarted = true;
+        window.addEventListener('focus', focusHandler);
+        clipboardTimerId = setInterval(readClipboard, 1000);
+        readClipboard();
+    };
+
     document.addEventListener('keydown', keyDownHandler);
+
+    // Monitor clipboard but only once we have been granted permissions
+    // (to avoid obtrusive permission popups).
+    if (navigator.permissions?.query) {
+        navigator.permissions.query({ name: 'clipboard-read' }).then((status) => {
+            if (status.state === 'granted') {
+                startClipboardMonitoring();
+            } else {
+                status.onchange = () => {
+                    if (status.state === 'granted') {
+                        startClipboardMonitoring();
+                    }
+                };
+            }
+        });
+    }
 
     return () => {
         document.removeEventListener('keydown', keyDownHandler);
+        if (clipboardMonitoringStarted) {
+            window.removeEventListener('focus', focusHandler);
+            if (clipboardTimerId !== null) {
+                clearInterval(clipboardTimerId);
+            }
+        }
     };
 }
 

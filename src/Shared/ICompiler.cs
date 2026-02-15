@@ -1,3 +1,4 @@
+using BlazorMonaco.Editor;
 using ProtoBuf;
 using System.Runtime.Loader;
 using System.Text.Json.Serialization;
@@ -27,6 +28,24 @@ public sealed record CompilationInput
     public RazorToolchain RazorToolchain { get; init; } = RazorToolchain.SourceGeneratorOrInternalApi;
     public RazorStrategy RazorStrategy { get; init; }
     public CompilationPreferences Preferences { get; init; } = CompilationPreferences.Default;
+}
+
+[ProtoContract]
+public enum BuildConfiguration
+{
+    Release,
+    Debug,
+}
+
+public sealed record CompilerConfiguration
+{
+    public static CompilerConfiguration Empty => field ??= new();
+
+    public string? Configuration { get; init; }
+    public string? RoslynVersion { get; init; }
+    public BuildConfiguration RoslynConfiguration { get; init; }
+    public string? RazorVersion { get; init; }
+    public BuildConfiguration RazorConfiguration { get; init; }
 }
 
 /// <summary>
@@ -98,6 +117,11 @@ public sealed record DiagnosticData(
     int StartColumn,
     int EndLineNumber,
     int EndColumn,
+    string? UnmappedFilePath = null,
+    int? UnmappedStartLineNumber = null,
+    int? UnmappedStartColumn = null,
+    int? UnmappedEndLineNumber = null,
+    int? UnmappedEndColumn = null,
     DiagnosticTags Tags = DiagnosticTags.None) : IComparable<DiagnosticData>
 {
     int IComparable<DiagnosticData>.CompareTo(DiagnosticData? other) => CompareTo(other);
@@ -117,8 +141,20 @@ public sealed record DiagnosticData(
                 x.EndLineNumber,
                 x.EndColumn,
                 x.HelpLinkUri,
-                x.Message));
+                x.Message,
+                arg.excludeFilePath ? null : x.UnmappedFilePath,
+                x.UnmappedStartLineNumber,
+                x.UnmappedStartColumn,
+                x.UnmappedEndLineNumber,
+                x.UnmappedEndColumn));
     }
+}
+
+public readonly record struct CompilerDiagnosticData(DiagnosticData Data, bool Unmapped)
+{
+    public string? FilePath => Unmapped ? Data.UnmappedFilePath : Data.FilePath;
+
+    public MarkerData ToMarkerData() => Data.ToMarkerData(unmapped: Unmapped);
 }
 
 public sealed class DiagnosticDataComparer(
@@ -190,19 +226,29 @@ public sealed record CompiledAssembly(
             NumWarnings: 0);
     }
 
-    public IEnumerable<DiagnosticData> GetDiagnosticsForFile(string fileName)
+    public IEnumerable<CompilerDiagnosticData> GetDiagnosticsForFile(string fileName, bool configuration)
     {
-        return Diagnostics
-            .Skip(ConfigDiagnosticCount)
-            .Where(d => d.FilePath == BaseDirectory + fileName);
-    }
+        var filePath = BaseDirectory + fileName;
 
-    public IEnumerable<DiagnosticData> GetDiagnosticsForConfiguration()
-    {
-        var result = Diagnostics
-            .Take(ConfigDiagnosticCount);
-        Debug.Assert(result.All(static d => d.FilePath == ConfigurationFileName));
-        return result;
+        var builder = new List<CompilerDiagnosticData>();
+
+        var diagnostics = configuration
+            ? Diagnostics.Take(ConfigDiagnosticCount)
+            : Diagnostics.Skip(ConfigDiagnosticCount);
+
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.UnmappedFilePath == filePath)
+            {
+                builder.Add(new CompilerDiagnosticData(diagnostic, Unmapped: true));
+            }
+            else if (diagnostic.FilePath == filePath)
+            {
+                builder.Add(new CompilerDiagnosticData(diagnostic, Unmapped: false));
+            }
+        }
+
+        return builder;
     }
 
     public CompiledFileOutput? GetGlobalOutput(string type)
@@ -303,7 +349,6 @@ public sealed class CompiledFileOutput
 
     public required string Type { get; init; }
     public required string Label { get; init; }
-    public int Priority { get; init; }
     public string? Language { get; init; }
 
     /// <remarks>

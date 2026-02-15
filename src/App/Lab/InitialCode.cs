@@ -113,7 +113,7 @@ internal sealed record InitialCode
     public static readonly InitialCode Directives = new("Directives.cs", """
         #:property AllowUnsafeBlocks=true
         #:property Configuration=Debug
-        #:property Features=$(Features);use-roslyn-tokenizer;FileBasedProgram
+        #:property Features=use-roslyn-tokenizer;FileBasedProgram
         #:property ImplicitUsings=disable
         #:property LangVersion=preview
         #:property Nullable=enable

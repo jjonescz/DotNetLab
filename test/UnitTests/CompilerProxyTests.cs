@@ -16,7 +16,7 @@ public sealed class CompilerProxyTests
     [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
     [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
     [DataRow("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [DataRow("latest", "5.3.0")] // `latest` works
+    [DataRow("latest", "5.")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
         var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
@@ -55,8 +55,7 @@ public sealed class CompilerProxyTests
         {
             TestContext.WriteLine(e.ToString());
             Assert.IsTrue(expectedDiagnostic.StartsWith("4.") ||
-                expectedDiagnostic.StartsWith("5.0.") ||
-                expectedDiagnostic.StartsWith("5.3."));
+                expectedDiagnostic.StartsWith("5.0."));
         }
     }
 

@@ -102,18 +102,25 @@ public static class CodeAnalysisUtil
 
     public static DiagnosticData ToDiagnosticData(this Diagnostic d)
     {
-        string? filePath;
+        string? filePath, unmappedFilePath;
         FileLinePositionSpan lineSpan;
+        FileLinePositionSpan? unmappedLineSpan;
 
-        if (d.Location.GetMappedLineSpan() is { IsValid: true } mappedLineSpan)
+        filePath = d.Location.SourceTree?.FilePath;
+        lineSpan = d.Location.GetLineSpan();
+
+        if (d.Location.GetMappedLineSpan() is { IsValid: true } mappedLineSpan &&
+            mappedLineSpan != lineSpan)
         {
+            unmappedFilePath = filePath;
+            unmappedLineSpan = lineSpan;
             filePath = mappedLineSpan.Path;
             lineSpan = mappedLineSpan;
         }
         else
         {
-            filePath = d.Location.SourceTree?.FilePath;
-            lineSpan = d.Location.GetLineSpan();
+            unmappedFilePath = null;
+            unmappedLineSpan = null;
         }
 
         return new DiagnosticData(
@@ -131,7 +138,13 @@ public static class CodeAnalysisUtil
             StartLineNumber: lineSpan.StartLinePosition.Line + 1,
             StartColumn: lineSpan.StartLinePosition.Character + 1,
             EndLineNumber: lineSpan.EndLinePosition.Line + 1,
-            EndColumn: lineSpan.EndLinePosition.Character + 1
+            EndColumn: lineSpan.EndLinePosition.Character + 1,
+            UnmappedFilePath: unmappedFilePath,
+            UnmappedStartLineNumber: unmappedLineSpan?.StartLinePosition.Line + 1,
+            UnmappedStartColumn: unmappedLineSpan?.StartLinePosition.Character + 1,
+            UnmappedEndLineNumber: unmappedLineSpan?.EndLinePosition.Line + 1,
+            UnmappedEndColumn: unmappedLineSpan?.EndLinePosition.Character + 1,
+            Tags: DiagnosticTags.None
         );
     }
 }

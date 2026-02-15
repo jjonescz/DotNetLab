@@ -139,6 +139,17 @@ public sealed class LanguageServiceTests
         TestContext.WriteLine(actualDiagnostics.JoinToString("\n"));
 
         actualDiagnostics.Should().Equal(expectedDiagnostics);
+
+        if (languageServices.CompilerCache is { } compilerCache)
+        {
+            var compilerDiagnosticData = compilerCache.GetDiagnosticsForFile(file,
+                configuration: file == CompiledAssembly.ConfigurationFileName);
+            var compilerDiagnosticDataStrings = compilerDiagnosticData
+                .Select(static d => d.ToMarkerData().ToDisplayString())
+                .ToArray();
+
+            compilerDiagnosticDataStrings.Should().BeSubsetOf(expectedDiagnostics);
+        }
     }
 
     [TestMethod]
@@ -256,6 +267,53 @@ public sealed class LanguageServiceTests
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
             "(3,24): warning CS0626: Method, operator, or accessor 'C.M1()' is marked external and has no attributes on it. Consider adding a DllImport attribute to specify the external implementation.",
+        ]);
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_LinePragma()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    object o = new();
+                    #line 100
+                    string s = o;
+                    #line 200 "another.cs"
+                    int i = o;
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        languageServices.OnCompilationFinished();
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual("""
+            // /test.cs(100,12): error CS0266: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)
+            // string s = o;
+            Diagnostic(ErrorCode.ERR_NoImplicitConvCast, "o").WithArguments("object", "string").WithLocation(100, 12),
+            // another.cs(200,9): error CS0266: Cannot implicitly convert type 'object' to 'int'. An explicit conversion exists (are you missing a cast?)
+            // int i = o;
+            Diagnostic(ErrorCode.ERR_NoImplicitConvCast, "o").WithArguments("object", "int").WithLocation(200, 9)
+            """.ReplaceLineEndings(), diagnosticsText);
+
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            "(3,8): hint IDE0059: Unnecessary assignment of a value to 's'",
+            "(3,12): error CS0266: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)",
+            "(5,5): hint IDE0059: Unnecessary assignment of a value to 'i'",
+            "(5,9): error CS0266: Cannot implicitly convert type 'object' to 'int'. An explicit conversion exists (are you missing a cast?)",
         ]);
     }
 

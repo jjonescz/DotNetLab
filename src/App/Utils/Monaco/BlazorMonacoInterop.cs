@@ -153,6 +153,11 @@ public sealed partial class BlazorMonacoInterop : IAsyncDisposable
         await (await Module).InvokeVoidAsync("setSelection", editorId, start, end);
     }
 
+    public async Task SetModelValueUndoable(string editorId, string modelUri, string text)
+    {
+        await (await Module).InvokeVoidAsync("setModelValueUndoable", editorId, modelUri, text);
+    }
+
     public async Task<IAsyncDisposable> RegisterCompletionProviderAsync(
         LanguageSelector language,
         CompletionItemProviderAsync completionItemProvider)

@@ -120,7 +120,9 @@ internal sealed class NuGetDownloaderPlugin(
         string targetFramework,
         bool loadForExecution)
     {
-        var parsed = NuGetFramework.Parse(targetFramework);
+        var parsed = "empty".Equals(targetFramework, StringComparison.OrdinalIgnoreCase)
+            ? NuGetFramework.AnyFramework
+            : NuGetFramework.Parse(targetFramework);
         var filter = ActivatorUtilities.CreateInstance<LibNuGetDllFilter>(services, parsed);
         return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter, loadForExecution);
     }
@@ -453,7 +455,14 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         else
         {
             // NOTE: The first source feed that has a matching version wins. That is to save on HTTP requests.
-            var results = repositories.ToAsyncEnumerable()
+
+            // If range "any" is used, demote the nuget.org feed (the first one) which usually doesn't have the latest versions.
+            Debug.Assert(repositories.Length >= 2 && repositories[0].PackageSource.IsNuGetOrg);
+            var orderedRepositories = VersionRange.Any.Equals(range)
+                ? [repositories[1], repositories[0], .. repositories.Skip(2)]
+                : repositories;
+
+            var results = orderedRepositories.ToAsyncEnumerable()
                 .Select(async repository =>
                 {
                     var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
