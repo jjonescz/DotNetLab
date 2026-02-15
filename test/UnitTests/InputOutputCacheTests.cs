@@ -31,7 +31,9 @@ public sealed class InputOutputCacheTests
             .Replace(""","Priority":0""", null)
             .Replace(""","Language":null""", null)
             .Replace(""","NumWarnings":0""", null)
-            .Replace(""","NumErrors":0""", null);
+            .Replace(""","NumErrors":0""", null)
+            // 2026-02-15: Priority is removed.
+            .Replace(""","Priority":1""", null);
 
         serialized.Should().Be(response);
     }
