@@ -937,6 +937,7 @@
                 var viewState = await inputEditor.SaveViewStateAsync(module);
                 await input.Model.SetValue(formattedCode);
                 await inputEditor.RestoreViewStateAsync(viewState, module);
+                await inputEditor.Focus();
             }
         }
         catch (Exception ex)
