@@ -935,7 +935,7 @@
             if (formattedCode != currentCode)
             {
                 var viewState = await inputEditor.SaveViewStateAsync(module);
-                await input.Model.SetValue(formattedCode);
+                await BlazorMonacoInterop.SetModelValueUndoable(inputEditor.Id, input.Model.Uri, formattedCode);
                 await inputEditor.RestoreViewStateAsync(viewState, module);
                 await inputEditor.Focus();
             }

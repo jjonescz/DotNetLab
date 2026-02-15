@@ -29,6 +29,14 @@ export function setSelection(editorId, start, end) {
     }
 }
 
+export function setModelValueUndoable(editorId, modelUri, text) {
+    const editor = window.blazorMonaco.editor.getEditor(editorId);
+    editor.pushUndoStop();
+    const model = monaco.editor.getModel(modelUri);
+    model.pushEditOperations(null, [{ range: model.getFullModelRange(), text }], () => null);
+    editor.pushUndoStop();
+}
+
 /**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters
