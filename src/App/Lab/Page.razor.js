@@ -31,7 +31,17 @@
     };
 
     const focusHandler = () => {
+        if (clipboardTimerId === null) {
+            clipboardTimerId = setInterval(readClipboard, 1000);
+        }
         readClipboard();
+    };
+
+    const blurHandler = () => {
+        if (clipboardTimerId !== null) {
+            clearInterval(clipboardTimerId);
+            clipboardTimerId = null;
+        }
     };
 
     const startClipboardMonitoring = () => {
@@ -41,8 +51,11 @@
 
         clipboardMonitoringStarted = true;
         window.addEventListener('focus', focusHandler);
-        clipboardTimerId = setInterval(readClipboard, 1000);
-        readClipboard();
+        window.addEventListener('blur', blurHandler);
+        if (document.hasFocus()) {
+            clipboardTimerId = setInterval(readClipboard, 1000);
+            readClipboard();
+        }
     };
 
     document.addEventListener('keydown', keyDownHandler);
@@ -67,6 +80,7 @@
         document.removeEventListener('keydown', keyDownHandler);
         if (clipboardMonitoringStarted) {
             window.removeEventListener('focus', focusHandler);
+            window.removeEventListener('blur', blurHandler);
             if (clipboardTimerId !== null) {
                 clearInterval(clipboardTimerId);
             }
