@@ -2,7 +2,6 @@
   <Folder Name="/eng/">
     <File Path="eng/AppEntryPoint.targets" />
     <File Path="eng/build.sh" />
-    <File Path="eng/CopyDotNetDTs.targets" />
     <File Path="eng/index.template.html" />
     <File Path="eng/IndexHtmlGeneration.targets" />
     <Project Path="eng/BuildTools/BuildTools.csproj" />

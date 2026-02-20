@@ -20,6 +20,7 @@
           </svg>Windows desktop app</a>.
       </div>
     </IndexHtmlLoadingInfoFooter>
+    <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,7 +39,6 @@
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />
   <Import Project="..\..\eng\PatchCoreLib.targets" />
-  <Import Project="..\..\eng\CopyDotNetDTs.targets" />
   <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 
 </Project>
