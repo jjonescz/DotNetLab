@@ -4,6 +4,7 @@
     <File Path="eng/build.sh" />
     <File Path="eng/index.template.html" />
     <File Path="eng/IndexHtmlGeneration.targets" />
+    <File Path="eng/PatchCoreLib.targets" />
     <Project Path="eng/BuildTools/BuildTools.csproj" />
   </Folder>
   <Folder Name="/src/">
