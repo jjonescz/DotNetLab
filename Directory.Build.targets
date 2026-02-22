@@ -3,4 +3,10 @@
   <!-- Workaround for https://github.com/microsoft/codecoverage/issues/209. -->
   <Target Name="MsCoverageExtensionReferencedPathMaps"></Target>
 
+  <!-- Workaround for https://github.com/dotnet/runtime/issues/124729. -->
+  <ItemGroup Condition="'$(WasmEmitTypeScriptDefinitions)' == 'true'">
+    <Content Remove="$(MSBuildProjectDirectory)\wwwroot\dotnet.d.ts" />
+    <None Include="$(MSBuildProjectDirectory)\wwwroot\dotnet.d.ts" />
+  </ItemGroup>
+
 </Project>
