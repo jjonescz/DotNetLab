@@ -1,2 +1,6 @@
 <Project>
+
+  <!-- Workaround for https://github.com/microsoft/codecoverage/issues/209. -->
+  <Target Name="MsCoverageExtensionReferencedPathMaps"></Target>
+
 </Project>
