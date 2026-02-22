@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -59,7 +60,5 @@
     -->
     <Touch Files="@(NpmOutput)" AlwaysCreate="true" />
   </Target>
-
-  <Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>

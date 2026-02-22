@@ -9,7 +9,7 @@ internal static class ZipUtil
     {
         public async Task<byte[]> ReadFileDataAsync(ZipDirectory directory, CentralDirectoryHeader entry)
         {
-            if (entry.CompressionMethod == (ushort)ZipCompressionMethod.Store)
+            if (entry.CompressionMethod == (ushort)Knapcode.MiniZip.ZipCompressionMethod.Store)
             {
                 return await reader.ReadUncompressedFileDataAsync(directory, entry);
             }

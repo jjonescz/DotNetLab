@@ -1,4 +1,3 @@
-<!-- Workaround for https://github.com/jjonescz/DotNetLab/issues/129. -->
 <Project>
   <PropertyGroup>
     <_CoreLibAssemblyName>System.Private.CoreLib.dll</_CoreLibAssemblyName>

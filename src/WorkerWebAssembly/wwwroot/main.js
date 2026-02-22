@@ -13,7 +13,7 @@ import * as interop from './interop.js';
 const args = [...new URLSearchParams(self.location.search).entries()].filter(([k, _]) => k === 'arg').map(([_, v]) => v);
 
 /** @type {import('./dotnet').DotnetHostBuilder} */
-const dotnet = dn.withExitOnUnhandledError();
+const dotnet = dn;
 
 const instance = await dotnet
     .withApplicationArguments(...args)

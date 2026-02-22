@@ -4,12 +4,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputType>Exe</OutputType>
     <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Worker\Worker.csproj" />
   </ItemGroup>
-
-  <Import Project="..\..\eng\CopyDotNetDTs.targets" />
 
 </Project>
