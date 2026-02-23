@@ -49,6 +49,38 @@ public static class CodeAnalysisUtil
         public static EmitOptions Default => DefaultEmitOptions;
     }
 
+    extension(ISymbol symbol)
+    {
+        public bool CanHaveImplicitInterfaceImplementations()
+        {
+            return symbol.Kind is SymbolKind.Method or SymbolKind.Property or SymbolKind.Event;
+        }
+
+        public ImmutableArray<ISymbol> GetImplicitInterfaceImplementations()
+        {
+            if (!symbol.CanHaveImplicitInterfaceImplementations())
+            {
+                return [];
+            }
+
+            var builder = ImmutableArray.CreateBuilder<ISymbol>();
+
+            foreach (var iface in symbol.ContainingType.AllInterfaces)
+            {
+                foreach (var interfaceMember in iface.GetMembers())
+                {
+                    var impl = symbol.ContainingType.FindImplementationForInterfaceMember(interfaceMember);
+                    if (SymbolEqualityComparer.Default.Equals(symbol, impl))
+                    {
+                        builder.Add(interfaceMember);
+                    }
+                }
+            }
+
+            return builder.ToImmutable();
+        }
+    }
+
     extension(MetadataReference)
     {
         public static PortableExecutableReference LoadFromBytesOrDisk(string name, ImmutableArray<byte> bytes)

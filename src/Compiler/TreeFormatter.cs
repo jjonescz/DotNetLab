@@ -144,6 +144,9 @@ public sealed class TreeFormatter
                 // .GetSymbolInfo()
                 .. PropertyLike.Create(obj as SyntaxNode, nameof(ModelExtensions.GetSymbolInfo), (node) => model.GetSymbolInfo(node)),
 
+                // .GetImplicitInterfaceImplementations()
+                .. PropertyLike.Create(obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
+
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     // Explicitly implemented properties of public interfaces
