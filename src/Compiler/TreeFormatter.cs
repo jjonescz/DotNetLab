@@ -333,6 +333,11 @@ public sealed class TreeFormatter
                 return token.Span;
             }
 
+            if (obj is SyntaxTokenList tokenList)
+            {
+                return tokenList.Span;
+            }
+
             if (obj is SyntaxTriviaList triviaList)
             {
                 return triviaList.Span;
@@ -369,6 +374,15 @@ public sealed class TreeFormatter
             }
             else // non-generic type
             {
+                if (obj is SyntaxTokenList tokenList)
+                {
+                    length = tokenList.Count;
+                    propertyFilter = length == 0
+                        ? static _ => false
+                        : static name => name != nameof(SyntaxTokenList.Count);
+                    return true;
+                }
+
                 if (obj is SyntaxTriviaList triviaList)
                 {
                     length = triviaList.Count;
@@ -482,6 +496,7 @@ public sealed class TreeFormatter
 
                 return type == typeof(SyntaxTrivia) ||
                     type == typeof(SyntaxTriviaList) ||
+                    type == typeof(SyntaxTokenList) ||
                     type == typeof(SyntaxToken) ||
                     type == typeof(SymbolInfo);
             }

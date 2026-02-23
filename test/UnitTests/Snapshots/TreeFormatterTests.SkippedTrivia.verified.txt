@@ -338,22 +338,21 @@
                   .FullSpan = [16..17)
                   .RawKind = 8563 "SkippedTokensTrivia"
                   .Language = "C#"
-                  .Tokens = SyntaxTokenList
+                .Tokens = [1]
+                  //
+                    .FullSpan = [16..17)
+                    .Span = [16..17)
+                  SyntaxToken(CloseBracketToken)
                     //
-                      .Count = 1
+                      .ContainsDiagnostics = true
+                      .ValueText = "]"
+                      .Value = "]"
                       .FullSpan = [16..17)
+                      .SpanStart = 16
                       .Span = [16..17)
-                    SyntaxToken(CloseBracketToken)
-                      //
-                        .ContainsDiagnostics = true
-                        .ValueText = "]"
-                        .Value = "]"
-                        .FullSpan = [16..17)
-                        .SpanStart = 16
-                        .Span = [16..17)
-                        .Language = "C#"
-                        .RawKind = 8208 "CloseBracketToken"
-                      .Text = "]"
+                      .Language = "C#"
+                      .RawKind = 8208 "CloseBracketToken"
+                    .Text = "]"
     GlobalStatementSyntax
       //
         .SpanStart = 17
