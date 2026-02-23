@@ -136,13 +136,13 @@ public sealed class TreeFormatter
             List<PropertyLike> properties =
             [
                 // .GetOperation()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(model.GetOperation), static (m, n) => m.GetOperation(n)),
+                .. PropertyLike.Create(obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
 
                 // .GetDeclaredSymbol()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetDeclaredSymbol), static (m, n) => m.GetDeclaredSymbol(n)),
+                .. PropertyLike.Create(obj as SyntaxNode, nameof(ModelExtensions.GetDeclaredSymbol), (node) => model.GetDeclaredSymbol(node)),
 
                 // .GetSymbolInfo()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetSymbolInfo), static (m, n) => m.GetSymbolInfo(n)),
+                .. PropertyLike.Create(obj as SyntaxNode, nameof(ModelExtensions.GetSymbolInfo), (node) => model.GetSymbolInfo(node)),
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -763,22 +763,22 @@ public sealed class TreeFormatter
             },
         };
 
-        public static IEnumerable<PropertyLike> CreateFromModel<T>(SemanticModel model, object obj, string name, Func<SemanticModel, SyntaxNode, T> getter)
+        public static IEnumerable<PropertyLike> Create<TIn, TOut>(TIn? input, string name, Func<TIn, TOut> getter)
         {
-            if (obj is SyntaxNode node)
+            if (input is not null)
             {
                 return
                 [
                     new PropertyLike
                     {
                         Name = name,
-                        Type = typeof(T),
+                        Type = typeof(TOut),
                         IsMethod = true,
                         Getter = _ =>
                         {
                             try
                             {
-                                return getter(model, node);
+                                return getter(input);
                             }
                             catch (Exception ex)
                             {
