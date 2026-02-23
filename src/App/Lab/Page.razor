@@ -660,6 +660,11 @@
                 // (not ideal because it also scrolls if possible, but better than nothing).
                 AlwaysConsumeMouseWheel = false,
             },
+            StickyScroll = new()
+            {
+                Enabled = true,
+                MaxLineCount = 100,
+            },
         };
     }
 
@@ -1207,14 +1212,6 @@
             bool isOutputLanguage = language == CompiledAssembly.OutputLanguageId;
 
             await outputEditor.SetModel(state.Model);
-            await outputEditor.UpdateOptions(new()
-            {
-                StickyScroll = new()
-                {
-                    Enabled = isOutputLanguage,
-                    MaxLineCount = 100,
-                },
-            });
 
             if (saveViewState && !state.ViewState.IsEmpty)
             {
