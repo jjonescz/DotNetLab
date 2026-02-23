@@ -242,10 +242,10 @@
                 </div>
             </FluentTabs>
 
-            @* Output preferences *@
-            @if (OutputHasPreferences)
+            @* Output toolbar *@
+            @if (OutputHasToolbar)
             {
-                <div style="margin: 0.5em 0.5em 0.7em 0.5em">
+                <FluentToolbar>
                     @switch (DisplayOutputType)
                     {
                         case "tree":
@@ -256,6 +256,8 @@
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
                                                 Label="Show operations" />
+                                <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
+                                    *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
                             break;
                         case "il":
@@ -282,7 +284,7 @@
                             }
                             break;
                     }
-                </div>
+                </FluentToolbar>
             }
 
             @* Output disclaimer *@
@@ -471,7 +473,7 @@
     private bool IsOutputOutdated
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
-    private bool OutputHasPreferences
+    private bool OutputHasToolbar
         => DisplayOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override async Task OnInitializedAsync()
@@ -1220,9 +1222,7 @@
             }
             else if (isOutputLanguage)
             {
-                // Fold all recursively except the first level.
-                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
-                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
+                await FoldAllOutputAsync();
 
                 // Underline links.
                 if (result.Metadata != null &&
@@ -1242,6 +1242,13 @@
 
             cursorSynchronizer?.Enable(result.Metadata);
         }
+    }
+
+    private async Task FoldAllOutputAsync()
+    {
+        // Fold all recursively except the first level.
+        await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
+        await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
     }
 
     private OutputInfo? GetOutput(string type)
