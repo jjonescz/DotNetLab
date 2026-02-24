@@ -18,6 +18,7 @@ public sealed class TreeFormatter
         public bool DisplayPropertiesWithDefaultValue { get; init; }
         public bool ExcludeSymbols { get; init; }
         public bool ExcludeOperations { get; init; }
+        public bool ThrowExceptions { get; init; }
     }
 
     public Result Format(SemanticModel model, object? obj, Options options)
@@ -136,16 +137,16 @@ public sealed class TreeFormatter
             List<PropertyLike> properties =
             [
                 // .GetOperation()
-                .. PropertyLike.Create(obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
 
                 // .GetDeclaredSymbol()
-                .. PropertyLike.Create(obj as SyntaxNode, nameof(ModelExtensions.GetDeclaredSymbol), (node) => model.GetDeclaredSymbol(node)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(ModelExtensions.GetDeclaredSymbol), (node) => model.GetDeclaredSymbol(node)),
 
                 // .GetSymbolInfo()
-                .. PropertyLike.Create(obj as SyntaxNode, nameof(ModelExtensions.GetSymbolInfo), (node) => model.GetSymbolInfo(node)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(ModelExtensions.GetSymbolInfo), (node) => model.GetSymbolInfo(node)),
 
                 // .GetImplicitInterfaceImplementations()
-                .. PropertyLike.Create(obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
+                .. PropertyLike.Create(options, obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -155,14 +156,14 @@ public sealed class TreeFormatter
                         .SelectMany(i => i.GetProperties()))
                     .DistinctBy(p => p.Name, StringComparer.Ordinal)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
-                    .Select(PropertyLike.Create),
+                    .Select(p => PropertyLike.Create(options, p)),
 
                 // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
                     .Where(m => propertyFilter(m.Name) &&
                         m.Name is nameof(SyntaxTrivia.GetStructure) &&
                         m.ReturnType != typeof(void) && m.GetParameters() is [])
-                    .Select(PropertyLike.Create),
+                    .Select(m => PropertyLike.Create(options, m)),
             ];
 
             var isCollection = asCollection(obj, type, out var enumerable, out var compactCollection);
@@ -205,7 +206,7 @@ public sealed class TreeFormatter
                         format(item);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!options.ThrowExceptions)
                 {
                     format(Util.UnwrapException(ex));
                 }
@@ -432,7 +433,7 @@ public sealed class TreeFormatter
             return SymbolDisplay.FormatPrimitive(value!, quoteStrings: true, useHexadecimalNumbers: false);
         }
 
-        static string? getKindText(object obj, Type type)
+        string? getKindText(object obj, Type type)
         {
             if (getKindTextCore(obj, type) is { } kindText)
             {
@@ -444,18 +445,18 @@ public sealed class TreeFormatter
                 : type == typeof(SyntaxTrivia)
                 ? getProperty(type, "UnderlyingNode")
                 : null) is { } nodeProperty &&
-                Util.GetPropertyValueOrException(obj, nodeProperty) is { } node)
+                Util.GetPropertyValueOrException(obj, nodeProperty, options) is { } node)
             {
                 return getKindTextCore(node, node.GetType());
             }
 
             return null;
 
-            static string? getKindTextCore(object obj, Type type)
+            string? getKindTextCore(object obj, Type type)
             {
                 if (getProperty(type, "KindText") is { } kindTextProperty &&
                     kindTextProperty.PropertyType == typeof(string) &&
-                    Util.GetPropertyValueOrException(obj, kindTextProperty) is string { Length: > 0 } kindText)
+                    Util.GetPropertyValueOrException(obj, kindTextProperty, options) is string { Length: > 0 } kindText)
                 {
                     return kindText;
                 }
@@ -740,15 +741,15 @@ public sealed class TreeFormatter
         public required bool IsMethod { get; init; }
         public required Func<object, object?> Getter { get; init; }
 
-        public static PropertyLike Create(PropertyInfo property) => new()
+        public static PropertyLike Create(Options options, PropertyInfo property) => new()
         {
             Name = property.Name,
             Type = property.PropertyType,
             IsMethod = false,
-            Getter = (obj) => Util.GetPropertyValueOrException(obj, property),
+            Getter = (obj) => Util.GetPropertyValueOrException(obj, property, options),
         };
 
-        public static PropertyLike Create(MethodInfo simpleMethod) => new()
+        public static PropertyLike Create(Options options, MethodInfo simpleMethod) => new()
         {
             Name = simpleMethod.Name,
             Type = simpleMethod.ReturnType,
@@ -759,14 +760,14 @@ public sealed class TreeFormatter
                 {
                     return simpleMethod.Invoke(obj, null);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!options.ThrowExceptions)
                 {
                     return Util.UnwrapException(ex);
                 }
             },
         };
 
-        public static IEnumerable<PropertyLike> Create<TIn, TOut>(TIn? input, string name, Func<TIn, TOut> getter)
+        public static IEnumerable<PropertyLike> Create<TIn, TOut>(Options options, TIn? input, string name, Func<TIn, TOut> getter)
         {
             if (input is not null)
             {
@@ -783,7 +784,7 @@ public sealed class TreeFormatter
                             {
                                 return getter(input);
                             }
-                            catch (Exception ex)
+                            catch (Exception ex) when (!options.ThrowExceptions)
                             {
                                 return Util.UnwrapException(ex);
                             }
@@ -798,13 +799,13 @@ public sealed class TreeFormatter
 
     private static class Util
     {
-        public static object? GetPropertyValueOrException(object obj, PropertyInfo property)
+        public static object? GetPropertyValueOrException(object obj, PropertyInfo property, Options options)
         {
             try
             {
                 return property.GetValue(obj);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!options.ThrowExceptions)
             {
                 return UnwrapException(ex);
             }

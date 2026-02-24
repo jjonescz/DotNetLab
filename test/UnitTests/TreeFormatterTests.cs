@@ -19,6 +19,7 @@ public sealed class TreeFormatterTests : VerifyBase
         {
             ExcludeSymbols = true,
             ExcludeOperations = true,
+            ThrowExceptions = true,
         });
 
         return result.Text;
