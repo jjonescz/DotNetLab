@@ -1,0 +1,480 @@
+﻿CompilationUnitSyntax
+  //
+    .Span = [0..25)
+    .FullSpan = [0..25)
+    .RawKind = 8840 "CompilationUnit"
+    .Language = "C#"
+  .Members = [1]
+    //
+      .FullSpan = [0..25)
+      .Span = [0..25)
+    ClassDeclarationSyntax
+      //
+        .Span = [0..25)
+        .FullSpan = [0..25)
+        .RawKind = 8855 "ClassDeclaration"
+        .Language = "C#"
+      .Keyword = SyntaxToken(ClassKeyword)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "class"
+          .Value = "class"
+          .FullSpan = [0..6)
+          .Span = [0..5)
+          .Language = "C#"
+          .RawKind = 8374 "ClassKeyword"
+        .Text = "class"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [5..6)
+            .Span = [5..6)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [5..6)
+              .SpanStart = 5
+              .Span = [5..6)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .Identifier = SyntaxToken(IdentifierToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "C"
+          .Value = "C"
+          .FullSpan = [6..8)
+          .SpanStart = 6
+          .Span = [6..7)
+          .Language = "C#"
+          .RawKind = 8508 "IdentifierToken"
+        .Text = "C"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [7..8)
+            .Span = [7..8)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [7..8)
+              .SpanStart = 7
+              .Span = [7..8)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .OpenBraceToken = SyntaxToken(OpenBraceToken)
+        //
+          .HasTrailingTrivia = true
+          .ValueText = "{"
+          .Value = "{"
+          .FullSpan = [8..10)
+          .SpanStart = 8
+          .Span = [8..9)
+          .Language = "C#"
+          .RawKind = 8205 "OpenBraceToken"
+        .Text = "{"
+        .TrailingTrivia = [1]
+          //
+            .FullSpan = [9..10)
+            .Span = [9..10)
+          SyntaxTrivia(WhitespaceTrivia)
+            //
+              .FullSpan = [9..10)
+              .SpanStart = 9
+              .Span = [9..10)
+              .Language = "C#"
+              .RawKind = 8540 "WhitespaceTrivia"
+      .Members = [1]
+        //
+          .FullSpan = [10..24)
+          .Span = [10..23)
+        MethodDeclarationSyntax
+          //
+            .HasTrailingTrivia = true
+            .SpanStart = 10
+            .Span = [10..23)
+            .FullSpan = [10..24)
+            .RawKind = 8875 "MethodDeclaration"
+            .Language = "C#"
+          .ReturnType = PredefinedTypeSyntax
+            //
+              .HasTrailingTrivia = true
+              .SpanStart = 10
+              .Span = [10..13)
+              .FullSpan = [10..14)
+              .RawKind = 8621 "PredefinedType"
+              .Language = "C#"
+            .Keyword = SyntaxToken(IntKeyword)
+              //
+                .HasTrailingTrivia = true
+                .ValueText = "int"
+                .Value = "int"
+                .FullSpan = [10..14)
+                .SpanStart = 10
+                .Span = [10..13)
+                .Language = "C#"
+                .RawKind = 8309 "IntKeyword"
+              .Text = "int"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [13..14)
+                  .Span = [13..14)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [13..14)
+                    .SpanStart = 13
+                    .Span = [13..14)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+          .Identifier = SyntaxToken(IdentifierToken)
+            //
+              .ValueText = "M"
+              .Value = "M"
+              .FullSpan = [14..15)
+              .SpanStart = 14
+              .Span = [14..15)
+              .Language = "C#"
+              .RawKind = 8508 "IdentifierToken"
+            .Text = "M"
+          .ParameterList = ParameterListSyntax
+            //
+              .HasTrailingTrivia = true
+              .SpanStart = 15
+              .Span = [15..17)
+              .FullSpan = [15..18)
+              .RawKind = 8906 "ParameterList"
+              .Language = "C#"
+            .OpenParenToken = SyntaxToken(OpenParenToken)
+              //
+                .ValueText = "("
+                .Value = "("
+                .FullSpan = [15..16)
+                .SpanStart = 15
+                .Span = [15..16)
+                .Language = "C#"
+                .RawKind = 8200 "OpenParenToken"
+              .Text = "("
+            .CloseParenToken = SyntaxToken(CloseParenToken)
+              //
+                .HasTrailingTrivia = true
+                .ValueText = ")"
+                .Value = ")"
+                .FullSpan = [16..18)
+                .SpanStart = 16
+                .Span = [16..17)
+                .Language = "C#"
+                .RawKind = 8201 "CloseParenToken"
+              .Text = ")"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [17..18)
+                  .Span = [17..18)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [17..18)
+                    .SpanStart = 17
+                    .Span = [17..18)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+          .ExpressionBody = ArrowExpressionClauseSyntax
+            //
+              .SpanStart = 18
+              .Span = [18..22)
+              .FullSpan = [18..22)
+              .RawKind = 8917 "ArrowExpressionClause"
+              .Language = "C#"
+            .GetBoundRoot() = BoundNonConstructorMethodBody
+              .ExpressionBody = BoundBlock
+                .Statements = [1]
+                  BoundReturnStatement
+                    .ExpressionOpt = BoundLiteral
+                      .Display = PENamedTypeSymbolNonGeneric
+                        .ExtendedSpecialType = ExtendedSpecialType
+                        .MetadataToken = 33554558
+                        .ConstructedFrom = PENamedTypeSymbolNonGeneric
+                        .ContainingSymbol = PENestedNamespaceSymbol
+                          .ContainingSymbol = PEGlobalNamespaceSymbol
+                            .ContainingSymbol = PEModuleSymbol
+                              .AreLocalsZeroed = InvalidOperationException
+                                .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEModuleSymbol.cs' Line=161"
+                              .GlobalNamespace = PEGlobalNamespaceSymbol
+                              .Name = "System.Runtime.dll"
+                              .ContainingSymbol = PEAssemblySymbol
+                                .Identity = AssemblyIdentity
+                                  .Name = "System.Runtime"
+                                  .Version = Version
+                                    .Major = 11
+                                  .CultureName = ""
+                                  .Flags = PublicKey
+                                  .HasPublicKey = true
+                                  .PublicKey = [160]
+                                    0x002400000480000094000000060200000024000052534131000400000100010007d1fa57c4aed9f0a32e84aa0faefd0de9e8fd6aec8f87fb03766c834c99921eb23be79ad9d5dcc1dd9ad236132102900b723cf980957fc4e177108fc607774f29e8320e92ea05ece4e821c0a5efe8f1645c4c0c93c1ab99285d622caa652c1dfad63d745d6f2de5f17e5eaf0fc4963d261c8a12436518206dc093344d5ad293
+                                  .PublicKeyToken = [8]
+                                    0xb03f5f7f11d50a3a
+                                  .IsStrongName = true
+                                .Modules = [1]
+                                  PEModuleSymbol
+                                .MetadataToken = 536870913
+                                .MightContainExtensions = true
+                                .GlobalNamespace = PEGlobalNamespaceSymbol
+                                .Name = "System.Runtime"
+                                .Kind = Assembly
+                                .MetadataName = "System.Runtime"
+                                .MetadataVisibility = InvalidOperationException
+                                  .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                .OriginalDefinition = PEAssemblySymbol
+                                .IsDefinition = true
+                              .ContainingAssembly = PEAssemblySymbol
+                              .Kind = NetModule
+                              .MetadataName = "System.Runtime.dll"
+                              .MetadataVisibility = InvalidOperationException
+                                .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                              .OriginalDefinition = PEModuleSymbol
+                              .IsDefinition = true
+                            .Name = ""
+                            .IsGlobalNamespace = true
+                            .ContainingAssembly = PEAssemblySymbol
+                            .NamespaceKind = Module
+                            .ConstituentNamespaces = [1]
+                              PEGlobalNamespaceSymbol
+                            .Kind = Namespace
+                            .IsImplicitlyDeclared = true
+                            .DeclaredAccessibility = Public
+                            .IsStatic = true
+                            .IsNamespace = true
+                            .MetadataName = ""
+                            .MetadataVisibility = Public
+                            .OriginalDefinition = PEGlobalNamespaceSymbol
+                            .IsDefinition = true
+                          .Name = "System"
+                          .ContainingAssembly = PEAssemblySymbol
+                          .NamespaceKind = Module
+                          .ConstituentNamespaces = [1]
+                            PENestedNamespaceSymbol
+                          .Kind = Namespace
+                          .DeclaredAccessibility = Public
+                          .IsStatic = true
+                          .IsNamespace = true
+                          .MetadataName = "System"
+                          .ContainingNamespace = PEGlobalNamespaceSymbol
+                          .MetadataVisibility = Public
+                          .OriginalDefinition = PENestedNamespaceSymbol
+                          .IsDefinition = true
+                          .CanBeReferencedByName = true
+                        .DeclaredAccessibility = Public
+                        .Name = "Int32"
+                        .MetadataName = "Int32"
+                        .IsSealed = true
+                        .AreLocalsZeroed = InvalidOperationException
+                          .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                        .TypeKind = Struct
+                        .IsReadOnly = true
+                        .InstanceConstructors = [1]
+                          SynthesizedInstanceConstructor
+                            .DeclaredAccessibility = Public
+                            .ContainingSymbol = PENamedTypeSymbolNonGeneric
+                            .ContainingType = PENamedTypeSymbolNonGeneric
+                            .Name = ".ctor"
+                            .ReturnTypeWithAnnotations = TypeWithAnnotations
+                              .IsResolved = true
+                              .Type = PENamedTypeSymbolNonGeneric
+                                .ExtendedSpecialType = ExtendedSpecialType
+                                .MetadataToken = 33554677
+                                .ConstructedFrom = PENamedTypeSymbolNonGeneric
+                                .ContainingSymbol = PENestedNamespaceSymbol
+                                .DeclaredAccessibility = Public
+                                .Name = "Void"
+                                .MetadataName = "Void"
+                                .IsSealed = true
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                                .TypeKind = Struct
+                                .InstanceConstructors = [1]
+                                  SynthesizedInstanceConstructor
+                                    .DeclaredAccessibility = Public
+                                    .ContainingSymbol = PENamedTypeSymbolNonGeneric
+                                    .ContainingType = PENamedTypeSymbolNonGeneric
+                                    .Name = ".ctor"
+                                    .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                      .IsResolved = true
+                                      .Type = PENamedTypeSymbolNonGeneric
+                                      .NullableAnnotation = Oblivious
+                                      .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric
+                                      .TypeKind = Struct
+                                      .SpecialType = System_Void
+                                      .PrimitiveTypeCode = Void
+                                    .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                                      //
+                                        .IsEmpty = true
+                                        .KeyComparer = StringEqualityComparer
+                                        .IsReadOnly = true
+                                        .SyncRoot = ImmutableHashSet`1
+                                        .IsSynchronized = true
+                                    .ReturnsVoid = true
+                                    .MethodKind = Constructor
+                                    .IsImplicitlyDeclared = true
+                                    .AreLocalsZeroed = InvalidOperationException
+                                      .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                                    .OriginalDefinition = SynthesizedInstanceConstructor
+                                    .RequiresInstanceReceiver = true
+                                    .ReturnType = PENamedTypeSymbolNonGeneric
+                                    .ConstructedFrom = SynthesizedInstanceConstructor
+                                    .Kind = Method
+                                    .ReceiverType = PENamedTypeSymbolNonGeneric
+                                    .MetadataName = ".ctor"
+                                    .ContainingNamespace = PENestedNamespaceSymbol
+                                    .ContainingAssembly = PEAssemblySymbol
+                                    .MetadataVisibility = Public
+                                    .IsDefinition = true
+                                .Constructors = [1]
+                                  SynthesizedInstanceConstructor
+                                .IsValueType = true
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolNonGeneric
+                                .SpecialType = System_Void
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol
+                                .ContainingAssembly = PEAssemblySymbol
+                                .MetadataVisibility = Public
+                                .IsDefinition = true
+                                .CanBeReferencedByName = true
+                              .NullableAnnotation = Oblivious
+                              .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric
+                              .TypeKind = Struct
+                              .SpecialType = System_Void
+                              .PrimitiveTypeCode = Void
+                            .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                            .ReturnsVoid = true
+                            .MethodKind = Constructor
+                            .IsImplicitlyDeclared = true
+                            .AreLocalsZeroed = InvalidOperationException
+                              .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                            .OriginalDefinition = SynthesizedInstanceConstructor
+                            .RequiresInstanceReceiver = true
+                            .ReturnType = PENamedTypeSymbolNonGeneric
+                            .ConstructedFrom = SynthesizedInstanceConstructor
+                            .Kind = Method
+                            .ReceiverType = PENamedTypeSymbolNonGeneric
+                            .MetadataName = ".ctor"
+                            .ContainingNamespace = PENestedNamespaceSymbol
+                            .ContainingAssembly = PEAssemblySymbol
+                            .MetadataVisibility = Public
+                            .IsDefinition = true
+                        .Constructors = [1]
+                          SynthesizedInstanceConstructor
+                        .IsValueType = true
+                        .Kind = NamedType
+                        .OriginalDefinition = PENamedTypeSymbolNonGeneric
+                        .SpecialType = System_Int32
+                        .IsType = true
+                        .ContainingNamespace = PENestedNamespaceSymbol
+                        .ContainingAssembly = PEAssemblySymbol
+                        .MetadataVisibility = Public
+                        .IsDefinition = true
+                        .CanBeReferencedByName = true
+                      .ConstantValueOpt = ConstantValueOne
+                        .ByteValue = 1
+                        .SByteValue = 1
+                        .BooleanValue = true
+                        .DoubleValue = 1
+                        .SingleValue = 1
+                        .DecimalValue = 1
+                        .Int32Value = 1
+                        .UInt32Value = 1
+                        .Int64Value = 1
+                        .UInt64Value = 1
+                        .Int16Value = 1
+                        .UInt16Value = 1
+                        .CharValue = '\u0001'
+                        .IsOne = true
+                        .Discriminator = Int32
+                        .StringValue = InvalidOperationException
+                          .Message = "Operation is not valid due to the current state of the object."
+                        .DateTimeValue = InvalidOperationException
+                          .Message = "Operation is not valid due to the current state of the object."
+                        .Value = 1
+                        .IsIntegral = true
+                        .IsNumeric = true
+                      .ResultKind = Viable
+                      .Type = PENamedTypeSymbolNonGeneric
+                      .Kind = Literal
+                    .WasCompilerGenerated = true
+                    .Kind = ReturnStatement
+                .Kind = Block
+              .Kind = NonConstructorMethodBody
+            .ArrowToken = SyntaxToken(EqualsGreaterThanToken)
+              //
+                .HasTrailingTrivia = true
+                .ValueText = "=>"
+                .Value = "=>"
+                .FullSpan = [18..21)
+                .SpanStart = 18
+                .Span = [18..20)
+                .Language = "C#"
+                .RawKind = 8269 "EqualsGreaterThanToken"
+              .Text = "=>"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [20..21)
+                  .Span = [20..21)
+                SyntaxTrivia(WhitespaceTrivia)
+                  //
+                    .FullSpan = [20..21)
+                    .SpanStart = 20
+                    .Span = [20..21)
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+            .Expression = LiteralExpressionSyntax
+              //
+                .SpanStart = 21
+                .Span = [21..22)
+                .FullSpan = [21..22)
+                .RawKind = 8749 "NumericLiteralExpression"
+                .Language = "C#"
+              .Token = SyntaxToken(NumericLiteralToken)
+                //
+                  .ValueText = "1"
+                  .Value = 1
+                  .FullSpan = [21..22)
+                  .SpanStart = 21
+                  .Span = [21..22)
+                  .Language = "C#"
+                  .RawKind = 8509 "NumericLiteralToken"
+                .Text = "1"
+          .SemicolonToken = SyntaxToken(SemicolonToken)
+            //
+              .HasTrailingTrivia = true
+              .ValueText = ";"
+              .Value = ";"
+              .FullSpan = [22..24)
+              .SpanStart = 22
+              .Span = [22..23)
+              .Language = "C#"
+              .RawKind = 8212 "SemicolonToken"
+            .Text = ";"
+            .TrailingTrivia = [1]
+              //
+                .FullSpan = [23..24)
+                .Span = [23..24)
+              SyntaxTrivia(WhitespaceTrivia)
+                //
+                  .FullSpan = [23..24)
+                  .SpanStart = 23
+                  .Span = [23..24)
+                  .Language = "C#"
+                  .RawKind = 8540 "WhitespaceTrivia"
+      .CloseBraceToken = SyntaxToken(CloseBraceToken)
+        //
+          .ValueText = "}"
+          .Value = "}"
+          .FullSpan = [24..25)
+          .SpanStart = 24
+          .Span = [24..25)
+          .Language = "C#"
+          .RawKind = 8206 "CloseBraceToken"
+        .Text = "}"
+  .EndOfFileToken = SyntaxToken(EndOfFileToken)
+    //
+      .ValueText = ""
+      .Value = ""
+      .FullSpan = [25..25)
+      .SpanStart = 25
+      .Span = [25..25)
+      .Language = "C#"
+      .RawKind = 8496 "EndOfFileToken"
+    .Text = ""

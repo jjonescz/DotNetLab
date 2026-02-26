@@ -5,7 +5,9 @@ namespace DotNetLab;
 [TestClass]
 public sealed class TreeFormatterTests : VerifyBase
 {
-    private static string Format([StringSyntax("C#")] string code)
+    private static string Format(
+        [StringSyntax("C#")] string code,
+        bool showBoundNodes = false)
     {
         var tree = CSharpSyntaxTree.ParseText(code);
         var compilation = CSharpCompilation.Create(
@@ -19,7 +21,7 @@ public sealed class TreeFormatterTests : VerifyBase
         {
             ExcludeSymbols = true,
             ExcludeOperations = true,
-            ThrowExceptions = true,
+            ExcludeBoundNodes = !showBoundNodes,
         });
 
         return result.Text;
@@ -27,4 +29,7 @@ public sealed class TreeFormatterTests : VerifyBase
 
     [TestMethod]
     public Task SkippedTrivia() => Verify(Format("var x = [1; 2; 3];"));
+
+    [TestMethod]
+    public Task BoundBody() => Verify(Format("class C { int M() => 1; }", showBoundNodes: true));
 }

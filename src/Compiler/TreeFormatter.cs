@@ -18,20 +18,24 @@ public sealed class TreeFormatter
         public bool DisplayPropertiesWithDefaultValue { get; init; }
         public bool ExcludeSymbols { get; init; }
         public bool ExcludeOperations { get; init; }
+        public bool ExcludeBoundNodes { get; init; }
         public bool ThrowExceptions { get; init; }
     }
 
     public Result Format(SemanticModel model, object? obj, Options options)
     {
+        var compilation = (CSharpCompilation)model.Compilation;
         var writer = new Writer();
         var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
 
-        format(obj);
+        format(obj, []);
 
         return writer.Build();
 
-        void format(object? obj, bool shouldMap = true)
+        void format(object? obj, ImmutableHashSet<object> ancestorTags, bool shouldMap = true)
         {
+            var childTags = ancestorTags;
+
             if (obj is SyntaxNodeOrToken nodeOrToken)
             {
                 obj = nodeOrToken.AsNode() ?? (object)nodeOrToken.AsToken();
@@ -134,8 +138,19 @@ public sealed class TreeFormatter
                 seenObjects.Add(obj, headlineSpan);
             }
 
+            var modelForBoundRoot = options.ExcludeBoundNodes ? null : model.GetMemberSemanticModel(obj as SyntaxNode);
+
+            // If the bound root was already displayed in a parent, hide it here.
+            if (modelForBoundRoot is not null && !DotNetLab.Util.TryAdd(ref childTags, modelForBoundRoot))
+            {
+                modelForBoundRoot = null;
+            }
+
             List<PropertyLike> properties =
             [
+                // .GetBoundRoot()
+                .. PropertyLike.Create(options, modelForBoundRoot, nameof(RoslynAccessors.GetBoundRoot), static (model) => model.GetBoundRoot()),
+
                 // .GetOperation()
                 .. PropertyLike.Create(options, obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
 
@@ -203,12 +218,12 @@ public sealed class TreeFormatter
                 {
                     foreach (var item in enumerable)
                     {
-                        format(item);
+                        format(item, childTags);
                     }
                 }
                 catch (Exception ex) when (!options.ThrowExceptions)
                 {
-                    format(Util.UnwrapException(ex));
+                    format(Util.UnwrapException(ex), childTags);
                 }
             }
 
@@ -310,7 +325,7 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    format(value, shouldMap: false /* we are already mapping the whole property */);
+                    format(value, childTags, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
         }
@@ -477,7 +492,7 @@ public sealed class TreeFormatter
 
         static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
         {
-            if (property.Name is nameof(SyntaxToken.Text))
+            if (property.Name is nameof(SyntaxToken.Text) or nameof(RoslynAccessors.GetBoundRoot))
             {
                 return true;
             }

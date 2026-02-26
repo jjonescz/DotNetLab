@@ -256,6 +256,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
                                                 Label="Show operations" />
+                                <FluentCheckbox @bind-Value:get="savedState.ShowBoundNodes"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowBoundNodes = v })"
+                                                Label="Show bound nodes" />
                                 <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }

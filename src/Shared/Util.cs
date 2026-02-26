@@ -554,6 +554,20 @@ public static partial class Util
         return builder.ToImmutable();
     }
 
+    public static bool TryAdd<T>(ref ImmutableHashSet<T> set, T item)
+    {
+        var result = set.Add(item);
+
+        if (result.Count != set.Count)
+        {
+            Debug.Assert(result.Count == set.Count + 1);
+            set = result;
+            return true;
+        }
+
+        return false;
+    }
+
     public static T? TryAt<T>(this IReadOnlyList<T> list, int index)
     {
         if (index < 0 || index >= list.Count)

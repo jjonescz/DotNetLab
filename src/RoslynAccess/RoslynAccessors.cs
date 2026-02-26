@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Diagnostics.CSharp;
 using Microsoft.CodeAnalysis.Test.Utilities;
@@ -23,6 +24,20 @@ public static class RoslynAccessors
                 cancellationToken);
             diagnostics = diagnosticBag.ToReadOnlyAndFree();
             return result;
+        }
+    }
+
+    extension(SemanticModel semanticModel)
+    {
+        public SemanticModel? GetMemberSemanticModel(SyntaxNode? node)
+        {
+            if (node is null) return null;
+            return ((CSharpSemanticModel)semanticModel).GetMemberModel(node);
+        }
+
+        public object GetBoundRoot()
+        {
+            return ((MemberSemanticModel)semanticModel).GetBoundRoot();
         }
     }
 

@@ -295,6 +295,7 @@ public sealed class Compiler(
                             {
                                 ExcludeSymbols = !compilationInput.Preferences.ShowSymbols,
                                 ExcludeOperations = !compilationInput.Preferences.ShowOperations,
+                                ExcludeBoundNodes = !compilationInput.Preferences.ShowBoundNodes,
                             });
                             return new((
                                 formatted.Text,
