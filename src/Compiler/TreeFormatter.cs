@@ -352,6 +352,11 @@ public sealed class TreeFormatter
                 return token.Span;
             }
 
+            if (obj is SyntaxTrivia trivia)
+            {
+                return trivia.Span;
+            }
+
             if (obj is SyntaxTokenList tokenList)
             {
                 return tokenList.Span;
