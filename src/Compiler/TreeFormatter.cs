@@ -28,11 +28,11 @@ public sealed class TreeFormatter
         var writer = new Writer();
         var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
 
-        format(obj, []);
+        format(obj, null, []);
 
         return writer.Build();
 
-        void format(object? obj, ImmutableHashSet<object> ancestorTags, bool shouldMap = true)
+        void format(object? obj, RefSafetyAnalysisAccessor? refSafetyAnalysis, ImmutableHashSet<object> ancestorTags, bool shouldMap = true)
         {
             var childTags = ancestorTags;
 
@@ -140,16 +140,34 @@ public sealed class TreeFormatter
 
             var modelForBoundRoot = options.ExcludeBoundNodes ? null : model.GetMemberSemanticModel(obj as SyntaxNode);
 
-            // If the bound root was already displayed in a parent, hide it here.
-            if (modelForBoundRoot is not null && !DotNetLab.Util.TryAdd(ref childTags, modelForBoundRoot))
+            if (modelForBoundRoot is not null)
             {
-                modelForBoundRoot = null;
+                if (!DotNetLab.Util.TryAdd(ref childTags, modelForBoundRoot))
+                {
+                    // If the bound root was already displayed in a parent, hide it here.
+                    modelForBoundRoot = null;
+                }
+                else
+                {
+                    try
+                    {
+                        // Create ref safety analysis for each "root" node, such as a method or a field initializer.
+                        refSafetyAnalysis = RefSafetyAnalysisAccessor.TryCreate(compilation, modelForBoundRoot);
+                    }
+                    catch when (!options.ThrowExceptions) { }
+                }
             }
 
             List<PropertyLike> properties =
             [
                 // .GetBoundRoot()
                 .. PropertyLike.Create(options, modelForBoundRoot, nameof(RoslynAccessors.GetBoundRoot), static (model) => model.GetBoundRoot()),
+
+                // .GetValEscape()
+                .. PropertyLike.Create(options, refSafetyAnalysis, nameof(RefSafetyAnalysisAccessor.GetValEscape), (analysis) => analysis.GetValEscape(obj)),
+
+                // .GetRefEscape()
+                .. PropertyLike.Create(options, refSafetyAnalysis, nameof(RefSafetyAnalysisAccessor.GetRefEscape), (analysis) => analysis.GetRefEscape(obj)),
 
                 // .GetOperation()
                 .. PropertyLike.Create(options, obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
@@ -223,12 +241,12 @@ public sealed class TreeFormatter
                 {
                     foreach (var item in enumerable)
                     {
-                        format(item, childTags);
+                        format(item, refSafetyAnalysis, childTags);
                     }
                 }
                 catch (Exception ex) when (!options.ThrowExceptions)
                 {
-                    format(Util.UnwrapException(ex), childTags);
+                    format(Util.UnwrapException(ex), refSafetyAnalysis, childTags);
                 }
             }
 
@@ -330,7 +348,7 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    format(value, childTags, shouldMap: false /* we are already mapping the whole property */);
+                    format(value, refSafetyAnalysis, childTags, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
         }
