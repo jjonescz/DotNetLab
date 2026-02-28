@@ -259,11 +259,22 @@ public sealed class TreeFormatter
             {
                 if (properties.Count != 0)
                 {
+                    var before = writer.GetResetPoint();
                     writer.WriteLine("//", ClassificationTypeNames.Comment);
-                    using var scope = writer.TryNest();
-                    if (scope.Success)
+                    var after = writer.Position;
+
+                    using (var scope = writer.TryNest())
                     {
-                        displayProperties(properties);
+                        if (scope.Success)
+                        {
+                            displayProperties(properties);
+                        }
+                    }
+
+                    // If no properties were displayed, remove the subgroup header too.
+                    if (writer.Position == after)
+                    {
+                        before.Reset();
                     }
                 }
             }
@@ -569,12 +580,14 @@ public sealed class TreeFormatter
         private int? needsIndent;
         private int depth;
 
-        private readonly int Position => sb.Length;
+        public readonly int Position => sb.Length;
 
         private readonly int GetPositionAfterIndent()
         {
             return Position + ((needsIndent * indentSize) ?? 0);
         }
+
+        [UnscopedRef] public ResetPoint GetResetPoint() => new(ref this);
 
         [UnscopedRef]
         public Scope TryNest()
@@ -699,6 +712,42 @@ public sealed class TreeFormatter
                 TreeToSource = new DocumentMapping(treeToSource).Serialize(),
                 TreeToTree = new DocumentMapping(treeToTree).Serialize(),
             };
+        }
+
+        [NonCopyable]
+        public readonly ref struct ResetPoint
+        {
+            private readonly ref Writer writer;
+            private readonly int sbLength,
+                classifiedSpansLength,
+                sourceToTreeLength,
+                treeToSourceLength,
+                treeToTreeLength,
+                depth;
+            private readonly int? needsIndent;
+
+            public ResetPoint(ref Writer writer)
+            {
+                this.writer = ref writer;
+                sbLength = writer.sb.Length;
+                classifiedSpansLength = writer.classifiedSpans.Count;
+                sourceToTreeLength = writer.sourceToTree.Count;
+                treeToSourceLength = writer.treeToSource.Count;
+                treeToTreeLength = writer.treeToTree.Count;
+                depth = writer.depth;
+                needsIndent = writer.needsIndent;
+            }
+
+            public void Reset()
+            {
+                writer.sb.Length = sbLength;
+                writer.classifiedSpans.Count = classifiedSpansLength;
+                writer.sourceToTree.RemoveRange(sourceToTreeLength, writer.sourceToTree.Count - sourceToTreeLength);
+                writer.treeToSource.RemoveRange(treeToSourceLength, writer.treeToSource.Count - treeToSourceLength);
+                writer.treeToTree.RemoveRange(treeToTreeLength, writer.treeToTree.Count - treeToTreeLength);
+                writer.depth = depth;
+                writer.needsIndent = needsIndent;
+            }
         }
 
         [NonCopyable]
