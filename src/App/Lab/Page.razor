@@ -252,13 +252,13 @@
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
-                                                Label="Show symbols" />
+                                                Label="Symbols" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
-                                                Label="Show operations" />
+                                                Label="Operations" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowBoundNodes"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowBoundNodes = v })"
-                                                Label="Show bound nodes" />
+                                                Label="Bound nodes" />
                                 <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
@@ -270,7 +270,7 @@
                                                 Label="Decode custom attribute blobs" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
-                                                Label="Show sequence points" />
+                                                Label="Sequence points" />
                                 <FluentCheckbox @bind-Value:get="savedState.FullIl"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
                                                 Label="Full IL" />
