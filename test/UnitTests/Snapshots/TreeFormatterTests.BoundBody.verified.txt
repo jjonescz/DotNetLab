@@ -213,7 +213,7 @@
                           .ContainingSymbol = PEGlobalNamespaceSymbol
                             .ContainingSymbol = PEModuleSymbol
                               .AreLocalsZeroed = InvalidOperationException
-                                .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEModuleSymbol.cs' Line=161"
+                                .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEModuleSymbol.cs' Line=171"
                               .GlobalNamespace = PEGlobalNamespaceSymbol
                               .Name = "System.Runtime.dll"
                               .ContainingSymbol = PEAssemblySymbol
