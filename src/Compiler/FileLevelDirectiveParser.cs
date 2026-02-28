@@ -649,6 +649,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         "run-nullable-analysis=never",
                         "runtime-async",
                         "strict",
+                        "updated-memory-safety-rules",
                         "UseLegacyStrongNameProvider",
                     ])),
                 Create(
