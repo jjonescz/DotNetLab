@@ -224,8 +224,8 @@
 
                             @* Error List badge *@
                             @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
-                                                    compiled?.Output is { } compiledOutput &&
-                                                    compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
+                                compiled?.Output is { } compiledOutput &&
+                                compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
                             {
                                 var color = compiledOutput.NumErrors > 0 ? "error" : "warning";
                                 <FluentBadge Fill="x" BackgroundColor="@($"var(--{color})")" Color="white" Style="margin-left: 0.4em">

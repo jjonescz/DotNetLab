@@ -218,12 +218,15 @@ public sealed record CompiledAssembly(
             [
                 new()
                 {
-                    Type = DiagnosticsOutputType,
-                    Label = DiagnosticsOutputLabel,
+                    // We don't use the standard "Error List" output type here,
+                    // so that the output toolbar UI doesn't display options
+                    // like "Include hidden diagnostics" which are irrelevant here.
+                    Type = "fail",
+                    Label = "Failure",
                     EagerText = output,
                 },
             ],
-            NumErrors: 1,
+            NumErrors: 0,
             NumWarnings: 0);
     }
 
