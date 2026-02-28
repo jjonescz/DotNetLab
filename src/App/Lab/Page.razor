@@ -224,8 +224,8 @@
 
                             @* Error List badge *@
                             @if (output.Type == CompiledAssembly.DiagnosticsOutputType &&
-                                                    compiled?.Output is { } compiledOutput &&
-                                                    compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
+                                compiled?.Output is { } compiledOutput &&
+                                compiledOutput is { NumErrors: > 0 } or { NumWarnings: > 0 })
                             {
                                 var color = compiledOutput.NumErrors > 0 ? "error" : "warning";
                                 <FluentBadge Fill="x" BackgroundColor="@($"var(--{color})")" Color="white" Style="margin-left: 0.4em">
@@ -242,20 +242,25 @@
                 </div>
             </FluentTabs>
 
-            @* Output preferences *@
-            @if (OutputHasPreferences)
+            @* Output toolbar *@
+            @if (OutputHasToolbar)
             {
-                <div style="margin: 0.5em 0.5em 0.7em 0.5em">
+                <FluentToolbar>
                     @switch (DisplayOutputType)
                     {
                         case "tree":
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
-                                                Label="Show symbols" />
+                                                Label="Symbols" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
-                                                Label="Show operations" />
+                                                Label="Operations" />
+                                <FluentCheckbox @bind-Value:get="savedState.ShowBoundNodes"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowBoundNodes = v })"
+                                                Label="Bound nodes" />
+                                <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
+                                    *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
                             break;
                         case "il":
@@ -265,7 +270,7 @@
                                                 Label="Decode custom attribute blobs" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSequencePoints"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSequencePoints = v })"
-                                                Label="Show sequence points" />
+                                                Label="Sequence points" />
                                 <FluentCheckbox @bind-Value:get="savedState.FullIl"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { FullIl = v })"
                                                 Label="Full IL" />
@@ -282,7 +287,7 @@
                             }
                             break;
                     }
-                </div>
+                </FluentToolbar>
             }
 
             @* Output disclaimer *@
@@ -471,7 +476,7 @@
     private bool IsOutputOutdated
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
-    private bool OutputHasPreferences
+    private bool OutputHasToolbar
         => DisplayOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override async Task OnInitializedAsync()
@@ -657,6 +662,11 @@
                 // This allows Ctrl+Wheel on the editor to zoom the whole app
                 // (not ideal because it also scrolls if possible, but better than nothing).
                 AlwaysConsumeMouseWheel = false,
+            },
+            StickyScroll = new()
+            {
+                Enabled = true,
+                MaxLineCount = 100,
             },
         };
     }
@@ -1205,14 +1215,6 @@
             bool isOutputLanguage = language == CompiledAssembly.OutputLanguageId;
 
             await outputEditor.SetModel(state.Model);
-            await outputEditor.UpdateOptions(new()
-            {
-                StickyScroll = new()
-                {
-                    Enabled = isOutputLanguage,
-                    MaxLineCount = 100,
-                },
-            });
 
             if (saveViewState && !state.ViewState.IsEmpty)
             {
@@ -1220,9 +1222,7 @@
             }
             else if (isOutputLanguage)
             {
-                // Fold all recursively except the first level.
-                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
-                await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
+                await FoldAllOutputAsync();
 
                 // Underline links.
                 if (result.Metadata != null &&
@@ -1242,6 +1242,13 @@
 
             cursorSynchronizer?.Enable(result.Metadata);
         }
+    }
+
+    private async Task FoldAllOutputAsync()
+    {
+        // Fold all recursively except the first level.
+        await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.foldAll");
+        await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
     }
 
     private OutputInfo? GetOutput(string type)

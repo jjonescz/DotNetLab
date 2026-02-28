@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Diagnostics.CSharp;
 using Microsoft.CodeAnalysis.Test.Utilities;
@@ -23,6 +25,20 @@ public static class RoslynAccessors
                 cancellationToken);
             diagnostics = diagnosticBag.ToReadOnlyAndFree();
             return result;
+        }
+    }
+
+    extension(SemanticModel semanticModel)
+    {
+        public SemanticModel? GetMemberSemanticModel(SyntaxNode? node)
+        {
+            if (node is null) return null;
+            return ((CSharpSemanticModel)semanticModel).GetMemberModel(node);
+        }
+
+        public object GetBoundRoot()
+        {
+            return ((MemberSemanticModel)semanticModel).GetBoundRoot();
         }
     }
 
@@ -118,5 +134,81 @@ public static class RoslynAccessors
             .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
             .Where(f => f.FieldType == typeof(string) && f.IsLiteral)
             .Select(f => (string)f.GetRawConstantValue()!);
+    }
+}
+
+public sealed class RefSafetyAnalysisAccessor
+{
+    private static readonly ConstructorInfo? ctor;
+    private static readonly MethodInfo? inUnsafeMethod;
+
+    static RefSafetyAnalysisAccessor()
+    {
+        ctor = typeof(RefSafetyAnalysis).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            [
+                typeof(CSharpCompilation),
+                typeof(MethodSymbol),
+                typeof(BoundNode),
+                typeof(bool),
+                typeof(bool),
+                typeof(Microsoft.CodeAnalysis.CSharp.BindingDiagnosticBag),
+            ]);
+        if (ctor is null) return;
+
+        inUnsafeMethod = typeof(RefSafetyAnalysis).GetMethod(
+            "InUnsafeMethod",
+            BindingFlags.Static | BindingFlags.NonPublic);
+    }
+
+    private readonly RefSafetyAnalysis refSafetyAnalysis;
+
+    private RefSafetyAnalysisAccessor(RefSafetyAnalysis refSafetyAnalysis)
+    {
+        this.refSafetyAnalysis = refSafetyAnalysis;
+    }
+
+    public static RefSafetyAnalysisAccessor? TryCreate(Compilation compilation, SemanticModel memberSemanticModel)
+    {
+        if (ctor is null) return null;
+
+        var memberSemanticModelCasted = (MemberSemanticModel)memberSemanticModel;
+
+        var symbol = memberSemanticModelCasted.MemberSymbol as MethodSymbol;
+        if (symbol is null) return null;
+
+        var boundRoot = memberSemanticModelCasted.GetBoundRoot();
+
+        var visitor = (RefSafetyAnalysis)ctor.Invoke([
+            compilation,
+            symbol,
+            boundRoot,
+            inUnsafeMethod?.Invoke(null, [symbol]) ?? false,
+            symbol.ContainingModule.UseUpdatedEscapeRules,
+            Microsoft.CodeAnalysis.CSharp.BindingDiagnosticBag.Discarded,
+        ]);
+
+        visitor.Visit(boundRoot);
+
+        return new RefSafetyAnalysisAccessor(visitor);
+    }
+
+    public string? GetValEscape(object? input)
+    {
+        return input is BoundExpression node
+            ? UnwrapSafeContext(refSafetyAnalysis.GetValEscape(node))
+            : null;
+    }
+
+    public string? GetRefEscape(object? input)
+    {
+        return input is BoundExpression node
+            ? UnwrapSafeContext(refSafetyAnalysis.GetRefEscape(node))
+            : null;
+    }
+
+    private static string UnwrapSafeContext(SafeContext safeContext)
+    {
+        return safeContext.ToString();
     }
 }

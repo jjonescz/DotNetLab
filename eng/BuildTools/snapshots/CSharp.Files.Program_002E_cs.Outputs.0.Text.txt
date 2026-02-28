@@ -1044,45 +1044,44 @@
             .FullSpan = [239..311)
             .RawKind = 8875 "MethodDeclaration"
             .Language = "C#"
-            .Modifiers = SyntaxTokenList
+          .Modifiers = [1]
+            //
+              .FullSpan = [239..250)
+              .Span = [243..249)
+            SyntaxToken(StaticKeyword)
               //
-                .Count = 1
+                .HasTrailingTrivia = true
+                .HasLeadingTrivia = true
+                .ValueText = "static"
+                .Value = "static"
                 .FullSpan = [239..250)
+                .SpanStart = 243
                 .Span = [243..249)
-              SyntaxToken(StaticKeyword)
+                .Language = "C#"
+                .RawKind = 8347 "StaticKeyword"
+              .Text = "static"
+              .LeadingTrivia = [1]
                 //
-                  .HasTrailingTrivia = true
-                  .HasLeadingTrivia = true
-                  .ValueText = "static"
-                  .Value = "static"
-                  .FullSpan = [239..250)
-                  .SpanStart = 243
-                  .Span = [243..249)
-                  .Language = "C#"
-                  .RawKind = 8347 "StaticKeyword"
-                .Text = "static"
-                .LeadingTrivia = [1]
+                  .FullSpan = [239..243)
+                  .Span = [239..243)
+                SyntaxTrivia(WhitespaceTrivia)
                   //
                     .FullSpan = [239..243)
+                    .SpanStart = 239
                     .Span = [239..243)
-                  SyntaxTrivia(WhitespaceTrivia)
-                    //
-                      .FullSpan = [239..243)
-                      .SpanStart = 239
-                      .Span = [239..243)
-                      .Language = "C#"
-                      .RawKind = 8540 "WhitespaceTrivia"
-                .TrailingTrivia = [1]
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
+              .TrailingTrivia = [1]
+                //
+                  .FullSpan = [249..250)
+                  .Span = [249..250)
+                SyntaxTrivia(WhitespaceTrivia)
                   //
                     .FullSpan = [249..250)
+                    .SpanStart = 249
                     .Span = [249..250)
-                  SyntaxTrivia(WhitespaceTrivia)
-                    //
-                      .FullSpan = [249..250)
-                      .SpanStart = 249
-                      .Span = [249..250)
-                      .Language = "C#"
-                      .RawKind = 8540 "WhitespaceTrivia"
+                    .Language = "C#"
+                    .RawKind = 8540 "WhitespaceTrivia"
           .ReturnType = PredefinedTypeSyntax
             //
               .HasTrailingTrivia = true

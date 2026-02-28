@@ -491,3 +491,6 @@ jslib.js*
 dotnet.d.ts
 index.html
 !/src/WorkerWebAssembly/wwwroot/index.html
+
+# Snapshot test temporary outputs (Verify library)
+*.received.*

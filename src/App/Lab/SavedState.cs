@@ -291,6 +291,9 @@ internal sealed record SavedState
     [ProtoMember(18)]
     public bool ShowOperations { get; init; }
 
+    [ProtoMember(20)]
+    public bool ShowBoundNodes { get; init; }
+
     [ProtoMember(13)]
     public bool DecodeCustomAttributeBlobs { get; init; }
 
@@ -388,6 +391,7 @@ internal sealed record SavedState
         {
             ShowSymbols = ShowSymbols,
             ShowOperations = ShowOperations,
+            ShowBoundNodes = ShowBoundNodes,
             DecodeCustomAttributeBlobs = DecodeCustomAttributeBlobs,
             ShowSequencePoints = ShowSequencePoints,
             FullIl = FullIl,
@@ -402,6 +406,7 @@ internal sealed record SavedState
         {
             ShowSymbols = preferences.ShowSymbols,
             ShowOperations = preferences.ShowOperations,
+            ShowBoundNodes = preferences.ShowBoundNodes,
             DecodeCustomAttributeBlobs = preferences.DecodeCustomAttributeBlobs,
             ShowSequencePoints = preferences.ShowSequencePoints,
             FullIl = preferences.FullIl,

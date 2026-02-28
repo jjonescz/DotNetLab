@@ -18,19 +18,24 @@ public sealed class TreeFormatter
         public bool DisplayPropertiesWithDefaultValue { get; init; }
         public bool ExcludeSymbols { get; init; }
         public bool ExcludeOperations { get; init; }
+        public bool ExcludeBoundNodes { get; init; }
+        public bool ThrowExceptions { get; init; }
     }
 
     public Result Format(SemanticModel model, object? obj, Options options)
     {
+        var compilation = (CSharpCompilation)model.Compilation;
         var writer = new Writer();
         var seenObjects = new Dictionary<object, TextSpan>(ObjectEqualityComparer.Instance);
 
-        format(obj);
+        format(obj, null, []);
 
         return writer.Build();
 
-        void format(object? obj, bool shouldMap = true)
+        void format(object? obj, RefSafetyAnalysisAccessor? refSafetyAnalysis, ImmutableHashSet<object> ancestorTags, bool shouldMap = true)
         {
+            var childTags = ancestorTags;
+
             if (obj is SyntaxNodeOrToken nodeOrToken)
             {
                 obj = nodeOrToken.AsNode() ?? (object)nodeOrToken.AsToken();
@@ -133,16 +138,53 @@ public sealed class TreeFormatter
                 seenObjects.Add(obj, headlineSpan);
             }
 
+            var modelForBoundRoot = options.ExcludeBoundNodes ? null : model.GetMemberSemanticModel(obj as SyntaxNode);
+
+            if (modelForBoundRoot is not null)
+            {
+                if (!DotNetLab.Util.TryAdd(ref childTags, modelForBoundRoot))
+                {
+                    // If the bound root was already displayed in a parent, hide it here.
+                    modelForBoundRoot = null;
+                }
+                else
+                {
+                    try
+                    {
+                        // Create ref safety analysis for each "root" node, such as a method or a field initializer.
+                        refSafetyAnalysis = RefSafetyAnalysisAccessor.TryCreate(compilation, modelForBoundRoot);
+                    }
+                    catch when (!options.ThrowExceptions) { }
+                }
+            }
+
             List<PropertyLike> properties =
             [
+                // .GetBoundRoot()
+                .. PropertyLike.Create(options, modelForBoundRoot, nameof(RoslynAccessors.GetBoundRoot), static (model) => model.GetBoundRoot()),
+
+                // .GetValEscape()
+                .. PropertyLike.Create(options, refSafetyAnalysis, nameof(RefSafetyAnalysisAccessor.GetValEscape), (analysis) => analysis.GetValEscape(obj)),
+
+                // .GetRefEscape()
+                .. PropertyLike.Create(options, refSafetyAnalysis, nameof(RefSafetyAnalysisAccessor.GetRefEscape), (analysis) => analysis.GetRefEscape(obj)),
+
                 // .GetOperation()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(model.GetOperation), static (m, n) => m.GetOperation(n)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(model.GetOperation), (node) => model.GetOperation(node)),
 
                 // .GetDeclaredSymbol()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetDeclaredSymbol), static (m, n) => m.GetDeclaredSymbol(n)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(ModelExtensions.GetDeclaredSymbol), (node) => model.GetDeclaredSymbol(node)),
 
                 // .GetSymbolInfo()
-                .. PropertyLike.CreateFromModel(model, obj, nameof(ModelExtensions.GetSymbolInfo), static (m, n) => m.GetSymbolInfo(n)),
+                .. PropertyLike.Create(options, obj as SyntaxNode, nameof(ModelExtensions.GetSymbolInfo), (node) => model.GetSymbolInfo(node)),
+
+                // .GetImplicitInterfaceImplementations()
+                .. PropertyLike.Create(options, obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
+
+                // Public instance fields
+                .. type.GetFields(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(f => propertyFilter(f.Name))
+                    .Select(f => PropertyLike.Create(options, f)),
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -152,14 +194,14 @@ public sealed class TreeFormatter
                         .SelectMany(i => i.GetProperties()))
                     .DistinctBy(p => p.Name, StringComparer.Ordinal)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
-                    .Select(PropertyLike.Create),
+                    .Select(p => PropertyLike.Create(options, p)),
 
                 // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
                     .Where(m => propertyFilter(m.Name) &&
                         m.Name is nameof(SyntaxTrivia.GetStructure) &&
                         m.ReturnType != typeof(void) && m.GetParameters() is [])
-                    .Select(PropertyLike.Create),
+                    .Select(m => PropertyLike.Create(options, m)),
             ];
 
             var isCollection = asCollection(obj, type, out var enumerable, out var compactCollection);
@@ -199,12 +241,12 @@ public sealed class TreeFormatter
                 {
                     foreach (var item in enumerable)
                     {
-                        format(item);
+                        format(item, refSafetyAnalysis, childTags);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!options.ThrowExceptions)
                 {
-                    format(Util.UnwrapException(ex));
+                    format(Util.UnwrapException(ex), refSafetyAnalysis, childTags);
                 }
             }
 
@@ -217,11 +259,22 @@ public sealed class TreeFormatter
             {
                 if (properties.Count != 0)
                 {
+                    var before = writer.GetResetPoint();
                     writer.WriteLine("//", ClassificationTypeNames.Comment);
-                    using var scope = writer.TryNest();
-                    if (scope.Success)
+                    var after = writer.Position;
+
+                    using (var scope = writer.TryNest())
                     {
-                        displayProperties(properties);
+                        if (scope.Success)
+                        {
+                            displayProperties(properties);
+                        }
+                    }
+
+                    // If no properties were displayed, remove the subgroup header too.
+                    if (writer.Position == after)
+                    {
+                        before.Reset();
                     }
                 }
             }
@@ -306,7 +359,7 @@ public sealed class TreeFormatter
                         continue;
                     }
 
-                    format(value, shouldMap: false /* we are already mapping the whole property */);
+                    format(value, refSafetyAnalysis, childTags, shouldMap: false /* we are already mapping the whole property */);
                 }
             }
         }
@@ -331,6 +384,16 @@ public sealed class TreeFormatter
             if (obj is SyntaxToken token)
             {
                 return token.Span;
+            }
+
+            if (obj is SyntaxTrivia trivia)
+            {
+                return trivia.Span;
+            }
+
+            if (obj is SyntaxTokenList tokenList)
+            {
+                return tokenList.Span;
             }
 
             if (obj is SyntaxTriviaList triviaList)
@@ -369,6 +432,15 @@ public sealed class TreeFormatter
             }
             else // non-generic type
             {
+                if (obj is SyntaxTokenList tokenList)
+                {
+                    length = tokenList.Count;
+                    propertyFilter = length == 0
+                        ? static _ => false
+                        : static name => name != nameof(SyntaxTokenList.Count);
+                    return true;
+                }
+
                 if (obj is SyntaxTriviaList triviaList)
                 {
                     length = triviaList.Count;
@@ -415,7 +487,7 @@ public sealed class TreeFormatter
             return SymbolDisplay.FormatPrimitive(value!, quoteStrings: true, useHexadecimalNumbers: false);
         }
 
-        static string? getKindText(object obj, Type type)
+        string? getKindText(object obj, Type type)
         {
             if (getKindTextCore(obj, type) is { } kindText)
             {
@@ -427,18 +499,18 @@ public sealed class TreeFormatter
                 : type == typeof(SyntaxTrivia)
                 ? getProperty(type, "UnderlyingNode")
                 : null) is { } nodeProperty &&
-                Util.GetPropertyValueOrException(obj, nodeProperty) is { } node)
+                Util.GetValueOrException(options, (obj, property: nodeProperty), static (arg) => arg.property.GetValue(arg.obj)) is { } node)
             {
                 return getKindTextCore(node, node.GetType());
             }
 
             return null;
 
-            static string? getKindTextCore(object obj, Type type)
+            string? getKindTextCore(object obj, Type type)
             {
                 if (getProperty(type, "KindText") is { } kindTextProperty &&
                     kindTextProperty.PropertyType == typeof(string) &&
-                    Util.GetPropertyValueOrException(obj, kindTextProperty) is string { Length: > 0 } kindText)
+                    Util.GetValueOrException(options, (obj, property: kindTextProperty), static (arg) => arg.property.GetValue(arg.obj)) is string { Length: > 0 } kindText)
                 {
                     return kindText;
                 }
@@ -459,7 +531,7 @@ public sealed class TreeFormatter
 
         static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
         {
-            if (property.Name is nameof(SyntaxToken.Text))
+            if (property.Name is nameof(SyntaxToken.Text) or nameof(RoslynAccessors.GetBoundRoot))
             {
                 return true;
             }
@@ -482,6 +554,7 @@ public sealed class TreeFormatter
 
                 return type == typeof(SyntaxTrivia) ||
                     type == typeof(SyntaxTriviaList) ||
+                    type == typeof(SyntaxTokenList) ||
                     type == typeof(SyntaxToken) ||
                     type == typeof(SymbolInfo);
             }
@@ -507,12 +580,14 @@ public sealed class TreeFormatter
         private int? needsIndent;
         private int depth;
 
-        private readonly int Position => sb.Length;
+        public readonly int Position => sb.Length;
 
         private readonly int GetPositionAfterIndent()
         {
             return Position + ((needsIndent * indentSize) ?? 0);
         }
+
+        [UnscopedRef] public ResetPoint GetResetPoint() => new(ref this);
 
         [UnscopedRef]
         public Scope TryNest()
@@ -640,6 +715,42 @@ public sealed class TreeFormatter
         }
 
         [NonCopyable]
+        public readonly ref struct ResetPoint
+        {
+            private readonly ref Writer writer;
+            private readonly int sbLength,
+                classifiedSpansLength,
+                sourceToTreeLength,
+                treeToSourceLength,
+                treeToTreeLength,
+                depth;
+            private readonly int? needsIndent;
+
+            public ResetPoint(ref Writer writer)
+            {
+                this.writer = ref writer;
+                sbLength = writer.sb.Length;
+                classifiedSpansLength = writer.classifiedSpans.Count;
+                sourceToTreeLength = writer.sourceToTree.Count;
+                treeToSourceLength = writer.treeToSource.Count;
+                treeToTreeLength = writer.treeToTree.Count;
+                depth = writer.depth;
+                needsIndent = writer.needsIndent;
+            }
+
+            public void Reset()
+            {
+                writer.sb.Length = sbLength;
+                writer.classifiedSpans.Count = classifiedSpansLength;
+                writer.sourceToTree.RemoveRange(sourceToTreeLength, writer.sourceToTree.Count - sourceToTreeLength);
+                writer.treeToSource.RemoveRange(treeToSourceLength, writer.treeToSource.Count - treeToSourceLength);
+                writer.treeToTree.RemoveRange(treeToTreeLength, writer.treeToTree.Count - treeToTreeLength);
+                writer.depth = depth;
+                writer.needsIndent = needsIndent;
+            }
+        }
+
+        [NonCopyable]
         public ref struct Scope
         {
             private ref Writer writer;
@@ -722,54 +833,42 @@ public sealed class TreeFormatter
         public required bool IsMethod { get; init; }
         public required Func<object, object?> Getter { get; init; }
 
-        public static PropertyLike Create(PropertyInfo property) => new()
+        public static PropertyLike Create(Options options, FieldInfo field) => new()
+        {
+            Name = field.Name,
+            Type = field.FieldType,
+            IsMethod = false,
+            Getter = (obj) => Util.GetValueOrException(options, (obj, field), static (arg) => arg.field.GetValue(arg.obj)),
+        };
+
+        public static PropertyLike Create(Options options, PropertyInfo property) => new()
         {
             Name = property.Name,
             Type = property.PropertyType,
             IsMethod = false,
-            Getter = (obj) => Util.GetPropertyValueOrException(obj, property),
+            Getter = (obj) => Util.GetValueOrException(options, (obj, property), static (arg) => arg.property.GetValue(arg.obj)),
         };
 
-        public static PropertyLike Create(MethodInfo simpleMethod) => new()
+        public static PropertyLike Create(Options options, MethodInfo simpleMethod) => new()
         {
             Name = simpleMethod.Name,
             Type = simpleMethod.ReturnType,
             IsMethod = true,
-            Getter = (obj) =>
-            {
-                try
-                {
-                    return simpleMethod.Invoke(obj, null);
-                }
-                catch (Exception ex)
-                {
-                    return Util.UnwrapException(ex);
-                }
-            },
+            Getter = (obj) => Util.GetValueOrException(options, (obj, simpleMethod), static (arg) => arg.simpleMethod.Invoke(arg.obj, null)),
         };
 
-        public static IEnumerable<PropertyLike> CreateFromModel<T>(SemanticModel model, object obj, string name, Func<SemanticModel, SyntaxNode, T> getter)
+        public static IEnumerable<PropertyLike> Create<TIn, TOut>(Options options, TIn? input, string name, Func<TIn, TOut> getter)
         {
-            if (obj is SyntaxNode node)
+            if (input is not null)
             {
                 return
                 [
                     new PropertyLike
                     {
                         Name = name,
-                        Type = typeof(T),
+                        Type = typeof(TOut),
                         IsMethod = true,
-                        Getter = _ =>
-                        {
-                            try
-                            {
-                                return getter(model, node);
-                            }
-                            catch (Exception ex)
-                            {
-                                return Util.UnwrapException(ex);
-                            }
-                        },
+                        Getter = _ => Util.GetValueOrException(options, input, getter),
                     },
                 ];
             }
@@ -780,13 +879,13 @@ public sealed class TreeFormatter
 
     private static class Util
     {
-        public static object? GetPropertyValueOrException(object obj, PropertyInfo property)
+        public static object? GetValueOrException<TArg, TResult>(Options options, TArg arg, Func<TArg, TResult> selector)
         {
             try
             {
-                return property.GetValue(obj);
+                return selector(arg);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!options.ThrowExceptions)
             {
                 return UnwrapException(ex);
             }

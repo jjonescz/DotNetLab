@@ -357,6 +357,11 @@ export function underlineLinks(editorId, offsets) {
 
 export function registerLanguage(languageId) {
     monaco.languages.register({ id: languageId });
+    monaco.languages.setLanguageConfiguration(languageId, {
+        folding: {
+            offSide: true,
+        },
+    });
 }
 
 export function hasDarkTheme(editorId) {
