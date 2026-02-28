@@ -179,10 +179,30 @@
               .RawKind = 8917 "ArrowExpressionClause"
               .Language = "C#"
             .GetBoundRoot() = BoundNonConstructorMethodBody
+              .Syntax = MethodDeclarationSyntax
               .ExpressionBody = BoundBlock
+                .Syntax = ArrowExpressionClauseSyntax
                 .Statements = [1]
                   BoundReturnStatement
+                    .Syntax = LiteralExpressionSyntax
+                      //
+                        .SpanStart = 21
+                        .Span = [21..22)
+                        .FullSpan = [21..22)
+                        .RawKind = 8749 "NumericLiteralExpression"
+                        .Language = "C#"
+                      .Token = SyntaxToken(NumericLiteralToken)
+                        //
+                          .ValueText = "1"
+                          .Value = 1
+                          .FullSpan = [21..22)
+                          .SpanStart = 21
+                          .Span = [21..22)
+                          .Language = "C#"
+                          .RawKind = 8509 "NumericLiteralToken"
+                        .Text = "1"
                     .ExpressionOpt = BoundLiteral
+                      .Syntax = LiteralExpressionSyntax
                       .Display = PENamedTypeSymbolNonGeneric
                         .ExtendedSpecialType = ExtendedSpecialType
                         .MetadataToken = 33554558
@@ -271,6 +291,7 @@
                             .ContainingType = PENamedTypeSymbolNonGeneric
                             .Name = ".ctor"
                             .ReturnTypeWithAnnotations = TypeWithAnnotations
+                              .DefaultNullableAnnotation = Oblivious
                               .IsResolved = true
                               .Type = PENamedTypeSymbolNonGeneric
                                 .ExtendedSpecialType = ExtendedSpecialType
@@ -291,6 +312,7 @@
                                     .ContainingType = PENamedTypeSymbolNonGeneric
                                     .Name = ".ctor"
                                     .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                      .DefaultNullableAnnotation = Oblivious
                                       .IsResolved = true
                                       .Type = PENamedTypeSymbolNonGeneric
                                       .NullableAnnotation = Oblivious
@@ -420,22 +442,6 @@
                     .Language = "C#"
                     .RawKind = 8540 "WhitespaceTrivia"
             .Expression = LiteralExpressionSyntax
-              //
-                .SpanStart = 21
-                .Span = [21..22)
-                .FullSpan = [21..22)
-                .RawKind = 8749 "NumericLiteralExpression"
-                .Language = "C#"
-              .Token = SyntaxToken(NumericLiteralToken)
-                //
-                  .ValueText = "1"
-                  .Value = 1
-                  .FullSpan = [21..22)
-                  .SpanStart = 21
-                  .Span = [21..22)
-                  .Language = "C#"
-                  .RawKind = 8509 "NumericLiteralToken"
-                .Text = "1"
           .SemicolonToken = SyntaxToken(SemicolonToken)
             //
               .HasTrailingTrivia = true
