@@ -1193,6 +1193,8 @@
 
             var text = CompilerOutputPlugin.GetText(outputInfo, result, out outputDisclaimer, ref language);
 
+            string? previousLanguage;
+
             if (!outputStates.TryGetValue(outputType, out var state))
             {
                 state = new(await BlazorMonaco.Editor.Global.CreateModel(
@@ -1201,10 +1203,12 @@
                     language: language,
                     uri: CompiledAssembly.GetOutputModelUri(outputInfo?.File, outputType)));
                 outputStates[outputType] = state;
+                previousLanguage = null;
             }
             else
             {
                 await state.Model.SetValue(text);
+                previousLanguage = await state.Model.GetLanguageId();
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
             }
 
@@ -1222,14 +1226,20 @@
 
             await outputEditor.SetModel(state.Model);
 
-            if (saveViewState && !state.ViewState.IsEmpty)
+            if (saveViewState && !state.ViewState.IsEmpty &&
+                // Avoid restoring state (and instead perform folding) when state changes drastically
+                // (currently we only detect language change - e.g., from error to normal output).
+                previousLanguage == language)
             {
                 await outputEditor.RestoreViewStateAsync(state.ViewState, module);
             }
             else if (isOutputLanguage)
             {
                 await FoldAllOutputAsync();
+            }
 
+            if (isOutputLanguage)
+            {
                 // Underline links.
                 if (result.Metadata != null &&
                     LanguageServices.TryGetOutputToOutputMapping(result.Metadata, out var mapping))
