@@ -236,6 +236,9 @@ internal sealed class WorkerController : IAsyncDisposable
                     else if (message.Id < 0)
                     {
                         logger.LogError("Unpaired message {Message}", message);
+
+                        // Discard all requests to avoid callers hanging waiting for the unpaired response which we have no way of assigning to a single request.
+                        DiscardPendingRequests("Unpaired message received", $"Unpaired message received: {message}");
                     }
                     else if (pendingRequests.TryRemove(message.Id, out var tcs))
                     {
