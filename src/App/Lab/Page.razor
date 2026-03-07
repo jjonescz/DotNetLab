@@ -204,7 +204,7 @@
             {
                 <FluentMessageBar Title="Compiler worker failed." Intent="MessageIntent.Error" AllowDismiss="false">
                     <div style="white-space-collapse: preserve">@workerError</div>
-                    <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorker"
+                    <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorkerAsync"
                                   IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Re-create the worker</FluentButton>
                 </FluentMessageBar>
             }
@@ -1609,10 +1609,9 @@
         StateHasChanged();
     }
 
-    internal void ReloadWorker()
+    internal async Task ReloadWorkerAsync()
     {
+        await Worker.RecreateWorkerAsync();
         workerError = null;
-        StateHasChanged();
-        _ = Worker.RecreateWorkerAsync();
     }
 }

@@ -132,6 +132,15 @@ internal sealed class WorkerController : IAsyncDisposable
         await workerGuard.WaitAsync();
         try
         {
+            try
+            {
+                await DisposeWorkerNoLockAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error when disposing worker.");
+            }
+
             await RecreateWorkerNoLockAsync();
         }
         finally
@@ -344,12 +353,22 @@ internal sealed class WorkerController : IAsyncDisposable
                     // TODO: Use ProtoBuf.
                     var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
                     LogOutgoingMessage(message, details: serialized.Length.SeparateThousands());
-                    WorkerControllerInterop.PostMessage(worker, serialized);
+
+                    try
+                    {
+                        WorkerControllerInterop.PostMessage(worker, serialized);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Sending worker message {Id} failed.", message.Id);
+                        await workerOutputMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure(ex)
+                        { Id = message.Id, InputType = message.GetType().Name });
+                    }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Sending worker messages failed");
+                logger.LogError(ex, "Sending worker messages failed.");
             }
         });
 
