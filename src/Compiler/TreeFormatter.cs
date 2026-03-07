@@ -110,7 +110,8 @@ public sealed class TreeFormatter
                     writer.Write(")", ClassificationTypeNames.Punctuation);
                 }
 
-                if (obj is ISymbol { Name: { } symbolName })
+                if (obj is ISymbol { Name: { } symbolName } ||
+                    RoslynAccessors.TryGetInternalSymbolName(obj, out symbolName))
                 {
                     writer.Write(" ", ClassificationTypeNames.WhiteSpace);
                     writer.Write(formatPrimitive(symbolName), ClassificationTypeNames.StringLiteral);

@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Diagnostics.CSharp;
+using Microsoft.CodeAnalysis.Symbols;
 using Microsoft.CodeAnalysis.Test.Utilities;
 
 namespace DotNetLab;
@@ -134,6 +135,18 @@ public static class RoslynAccessors
             .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
             .Where(f => f.FieldType == typeof(string) && f.IsLiteral)
             .Select(f => (string)f.GetRawConstantValue()!);
+    }
+
+    public static bool TryGetInternalSymbolName(object o, [NotNullWhen(returnValue: true)] out string? name)
+    {
+        if (o is ISymbolInternal { Name: { } symbolName })
+        {
+            name = symbolName;
+            return true;
+        }
+
+        name = null;
+        return false;
     }
 }
 

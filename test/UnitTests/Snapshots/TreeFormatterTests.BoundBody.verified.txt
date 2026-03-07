@@ -185,18 +185,18 @@
                     .ExpressionOpt = BoundLiteral
                       .GetValEscape() = "SafeContext<CallingMethod>"
                       .GetRefEscape() = "SafeContext<CurrentMethod>"
-                      .Display = PENamedTypeSymbolNonGeneric
+                      .Display = PENamedTypeSymbolNonGeneric "Int32"
                         .ExtendedSpecialType = ExtendedSpecialType
                         .MetadataToken = 33554558
-                        .ConstructedFrom = PENamedTypeSymbolNonGeneric
-                        .ContainingSymbol = PENestedNamespaceSymbol
-                          .ContainingSymbol = PEGlobalNamespaceSymbol
-                            .ContainingSymbol = PEModuleSymbol
+                        .ConstructedFrom = PENamedTypeSymbolNonGeneric "Int32"
+                        .ContainingSymbol = PENestedNamespaceSymbol "System"
+                          .ContainingSymbol = PEGlobalNamespaceSymbol ""
+                            .ContainingSymbol = PEModuleSymbol "System.Runtime.dll"
                               .AreLocalsZeroed = InvalidOperationException
                                 .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEModuleSymbol.cs' Line=171"
-                              .GlobalNamespace = PEGlobalNamespaceSymbol
+                              .GlobalNamespace = PEGlobalNamespaceSymbol ""
                               .Name = "System.Runtime.dll"
-                              .ContainingSymbol = PEAssemblySymbol
+                              .ContainingSymbol = PEAssemblySymbol "System.Runtime"
                                 .Identity = AssemblyIdentity
                                   .Name = "System.Runtime"
                                   .Version = Version
@@ -210,30 +210,30 @@
                                     0xb03f5f7f11d50a3a
                                   .IsStrongName = true
                                 .Modules = [1]
-                                  PEModuleSymbol
+                                  PEModuleSymbol "System.Runtime.dll"
                                 .MetadataToken = 536870913
                                 .MightContainExtensions = true
-                                .GlobalNamespace = PEGlobalNamespaceSymbol
+                                .GlobalNamespace = PEGlobalNamespaceSymbol ""
                                 .Name = "System.Runtime"
                                 .Kind = Assembly
                                 .MetadataName = "System.Runtime"
                                 .MetadataVisibility = InvalidOperationException
                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
-                                .OriginalDefinition = PEAssemblySymbol
+                                .OriginalDefinition = PEAssemblySymbol "System.Runtime"
                                 .IsDefinition = true
-                              .ContainingAssembly = PEAssemblySymbol
+                              .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                               .Kind = NetModule
                               .MetadataName = "System.Runtime.dll"
                               .MetadataVisibility = InvalidOperationException
                                 .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
-                              .OriginalDefinition = PEModuleSymbol
+                              .OriginalDefinition = PEModuleSymbol "System.Runtime.dll"
                               .IsDefinition = true
                             .Name = ""
                             .IsGlobalNamespace = true
-                            .ContainingAssembly = PEAssemblySymbol
+                            .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                             .NamespaceKind = Module
                             .ConstituentNamespaces = [1]
-                              PEGlobalNamespaceSymbol
+                              PEGlobalNamespaceSymbol ""
                             .Kind = Namespace
                             .IsImplicitlyDeclared = true
                             .DeclaredAccessibility = Public
@@ -241,21 +241,21 @@
                             .IsNamespace = true
                             .MetadataName = ""
                             .MetadataVisibility = Public
-                            .OriginalDefinition = PEGlobalNamespaceSymbol
+                            .OriginalDefinition = PEGlobalNamespaceSymbol ""
                             .IsDefinition = true
                           .Name = "System"
-                          .ContainingAssembly = PEAssemblySymbol
+                          .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                           .NamespaceKind = Module
                           .ConstituentNamespaces = [1]
-                            PENestedNamespaceSymbol
+                            PENestedNamespaceSymbol "System"
                           .Kind = Namespace
                           .DeclaredAccessibility = Public
                           .IsStatic = true
                           .IsNamespace = true
                           .MetadataName = "System"
-                          .ContainingNamespace = PEGlobalNamespaceSymbol
+                          .ContainingNamespace = PEGlobalNamespaceSymbol ""
                           .MetadataVisibility = Public
-                          .OriginalDefinition = PENestedNamespaceSymbol
+                          .OriginalDefinition = PENestedNamespaceSymbol "System"
                           .IsDefinition = true
                           .CanBeReferencedByName = true
                         .DeclaredAccessibility = Public
@@ -267,18 +267,18 @@
                         .TypeKind = Struct
                         .IsReadOnly = true
                         .InstanceConstructors = [1]
-                          SynthesizedInstanceConstructor
+                          SynthesizedInstanceConstructor ".ctor"
                             .DeclaredAccessibility = Public
-                            .ContainingSymbol = PENamedTypeSymbolNonGeneric
-                            .ContainingType = PENamedTypeSymbolNonGeneric
+                            .ContainingSymbol = PENamedTypeSymbolNonGeneric "Int32"
+                            .ContainingType = PENamedTypeSymbolNonGeneric "Int32"
                             .Name = ".ctor"
                             .ReturnTypeWithAnnotations = TypeWithAnnotations
                               .IsResolved = true
-                              .Type = PENamedTypeSymbolNonGeneric
+                              .Type = PENamedTypeSymbolNonGeneric "Void"
                                 .ExtendedSpecialType = ExtendedSpecialType
                                 .MetadataToken = 33554677
-                                .ConstructedFrom = PENamedTypeSymbolNonGeneric
-                                .ContainingSymbol = PENestedNamespaceSymbol
+                                .ConstructedFrom = PENamedTypeSymbolNonGeneric "Void"
+                                .ContainingSymbol = PENestedNamespaceSymbol "System"
                                 .DeclaredAccessibility = Public
                                 .Name = "Void"
                                 .MetadataName = "Void"
@@ -287,16 +287,16 @@
                                   .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
                                 .TypeKind = Struct
                                 .InstanceConstructors = [1]
-                                  SynthesizedInstanceConstructor
+                                  SynthesizedInstanceConstructor ".ctor"
                                     .DeclaredAccessibility = Public
-                                    .ContainingSymbol = PENamedTypeSymbolNonGeneric
-                                    .ContainingType = PENamedTypeSymbolNonGeneric
+                                    .ContainingSymbol = PENamedTypeSymbolNonGeneric "Void"
+                                    .ContainingType = PENamedTypeSymbolNonGeneric "Void"
                                     .Name = ".ctor"
                                     .ReturnTypeWithAnnotations = TypeWithAnnotations
                                       .IsResolved = true
-                                      .Type = PENamedTypeSymbolNonGeneric
+                                      .Type = PENamedTypeSymbolNonGeneric "Void"
                                       .NullableAnnotation = Oblivious
-                                      .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric
+                                      .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Void"
                                       .TypeKind = Struct
                                       .SpecialType = System_Void
                                       .PrimitiveTypeCode = Void
@@ -313,31 +313,31 @@
                                     .IsImplicitlyDeclared = true
                                     .AreLocalsZeroed = InvalidOperationException
                                       .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
-                                    .OriginalDefinition = SynthesizedInstanceConstructor
+                                    .OriginalDefinition = SynthesizedInstanceConstructor ".ctor"
                                     .RequiresInstanceReceiver = true
-                                    .ReturnType = PENamedTypeSymbolNonGeneric
-                                    .ConstructedFrom = SynthesizedInstanceConstructor
+                                    .ReturnType = PENamedTypeSymbolNonGeneric "Void"
+                                    .ConstructedFrom = SynthesizedInstanceConstructor ".ctor"
                                     .Kind = Method
-                                    .ReceiverType = PENamedTypeSymbolNonGeneric
+                                    .ReceiverType = PENamedTypeSymbolNonGeneric "Void"
                                     .MetadataName = ".ctor"
-                                    .ContainingNamespace = PENestedNamespaceSymbol
-                                    .ContainingAssembly = PEAssemblySymbol
+                                    .ContainingNamespace = PENestedNamespaceSymbol "System"
+                                    .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                     .MetadataVisibility = Public
                                     .IsDefinition = true
                                 .Constructors = [1]
-                                  SynthesizedInstanceConstructor
+                                  SynthesizedInstanceConstructor ".ctor"
                                 .IsValueType = true
                                 .Kind = NamedType
-                                .OriginalDefinition = PENamedTypeSymbolNonGeneric
+                                .OriginalDefinition = PENamedTypeSymbolNonGeneric "Void"
                                 .SpecialType = System_Void
                                 .IsType = true
-                                .ContainingNamespace = PENestedNamespaceSymbol
-                                .ContainingAssembly = PEAssemblySymbol
+                                .ContainingNamespace = PENestedNamespaceSymbol "System"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                 .MetadataVisibility = Public
                                 .IsDefinition = true
                                 .CanBeReferencedByName = true
                               .NullableAnnotation = Oblivious
-                              .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric
+                              .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Void"
                               .TypeKind = Struct
                               .SpecialType = System_Void
                               .PrimitiveTypeCode = Void
@@ -348,26 +348,26 @@
                             .IsImplicitlyDeclared = true
                             .AreLocalsZeroed = InvalidOperationException
                               .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
-                            .OriginalDefinition = SynthesizedInstanceConstructor
+                            .OriginalDefinition = SynthesizedInstanceConstructor ".ctor"
                             .RequiresInstanceReceiver = true
-                            .ReturnType = PENamedTypeSymbolNonGeneric
-                            .ConstructedFrom = SynthesizedInstanceConstructor
+                            .ReturnType = PENamedTypeSymbolNonGeneric "Void"
+                            .ConstructedFrom = SynthesizedInstanceConstructor ".ctor"
                             .Kind = Method
-                            .ReceiverType = PENamedTypeSymbolNonGeneric
+                            .ReceiverType = PENamedTypeSymbolNonGeneric "Int32"
                             .MetadataName = ".ctor"
-                            .ContainingNamespace = PENestedNamespaceSymbol
-                            .ContainingAssembly = PEAssemblySymbol
+                            .ContainingNamespace = PENestedNamespaceSymbol "System"
+                            .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                             .MetadataVisibility = Public
                             .IsDefinition = true
                         .Constructors = [1]
-                          SynthesizedInstanceConstructor
+                          SynthesizedInstanceConstructor ".ctor"
                         .IsValueType = true
                         .Kind = NamedType
-                        .OriginalDefinition = PENamedTypeSymbolNonGeneric
+                        .OriginalDefinition = PENamedTypeSymbolNonGeneric "Int32"
                         .SpecialType = System_Int32
                         .IsType = true
-                        .ContainingNamespace = PENestedNamespaceSymbol
-                        .ContainingAssembly = PEAssemblySymbol
+                        .ContainingNamespace = PENestedNamespaceSymbol "System"
+                        .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                         .MetadataVisibility = Public
                         .IsDefinition = true
                         .CanBeReferencedByName = true
@@ -395,7 +395,7 @@
                         .IsIntegral = true
                         .IsNumeric = true
                       .ResultKind = Viable
-                      .Type = PENamedTypeSymbolNonGeneric
+                      .Type = PENamedTypeSymbolNonGeneric "Int32"
                       .Kind = Literal
                       .Syntax = LiteralExpressionSyntax
                         //
