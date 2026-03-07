@@ -181,11 +181,6 @@ public sealed class TreeFormatter
                 // .GetImplicitInterfaceImplementations()
                 .. PropertyLike.Create(options, obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
 
-                // Public instance fields
-                .. type.GetFields(BindingFlags.Instance | BindingFlags.Public)
-                    .Where(f => propertyFilter(f.Name))
-                    .Select(f => PropertyLike.Create(options, f)),
-
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     // Explicitly implemented properties of public interfaces
@@ -195,6 +190,13 @@ public sealed class TreeFormatter
                     .DistinctBy(p => p.Name, StringComparer.Ordinal)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
                     .Select(p => PropertyLike.Create(options, p)),
+
+                // Public instance fields
+                // We display this after properties so .Syntax (a field) of BoundNode is displayed after child BoundNode properties (like .Expression)
+                // and hence cursor syncing finds the deepest syntax node (which is associated to the most specific bound node) first.
+                .. type.GetFields(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(f => propertyFilter(f.Name))
+                    .Select(f => PropertyLike.Create(options, f)),
 
                 // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)

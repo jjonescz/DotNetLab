@@ -179,32 +179,12 @@
               .RawKind = 8917 "ArrowExpressionClause"
               .Language = "C#"
             .GetBoundRoot() = BoundNonConstructorMethodBody
-              .Syntax = MethodDeclarationSyntax
               .ExpressionBody = BoundBlock
-                .Syntax = ArrowExpressionClauseSyntax
                 .Statements = [1]
                   BoundReturnStatement
-                    .Syntax = LiteralExpressionSyntax
-                      //
-                        .SpanStart = 21
-                        .Span = [21..22)
-                        .FullSpan = [21..22)
-                        .RawKind = 8749 "NumericLiteralExpression"
-                        .Language = "C#"
-                      .Token = SyntaxToken(NumericLiteralToken)
-                        //
-                          .ValueText = "1"
-                          .Value = 1
-                          .FullSpan = [21..22)
-                          .SpanStart = 21
-                          .Span = [21..22)
-                          .Language = "C#"
-                          .RawKind = 8509 "NumericLiteralToken"
-                        .Text = "1"
                     .ExpressionOpt = BoundLiteral
                       .GetValEscape() = "SafeContext<CallingMethod>"
                       .GetRefEscape() = "SafeContext<CurrentMethod>"
-                      .Syntax = LiteralExpressionSyntax
                       .Display = PENamedTypeSymbolNonGeneric
                         .ExtendedSpecialType = ExtendedSpecialType
                         .MetadataToken = 33554558
@@ -293,7 +273,6 @@
                             .ContainingType = PENamedTypeSymbolNonGeneric
                             .Name = ".ctor"
                             .ReturnTypeWithAnnotations = TypeWithAnnotations
-                              .DefaultNullableAnnotation = Oblivious
                               .IsResolved = true
                               .Type = PENamedTypeSymbolNonGeneric
                                 .ExtendedSpecialType = ExtendedSpecialType
@@ -314,7 +293,6 @@
                                     .ContainingType = PENamedTypeSymbolNonGeneric
                                     .Name = ".ctor"
                                     .ReturnTypeWithAnnotations = TypeWithAnnotations
-                                      .DefaultNullableAnnotation = Oblivious
                                       .IsResolved = true
                                       .Type = PENamedTypeSymbolNonGeneric
                                       .NullableAnnotation = Oblivious
@@ -322,6 +300,7 @@
                                       .TypeKind = Struct
                                       .SpecialType = System_Void
                                       .PrimitiveTypeCode = Void
+                                      .DefaultNullableAnnotation = Oblivious
                                     .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
                                       //
                                         .IsEmpty = true
@@ -362,6 +341,7 @@
                               .TypeKind = Struct
                               .SpecialType = System_Void
                               .PrimitiveTypeCode = Void
+                              .DefaultNullableAnnotation = Oblivious
                             .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
                             .ReturnsVoid = true
                             .MethodKind = Constructor
@@ -417,10 +397,30 @@
                       .ResultKind = Viable
                       .Type = PENamedTypeSymbolNonGeneric
                       .Kind = Literal
+                      .Syntax = LiteralExpressionSyntax
+                        //
+                          .SpanStart = 21
+                          .Span = [21..22)
+                          .FullSpan = [21..22)
+                          .RawKind = 8749 "NumericLiteralExpression"
+                          .Language = "C#"
+                        .Token = SyntaxToken(NumericLiteralToken)
+                          //
+                            .ValueText = "1"
+                            .Value = 1
+                            .FullSpan = [21..22)
+                            .SpanStart = 21
+                            .Span = [21..22)
+                            .Language = "C#"
+                            .RawKind = 8509 "NumericLiteralToken"
+                          .Text = "1"
                     .WasCompilerGenerated = true
                     .Kind = ReturnStatement
+                    .Syntax = LiteralExpressionSyntax
                 .Kind = Block
+                .Syntax = ArrowExpressionClauseSyntax
               .Kind = NonConstructorMethodBody
+              .Syntax = MethodDeclarationSyntax
             .ArrowToken = SyntaxToken(EqualsGreaterThanToken)
               //
                 .HasTrailingTrivia = true
