@@ -243,7 +243,7 @@
             </FluentTabs>
 
             @* Output toolbar *@
-            @if (OutputHasToolbar)
+            @if (OutputHasToolbar && GetOutput(DisplayOutputType) != null)
             {
                 <FluentToolbar>
                     @switch (DisplayOutputType)
@@ -359,6 +359,8 @@
         public CacheInfo? CacheInfo { get; init; }
         public required DateTimeOffset Start { get; init; }
         public required DateTimeOffset End { get; init; }
+
+        public required bool AutoLoadLazyOutputs { get; init; }
 
         /// <summary>
         /// Only set if this <see cref="CompiledState"/> instance represents compiled (not cached) state
@@ -1022,6 +1024,7 @@
             CacheInfo = cacheInfo,
             Start = startTime,
             End = DateTimeOffset.Now,
+            AutoLoadLazyOutputs = true,
         };
 
         await DisplaySquigglesAsync();
@@ -1254,8 +1257,13 @@
         await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
     }
 
-    private OutputInfo? GetOutput(string type)
+    private OutputInfo? GetOutput(string? type)
     {
+        if (type is null)
+        {
+            return null;
+        }
+
         if (CurrentCompiledFile is { } currentCompiledFile)
         {
             if (currentCompiledFile.GetOutput(type) is { } output)
@@ -1326,7 +1334,7 @@
 
         // If we are currently displaying cached outputs, but this specific output type is not cached,
         // avoid resolving it and hence starting compilation implicitly.
-        if (compiled is { CacheInfo: not null, CachedOutput: null })
+        if (compiled?.AutoLoadLazyOutputs != true)
         {
             return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.SpecialMessage }, false);
         }
@@ -1432,6 +1440,23 @@
             await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
+        else
+        {
+            if (compiled != null)
+            {
+                compiled = compiled with
+                {
+                    AutoLoadLazyOutputs = false,
+                };
+            }
+
+            if (updateOutput)
+            {
+                await AutoSelectOutputAsync(
+                    updateTimestampMode: OutputActionMode.Never,
+                    storeInCacheMode: OutputActionMode.Never);
+            }
+        }
     }
 
     private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
@@ -1455,7 +1480,8 @@
             Output = output,
             CacheInfo = info,
             Start = timestamp,
-            End = timestamp
+            End = timestamp,
+            AutoLoadLazyOutputs = false,
         };
         StateHasChanged();
 
