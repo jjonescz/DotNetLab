@@ -1110,6 +1110,9 @@ public sealed class Compiler(
     public static CSharpCompilationOptions CreateDefaultCompilationOptions(OutputKind outputKind)
     {
         // IMPORTANT: Keep in sync with `InitialCode.Configuration`.
+        // (This doesn't mean that we need all the options in both places, since the Config code overrides the defaults.
+        // We want just the common options in the Config code so users can change them quickly without much typing.
+        // But when we do specify some of these options in the Config code, they should match to avoid confusion).
         return new CSharpCompilationOptions(
             outputKind,
             allowUnsafe: true,
