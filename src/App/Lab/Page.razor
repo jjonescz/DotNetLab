@@ -252,13 +252,16 @@
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
-                                                Label="Symbols" />
+                                                Label="Symbols"
+                                                title="Displays symbol nodes in the tree - look for `.GetSymbolInfo()` and `.GetDeclaredSymbol()` under syntax nodes" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
-                                                Label="Operations" />
+                                                Label="Operations"
+                                                title="Displays IOperation nodes in the tree - look for `.GetOperation()` under syntax nodes" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowBoundNodes"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowBoundNodes = v })"
-                                                Label="Bound nodes" />
+                                                Label="Bound nodes"
+                                                title="Displays bound nodes in the tree - look for `.GetBoundRoot()` under syntax nodes" />
                                 <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
