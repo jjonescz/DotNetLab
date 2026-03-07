@@ -1450,22 +1450,11 @@
             await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
-        else
+        else if (updateOutput)
         {
-            if (compiled != null)
-            {
-                compiled = compiled with
-                {
-                    AutoLoadLazyOutputs = false,
-                };
-            }
-
-            if (updateOutput)
-            {
-                await AutoSelectOutputAsync(
-                    updateTimestampMode: OutputActionMode.Never,
-                    storeInCacheMode: OutputActionMode.Never);
-            }
+            await AutoSelectOutputAsync(
+                updateTimestampMode: OutputActionMode.Never,
+                storeInCacheMode: OutputActionMode.Never);
         }
     }
 
