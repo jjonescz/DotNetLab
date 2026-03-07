@@ -344,7 +344,10 @@ internal sealed class WorkerController : IAsyncDisposable
 
         // Register pending request before sending to avoid race conditions.
         var tcs = new TaskCompletionSource<WorkerOutputMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        pendingRequests[message.Id] = tcs;
+        if (!pendingRequests.TryAdd(message.Id, tcs))
+        {
+            throw new InvalidOperationException($"Request with ID {message.Id} already exists.");
+        }
 
         // TODO: Use ProtoBuf.
         var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
