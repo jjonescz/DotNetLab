@@ -1,10 +1,10 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Text.Json;
-using System.Collections.Concurrent;
 using Timer = System.Timers.Timer;
 
 namespace DotNetLab.Lab;
@@ -118,10 +118,15 @@ internal sealed class WorkerController : IAsyncDisposable
                     w.Handle.Dispose();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Disposing worker failed.");
+            }
 
             worker = null;
         }
+
+        DiscardPendingRequests("Worker disposed");
     }
 
     public async Task RecreateWorkerAsync()
@@ -129,15 +134,6 @@ internal sealed class WorkerController : IAsyncDisposable
         await workerGuard.WaitAsync();
         try
         {
-            try
-            {
-                await DisposeWorkerNoLockAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error when disposing worker.");
-            }
-
             await RecreateWorkerNoLockAsync();
         }
         finally
@@ -179,17 +175,24 @@ internal sealed class WorkerController : IAsyncDisposable
         }
 
         // Complete all pending requests (should be none or from a previous failure).
+        DiscardPendingRequests("Worker re-created");
+
+        worker = CreateWorkerAsync();
+        return worker;
+    }
+
+    private void DiscardPendingRequests(string message, string? fullString = null)
+    {
+        var failure = new WorkerOutputMessage.Failure(message, fullString ?? message)
+        { Id = WorkerOutputMessage.BroadcastId, InputType = WorkerOutputMessage.BroadcastInputType };
         foreach (var kvp in pendingRequests)
         {
             if (pendingRequests.TryRemove(kvp.Key, out var tcs))
             {
                 logger.LogDebug("Discarding pending request {Id}", kvp.Key);
-                tcs.TrySetCanceled();
+                tcs.TrySetResult(failure);
             }
         }
-
-        worker = CreateWorkerAsync();
-        return worker;
     }
 
     [SupportedOSPlatform("browser")]
@@ -252,15 +255,7 @@ internal sealed class WorkerController : IAsyncDisposable
                 dispatcher.InvokeAsync(() =>
                 {
                     // Complete all pending requests with the failure.
-                    var failure = new WorkerOutputMessage.Failure("Worker error", error)
-                    { Id = WorkerOutputMessage.BroadcastId, InputType = WorkerOutputMessage.BroadcastInputType };
-                    foreach (var kvp in pendingRequests)
-                    {
-                        if (pendingRequests.TryRemove(kvp.Key, out var tcs))
-                        {
-                            tcs.TrySetResult(failure);
-                        }
-                    }
+                    DiscardPendingRequests("Worker error", error);
 
                     Failed?.Invoke(error);
                     return Task.CompletedTask;
