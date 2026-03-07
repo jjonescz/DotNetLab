@@ -1000,6 +1000,15 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     {
                         context.TargetFramework = value;
                     }),
+                Create<int>(
+                    "WarningLevel",
+                    static (value, out result) => int.TryParse(value.Span, out result),
+                    static (context, result) =>
+                    {
+                        context.Config.CSharpCompilationOptions(options => options.WithWarningLevel(result));
+                    },
+                    suggestValues: Constant(((IEnumerable<int>)[0, .. Enumerable.Range(1, 11), 9999]).SelectAsArray(i => i.ToString())),
+                    useSuggestValuesInError: true),
             ]);
 
         private Property(ParseInfo info) : base(info) { }
