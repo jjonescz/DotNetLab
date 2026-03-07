@@ -305,7 +305,7 @@ public sealed class TreeFormatter
                         // The following basically contain the parent recursively or duplicate children displayed elsewhere.
                         (isSyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
                         (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
-                        (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) or "Children" &&
+                        (property.Name is nameof(IOperation.ChildOperations) or "Children" &&
                             type.IsAssignableTo(typeof(IOperation))) ||
                         // Preferences.
                         (options.ExcludeSymbols && (property.Type == typeof(SymbolInfo) || property.Type.IsAssignableTo(typeof(ISymbol)))) ||
