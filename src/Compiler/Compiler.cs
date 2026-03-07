@@ -1115,6 +1115,7 @@ public sealed class Compiler(
             allowUnsafe: true,
             nullableContextOptions: NullableContextOptions.Enable,
             concurrentBuild: false,
+            warningLevel: 9999,
             specificDiagnosticOptions:
             [
                 new("CS1701", ReportDiagnostic.Suppress),
