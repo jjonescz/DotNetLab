@@ -21,7 +21,7 @@ const offlineAssetsExclude = [ /^service-worker\.js$/ ];
 // Replace with your base path if you are hosting on a subfolder. Ensure there is a trailing '/'.
 const base = "/";
 const baseUrl = new URL(base, self.origin);
-const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);
+const manifestUrlSet = new Set(self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href));
 
 async function onInstall() {
     console.info('Service worker: Install');
@@ -34,23 +34,22 @@ async function onInstall() {
     const cache = await caches.open(cacheName);
     await cache.addAll(assetsRequests);
     
-    // Clean responses.
+    // Clean responses in parallel.
     // Removes `redirected` flag so the response is servable by the service worker.
     // https://stackoverflow.com/a/45440505/9080566
     // https://github.com/dotnet/aspnetcore/issues/33872
     // Also avoids other inexplicable failures when serving responses from the service worker.
-    for (const request of assetsRequests) {
+    await Promise.all(assetsRequests.map(async (request) => {
         const response = await cache.match(request);
-        const clonedResponse = response.clone();
-        const responseData = await clonedResponse.arrayBuffer();
+        const responseData = await response.arrayBuffer();
         const cleanedResponse = new Response(responseData, {
             headers: {
-                'content-type': clonedResponse.headers.get('content-type') ?? '',
+                'content-type': response.headers.get('content-type') ?? '',
                 'content-length': responseData.byteLength.toString(),
             },
         });
         await cache.put(request, cleanedResponse);
-    }
+    }));
 }
 
 async function onActivate() {
@@ -86,7 +85,7 @@ async function onFetch(event) {
         // unless that request is for an offline resource.
         // If you need some URLs to be server-rendered, edit the following check to exclude those URLs
         const shouldServeIndexHtml = event.request.mode === 'navigate'
-            && !manifestUrlList.some(url => url === event.request.url);
+            && !manifestUrlSet.has(event.request.url);
 
         if (shouldServeIndexHtml) {
             console.debug(`Service worker: serving index.html for ${event.request.url}`);
