@@ -166,6 +166,16 @@
                                         </FluentSwitch>
                                     </ActionContent>
                                 </SettingsCard>
+
+                                <SettingsCard Class="default-setting-expander-item settings-nowarp">
+                                    <Header>
+                                        <h5 class="unset">Worker stuck?</h5>
+                                    </Header>
+                                    <ActionContent>
+                                        <FluentButton OnClick="Page.ReloadWorkerAsync"
+                                                      IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Restart the worker</FluentButton>
+                                    </ActionContent>
+                                </SettingsCard>
                             }
 
                             @* Caching check box *@

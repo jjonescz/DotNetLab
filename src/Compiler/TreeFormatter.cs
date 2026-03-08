@@ -110,7 +110,8 @@ public sealed class TreeFormatter
                     writer.Write(")", ClassificationTypeNames.Punctuation);
                 }
 
-                if (obj is ISymbol { Name: { } symbolName })
+                if (obj is ISymbol { Name: { } symbolName } ||
+                    RoslynAccessors.TryGetInternalSymbolName(obj, out symbolName))
                 {
                     writer.Write(" ", ClassificationTypeNames.WhiteSpace);
                     writer.Write(formatPrimitive(symbolName), ClassificationTypeNames.StringLiteral);
@@ -181,11 +182,6 @@ public sealed class TreeFormatter
                 // .GetImplicitInterfaceImplementations()
                 .. PropertyLike.Create(options, obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
 
-                // Public instance fields
-                .. type.GetFields(BindingFlags.Instance | BindingFlags.Public)
-                    .Where(f => propertyFilter(f.Name))
-                    .Select(f => PropertyLike.Create(options, f)),
-
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                     // Explicitly implemented properties of public interfaces
@@ -195,6 +191,13 @@ public sealed class TreeFormatter
                     .DistinctBy(p => p.Name, StringComparer.Ordinal)
                     .Where(p => propertyFilter(p.Name) && p.GetIndexParameters().Length == 0)
                     .Select(p => PropertyLike.Create(options, p)),
+
+                // Public instance fields
+                // We display this after properties so .Syntax (a field) of BoundNode is displayed after child BoundNode properties (like .Expression)
+                // and hence cursor syncing finds the deepest syntax node (which is associated to the most specific bound node) first.
+                .. type.GetFields(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(f => propertyFilter(f.Name))
+                    .Select(f => PropertyLike.Create(options, f)),
 
                 // .GetStructure()
                 .. type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -305,7 +308,7 @@ public sealed class TreeFormatter
                         // The following basically contain the parent recursively or duplicate children displayed elsewhere.
                         (isSyntaxTrivia && property.Name is nameof(SyntaxTrivia.Token)) ||
                         (property.Name is nameof(SyntaxNode.Parent) or nameof(SyntaxNode.ParentTrivia)) ||
-                        (property.Name is nameof(IOperation.Syntax) or nameof(IOperation.ChildOperations) or "Children" &&
+                        (property.Name is nameof(IOperation.ChildOperations) or "Children" &&
                             type.IsAssignableTo(typeof(IOperation))) ||
                         // Preferences.
                         (options.ExcludeSymbols && (property.Type == typeof(SymbolInfo) || property.Type.IsAssignableTo(typeof(ISymbol)))) ||

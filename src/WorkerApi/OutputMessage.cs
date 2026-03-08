@@ -31,6 +31,8 @@ public abstract record WorkerOutputMessage
     [method: JsonConstructor]
     public sealed record Failure(string Message, string FullString) : WorkerOutputMessage
     {
+        public Failure(string message) : this(message, message) { }
+
         public Failure(Exception ex) : this(Message: ex.Message, FullString: ex.ToString()) { }
     }
 }

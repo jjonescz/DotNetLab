@@ -1,10 +1,10 @@
 ﻿using BlazorMonaco;
 using BlazorMonaco.Editor;
 using BlazorMonaco.Languages;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Text.Json;
-using System.Threading.Channels;
 using Timer = System.Timers.Timer;
 
 namespace DotNetLab.Lab;
@@ -16,9 +16,7 @@ internal sealed class WorkerController : IAsyncDisposable
     private readonly IWorkerConfigurer? workerConfigurer;
     private readonly Dispatcher dispatcher;
     private readonly Lazy<IServiceProvider> workerServices;
-    private readonly Channel<WorkerInputMessage> workerInputMessages = Channel.CreateUnbounded<WorkerInputMessage>();
-    private readonly Channel<WorkerOutputMessage> workerOutputMessages = Channel.CreateUnbounded<WorkerOutputMessage>();
-    private readonly Lazy<Task<bool>> workerSendingTask;
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<WorkerOutputMessage>> pendingRequests = new();
     private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
     private Task<WorkerInstance?>? worker;
     private int messageId;
@@ -37,7 +35,6 @@ internal sealed class WorkerController : IAsyncDisposable
         Disabled = !hostEnvironment.SupportsWebWorkers;
         dispatcher = Dispatcher.CreateDefault();
         workerServices = new(CreateWorkerServices);
-        workerSendingTask = new(SendWorkerMessagesAsync);
     }
 
     public event Action<string>? Failed;
@@ -121,10 +118,15 @@ internal sealed class WorkerController : IAsyncDisposable
                     w.Handle.Dispose();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Disposing worker failed.");
+            }
 
             worker = null;
         }
+
+        DiscardPendingRequests("Worker disposed");
     }
 
     public async Task RecreateWorkerAsync()
@@ -172,17 +174,25 @@ internal sealed class WorkerController : IAsyncDisposable
             await DisposeWorkerNoLockAsync();
         }
 
-        // Read all pending messages (should be none or a single broadcast message with the previous failure).
-        while (workerOutputMessages.Reader.TryRead(out var message))
-        {
-            logger.LogDebug("Discarding message {Id} {InputType} → {OutputType}",
-                message.Id,
-                message.InputType,
-                message.GetType().Name);
-        }
+        // Complete all pending requests (should be none or from a previous failure).
+        DiscardPendingRequests("Worker re-created");
 
         worker = CreateWorkerAsync();
         return worker;
+    }
+
+    private void DiscardPendingRequests(string message, string? fullString = null)
+    {
+        var failure = new WorkerOutputMessage.Failure(message, fullString ?? message)
+        { Id = WorkerOutputMessage.BroadcastId, InputType = WorkerOutputMessage.BroadcastInputType };
+        foreach (var kvp in pendingRequests)
+        {
+            if (pendingRequests.TryRemove(kvp.Key, out var tcs))
+            {
+                logger.LogDebug("Discarding pending request {Id}", kvp.Key);
+                tcs.TrySetResult(failure);
+            }
+        }
     }
 
     [SupportedOSPlatform("browser")]
@@ -226,10 +236,17 @@ internal sealed class WorkerController : IAsyncDisposable
                     else if (message.Id < 0)
                     {
                         logger.LogError("Unpaired message {Message}", message);
+
+                        // Discard all requests to avoid callers hanging waiting for the unpaired response which we have no way of assigning to a single request.
+                        DiscardPendingRequests("Unpaired message received", $"Unpaired message received: {message}");
+                    }
+                    else if (pendingRequests.TryRemove(message.Id, out var tcs))
+                    {
+                        tcs.TrySetResult(message);
                     }
                     else
                     {
-                        await workerOutputMessages.Writer.WriteAsync(message);
+                        logger.LogWarning("No pending request for message {Id}", message.Id);
                     }
                 });
             },
@@ -238,13 +255,13 @@ internal sealed class WorkerController : IAsyncDisposable
                 logger.LogError("Worker error: {Error}", error);
                 pingTimer.Stop();
                 workerReady.TrySetException(new InvalidOperationException($"Worker error: {error}"));
-                dispatcher.InvokeAsync(async () =>
+                dispatcher.InvokeAsync(() =>
                 {
-                    // Send a broadcast message so all pending calls are completed with a failure.
-                    await workerOutputMessages.Writer.WriteAsync(new WorkerOutputMessage.Failure("Worker error", error)
-                    { Id = WorkerOutputMessage.BroadcastId, InputType = WorkerOutputMessage.BroadcastInputType });
+                    // Complete all pending requests with the failure.
+                    DiscardPendingRequests("Worker error", error);
 
                     Failed?.Invoke(error);
+                    return Task.CompletedTask;
                 });
             });
         await workerReady.Task;
@@ -295,67 +312,6 @@ internal sealed class WorkerController : IAsyncDisposable
         }
     }
 
-    private async Task<WorkerOutputMessage> ReceiveWorkerMessageAsync(int id)
-    {
-        while (true)
-        {
-            if (workerOutputMessages.Reader.TryPeek(out var result))
-            {
-                if (result.Id == id)
-                {
-                    // This message is just for us, read it.
-                    var again = await workerOutputMessages.Reader.ReadAsync();
-                    Debug.Assert(again.Id == id || again.IsBroadcast);
-                    return again;
-                }
-
-                if (result.IsBroadcast)
-                {
-                    // This is a broadcast message, don't remove it so others can read it too.
-                    return result;
-                }
-            }
-
-            // No messages, wait.
-            await Task.Yield();
-            await workerOutputMessages.Reader.WaitToReadAsync();
-        }
-    }
-
-    private async Task<bool> SendWorkerMessagesAsync()
-    {
-        JSObject? worker = (await GetWorkerAsync())?.Handle;
-
-        if (worker == null)
-        {
-            return false;
-        }
-
-        _ = Task.Run(async () =>
-        {
-            Debug.Assert(OperatingSystem.IsBrowser());
-
-            try
-            {
-                while (true)
-                {
-                    var message = await workerInputMessages.Reader.ReadAsync();
-
-                    // TODO: Use ProtoBuf.
-                    var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
-                    LogOutgoingMessage(message, details: serialized.Length.SeparateThousands());
-                    WorkerControllerInterop.PostMessage(worker, serialized);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Sending worker messages failed");
-            }
-        });
-
-        return true;
-    }
-
     private void LogOutgoingMessage(WorkerInputMessage message, string details)
     {
         logger.Log(
@@ -368,16 +324,11 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<WorkerOutputMessage> PostMessageUnsafeAsync(WorkerInputMessage message)
     {
-        // Write message to the channel first to ensure correct ordering.
-        await workerInputMessages.Writer.WriteAsync(message);
+        var workerInstance = await GetWorkerAsync();
 
-        // If there is no background worker, the sending task returns false
-        // and we let the in-process worker handle the message.
-        if (!await workerSendingTask.Value)
+        // If there is no background worker, let the in-process worker handle the message.
+        if (workerInstance == null)
         {
-            // Remove message from the channel that no-one is reading.
-            workerInputMessages.Reader.TryRead(out _);
-
             var workerServices = this.workerServices.Value;
             var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
 
@@ -391,7 +342,31 @@ internal sealed class WorkerController : IAsyncDisposable
             return await message.HandleAndGetOutputAsync(executor);
         }
 
-        return await ReceiveWorkerMessageAsync(message.Id);
+        // Register pending request before sending to avoid race conditions.
+        var tcs = new TaskCompletionSource<WorkerOutputMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!pendingRequests.TryAdd(message.Id, tcs))
+        {
+            throw new InvalidOperationException($"Request with ID {message.Id} already exists.");
+        }
+
+        // TODO: Use ProtoBuf.
+        var serialized = JsonSerializer.Serialize(message, WorkerJsonContext.Default.WorkerInputMessage);
+        LogOutgoingMessage(message, details: serialized.Length.SeparateThousands());
+
+        try
+        {
+            Debug.Assert(OperatingSystem.IsBrowser());
+            WorkerControllerInterop.PostMessage(workerInstance.Handle, serialized);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Sending worker message {Id} failed.", message.Id);
+            pendingRequests.TryRemove(message.Id, out _);
+            return new WorkerOutputMessage.Failure(ex)
+            { Id = message.Id, InputType = message.GetType().Name };
+        }
+
+        return await tcs.Task;
     }
 
     private async void PostMessage<T>(T message)

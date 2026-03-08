@@ -204,7 +204,7 @@
             {
                 <FluentMessageBar Title="Compiler worker failed." Intent="MessageIntent.Error" AllowDismiss="false">
                     <div style="white-space-collapse: preserve">@workerError</div>
-                    <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorker"
+                    <FluentButton Appearance="Appearance.Accent" Style="width: 100%; margin-top: 0.5em" OnClick="ReloadWorkerAsync"
                                   IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Re-create the worker</FluentButton>
                 </FluentMessageBar>
             }
@@ -243,7 +243,7 @@
             </FluentTabs>
 
             @* Output toolbar *@
-            @if (OutputHasToolbar)
+            @if (OutputHasToolbar && GetOutput(DisplayOutputType) != null)
             {
                 <FluentToolbar>
                     @switch (DisplayOutputType)
@@ -252,13 +252,16 @@
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.ShowSymbols"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowSymbols = v })"
-                                                Label="Symbols" />
+                                                Label="Symbols"
+                                                title="Displays symbol nodes in the tree - look for `.GetSymbolInfo()` and `.GetDeclaredSymbol()` under syntax nodes" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowOperations"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowOperations = v })"
-                                                Label="Operations" />
+                                                Label="Operations"
+                                                title="Displays IOperation nodes in the tree - look for `.GetOperation()` under syntax nodes" />
                                 <FluentCheckbox @bind-Value:get="savedState.ShowBoundNodes"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowBoundNodes = v })"
-                                                Label="Bound nodes" />
+                                                Label="Bound nodes"
+                                                title="Displays bound nodes in the tree - look for `.GetBoundRoot()` under syntax nodes" />
                                 <FluentButton OnClick="FoldAllOutputAsync" Title="Collapse all">@*
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
@@ -356,6 +359,8 @@
         public CacheInfo? CacheInfo { get; init; }
         public required DateTimeOffset Start { get; init; }
         public required DateTimeOffset End { get; init; }
+
+        public required bool AutoLoadLazyOutputs { get; init; }
 
         /// <summary>
         /// Only set if this <see cref="CompiledState"/> instance represents compiled (not cached) state
@@ -1019,6 +1024,7 @@
             CacheInfo = cacheInfo,
             Start = startTime,
             End = DateTimeOffset.Now,
+            AutoLoadLazyOutputs = true,
         };
 
         await DisplaySquigglesAsync();
@@ -1187,6 +1193,8 @@
 
             var text = CompilerOutputPlugin.GetText(outputInfo, result, out outputDisclaimer, ref language);
 
+            string? previousLanguage;
+
             if (!outputStates.TryGetValue(outputType, out var state))
             {
                 state = new(await BlazorMonaco.Editor.Global.CreateModel(
@@ -1195,10 +1203,12 @@
                     language: language,
                     uri: CompiledAssembly.GetOutputModelUri(outputInfo?.File, outputType)));
                 outputStates[outputType] = state;
+                previousLanguage = null;
             }
             else
             {
                 await state.Model.SetValue(text);
+                previousLanguage = await state.Model.GetLanguageId();
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, state.Model, language);
             }
 
@@ -1216,14 +1226,20 @@
 
             await outputEditor.SetModel(state.Model);
 
-            if (saveViewState && !state.ViewState.IsEmpty)
+            if (saveViewState && !state.ViewState.IsEmpty &&
+                // Avoid restoring state (and instead perform folding) when state changes drastically
+                // (currently we only detect language change - e.g., from error to normal output).
+                previousLanguage == language)
             {
                 await outputEditor.RestoreViewStateAsync(state.ViewState, module);
             }
             else if (isOutputLanguage)
             {
                 await FoldAllOutputAsync();
+            }
 
+            if (isOutputLanguage)
+            {
                 // Underline links.
                 if (result.Metadata != null &&
                     LanguageServices.TryGetOutputToOutputMapping(result.Metadata, out var mapping))
@@ -1251,8 +1267,13 @@
         await BlazorMonacoInterop.ExecuteActionAsync(outputEditor.Id, "editor.unfold");
     }
 
-    private OutputInfo? GetOutput(string type)
+    private OutputInfo? GetOutput(string? type)
     {
+        if (type is null)
+        {
+            return null;
+        }
+
         if (CurrentCompiledFile is { } currentCompiledFile)
         {
             if (currentCompiledFile.GetOutput(type) is { } output)
@@ -1323,7 +1344,7 @@
 
         // If we are currently displaying cached outputs, but this specific output type is not cached,
         // avoid resolving it and hence starting compilation implicitly.
-        if (compiled is { CacheInfo: not null, CachedOutput: null })
+        if (compiled?.AutoLoadLazyOutputs != true)
         {
             return (new() { Text = "(not cached, press Compile to load this)", Metadata = CompiledFileOutputMetadata.SpecialMessage }, false);
         }
@@ -1429,6 +1450,12 @@
             await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
             StateHasChanged();
         }
+        else if (updateOutput)
+        {
+            await AutoSelectOutputAsync(
+                updateTimestampMode: OutputActionMode.Never,
+                storeInCacheMode: OutputActionMode.Never);
+        }
     }
 
     private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
@@ -1452,7 +1479,8 @@
             Output = output,
             CacheInfo = info,
             Start = timestamp,
-            End = timestamp
+            End = timestamp,
+            AutoLoadLazyOutputs = false,
         };
         StateHasChanged();
 
@@ -1570,10 +1598,9 @@
         StateHasChanged();
     }
 
-    private void ReloadWorker()
+    internal async Task ReloadWorkerAsync()
     {
+        await Worker.RecreateWorkerAsync();
         workerError = null;
-        StateHasChanged();
-        _ = Worker.RecreateWorkerAsync();
     }
 }
