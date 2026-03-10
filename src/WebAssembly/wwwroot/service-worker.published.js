@@ -34,22 +34,23 @@ async function onInstall() {
     const cache = await caches.open(cacheName);
     await cache.addAll(assetsRequests);
     
-    // Clean responses in parallel.
+    // Clean responses.
     // Removes `redirected` flag so the response is servable by the service worker.
     // https://stackoverflow.com/a/45440505/9080566
     // https://github.com/dotnet/aspnetcore/issues/33872
     // Also avoids other inexplicable failures when serving responses from the service worker.
-    await Promise.all(assetsRequests.map(async (request) => {
+    for (const request of assetsRequests) {
         const response = await cache.match(request);
-        const responseData = await response.arrayBuffer();
+        const clonedResponse = response.clone();
+        const responseData = await clonedResponse.arrayBuffer();
         const cleanedResponse = new Response(responseData, {
             headers: {
-                'content-type': response.headers.get('content-type') ?? '',
+                'content-type': clonedResponse.headers.get('content-type') ?? '',
                 'content-length': responseData.byteLength.toString(),
             },
         });
         await cache.put(request, cleanedResponse);
-    }));
+    }
 }
 
 async function onActivate() {
