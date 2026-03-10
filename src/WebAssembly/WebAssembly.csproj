@@ -8,7 +8,7 @@
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
     <IndexHtmlLoadingInfoFooter>
       <div style="margin-top: 1em">
-        For faster loading, use the
+        Consider using more capable and performant
         <a href="https://apps.microsoft.com/detail/9PCPMM329DZT" target="_blank">
           <!-- https://upload.wikimedia.org/wikipedia/commons/a/a7/Microsoft_Store.svg -->
           <svg xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 1794.1 1782.3" style="height: 1em; margin: 0 0.25em 0 0.25em">
