@@ -6,4 +6,4 @@ chmod +x dotnet-install.sh
 ./dotnet/dotnet --version
 ./dotnet/dotnet workload install wasm-tools wasm-experimental
 ./dotnet/dotnet publish -o output src/WebAssembly
-./dotnet/dotnet eng/check-publish-output.cs output
+./dotnet/dotnet run --file eng/check-publish-output.cs -- output
