@@ -79,9 +79,10 @@ async function onFetch(event) {
         return new Response('', { headers: { Refresh: '0' } });
     }
 
+    const fetchResponse = fetch(event.request);
     try {
         // First try network / disk cache (it's usually faster than the service worker cache).
-        return await fetch(event.request);
+        return await fetchResponse;
     } catch {
         let cachedResponse = null;
         if (event.request.method === 'GET') {
@@ -107,7 +108,7 @@ async function onFetch(event) {
             console.debug(`Service worker: cache miss for ${event.request.url}`);
         }
 
-        return cachedResponse || fetch(event.request);
+        return cachedResponse || fetchResponse;
     }
 }
 
