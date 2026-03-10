@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <IndexHtmlTemplatePath Condition="'$(IndexHtmlTemplatePath)' == ''">$(MSBuildThisFileDirectory)index.template.html</IndexHtmlTemplatePath>
-    <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(MSBuildProjectDirectory)\wwwroot\index.html</IndexHtmlOutputPath>
+    <IndexHtmlOutputRelativePath Condition="'$(IndexHtmlOutputRelativePath)' == ''">wwwroot\index.html</IndexHtmlOutputRelativePath>
+    <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(MSBuildProjectDirectory)\$(IndexHtmlOutputRelativePath)</IndexHtmlOutputPath>
     <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
     <IndexHtmlGoatcounterPath Condition="'$(IndexHtmlGoatcounterPath)' == ''">/</IndexHtmlGoatcounterPath>
     <!--
@@ -13,10 +14,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Mark as Content so it's included in `service-worker-assets.js`. -->
+    <!--
+      Mark as Content so it's included in `service-worker-assets.js`.
+      The relative path is used so that `DefineStaticWebAssets` in the SDK can match it
+      against the `wwwroot/**` pattern (absolute paths are rejected by that pattern).
+    -->
     <None Remove="$(IndexHtmlOutputPath)" />
     <Content Remove="$(IndexHtmlOutputPath)" />
-    <Content Include="$(IndexHtmlOutputPath)" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(IndexHtmlOutputRelativePath)" CopyToPublishDirectory="PreserveNewest" />
 
     <UpToDateCheckBuilt Include="$(IndexHtmlOutputPath)" Original="$(IndexHtmlTemplatePath)" />
   </ItemGroup>
