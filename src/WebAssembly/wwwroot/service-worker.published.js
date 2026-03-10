@@ -79,31 +79,36 @@ async function onFetch(event) {
         return new Response('', { headers: { Refresh: '0' } });
     }
 
-    let cachedResponse = null;
-    if (event.request.method === 'GET') {
-        // For all navigation requests, try to serve index.html from cache,
-        // unless that request is for an offline resource.
-        // If you need some URLs to be server-rendered, edit the following check to exclude those URLs
-        const shouldServeIndexHtml = event.request.mode === 'navigate'
-            && !manifestUrlSet.has(event.request.url);
+    try {
+        // First try network / disk cache (it's usually faster than the service worker cache).
+        return await fetch(event.request);
+    } catch {
+        let cachedResponse = null;
+        if (event.request.method === 'GET') {
+            // For all navigation requests, try to serve index.html from cache,
+            // unless that request is for an offline resource.
+            // If you need some URLs to be server-rendered, edit the following check to exclude those URLs
+            const shouldServeIndexHtml = event.request.mode === 'navigate'
+                && !manifestUrlSet.has(event.request.url);
 
-        if (shouldServeIndexHtml) {
-            console.debug(`Service worker: serving index.html for ${event.request.url}`);
+            if (shouldServeIndexHtml) {
+                console.debug(`Service worker: serving index.html for ${event.request.url}`);
+            }
+
+            const request = shouldServeIndexHtml ? 'index.html' : event.request;
+
+            const cache = await caches.open(cacheName);
+            // We ignore search query (so our pre-cached `app.css` matches request `app.css?v=2`),
+            // we have pre-cached the latest versions of all static assets anyway.
+            cachedResponse = await cache.match(request, { ignoreSearch: true });
         }
 
-        const request = shouldServeIndexHtml ? 'index.html' : event.request;
+        if (!cachedResponse) {
+            console.debug(`Service worker: cache miss for ${event.request.url}`);
+        }
 
-        const cache = await caches.open(cacheName);
-        // We ignore search query (so our pre-cached `app.css` matches request `app.css?v=2`),
-        // we have pre-cached the latest versions of all static assets anyway.
-        cachedResponse = await cache.match(request, { ignoreSearch: true });
+        return cachedResponse || fetch(event.request);
     }
-
-    if (!cachedResponse) {
-        console.debug(`Service worker: cache miss for ${event.request.url}`);
-    }
-
-    return cachedResponse || fetch(event.request);
 }
 
 /**
