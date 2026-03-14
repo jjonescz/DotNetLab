@@ -103,6 +103,19 @@ public static class Executor
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
                     ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
+                    // Patterns for AsyncHelpers.HandleAsyncEntryPoint with arguments
+                    [
+                        (byte)ILOpCode.Ldarg_0,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Ret
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4)))),
+                    // Patterns for AsyncHelpers.HandleAsyncEntryPoint without arguments
+                    [
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Ret
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
                     // Patterns for async Script Main method
                     [
                         (byte)ILOpCode.Newobj, _, _, _, _,
