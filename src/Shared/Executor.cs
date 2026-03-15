@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection.Metadata;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
@@ -33,9 +34,9 @@ public static class Executor
                     {
                         exitCode = await InvokeEntryPointAsync(entryPoint);
                     }
-                    catch (TargetInvocationException e)
+                    catch (Exception e)
                     {
-                        Console.Error.WriteLine($"Unhandled exception. {e.InnerException ?? e}");
+                        Console.Error.WriteLine($"Unhandled exception. {e}");
                         exitCode = unchecked((int)0xE0434352);
                     }
                     finally
@@ -62,7 +63,18 @@ public static class Executor
         var parameters = entryPoint.GetParameters().Length == 0
             ? null
             : new object[] { Array.Empty<string>() };
-        var @return = entryPoint.Invoke(target, parameters);
+
+        object? @return;
+        try
+        {
+            @return = entryPoint.Invoke(target, parameters);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            ExceptionDispatchInfo.Throw(ex.InnerException);
+            throw ex.InnerException;
+        }
+
         switch (@return)
         {
             case Task<int> taskInt:
@@ -144,7 +156,19 @@ public static class Executor
                     ConstructorInfo? constructor = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))) as ConstructorInfo;
                     MethodInfo? initialize = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(6, 4))) as MethodInfo;
                     if (constructor == null || initialize == null) { return (null, null); }
-                    object instance = constructor.Invoke(null);
+
+                    object instance;
+
+                    try
+                    {
+                        instance = constructor.Invoke(null);
+                    }
+                    catch (TargetInvocationException ex) when (ex.InnerException != null)
+                    {
+                        ExceptionDispatchInfo.Throw(ex.InnerException);
+                        throw ex.InnerException;
+                    }
+
                     return (instance, initialize);
                 }
                 if (invoke.Method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))

@@ -52,7 +52,7 @@ public sealed class ExecutorTests
     {
         var services = WorkerServices.CreateTest(TestContext);
 
-        string code = """
+        string code = /* lang=C# */ """
             using System;
             using System.Threading.Tasks;
             Console.Write("Hello.");
@@ -123,5 +123,86 @@ public sealed class ExecutorTests
             Stderr:
 
             """.ReplaceLineEndings("\n"), runText);
+    }
+
+    [TestMethod]
+    public async Task Exception_Sync()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var source = /* lang=C# */ """
+            using System;
+
+            M();
+
+            static void M()
+            {
+                throw new Exception("test");
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.StartsWith(string.Format("""
+            Exit code: -532462766
+            Stdout:
+
+            Stderr:
+            {0}
+            """.ReplaceLineEndings("\n"), """
+            Unhandled exception. System.Exception: test
+               at Program.<<Main>$>g__M|0_0()
+               at Program.<Main>$(String[] args)
+
+            """), runText);
+    }
+
+    [TestMethod]
+    public async Task Exception_Async()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var source = /* lang=C# */ """
+            using System;
+            using System.Threading.Tasks;
+
+            await M();
+
+            static async Task M()
+            {
+                throw new Exception("test");
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.StartsWith(string.Format("""
+            Exit code: -532462766
+            Stdout:
+
+            Stderr:
+            {0}
+            """.ReplaceLineEndings("\n"), """
+            Unhandled exception. System.Exception: test
+               at Program.<<Main>$>g__M|0_0()
+               at Program.<Main>$(String[] args)
+
+            """), runText);
     }
 }
