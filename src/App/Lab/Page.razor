@@ -148,9 +148,11 @@
                 @* Normal files *@
                 @foreach (var (index, input) in inputs.Index())
                 {
-                    <FluentTab Id="@IndexToInputTabId(index)" Label="@(input.FileName)"
+                    var id = IndexToInputTabId(index);
+                    @* Clicking on an active tab goes into rename mode and we don't want to interfere with that, hence the condition inside @onclick. *@
+                    <FluentTab Id="@id" Label="@(input.FileName)"
                                LabelEditable LabelChanged="(newName) => OnInputTabRenamedAsync(input, newName)"
-                               @onclick="OnInputTabClickAsync" />
+                               @onclick="activeInputTabId != id ? OnInputTabClickAsync : null!" />
                 }
 
                 @* Special configuration file *@
@@ -869,6 +871,8 @@
         }
 
         await SaveStateToUrlAsync();
+
+        await inputEditor.Focus();
     }
 
     internal async Task SelectConfigurationAsync()
