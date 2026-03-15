@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection.Metadata;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
@@ -23,14 +24,24 @@ public static class Executor
             (string stdout, string stderr) = await Util.CaptureConsoleOutputAsync(
                 async () =>
                 {
+                    // Clear the SynchronizationContext so user code that blocks
+                    // on async (e.g., `.GetAwaiter().GetResult()`) does not deadlock.
+                    // Without this, continuations from e.g. `Task.Yield()` would try
+                    // to marshal back to Blazor's single-threaded renderer context.
+                    var previousContext = SynchronizationContext.Current;
+                    SynchronizationContext.SetSynchronizationContext(null);
                     try
                     {
                         exitCode = await InvokeEntryPointAsync(entryPoint);
                     }
-                    catch (TargetInvocationException e)
+                    catch (Exception e)
                     {
-                        Console.Error.WriteLine($"Unhandled exception. {e.InnerException ?? e}");
+                        Console.Error.WriteLine($"Unhandled exception. {e}");
                         exitCode = unchecked((int)0xE0434352);
+                    }
+                    finally
+                    {
+                        SynchronizationContext.SetSynchronizationContext(previousContext);
                     }
                 });
 
@@ -52,24 +63,35 @@ public static class Executor
         var parameters = entryPoint.GetParameters().Length == 0
             ? null
             : new object[] { Array.Empty<string>() };
-        var @return = entryPoint.Invoke(target, parameters);
+
+        object? @return;
+        try
+        {
+            @return = entryPoint.Invoke(target, parameters);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            ExceptionDispatchInfo.Throw(ex.InnerException);
+            throw ex.InnerException;
+        }
+
         switch (@return)
         {
             case Task<int> taskInt:
-                @return = await taskInt.ConfigureAwait(false);
+                @return = await taskInt;
                 break;
             case Task<object> taskObject:
-                @return = await taskObject.ConfigureAwait(false);
+                @return = await taskObject;
                 break;
             case Task task:
-                await task.ConfigureAwait(false);
+                await task;
                 @return = 0;
                 break;
             case ValueTask<int> valueTaskInt:
-                @return = await valueTaskInt.ConfigureAwait(false);
+                @return = await valueTaskInt;
                 break;
             case ValueTask valueTask:
-                await valueTask.ConfigureAwait(false);
+                await valueTask;
                 @return = 0;
                 break;
         }
@@ -103,6 +125,19 @@ public static class Executor
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
                     ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
+                    // Patterns for AsyncHelpers.HandleAsyncEntryPoint with arguments
+                    [
+                        (byte)ILOpCode.Ldarg_0,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Ret
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4)))),
+                    // Patterns for AsyncHelpers.HandleAsyncEntryPoint without arguments
+                    [
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Call, _, _, _, _,
+                        (byte)ILOpCode.Ret
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
                     // Patterns for async Script Main method
                     [
                         (byte)ILOpCode.Newobj, _, _, _, _,
@@ -121,7 +156,19 @@ public static class Executor
                     ConstructorInfo? constructor = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))) as ConstructorInfo;
                     MethodInfo? initialize = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(6, 4))) as MethodInfo;
                     if (constructor == null || initialize == null) { return (null, null); }
-                    object instance = constructor.Invoke(null);
+
+                    object instance;
+
+                    try
+                    {
+                        instance = constructor.Invoke(null);
+                    }
+                    catch (TargetInvocationException ex) when (ex.InnerException != null)
+                    {
+                        ExceptionDispatchInfo.Throw(ex.InnerException);
+                        throw ex.InnerException;
+                    }
+
                     return (instance, initialize);
                 }
                 if (invoke.Method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))

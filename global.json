@@ -1,7 +1,7 @@
 {
   "sdk": {
-    "version": "11.0.100-preview.1.26104.118",
-    "workloadVersion": "11.0.100-preview.1.26109.8"
+    "version": "11.0.100-preview.2.26159.112",
+    "workloadVersion": "11.0.100-preview.2.26160.1"
   },
   "msbuild-sdks": {
     "MSTest.Sdk": "4.1.0"
