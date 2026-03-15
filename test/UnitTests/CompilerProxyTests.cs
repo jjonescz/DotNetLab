@@ -445,7 +445,7 @@ public sealed class CompilerProxyTests
     {
         var services = WorkerServices.CreateTest(TestContext);
 
-        string code = $$"""
+        string code = """
             using System;
             using System.Threading.Tasks;
             Console.Write("Hello.");

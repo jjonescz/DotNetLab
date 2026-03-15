@@ -23,6 +23,12 @@ public static class Executor
             (string stdout, string stderr) = await Util.CaptureConsoleOutputAsync(
                 async () =>
                 {
+                    // Clear the SynchronizationContext so user code that blocks
+                    // on async (e.g., `.GetAwaiter().GetResult()`) does not deadlock.
+                    // Without this, continuations from e.g. `Task.Yield()` would try
+                    // to marshal back to Blazor's single-threaded renderer context.
+                    var previousContext = SynchronizationContext.Current;
+                    SynchronizationContext.SetSynchronizationContext(null);
                     try
                     {
                         exitCode = await InvokeEntryPointAsync(entryPoint);
@@ -31,6 +37,10 @@ public static class Executor
                     {
                         Console.Error.WriteLine($"Unhandled exception. {e.InnerException ?? e}");
                         exitCode = unchecked((int)0xE0434352);
+                    }
+                    finally
+                    {
+                        SynchronizationContext.SetSynchronizationContext(previousContext);
                     }
                 });
 
@@ -56,20 +66,20 @@ public static class Executor
         switch (@return)
         {
             case Task<int> taskInt:
-                @return = await taskInt.ConfigureAwait(false);
+                @return = await taskInt;
                 break;
             case Task<object> taskObject:
-                @return = await taskObject.ConfigureAwait(false);
+                @return = await taskObject;
                 break;
             case Task task:
-                await task.ConfigureAwait(false);
+                await task;
                 @return = 0;
                 break;
             case ValueTask<int> valueTaskInt:
-                @return = await valueTaskInt.ConfigureAwait(false);
+                @return = await valueTaskInt;
                 break;
             case ValueTask valueTask:
-                await valueTask.ConfigureAwait(false);
+                await valueTask;
                 @return = 0;
                 break;
         }
