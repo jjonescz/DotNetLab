@@ -268,6 +268,12 @@
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
                             break;
+                        case "html":
+                            {
+                                <FluentCheckbox @bind-Value="showRenderedHtml" Label="Rendered" Disabled="htmlOutput == null"
+                                                title="Displays the HTML code rendered inside an iframe" />
+                            }
+                            break;
                         case "il":
                             {
                                 <FluentCheckbox @bind-Value:get="savedState.DecodeCustomAttributeBlobs"
@@ -305,10 +311,24 @@
                 </FluentMessageBar>
             }
 
-            @* Output editor *@
             <div style="flex-grow: 1">
-                <StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
-                                      ConstructionOptions="OutputConstructionOptions" />
+                @* Rendered HTML *@
+                @{
+                    bool actuallyShowRenderedHtml = showRenderedHtml && htmlOutput != null;
+                }
+                @if (actuallyShowRenderedHtml)
+                {
+                    <iframe srcdoc="@htmlOutput" style="width: 100%; height: 100%" />
+                }
+
+                @* Output editor *@
+                @{
+                    string style = actuallyShowRenderedHtml ? "display:none" : "display:contents";
+                }
+                <div style="@style">
+                    <StandaloneCodeEditor @ref="outputEditor" Id="output-editor"
+                                          ConstructionOptions="OutputConstructionOptions" />
+                </div>
             </div>
         </div>
     </FluentMultiSplitterPane>
@@ -351,8 +371,10 @@
     private bool useVim;
     private bool enableMemoryUsageView;
     private bool displayHintSquiggles;
+    private bool showRenderedHtml;
     private Orientation orientation;
     private string? workerError;
+    private string? htmlOutput;
 
     private sealed record CompiledState
     {
@@ -484,7 +506,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasToolbar
-        => DisplayOutputType is "tree" or "il" or CompiledAssembly.DiagnosticsOutputType;
+        => DisplayOutputType is "tree" or "html" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1196,6 +1218,8 @@
             var language = (result.Metadata is { MessageKind: not MessageKind.Normal } ? null : outputInfo?.Output.Language) ?? "plaintext";
 
             var text = CompilerOutputPlugin.GetText(outputInfo, result, out outputDisclaimer, ref language);
+
+            htmlOutput = outputType == "html" && language == "html" ? text : null;
 
             string? previousLanguage;
 
