@@ -25,6 +25,8 @@ internal sealed class CompilerProxy(
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
+        options.Value.CompilationInputLogger?.Invoke(input, serviceProvider);
+
         try
         {
             // NOTE: Only explicit compilation should load the compiler.

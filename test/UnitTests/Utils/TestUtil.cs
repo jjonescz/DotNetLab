@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using DotNetLab.Lab;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
@@ -27,6 +28,15 @@ internal static class TestUtil
                 {
                     builder.ClearProviders();
                     builder.AddProvider(new TestLoggerProvider(testContext));
+                });
+                services.Configure<CompilerProxyOptions>(static options =>
+                {
+                    options.CompilationInputLogger = static (input, services) =>
+                    {
+                        var slug = Compressor.Compress(SavedState.From(input));
+                        var logger = services.GetRequiredService<ILogger<TestLogging>>();
+                        logger.LogInformation("Compiling {Slug}", slug);
+                    };
                 });
                 configureServices?.Invoke(services);
             }
