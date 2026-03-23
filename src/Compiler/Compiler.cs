@@ -143,7 +143,7 @@ public sealed class Compiler(
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
                 ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
-                    .Select(static d => d.ToDiagnosticData())
+                    .Select(toDiagnosticData)
                     .Distinct()
                     .Order()
                     .ToImmutableArray();
@@ -266,11 +266,11 @@ public sealed class Compiler(
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
 
         var configDiagnosticData = configDiagnostics
-            .Select(static d => d.ToDiagnosticData())
+            .Select(toDiagnosticData)
             .Distinct()
             .Order();
         var nonConfigDiagnosticData = nonConfigDiagnostics
-            .Select(static d => d.ToDiagnosticData())
+            .Select(toDiagnosticData)
             .Distinct()
             .Order();
         ImmutableArray<DiagnosticData> diagnosticData = configDiagnosticData
@@ -476,6 +476,15 @@ public sealed class Compiler(
         }
 
         bool filterDiagnostic(Diagnostic d) => compilationInput.Preferences.IncludeHiddenDiagnostics || d.Severity != DiagnosticSeverity.Hidden;
+
+        DiagnosticData toDiagnosticData(Diagnostic d)
+        {
+            return d.ToDiagnosticData(s => s switch
+            {
+                DiagnosticDataSeverity.Hint when compilationInput.Preferences.IncludeHiddenDiagnostics => DiagnosticDataSeverity.Info,
+                _ => s,
+            });
+        }
 
         bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
         {
