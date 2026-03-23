@@ -38,6 +38,23 @@ public sealed class Compiler(
         global using Microsoft.CodeAnalysis.CSharp;
         global using Microsoft.CodeAnalysis.Emit;
         global using System;
+
+        [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis")]
+        [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis.CSharp")]
+
+        namespace System.Runtime.CompilerServices
+        {
+            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+            public class IgnoresAccessChecksToAttribute : Attribute
+            {
+                public IgnoresAccessChecksToAttribute(string assemblyName)
+                {
+                    AssemblyName = assemblyName;
+                }
+
+                public string AssemblyName { get; }
+            }
+        }
         """;
 
     private readonly TreeFormatter treeFormatter = new();
@@ -499,7 +516,7 @@ public sealed class Compiler(
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8),
                 ],
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
@@ -1140,6 +1157,8 @@ public sealed class Compiler(
     public static CSharpCompilationOptions CreateConfigurationCompilationOptions()
     {
         return CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
+            .WithMetadataImportOptions(MetadataImportOptions.Internal)
+            .WithIgnoreAccessibility()
             .WithSpecificDiagnosticOptions(
             [
                 // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy

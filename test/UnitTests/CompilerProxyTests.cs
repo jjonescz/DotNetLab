@@ -380,7 +380,7 @@ public sealed class CompilerProxyTests
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
-        Assert.AreEqual($$"""
+        Assert.AreEqual("""
             // (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
             // unsafe { int* p = null; }
             Diagnostic(ErrorCode.ERR_IllegalUnsafe, "unsafe").WithLocation(1, 1)
@@ -400,6 +400,39 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual(string.Empty, diagnosticsText);
+    }
+
+    [TestMethod]
+    public async Task ConfigurationFile_MakeMemberMissing()
+    {
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+
+        var source = "class C;";
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Configuration = """
+                    Config.CSharpCompilation(comp =>
+                    {
+                        comp = comp.Clone();
+                        comp.MakeTypeMissing(SpecialType.System_Object);
+                        return comp;
+                    });
+                    """,
+            });
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual("""
+            // (1,7): error CS0518: Predefined type 'System.Object' is not defined or imported
+            // class C;
+            Diagnostic(ErrorCode.ERR_PredefinedTypeNotFound, "C").WithArguments("System.Object").WithLocation(1, 7),
+            // (1,7): error CS1729: 'object' does not contain a constructor that takes 0 arguments
+            // class C;
+            Diagnostic(ErrorCode.ERR_BadCtorArgCount, "C").WithArguments("object", "0").WithLocation(1, 7)
+            """.ReplaceLineEndings(), diagnosticsText);
     }
 
     [TestMethod]
