@@ -190,8 +190,12 @@ public static class Executor
             var componentType = assembly.GetType(componentTypeName)
                 ?? throw new InvalidOperationException($"Cannot find component '{componentTypeName}' in the assembly.");
 
+            var configureServicesMethod = assembly.GetType("Startup")?
+                .GetMethod("ConfigureServices", BindingFlags.Public | BindingFlags.Static, [typeof(IServiceCollection)]);
+
             var services = new ServiceCollection();
             services.AddLogging();
+            configureServicesMethod?.Invoke(null, [services]);
             var serviceProvider = services.BuildServiceProvider();
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
