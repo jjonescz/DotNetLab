@@ -247,6 +247,8 @@ public sealed class Compiler(
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
 
+        finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
+
         // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
