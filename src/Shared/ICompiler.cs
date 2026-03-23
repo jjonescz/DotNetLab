@@ -1,3 +1,4 @@
+using BlazorMonaco;
 using BlazorMonaco.Editor;
 using ProtoBuf;
 using System.Runtime.Loader;
@@ -155,7 +156,7 @@ public readonly record struct CompilerDiagnosticData(DiagnosticData Data, bool U
 {
     public string? FilePath => Unmapped ? Data.UnmappedFilePath : Data.FilePath;
 
-    public MarkerData ToMarkerData() => Data.ToMarkerData(unmapped: Unmapped);
+    public MarkerData ToMarkerData(Func<MarkerSeverity, MarkerSeverity>? severityMapping = null) => Data.ToMarkerData(unmapped: Unmapped, severityMapping);
 }
 
 public sealed class DiagnosticDataComparer(

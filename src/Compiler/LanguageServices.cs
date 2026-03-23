@@ -780,8 +780,17 @@ internal sealed class LanguageServices : ILanguageServices
             .Except(compilerDiagnostics.Select(static d => d.Data), s_diagnosticDataComparer);
 
         return compilerDiagnostics.Select(static d => d.ToMarkerData())
-            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo: true)))
+            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo)))
             .ToImmutableArray();
+
+        static MarkerSeverity downgradeInfo(MarkerSeverity s)
+        {
+            return s switch
+            {
+                MarkerSeverity.Info => MarkerSeverity.Hint,
+                _ => s,
+            };
+        }
     }
 
     private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)
