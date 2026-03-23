@@ -139,7 +139,8 @@ public sealed class Compiler(
         ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies = null;
         if (compilationInput.Configuration is { } configuration)
         {
-            if (!executeConfiguration(configuration, out configDiagnostics))
+            (bool configExecutionSuccess, configDiagnostics) = await executeConfigurationAsync(configuration);
+            if (!configExecutionSuccess)
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
                 ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
@@ -488,7 +489,7 @@ public sealed class Compiler(
             });
         }
 
-        bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
+        async ValueTask<(bool Success, ImmutableArray<Diagnostic> Diagnostics)> executeConfigurationAsync(string code)
         {
             var configurationParseOptions = parseOptions.WithFeatures(parseOptions.Features.Where(p => p.Key != FileBasedProgramFeatureName));
 
@@ -503,7 +504,7 @@ public sealed class Compiler(
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
 
-            var emitStreams = getEmitStreams(configCompilation, emitOptions.WithoutPdb(), out diagnostics);
+            var emitStreams = getEmitStreams(configCompilation, emitOptions.WithoutPdb(), out var diagnostics);
 
             if (emitStreams != null)
             {
@@ -526,7 +527,7 @@ public sealed class Compiler(
                 // Return some compiler assemblies anyway, so language services in the Configuration file keep working.
                 compilerAssemblies = assemblies;
 
-                return false;
+                return (false, diagnostics);
             }
 
             var configAssembly = alc.LoadFromStream(emitStreams.Value.PeStream);
@@ -534,10 +535,9 @@ public sealed class Compiler(
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            var result = Executor.InvokeEntryPointAsync(entryPoint);
-            Debug.Assert(result.IsCompletedSuccessfully);
+            await Executor.InvokeEntryPointAsync(entryPoint);
 
-            return true;
+            return (true, diagnostics);
         }
 
         MetadataReference[] getConfigurationReferences(ImmutableDictionary<string, ImmutableArray<byte>> assemblies)
