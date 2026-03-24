@@ -263,7 +263,7 @@
                         .MetadataName = "Int32"
                         .IsSealed = true
                         .AreLocalsZeroed = InvalidOperationException
-                          .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                          .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=2017"
                         .TypeKind = Struct
                         .IsReadOnly = true
                         .InstanceConstructors = [1]
@@ -284,7 +284,7 @@
                                 .MetadataName = "Void"
                                 .IsSealed = true
                                 .AreLocalsZeroed = InvalidOperationException
-                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=2017"
                                 .TypeKind = Struct
                                 .InstanceConstructors = [1]
                                   SynthesizedInstanceConstructor ".ctor"
@@ -312,7 +312,7 @@
                                     .MethodKind = Constructor
                                     .IsImplicitlyDeclared = true
                                     .AreLocalsZeroed = InvalidOperationException
-                                      .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                                      .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=2017"
                                     .OriginalDefinition = SynthesizedInstanceConstructor ".ctor"
                                     .RequiresInstanceReceiver = true
                                     .ReturnType = PENamedTypeSymbolNonGeneric "Void"
@@ -347,7 +347,7 @@
                             .MethodKind = Constructor
                             .IsImplicitlyDeclared = true
                             .AreLocalsZeroed = InvalidOperationException
-                              .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=1995"
+                              .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=2017"
                             .OriginalDefinition = SynthesizedInstanceConstructor ".ctor"
                             .RequiresInstanceReceiver = true
                             .ReturnType = PENamedTypeSymbolNonGeneric "Void"
