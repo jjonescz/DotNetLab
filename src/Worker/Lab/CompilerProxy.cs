@@ -151,18 +151,18 @@ internal sealed class CompilerProxy(
             "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
             "Microsoft.CodeAnalysis.Workspaces.UnitTests", // RoslynWorkspaceAccess project produces this assembly
         ];
-        foreach (var name in names)
-        {
-            if (!assemblies.ContainsKey(name))
+        var namesToLoad = names.Where(name => !assemblies.ContainsKey(name)).ToList();
+        var loadTasks = namesToLoad
+            .Where(name => !builtInAssemblyCache.ContainsKey(name))
+            .Select(async name =>
             {
-                if (!builtInAssemblyCache.TryGetValue(name, out var assembly))
-                {
-                    assembly = await LoadAssemblyAsync(name);
-                    assembly = builtInAssemblyCache.GetOrAdd(name, assembly);
-                }
-
-                assemblies.Add(name, assembly);
-            }
+                var assembly = await LoadAssemblyAsync(name);
+                return builtInAssemblyCache.GetOrAdd(name, assembly);
+            });
+        await Task.WhenAll(loadTasks);
+        foreach (var name in namesToLoad)
+        {
+            assemblies.Add(name, builtInAssemblyCache[name]);
         }
 
         logger.LogDebug("Available assemblies ({Count}): {Assemblies}",
