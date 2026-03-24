@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
@@ -16,10 +17,11 @@ internal sealed class CompilerProxy(
     AssemblyDownloader assemblyDownloader,
     CompilerLoaderServices loaderServices,
     IServiceProvider serviceProvider)
+    : ICompilerAssemblyLoader
 {
     public static readonly string CompilerAssemblyName = "DotNetLab.Compiler";
 
-    private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
+    private readonly ConcurrentDictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
 
@@ -98,6 +100,14 @@ internal sealed class CompilerProxy(
             logger.LogWarning(ex, "Failed to format code.");
             return code;
         }
+    }
+
+    async Task<ImmutableDictionary<string, ImmutableArray<byte>>> ICompilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync()
+    {
+        var assemblies = await LoadAssembliesAsync(builtInOnly: true);
+        return assemblies.ToImmutableDictionary(
+            static p => p.Key,
+            static p => p.Value.DataAsDll);
     }
 
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
@@ -195,7 +205,7 @@ internal sealed class CompilerProxy(
         var languageServices = new Lazy<ILanguageServices>(() =>
         {
             var languageServicesType = compilerAssembly.GetType("DotNetLab.LanguageServices")!;
-            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler])!;
+            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler, this])!;
         });
         return new() { LoadContext = alc, Compiler = compiler, LanguageServices = languageServices, Assemblies = assemblies };
     }

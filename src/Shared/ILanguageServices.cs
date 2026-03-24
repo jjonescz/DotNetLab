@@ -29,3 +29,8 @@ public sealed record ModelInfo(string Uri, string FileName)
     /// </summary>
     public bool IsConfiguration { get; init; }
 }
+
+public interface ICompilerAssemblyLoader
+{
+    public Task<ImmutableDictionary<string, ImmutableArray<byte>>> LoadBuiltInCompilerAssembliesAsync();
+}
