@@ -85,13 +85,19 @@ C# REPLs:
 - https://dotnetfiddle.net/
 - https://onecompiler.com/csharp
 - https://www.programiz.com/csharp-programming/online-compiler/
+- https://tio.run/#cs-core
+- https://github.com/dotnet/try
+- https://www.onlinegdb.com/online_csharp_compiler
 
 C# compiler playgrounds:
 - https://sharplab.io/
 - https://godbolt.org/
+- https://github.com/webmaster442/LowSharp
+- https://github.com/wherewhere/SharpScript
 
 XAML REPLs:
 - https://playground.platform.uno/
+- https://xaml.io/
 
 Web IDEs:
 - https://github.com/Mythetech/Apollo

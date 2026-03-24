@@ -6,8 +6,8 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
     <NetCoreVersion>11.0.0-preview.2.26159.112</NetCoreVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
-    <RoslynVersion>5.6.0-2.26127.8</RoslynVersion>
-    <RazorVersion>10.0.0-preview.26127.2</RazorVersion>
+    <RoslynVersion>5.6.0-2.26173.1</RoslynVersion>
+    <RazorVersion>10.0.0-preview.26171.1</RazorVersion>
     <FluentUIVersion>4.14.0</FluentUIVersion>
     <NuGetVersion>7.3.0</NuGetVersion>
   </PropertyGroup>

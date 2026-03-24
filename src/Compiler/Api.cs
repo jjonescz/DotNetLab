@@ -16,6 +16,9 @@ public static class Config
     public static void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
         => Instance.CSharpCompilationOptions(configure);
 
+    public static void CSharpCompilation(Func<CSharpCompilation, CSharpCompilation> configure)
+        => Instance.CSharpCompilation(configure);
+
     public static void EmitOptions(Func<EmitOptions, EmitOptions> configure)
         => Instance.EmitOptions(configure);
 
@@ -27,6 +30,7 @@ internal sealed class ConfigCollector : IConfig
 {
     private readonly List<Func<CSharpParseOptions, CSharpParseOptions>> cSharpParseOptions = new();
     private readonly List<Func<CSharpCompilationOptions, CSharpCompilationOptions>> cSharpCompilationOptions = new();
+    private readonly List<Func<CSharpCompilation, CSharpCompilation>> cSharpCompilation = new();
     private readonly List<Func<EmitOptions, EmitOptions>> emitOptions = new();
     private readonly List<Func<ExtendedEmitOptions, ExtendedEmitOptions>> extendedEmitOptions = new();
     private readonly List<Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>>> additionalSources = new();
@@ -43,6 +47,7 @@ internal sealed class ConfigCollector : IConfig
     {
         cSharpParseOptions.Clear();
         cSharpCompilationOptions.Clear();
+        cSharpCompilation.Clear();
         emitOptions.Clear();
         extendedEmitOptions.Clear();
         additionalSources.Clear();
@@ -58,6 +63,11 @@ internal sealed class ConfigCollector : IConfig
     public void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure)
     {
         cSharpCompilationOptions.Add(configure);
+    }
+
+    public void CSharpCompilation(Func<CSharpCompilation, CSharpCompilation> configure)
+    {
+        cSharpCompilation.Add(configure);
     }
 
     public void EmitOptions(Func<EmitOptions, EmitOptions> configure)
@@ -88,6 +98,8 @@ internal sealed class ConfigCollector : IConfig
     public CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
 
     public CSharpCompilationOptions ConfigureCSharpCompilationOptions(CSharpCompilationOptions options) => Configure(options, cSharpCompilationOptions);
+
+    public CSharpCompilation ConfigureCSharpCompilation(CSharpCompilation compilation) => Configure(compilation, cSharpCompilation);
 
     public ExtendedEmitOptions ConfigureEmitOptions(ExtendedEmitOptions options)
     {
@@ -128,6 +140,7 @@ internal interface IConfig
 {
     void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure);
     void CSharpCompilationOptions(Func<CSharpCompilationOptions, CSharpCompilationOptions> configure);
+    void CSharpCompilation(Func<CSharpCompilation, CSharpCompilation> configure);
     void EmitOptions(Func<EmitOptions, EmitOptions> configure);
     void ExtendedEmitOptions(Func<ExtendedEmitOptions, ExtendedEmitOptions> configure);
     void AdditionalSources(Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>> configure);

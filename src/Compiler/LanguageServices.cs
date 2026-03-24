@@ -19,6 +19,7 @@ internal sealed class LanguageServices : ILanguageServices
 {
     private readonly ILogger<LanguageServices> logger;
     private readonly Compiler compiler;
+    private readonly ICompilerAssemblyLoader compilerAssemblyLoader;
     private readonly AsyncLock workspaceLock = new();
     private readonly AdhocWorkspace workspace;
     private readonly ProjectId projectId;
@@ -38,10 +39,12 @@ internal sealed class LanguageServices : ILanguageServices
 
     public LanguageServices(
         ILogger<LanguageServices> logger,
-        Compiler compiler)
+        Compiler compiler,
+        ICompilerAssemblyLoader compilerAssemblyLoader)
     {
         this.logger = logger;
         this.compiler = compiler;
+        this.compilerAssemblyLoader = compilerAssemblyLoader;
 
         if (logger.IsEnabled(LogLevel.Trace))
         {
@@ -531,30 +534,7 @@ internal sealed class LanguageServices : ILanguageServices
             using var _ = await workspaceLock.LockAsync();
 
             // Modify the configuration project.
-            {
-                var project = GetProject(configuration: true);
-
-                if (!additionalConfigurationReferences.IsDefault)
-                {
-                    foreach (var reference in additionalConfigurationReferences)
-                    {
-                        project = project.RemoveMetadataReference(reference);
-                    }
-                }
-
-                if (compiler.LastResult?.Output.CompilerAssemblies is not { } compilerAssemblies)
-                {
-                    additionalConfigurationReferences = default;
-                }
-                else
-                {
-                    additionalConfigurationReferences = compilerAssemblies
-                        .SelectAsArray(MetadataReference (p) => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value));
-                    project = project.AddMetadataReferences(additionalConfigurationReferences);
-                }
-
-                ApplyChanges(project.Solution);
-            }
+            UseCompilerAssemblies(compiler.LastResult?.Output.CompilerAssemblies);
 
             // Modify the main project.
             {
@@ -618,6 +598,32 @@ internal sealed class LanguageServices : ILanguageServices
         {
             logger.LogError(ex, "Failed to handle finished compilation.");
         }
+    }
+
+    private void UseCompilerAssemblies(ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies)
+    {
+        var project = GetProject(configuration: true);
+
+        if (!additionalConfigurationReferences.IsDefault)
+        {
+            foreach (var reference in additionalConfigurationReferences)
+            {
+                project = project.RemoveMetadataReference(reference);
+            }
+        }
+
+        if (compilerAssemblies is null)
+        {
+            additionalConfigurationReferences = default;
+        }
+        else
+        {
+            additionalConfigurationReferences = compilerAssemblies
+                .SelectAsArray(MetadataReference (p) => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value));
+            project = project.AddMetadataReferences(additionalConfigurationReferences);
+        }
+
+        ApplyChanges(project.Solution);
     }
 
     CompiledAssembly? ILanguageServices.CompilerCache => compilerDiagnostics;
@@ -703,6 +709,16 @@ internal sealed class LanguageServices : ILanguageServices
                     filePath: model.FileName);
                 modelUris.Add(doc.Id, model.Uri);
                 ApplyChanges(doc.Project.Solution);
+
+                // If configuration is added, preload compiler assemblies so language services light up for it
+                // even before the compilation finishes and provides us the actually used compiler assemblies
+                // (in common scenarios they are the same assemblies; and in all cases, the CompilerProxy preloads
+                // the assemblies we load here anyway to pass them to the compiler as builtInAssemblies).
+                if (model.IsConfiguration && compiler.LastResult?.Output.CompilerAssemblies is null)
+                {
+                    var compilerAssemblies = await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync();
+                    UseCompilerAssemblies(compilerAssemblies);
+                }
             }
         }
 
@@ -780,8 +796,17 @@ internal sealed class LanguageServices : ILanguageServices
             .Except(compilerDiagnostics.Select(static d => d.Data), s_diagnosticDataComparer);
 
         return compilerDiagnostics.Select(static d => d.ToMarkerData())
-            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo: true)))
+            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo)))
             .ToImmutableArray();
+
+        static MarkerSeverity downgradeInfo(MarkerSeverity s)
+        {
+            return s switch
+            {
+                MarkerSeverity.Info => MarkerSeverity.Hint,
+                _ => s,
+            };
+        }
     }
 
     private void ApplyChanges(Solution solution, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = -1)

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
@@ -16,15 +17,18 @@ internal sealed class CompilerProxy(
     AssemblyDownloader assemblyDownloader,
     CompilerLoaderServices loaderServices,
     IServiceProvider serviceProvider)
+    : ICompilerAssemblyLoader
 {
     public static readonly string CompilerAssemblyName = "DotNetLab.Compiler";
 
-    private readonly Dictionary<string, LoadedAssembly> builtInAssemblyCache = [];
+    private readonly ConcurrentDictionary<string, LoadedAssembly> builtInAssemblyCache = [];
     private LoadedCompiler? loaded;
     private int iteration;
 
     public async Task<CompiledAssembly> CompileAsync(CompilationInput input)
     {
+        options.Value.CompilationInputLogger?.Invoke(input, serviceProvider);
+
         try
         {
             // NOTE: Only explicit compilation should load the compiler.
@@ -98,6 +102,14 @@ internal sealed class CompilerProxy(
         }
     }
 
+    async Task<ImmutableDictionary<string, ImmutableArray<byte>>> ICompilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync()
+    {
+        var assemblies = await LoadAssembliesAsync(builtInOnly: true);
+        return assemblies.ToImmutableDictionary(
+            static p => p.Key,
+            static p => p.Value.DataAsDll);
+    }
+
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
     {
         var assemblies = ImmutableDictionary.CreateBuilder<string, LoadedAssembly>();
@@ -139,18 +151,18 @@ internal sealed class CompilerProxy(
             "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
             "Microsoft.CodeAnalysis.Workspaces.UnitTests", // RoslynWorkspaceAccess project produces this assembly
         ];
-        foreach (var name in names)
-        {
-            if (!assemblies.ContainsKey(name))
+        var namesToLoad = names.Where(name => !assemblies.ContainsKey(name)).ToList();
+        var loadTasks = namesToLoad
+            .Where(name => !builtInAssemblyCache.ContainsKey(name))
+            .Select(async name =>
             {
-                if (!builtInAssemblyCache.TryGetValue(name, out var assembly))
-                {
-                    assembly = await LoadAssemblyAsync(name);
-                    assembly = builtInAssemblyCache.GetOrAdd(name, assembly);
-                }
-
-                assemblies.Add(name, assembly);
-            }
+                var assembly = await LoadAssemblyAsync(name);
+                return builtInAssemblyCache.GetOrAdd(name, assembly);
+            });
+        await Task.WhenAll(loadTasks);
+        foreach (var name in namesToLoad)
+        {
+            assemblies.Add(name, builtInAssemblyCache[name]);
         }
 
         logger.LogDebug("Available assemblies ({Count}): {Assemblies}",
@@ -193,7 +205,7 @@ internal sealed class CompilerProxy(
         var languageServices = new Lazy<ILanguageServices>(() =>
         {
             var languageServicesType = compilerAssembly.GetType("DotNetLab.LanguageServices")!;
-            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler])!;
+            return (ILanguageServices)ActivatorUtilities.CreateInstance(serviceProvider, languageServicesType, [compiler, this])!;
         });
         return new() { LoadContext = alc, Compiler = compiler, LanguageServices = languageServices, Assemblies = assemblies };
     }

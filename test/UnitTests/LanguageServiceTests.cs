@@ -271,6 +271,49 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Diagnostics_Hidden()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    using System;
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await compiler.CompileAsync(input);
+        languageServices.OnCompilationFinished();
+
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            "(1,1): hint CS8019: Unnecessary using directive.",
+            "(1,1): hint IDE0005: Using directive is unnecessary.",
+            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
+        ]);
+
+        // When we explicitly include hidden diagnostics, they should be upgraded to info so they show up in the editor.
+        input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = true } };
+
+        await compiler.CompileAsync(input);
+        languageServices.OnCompilationFinished();
+
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            "(1,1): hint IDE0005: Using directive is unnecessary.",
+            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
+            "(1,1): info CS8019: Unnecessary using directive.",
+        ]);
+    }
+
+    [TestMethod]
     public async Task Diagnostics_LinePragma()
     {
         var input = new CompilationInput(new(

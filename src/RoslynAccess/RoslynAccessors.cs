@@ -29,6 +29,14 @@ public static class RoslynAccessors
         }
     }
 
+    extension(CSharpCompilationOptions options)
+    {
+        public CSharpCompilationOptions WithIgnoreAccessibility()
+        {
+            return options.WithTopLevelBinderFlags(options.TopLevelBinderFlags | BinderFlags.IgnoreAccessibility);
+        }
+    }
+
     extension(SemanticModel semanticModel)
     {
         public SemanticModel? GetMemberSemanticModel(SyntaxNode? node)

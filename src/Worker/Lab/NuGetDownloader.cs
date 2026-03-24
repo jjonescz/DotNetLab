@@ -477,7 +477,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             var result = await results.FirstOrNullAsync() ??
                 throw new InvalidOperationException($"Package '{packageId}@{range.OriginalString}' not found.");
             repository = result.repository;
-            exactVersion = result.Version;
+            exactVersion = result.Version!;
         }
 
         return Download(packageId, repository, exactVersion, dllFilter);

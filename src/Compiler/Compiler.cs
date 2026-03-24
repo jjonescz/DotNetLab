@@ -38,6 +38,23 @@ public sealed class Compiler(
         global using Microsoft.CodeAnalysis.CSharp;
         global using Microsoft.CodeAnalysis.Emit;
         global using System;
+
+        [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis")]
+        [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis.CSharp")]
+
+        namespace System.Runtime.CompilerServices
+        {
+            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+            public class IgnoresAccessChecksToAttribute : Attribute
+            {
+                public IgnoresAccessChecksToAttribute(string assemblyName)
+                {
+                    AssemblyName = assemblyName;
+                }
+
+                public string AssemblyName { get; }
+            }
+        }
         """;
 
     private readonly TreeFormatter treeFormatter = new();
@@ -139,11 +156,12 @@ public sealed class Compiler(
         ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies = null;
         if (compilationInput.Configuration is { } configuration)
         {
-            if (!executeConfiguration(configuration, out configDiagnostics))
+            (bool configExecutionSuccess, configDiagnostics) = await executeConfigurationAsync(configuration);
+            if (!configExecutionSuccess)
             {
                 string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
                 ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
-                    .Select(static d => d.ToDiagnosticData())
+                    .Select(toDiagnosticData)
                     .Distinct()
                     .Order()
                     .ToImmutableArray();
@@ -247,6 +265,8 @@ public sealed class Compiler(
             var other => throw new InvalidOperationException($"Invalid Razor toolchain '{other}'."),
         };
 
+        finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
+
         // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
@@ -266,11 +286,11 @@ public sealed class Compiler(
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
 
         var configDiagnosticData = configDiagnostics
-            .Select(static d => d.ToDiagnosticData())
+            .Select(toDiagnosticData)
             .Distinct()
             .Order();
         var nonConfigDiagnosticData = nonConfigDiagnostics
-            .Select(static d => d.ToDiagnosticData())
+            .Select(toDiagnosticData)
             .Distinct()
             .Order();
         ImmutableArray<DiagnosticData> diagnosticData = configDiagnosticData
@@ -477,7 +497,16 @@ public sealed class Compiler(
 
         bool filterDiagnostic(Diagnostic d) => compilationInput.Preferences.IncludeHiddenDiagnostics || d.Severity != DiagnosticSeverity.Hidden;
 
-        bool executeConfiguration(string code, out ImmutableArray<Diagnostic> diagnostics)
+        DiagnosticData toDiagnosticData(Diagnostic d)
+        {
+            return d.ToDiagnosticData(s => s switch
+            {
+                DiagnosticDataSeverity.Hint when compilationInput.Preferences.IncludeHiddenDiagnostics => DiagnosticDataSeverity.Info,
+                _ => s,
+            });
+        }
+
+        async ValueTask<(bool Success, ImmutableArray<Diagnostic> Diagnostics)> executeConfigurationAsync(string code)
         {
             var configurationParseOptions = parseOptions.WithFeatures(parseOptions.Features.Where(p => p.Key != FileBasedProgramFeatureName));
 
@@ -487,12 +516,12 @@ public sealed class Compiler(
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
-                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8)
+                    CSharpSyntaxTree.ParseText(ConfigurationGlobalUsings, configurationParseOptions, directory + "GlobalUsings.cs", Encoding.UTF8),
                 ],
                 references: getConfigurationReferences(assemblies!),
                 options: CreateConfigurationCompilationOptions());
 
-            var emitStreams = getEmitStreams(configCompilation, emitOptions.WithoutPdb(), out diagnostics);
+            var emitStreams = getEmitStreams(configCompilation, emitOptions.WithoutPdb(), out var diagnostics);
 
             if (emitStreams != null)
             {
@@ -515,7 +544,7 @@ public sealed class Compiler(
                 // Return some compiler assemblies anyway, so language services in the Configuration file keep working.
                 compilerAssemblies = assemblies;
 
-                return false;
+                return (false, diagnostics);
             }
 
             var configAssembly = alc.LoadFromStream(emitStreams.Value.PeStream);
@@ -523,10 +552,9 @@ public sealed class Compiler(
             var entryPoint = configAssembly.EntryPoint
                 ?? throw new ArgumentException("No entry point found in the configuration assembly.");
 
-            var result = Executor.InvokeEntryPointAsync(entryPoint);
-            Debug.Assert(result.IsCompletedSuccessfully);
+            await Executor.InvokeEntryPointAsync(entryPoint);
 
-            return true;
+            return (true, diagnostics);
         }
 
         MetadataReference[] getConfigurationReferences(ImmutableDictionary<string, ImmutableArray<byte>> assemblies)
@@ -1129,6 +1157,8 @@ public sealed class Compiler(
     public static CSharpCompilationOptions CreateConfigurationCompilationOptions()
     {
         return CreateDefaultCompilationOptions(OutputKind.ConsoleApplication)
+            .WithMetadataImportOptions(MetadataImportOptions.Internal)
+            .WithIgnoreAccessibility()
             .WithSpecificDiagnosticOptions(
             [
                 // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy

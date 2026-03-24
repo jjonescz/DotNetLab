@@ -132,7 +132,9 @@ public static class CodeAnalysisUtil
         return false;
     }
 
-    public static DiagnosticData ToDiagnosticData(this Diagnostic d)
+    public static DiagnosticData ToDiagnosticData(
+        this Diagnostic d,
+        Func<DiagnosticDataSeverity, DiagnosticDataSeverity>? severityMapping = null)
     {
         string? filePath, unmappedFilePath;
         FileLinePositionSpan lineSpan;
@@ -157,13 +159,13 @@ public static class CodeAnalysisUtil
 
         return new DiagnosticData(
             FilePath: filePath,
-            Severity: d.Severity switch
+            Severity: (severityMapping ?? (static x => x))(d.Severity switch
             {
                 DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
                 DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
                 DiagnosticSeverity.Hidden => DiagnosticDataSeverity.Hint,
                 _ => DiagnosticDataSeverity.Info,
-            },
+            }),
             Id: d.Id,
             HelpLinkUri: d.Descriptor.HelpLinkUri,
             Message: d.GetMessageSafe(),
