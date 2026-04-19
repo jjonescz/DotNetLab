@@ -39,11 +39,11 @@
             MarkupBlock - [37..69) - Width: 32
                 MarkupTextLiteral - [37..41) - Width: 4 - [    ] - Gen<Markup>
                     Whitespace;[    ];
-                MarkupTagHelperElement - [41..68) - Width: 27 - TestComponent[SelfClosing] - TestComponent
-                    MarkupTagHelperStartTag - [41..68) - Width: 27 - [<TestComponent Param="1" />] - Gen<Markup>
+                MarkupElement - [41..68) - Width: 27
+                    MarkupStartTag - [41..68) - Width: 27 - [<TestComponent Param="1" />] - Gen<Markup>
                         OpenAngle;[<];
                         Text;[TestComponent];
-                        MarkupTagHelperAttribute - [55..65) - Width: 10 - Param - DoubleQuotes - Bound - [ Param="1"]
+                        MarkupAttributeBlock - [55..65) - Width: 10 - [ Param="1"]
                             MarkupTextLiteral - [55..56) - Width: 1 - [ ] - Gen<Markup>
                                 Whitespace;[ ];
                             MarkupTextLiteral - [56..61) - Width: 5 - [Param] - Gen<Markup>
@@ -51,9 +51,10 @@
                             Equals;[=];
                             MarkupTextLiteral - [62..63) - Width: 1 - ["] - Gen<Markup>
                                 DoubleQuote;["];
-                            MarkupTagHelperAttributeValue - [63..64) - Width: 1
-                                CSharpExpressionLiteral - [63..64) - Width: 1 - [1] - Gen<None>
-                                    Text;[1];
+                            GenericBlock - [63..64) - Width: 1
+                                MarkupLiteralAttributeValue - [63..64) - Width: 1 - [1]
+                                    MarkupTextLiteral - [63..64) - Width: 1 - [1] - Gen<Markup>
+                                        Text;[1];
                             MarkupTextLiteral - [64..65) - Width: 1 - ["] - Gen<Markup>
                                 DoubleQuote;["];
                         MarkupMiscAttributeContent - [65..66) - Width: 1

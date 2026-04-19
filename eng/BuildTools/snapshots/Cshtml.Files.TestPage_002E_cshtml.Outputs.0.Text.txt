@@ -69,11 +69,11 @@
                             NewLine;[LF];
         MarkupTextLiteral - [121..122) - Width: 1 - [LF] - Gen<Markup>
             NewLine;[LF];
-        MarkupTagHelperElement - [122..226) - Width: 104 - form[StartTagAndEndTag] - FormTagHelper - RenderAtEndOfFormTagHelper
-            MarkupTagHelperStartTag - [122..142) - Width: 20 - [<form method="post">] - Gen<Markup>
+        MarkupElement - [122..226) - Width: 104
+            MarkupStartTag - [122..142) - Width: 20 - [<form method="post">] - Gen<Markup>
                 OpenAngle;[<];
                 Text;[form];
-                MarkupTagHelperAttribute - [127..141) - Width: 14 - method - DoubleQuotes - Bound - [ method="post"]
+                MarkupAttributeBlock - [127..141) - Width: 14 - [ method="post"]
                     MarkupTextLiteral - [127..128) - Width: 1 - [ ] - Gen<Markup>
                         Whitespace;[ ];
                     MarkupTextLiteral - [128..134) - Width: 6 - [method] - Gen<Markup>
@@ -81,9 +81,10 @@
                     Equals;[=];
                     MarkupTextLiteral - [135..136) - Width: 1 - ["] - Gen<Markup>
                         DoubleQuote;["];
-                    MarkupTagHelperAttributeValue - [136..140) - Width: 4
-                        MarkupTextLiteral - [136..140) - Width: 4 - [post] - Gen<Markup>
-                            Text;[post];
+                    GenericBlock - [136..140) - Width: 4
+                        MarkupLiteralAttributeValue - [136..140) - Width: 4 - [post]
+                            MarkupTextLiteral - [136..140) - Width: 4 - [post] - Gen<Markup>
+                                Text;[post];
                     MarkupTextLiteral - [140..141) - Width: 1 - ["] - Gen<Markup>
                         DoubleQuote;["];
                 CloseAngle;[>];
@@ -93,11 +94,11 @@
                 Text;[Name:];
                 NewLine;[LF];
                 Whitespace;[    ];
-            MarkupTagHelperElement - [157..190) - Width: 33 - input[SelfClosing] - InputTagHelper
-                MarkupTagHelperStartTag - [157..190) - Width: 33 - [<input asp-for="Customer.Name" />] - Gen<Markup>
+            MarkupElement - [157..190) - Width: 33
+                MarkupStartTag - [157..190) - Width: 33 - [<input asp-for="Customer.Name" />] - Gen<Markup>
                     OpenAngle;[<];
                     Text;[input];
-                    MarkupTagHelperAttribute - [163..187) - Width: 24 - asp-for - DoubleQuotes - Bound - [ asp-for="Customer.Name"]
+                    MarkupAttributeBlock - [163..187) - Width: 24 - [ asp-for="Customer.Name"]
                         MarkupTextLiteral - [163..164) - Width: 1 - [ ] - Gen<Markup>
                             Whitespace;[ ];
                         MarkupTextLiteral - [164..171) - Width: 7 - [asp-for] - Gen<Markup>
@@ -105,9 +106,10 @@
                         Equals;[=];
                         MarkupTextLiteral - [172..173) - Width: 1 - ["] - Gen<Markup>
                             DoubleQuote;["];
-                        MarkupTagHelperAttributeValue - [173..186) - Width: 13
-                            CSharpExpressionLiteral - [173..186) - Width: 13 - [Customer.Name] - Gen<None>
-                                Text;[Customer.Name];
+                        GenericBlock - [173..186) - Width: 13
+                            MarkupLiteralAttributeValue - [173..186) - Width: 13 - [Customer.Name]
+                                MarkupTextLiteral - [173..186) - Width: 13 - [Customer.Name] - Gen<Markup>
+                                    Text;[Customer.Name];
                         MarkupTextLiteral - [186..187) - Width: 1 - ["] - Gen<Markup>
                             DoubleQuote;["];
                     MarkupMiscAttributeContent - [187..188) - Width: 1
@@ -143,7 +145,7 @@
                     CloseAngle;[>];
             MarkupTextLiteral - [218..219) - Width: 1 - [LF] - Gen<Markup>
                 NewLine;[LF];
-            MarkupTagHelperEndTag - [219..226) - Width: 7 - [</form>]
+            MarkupEndTag - [219..226) - Width: 7 - [</form>] - Gen<Markup>
                 OpenAngle;[<];
                 ForwardSlash;[/];
                 Text;[form];
