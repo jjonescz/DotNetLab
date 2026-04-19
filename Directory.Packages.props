@@ -4,21 +4,21 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <!-- We are not using package source mapping. -->
     <NoWarn>$(NoWarn);NU1507</NoWarn>
-    <NetCoreVersion>11.0.0-preview.2.26159.112</NetCoreVersion>
+    <NetCoreVersion>11.0.0-preview.3.26207.106</NetCoreVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
-    <RoslynVersion>5.6.0-2.26173.1</RoslynVersion>
-    <RazorVersion>10.0.0-preview.26171.1</RazorVersion>
+    <RoslynVersion>5.7.0-1.26217.5</RoslynVersion>
+    <RazorVersion>10.0.0-preview.26217.1</RazorVersion>
     <FluentUIVersion>4.14.0</FluentUIVersion>
-    <NuGetVersion>7.3.0</NuGetVersion>
+    <NuGetVersion>7.3.1</NuGetVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AwesomeAssertions" Version="9.3.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.4.0" />
     <PackageVersion Include="Combinatorial.MSTest" Version="2.0.0" />
-    <PackageVersion Include="Humanizer.Core" Version="3.0.1" />
-    <PackageVersion Include="ICSharpCode.Decompiler" Version="10.0.0.8282-preview2" />
+    <PackageVersion Include="Humanizer.Core" Version="3.0.10" />
+    <PackageVersion Include="ICSharpCode.Decompiler" Version="10.0.0.8330" />
     <PackageVersion Include="JitInspect" Version="1.0.3" />
     <PackageVersion Include="Knapcode.MiniZip" Version="0.21.1" />
     <PackageVersion Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
@@ -46,7 +46,7 @@
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
     <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="$(RoslynVersion)" />
     <PackageVersion Include="System.IO.Hashing" Version="$(NetCoreVersion)" />
-    <PackageVersion Include="Verify.MSTest" Version="31.13.2" />
+    <PackageVersion Include="Verify.MSTest" Version="31.16.1" />
   </ItemGroup>
   <ItemGroup Label="Pinned Transitive Dependencies">
     <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />

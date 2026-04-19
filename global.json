@@ -1,10 +1,10 @@
 {
   "sdk": {
-    "version": "11.0.100-preview.2.26159.112",
-    "workloadVersion": "11.0.100-preview.2.26160.1"
+    "version": "11.0.100-preview.3.26207.106",
+    "workloadVersion": "11.0.100-preview.3.26214.1"
   },
   "msbuild-sdks": {
-    "MSTest.Sdk": "4.1.0"
+    "MSTest.Sdk": "4.2.1"
   },
   "test": {
     "runner": "Microsoft.Testing.Platform"
