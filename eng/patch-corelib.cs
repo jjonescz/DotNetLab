@@ -33,12 +33,12 @@ using (var peReader = new PEReader(peStream))
 
     var reader = peReader.GetMetadataReader();
 
-    var threadType = FindTypeDefinition(reader, "System.Threading", "Thread");
+    var runtimeFeatureType = FindTypeDefinition(reader, "System.Runtime.CompilerServices", "RuntimeFeature");
 
-    var throwIfSingleThreaded = FindMethodDefinition(reader, threadType, "ThrowIfSingleThreaded", 0);
+    var throwIfMultithreadingIsNotSupported = FindMethodDefinition(reader, runtimeFeatureType, "ThrowIfMultithreadingIsNotSupported", 0);
 
     // Workaround for https://github.com/dotnet/roslyn/issues/82361.
-    PatchMethodBodyToRet(bytes, peReader, throwIfSingleThreaded, "System.Threading.Thread.ThrowIfSingleThreaded");
+    PatchMethodBodyToRet(bytes, peReader, throwIfMultithreadingIsNotSupported, "System.Runtime.CompilerServices.RuntimeFeature.ThrowIfMultithreadingIsNotSupported");
 }
 
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? ".");
