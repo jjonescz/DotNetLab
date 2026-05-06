@@ -1137,6 +1137,13 @@
         OutputActionMode updateTimestampMode,
         OutputActionMode storeInCacheMode)
     {
+        AutoSelectOutputType();
+
+        await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
+    }
+
+    private void AutoSelectOutputType()
+    {
         // Prefer C# output, or auto-select the first one available.
         if (userSelectedOutputType is null || GetOutput(userSelectedOutputType) is null)
         {
@@ -1145,8 +1152,6 @@
         }
 
         temporarilyShowErrorListIfOutputTextEmpty = compiled is { Output.NumErrors: > 0 };
-
-        await UpdateOutputDisplayAsync(updateTimestampMode, storeInCacheMode);
     }
 
     enum OutputActionMode
@@ -1510,18 +1515,19 @@
             End = timestamp,
             AutoLoadLazyOutputs = false,
         };
-        StateHasChanged();
-
-        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(config, output))
-        {
-            await DisplaySquigglesAsync();
-        }
 
         if (updateOutput)
         {
             await AutoSelectOutputAsync(
                 updateTimestampMode: OutputActionMode.Never,
                 storeInCacheMode: OutputActionMode.Never);
+        }
+
+        StateHasChanged();
+
+        if (!LanguageServices.Enabled || !await LanguageServices.OnCachedCompilationLoadedAsync(config, output))
+        {
+            await DisplaySquigglesAsync();
         }
     }
 
