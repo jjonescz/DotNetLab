@@ -1226,6 +1226,9 @@
                     .FullSpan = [268..303)
                     .RawKind = 8634 "InvocationExpression"
                     .Language = "C#"
+                  .GetInterceptableLocation() = InterceptableLocation1
+                    .Version = 1
+                    .Data = "WDTWGC3IFlQ3hv/Pm0+TyBwBAABQcm9ncmFtLmNz"
                   .Expression = MemberAccessExpressionSyntax
                     //
                       .HasLeadingTrivia = true
