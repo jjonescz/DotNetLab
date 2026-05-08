@@ -489,7 +489,7 @@ public sealed class CompilerProxyTests
                                 _ = c.Method2();
                             }
                         }
-                        """,
+                        """.ReplaceLineEndings("\n"),
                 },
                 new()
                 {
@@ -499,10 +499,10 @@ public sealed class CompilerProxyTests
 
                         static class D
                         {
-                            [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXQgBAABQcm9ncmFtLmNz")] // 1
+                            [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
                             public static void Interceptor1(this C s, string param2) => throw null!;
 
-                            [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXS0BAABQcm9ncmFtLmNz")] // 2
+                            [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
                             public static string? Interceptor2(this C s) => throw null!;
                         }
 
@@ -514,7 +514,7 @@ public sealed class CompilerProxyTests
                                 public InterceptsLocationAttribute(int version, string data) { }
                             }
                         }
-                        """,
+                        """.ReplaceLineEndings("\n"),
                 },
             ])));
 
@@ -523,10 +523,10 @@ public sealed class CompilerProxyTests
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
             // (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
-            //     [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXQgBAABQcm9ncmFtLmNz")] // 1
+            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
             Diagnostic(ErrorCode.WRN_NullabilityMismatchInParameterTypeOnInterceptor, "InterceptsLocation").WithArguments("param2", "C.Method1(string?)").WithLocation(5, 6),
             // (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
-            //     [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXS0BAABQcm9ncmFtLmNz")] // 2
+            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
             Diagnostic(ErrorCode.WRN_NullabilityMismatchInReturnTypeOnInterceptor, "InterceptsLocation").WithArguments("C.Method2()").WithLocation(8, 6)
             """.ReplaceLineEndings(), diagnosticsText);
     }
