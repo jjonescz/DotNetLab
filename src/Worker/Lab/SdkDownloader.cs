@@ -146,7 +146,7 @@ internal sealed class SdkDownloader(
         async Task<string?> tryGetOfficialBuildIdFromVersionAsync(string version)
         {
             var url = $"https://github.com/{monoRepoOwner}/{monoRepoName}/releases/download/v{version}/release.json";
-            var response = await client.GetAsync(url);
+            var response = await client.GetAsync(url.WithCorsProxy());
             if (!response.IsSuccessStatusCode) return null;
             var manifest = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.ReleaseManifest);
             return manifest?.OfficialBuildId;
@@ -194,7 +194,7 @@ internal sealed class SdkDownloader(
 
     private Task<HttpResponseMessage> SendRawGitHubRequestAsync(string url)
     {
-        return client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url)
+        return client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url.WithCorsProxy())
         {
             Headers = { { "Accept", "application/vnd.github.raw" } },
         });
