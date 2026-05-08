@@ -251,6 +251,7 @@ public sealed class CompilerProxyTests
     [DataRow("10.0.0-preview.25311.107")]
     [DataRow("10.0.0-preview.25314.101")]
     [DataRow("10.0.0-preview.25429.2")]
+    [DataRow("10.4.0-preview.26257.103")]
     [DataRow("main")] // test that we can download a branch
     [DataRow("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version, bool sgUnsupported = false)

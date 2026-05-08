@@ -406,6 +406,21 @@ internal static class RazorUtil
         }
     }
 
+    public static string Serialize(this RazorSyntaxTree tree)
+    {
+        var root = tree.GetType().GetProperty("Root", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tree)!;
+
+        // SerializedValue property has been moved to another type in https://github.com/dotnet/razor/pull/11859.
+        // For some reason, the property might not be returned by reflection if inherited, so look manually into the base type.
+        const string propName = "SerializedValue";
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var rootType = root.GetType();
+        var prop = rootType.GetProperty(propName, flags)
+            ?? rootType.BaseType!.GetProperty(propName, flags)!;
+
+        return (string)prop.GetValue(root)!;
+    }
+
     public static void SetCSharpLanguageVersionSafe(this RazorProjectEngineBuilder builder, LanguageVersion languageVersion)
     {
         // Changed in https://github.com/dotnet/razor/commit/40384334fd4c20180c25b3c88a82d3ca5da07487.
