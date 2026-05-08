@@ -461,6 +461,77 @@ public sealed class CompilerProxyTests
     }
 
     [TestMethod]
+    public async Task Interceptor_EmitOnlyWarning()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([
+                new()
+                {
+                    FileName = "Program.cs",
+                    Text = """
+                        #:property InterceptorsNamespaces=global
+
+                        class C
+                        {
+                            public void Method1(string? param1) => throw null!;
+
+                            public string Method2() => throw null!;
+                        }
+
+                        static class Program
+                        {
+                            public static void Main()
+                            {
+                                var c = new C();
+                                c.Method1("call site");
+                                _ = c.Method2();
+                            }
+                        }
+                        """,
+                },
+                new()
+                {
+                    FileName = "Interceptor.cs",
+                    Text = """
+                        using System.Runtime.CompilerServices;
+
+                        static class D
+                        {
+                            [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXQgBAABQcm9ncmFtLmNz")] // 1
+                            public static void Interceptor1(this C s, string param2) => throw null!;
+
+                            [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXS0BAABQcm9ncmFtLmNz")] // 2
+                            public static string? Interceptor2(this C s) => throw null!;
+                        }
+
+                        namespace System.Runtime.CompilerServices
+                        { 
+                            [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+                            public sealed class InterceptsLocationAttribute : Attribute
+                            {
+                                public InterceptsLocationAttribute(int version, string data) { }
+                            }
+                        }
+                        """,
+                },
+            ])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual("""
+            // (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
+            //     [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXQgBAABQcm9ncmFtLmNz")] // 1
+            Diagnostic(ErrorCode.WRN_NullabilityMismatchInParameterTypeOnInterceptor, "InterceptsLocation").WithArguments("param2", "C.Method1(string?)").WithLocation(5, 6),
+            // (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
+            //     [InterceptsLocation(1, "LOEF/1jTD6GQbgfap5QaXS0BAABQcm9ncmFtLmNz")] // 2
+            Diagnostic(ErrorCode.WRN_NullabilityMismatchInReturnTypeOnInterceptor, "InterceptsLocation").WithArguments("C.Method2()").WithLocation(8, 6)
+            """.ReplaceLineEndings(), diagnosticsText);
+    }
+
+    [TestMethod]
     public void DefaultCSharpDecompilerSettings()
     {
         var settings = Compiler.DefaultCSharpDecompilerSettings;

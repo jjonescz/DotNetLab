@@ -816,15 +816,15 @@ public sealed class Compiler(
                 options: emitOptions.EmitOptions,
                 embeddedTexts: embeddedTexts);
 
+            diagnostics = emitResult.Diagnostics;
+
             if (!emitResult.Success)
             {
-                diagnostics = emitResult.Diagnostics;
                 return null;
             }
 
             peStream.Position = 0;
             pdbStream?.Position = 0;
-            diagnostics = compilation.GetDiagnostics();
             return (peStream, pdbStream);
         }
 
