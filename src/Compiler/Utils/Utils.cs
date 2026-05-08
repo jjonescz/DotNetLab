@@ -343,24 +343,28 @@ internal static class RazorUtil
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDeclarationOnly));
+        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDeclarationOnly))
+            ?? throw new InvalidOperationException($"Unexpected missing {nameof(RazorProjectEngine)}.{nameof(engine.ProcessDeclarationOnly)}");
     }
 
-    public static RazorCodeDocument ProcessDesignTimeSafe(
+    public static RazorCodeDocument? ProcessDesignTimeSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDesignTime));
+        // Design-time was removed in https://github.com/dotnet/roslyn/pull/83510.
+
+        return engine.ProcessSafe(projectItem, "ProcessDesignTime");
     }
 
     public static RazorCodeDocument ProcessSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.Process));
+        return engine.ProcessSafe(projectItem, nameof(engine.Process))
+            ?? throw new InvalidOperationException($"Unexpected missing {nameof(RazorProjectEngine)}.{nameof(engine.Process)}");
     }
 
-    private static RazorCodeDocument ProcessSafe(
+    private static RazorCodeDocument? ProcessSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem,
         string methodName)
@@ -370,17 +374,16 @@ internal static class RazorUtil
 
         var method = engine.GetType()
             .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-            .Where(m => m.Name == methodName &&
+            .FirstOrDefault(m => m.Name == methodName &&
                 m.GetParameters() is
                 [
-                { ParameterType.FullName: "Microsoft.AspNetCore.Razor.Language.RazorProjectItem" },
+                    { ParameterType.FullName: "Microsoft.AspNetCore.Razor.Language.RazorProjectItem" },
                     .. var rest
                 ] &&
-                rest.All(static p => p.IsOptional))
-            .First();
+                rest.All(static p => p.IsOptional));
 
-        return (RazorCodeDocument)method
-            .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
+        return (RazorCodeDocument?)method?
+            .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)]);
     }
 
     public static string Serialize(this IntermediateNode node)

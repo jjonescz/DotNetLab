@@ -3,6 +3,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Runtime.CompilerServices;
 
+[assembly: IgnoresAccessChecksTo("Microsoft.CodeAnalysis.Razor.Compiler")]
+
 namespace DotNetLab;
 
 public static class RazorAccessors

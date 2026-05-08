@@ -328,6 +328,13 @@ public sealed class CompilerProxyTests
     {
         var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
+        // Design-time was removed in https://github.com/dotnet/roslyn/pull/83510.
+        if (strategy == RazorStrategy.DesignTime)
+        {
+            await services.GetRequiredService<CompilerDependencyProvider>()
+                .UseAsync(CompilerKind.Razor, "10.0.0-preview.25429.2", BuildConfiguration.Release);
+        }
+
         string code = """
             <div>@Param</div>
             @if (Param == 0)

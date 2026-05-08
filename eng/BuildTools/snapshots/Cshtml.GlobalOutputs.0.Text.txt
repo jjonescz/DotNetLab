@@ -2,7 +2,7 @@
 {
 } // end of class <Module>
 
-.class private auto ansi sealed beforefieldinit AspNetCoreGeneratedDocument._TestPage
+.class private auto ansi sealed beforefieldinit AspNetCoreGeneratedDocument.TestPage
     extends [Microsoft.AspNetCore.Mvc.RazorPages]Microsoft.AspNetCore.Mvc.RazorPages.Page
 {
     .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableContextAttribute::.ctor(uint8) = (
@@ -26,7 +26,7 @@
             01 00 00 00 00
         )
         // Fields
-        .field private class AspNetCoreGeneratedDocument._TestPage/Customer '<Customer>k__BackingField'
+        .field private class AspNetCoreGeneratedDocument.TestPage/Customer '<Customer>k__BackingField'
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
             01 00 00 00
         )
@@ -36,7 +36,7 @@
 
         // Methods
         .method public hidebysig specialname 
-            instance class AspNetCoreGeneratedDocument._TestPage/Customer get_Customer () cil managed 
+            instance class AspNetCoreGeneratedDocument.TestPage/Customer get_Customer () cil managed 
         {
             .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
                 01 00 00 00
@@ -47,13 +47,13 @@
             .maxstack 8
 
             IL_0000: ldarg.0
-            IL_0001: ldfld class AspNetCoreGeneratedDocument._TestPage/Customer AspNetCoreGeneratedDocument._TestPage/PageModel::'<Customer>k__BackingField'
+            IL_0001: ldfld class AspNetCoreGeneratedDocument.TestPage/Customer AspNetCoreGeneratedDocument.TestPage/PageModel::'<Customer>k__BackingField'
             IL_0006: ret
         } // end of method PageModel::get_Customer
 
         .method public hidebysig specialname 
             instance void set_Customer (
-                class AspNetCoreGeneratedDocument._TestPage/Customer 'value'
+                class AspNetCoreGeneratedDocument.TestPage/Customer 'value'
             ) cil managed 
         {
             .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
@@ -66,7 +66,7 @@
 
             IL_0000: ldarg.0
             IL_0001: ldarg.1
-            IL_0002: stfld class AspNetCoreGeneratedDocument._TestPage/Customer AspNetCoreGeneratedDocument._TestPage/PageModel::'<Customer>k__BackingField'
+            IL_0002: stfld class AspNetCoreGeneratedDocument.TestPage/Customer AspNetCoreGeneratedDocument.TestPage/PageModel::'<Customer>k__BackingField'
             IL_0007: ret
         } // end of method PageModel::set_Customer
 
@@ -79,8 +79,8 @@
             .maxstack 8
 
             IL_0000: ldarg.0
-            IL_0001: newobj instance void AspNetCoreGeneratedDocument._TestPage/Customer::.ctor()
-            IL_0006: stfld class AspNetCoreGeneratedDocument._TestPage/Customer AspNetCoreGeneratedDocument._TestPage/PageModel::'<Customer>k__BackingField'
+            IL_0001: newobj instance void AspNetCoreGeneratedDocument.TestPage/Customer::.ctor()
+            IL_0006: stfld class AspNetCoreGeneratedDocument.TestPage/Customer AspNetCoreGeneratedDocument.TestPage/PageModel::'<Customer>k__BackingField'
             IL_000b: ldarg.0
             IL_000c: call instance void [System.Runtime]System.Object::.ctor()
             IL_0011: nop
@@ -88,10 +88,10 @@
         } // end of method PageModel::.ctor
 
         // Properties
-        .property instance class AspNetCoreGeneratedDocument._TestPage/Customer Customer()
+        .property instance class AspNetCoreGeneratedDocument.TestPage/Customer Customer()
         {
-            .get instance class AspNetCoreGeneratedDocument._TestPage/Customer AspNetCoreGeneratedDocument._TestPage/PageModel::get_Customer()
-            .set instance void AspNetCoreGeneratedDocument._TestPage/PageModel::set_Customer(class AspNetCoreGeneratedDocument._TestPage/Customer)
+            .get instance class AspNetCoreGeneratedDocument.TestPage/Customer AspNetCoreGeneratedDocument.TestPage/PageModel::get_Customer()
+            .set instance void AspNetCoreGeneratedDocument.TestPage/PageModel::set_Customer(class AspNetCoreGeneratedDocument.TestPage/Customer)
         }
 
     } // end of class PageModel
@@ -131,7 +131,7 @@
             .maxstack 8
 
             IL_0000: ldarg.0
-            IL_0001: ldfld int32 AspNetCoreGeneratedDocument._TestPage/Customer::'<Id>k__BackingField'
+            IL_0001: ldfld int32 AspNetCoreGeneratedDocument.TestPage/Customer::'<Id>k__BackingField'
             IL_0006: ret
         } // end of method Customer::get_Id
 
@@ -150,7 +150,7 @@
 
             IL_0000: ldarg.0
             IL_0001: ldarg.1
-            IL_0002: stfld int32 AspNetCoreGeneratedDocument._TestPage/Customer::'<Id>k__BackingField'
+            IL_0002: stfld int32 AspNetCoreGeneratedDocument.TestPage/Customer::'<Id>k__BackingField'
             IL_0007: ret
         } // end of method Customer::set_Id
 
@@ -166,7 +166,7 @@
             .maxstack 8
 
             IL_0000: ldarg.0
-            IL_0001: ldfld string AspNetCoreGeneratedDocument._TestPage/Customer::'<Name>k__BackingField'
+            IL_0001: ldfld string AspNetCoreGeneratedDocument.TestPage/Customer::'<Name>k__BackingField'
             IL_0006: ret
         } // end of method Customer::get_Name
 
@@ -185,7 +185,7 @@
 
             IL_0000: ldarg.0
             IL_0001: ldarg.1
-            IL_0002: stfld string AspNetCoreGeneratedDocument._TestPage/Customer::'<Name>k__BackingField'
+            IL_0002: stfld string AspNetCoreGeneratedDocument.TestPage/Customer::'<Name>k__BackingField'
             IL_0007: ret
         } // end of method Customer::set_Name
 
@@ -199,7 +199,7 @@
 
             IL_0000: ldarg.0
             IL_0001: ldstr ""
-            IL_0006: stfld string AspNetCoreGeneratedDocument._TestPage/Customer::'<Name>k__BackingField'
+            IL_0006: stfld string AspNetCoreGeneratedDocument.TestPage/Customer::'<Name>k__BackingField'
             IL_000b: ldarg.0
             IL_000c: call instance void [System.Runtime]System.Object::.ctor()
             IL_0011: nop
@@ -209,8 +209,8 @@
         // Properties
         .property instance int32 Id()
         {
-            .get instance int32 AspNetCoreGeneratedDocument._TestPage/Customer::get_Id()
-            .set instance void AspNetCoreGeneratedDocument._TestPage/Customer::set_Id(int32)
+            .get instance int32 AspNetCoreGeneratedDocument.TestPage/Customer::get_Id()
+            .set instance void AspNetCoreGeneratedDocument.TestPage/Customer::set_Id(int32)
         }
         .property instance string Name()
         {
@@ -220,8 +220,8 @@
             .custom instance void [System.ComponentModel.Annotations]System.ComponentModel.DataAnnotations.StringLengthAttribute::.ctor(int32) = (
                 01 00 0a 00 00 00 00 00
             )
-            .get instance string AspNetCoreGeneratedDocument._TestPage/Customer::get_Name()
-            .set instance void AspNetCoreGeneratedDocument._TestPage/Customer::set_Name(string)
+            .get instance string AspNetCoreGeneratedDocument.TestPage/Customer::get_Name()
+            .set instance void AspNetCoreGeneratedDocument.TestPage/Customer::set_Name(string)
         }
 
     } // end of class Customer
@@ -241,7 +241,7 @@
         // Fields
         .field public int32 '<>1__state'
         .field public valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder '<>t__builder'
-        .field public class AspNetCoreGeneratedDocument._TestPage '<>4__this'
+        .field public class AspNetCoreGeneratedDocument.TestPage '<>4__this'
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableAttribute::.ctor(uint8) = (
             01 00 00 00 00
         )
@@ -274,14 +274,14 @@
                 [0] int32,
                 [1] class [System.Linq.Expressions]System.Linq.Expressions.ParameterExpression,
                 [2] valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter,
-                [3] class AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d',
+                [3] class AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d',
                 [4] bool,
                 [5] valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter,
                 [6] class [System.Runtime]System.Exception
             )
 
             IL_0000: ldarg.0
-            IL_0001: ldfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+            IL_0001: ldfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
             IL_0006: stloc.0
             .try
             {
@@ -302,65 +302,65 @@
 
                 IL_001c: nop
                 IL_001d: ldarg.0
-                IL_001e: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_001e: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_0023: ldstr "\n    Name:\n    "
                 IL_0028: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::WriteLiteral(string)
                 IL_002d: nop
                 IL_002e: ldarg.0
-                IL_002f: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_002f: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_0034: ldarg.0
-                IL_0035: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_003a: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::get___tagHelperScopeManager()
+                IL_0035: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_003a: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::get___tagHelperScopeManager()
                 IL_003f: ldstr "input"
                 IL_0044: ldc.i4.1
-                IL_0045: ldstr "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93585"
-                IL_004a: ldsfld class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task> AspNetCoreGeneratedDocument._TestPage/'<>c'::'<>9__10_1'
+                IL_0045: ldstr "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93583"
+                IL_004a: ldsfld class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task> AspNetCoreGeneratedDocument.TestPage/'<>c'::'<>9__10_1'
                 IL_004f: dup
                 IL_0050: brtrue.s IL_0069
 
                 IL_0052: pop
-                IL_0053: ldsfld class AspNetCoreGeneratedDocument._TestPage/'<>c' AspNetCoreGeneratedDocument._TestPage/'<>c'::'<>9'
-                IL_0058: ldftn instance class [System.Runtime]System.Threading.Tasks.Task AspNetCoreGeneratedDocument._TestPage/'<>c'::'<ExecuteAsync>b__10_1'()
+                IL_0053: ldsfld class AspNetCoreGeneratedDocument.TestPage/'<>c' AspNetCoreGeneratedDocument.TestPage/'<>c'::'<>9'
+                IL_0058: ldftn instance class [System.Runtime]System.Threading.Tasks.Task AspNetCoreGeneratedDocument.TestPage/'<>c'::'<ExecuteAsync>b__10_1'()
                 IL_005e: newobj instance void class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task>::.ctor(object, native int)
                 IL_0063: dup
-                IL_0064: stsfld class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task> AspNetCoreGeneratedDocument._TestPage/'<>c'::'<>9__10_1'
+                IL_0064: stsfld class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task> AspNetCoreGeneratedDocument.TestPage/'<>c'::'<>9__10_1'
 
                 IL_0069: callvirt instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager::Begin(string, valuetype [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagMode, string, class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task>)
-                IL_006e: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_006e: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0073: ldarg.0
-                IL_0074: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0074: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_0079: ldarg.0
-                IL_007a: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_007a: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_007f: call instance !!0 [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::CreateTagHelper<class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper>()
-                IL_0084: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
+                IL_0084: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
                 IL_0089: ldarg.0
-                IL_008a: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_008f: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_008a: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_008f: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0094: ldarg.0
-                IL_0095: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_009a: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
+                IL_0095: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_009a: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
                 IL_009f: callvirt instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::Add(class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper)
                 IL_00a4: nop
                 IL_00a5: ldarg.0
-                IL_00a6: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_00ab: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
+                IL_00a6: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_00ab: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
                 IL_00b0: ldarg.0
-                IL_00b1: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_00b6: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument._TestPage::get_ModelExpressionProvider()
+                IL_00b1: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_00b6: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument.TestPage::get_ModelExpressionProvider()
                 IL_00bb: ldarg.0
-                IL_00bc: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_00c1: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::get_ViewData()
-                IL_00c6: ldtoken AspNetCoreGeneratedDocument._TestPage/PageModel
+                IL_00bc: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_00c1: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::get_ViewData()
+                IL_00c6: ldtoken AspNetCoreGeneratedDocument.TestPage/PageModel
                 IL_00cb: call class [System.Runtime]System.Type [System.Runtime]System.Type::GetTypeFromHandle(valuetype [System.Runtime]System.RuntimeTypeHandle)
                 IL_00d0: ldstr "__model"
                 IL_00d5: call class [System.Linq.Expressions]System.Linq.Expressions.ParameterExpression [System.Linq.Expressions]System.Linq.Expressions.Expression::Parameter(class [System.Runtime]System.Type, string)
                 IL_00da: stloc.1
                 IL_00db: ldloc.1
-                IL_00dc: ldtoken method instance class AspNetCoreGeneratedDocument._TestPage/Customer AspNetCoreGeneratedDocument._TestPage/PageModel::get_Customer()
+                IL_00dc: ldtoken method instance class AspNetCoreGeneratedDocument.TestPage/Customer AspNetCoreGeneratedDocument.TestPage/PageModel::get_Customer()
                 IL_00e1: call class [System.Runtime]System.Reflection.MethodBase [System.Runtime]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [System.Runtime]System.RuntimeMethodHandle)
                 IL_00e6: castclass [System.Runtime]System.Reflection.MethodInfo
                 IL_00eb: call class [System.Linq.Expressions]System.Linq.Expressions.MemberExpression [System.Linq.Expressions]System.Linq.Expressions.Expression::Property(class [System.Linq.Expressions]System.Linq.Expressions.Expression, class [System.Runtime]System.Reflection.MethodInfo)
-                IL_00f0: ldtoken method instance string AspNetCoreGeneratedDocument._TestPage/Customer::get_Name()
+                IL_00f0: ldtoken method instance string AspNetCoreGeneratedDocument.TestPage/Customer::get_Name()
                 IL_00f5: call class [System.Runtime]System.Reflection.MethodBase [System.Runtime]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [System.Runtime]System.RuntimeMethodHandle)
                 IL_00fa: castclass [System.Runtime]System.Reflection.MethodInfo
                 IL_00ff: call class [System.Linq.Expressions]System.Linq.Expressions.MemberExpression [System.Linq.Expressions]System.Linq.Expressions.Expression::Property(class [System.Linq.Expressions]System.Linq.Expressions.Expression, class [System.Runtime]System.Reflection.MethodInfo)
@@ -370,27 +370,27 @@
                 IL_010b: ldc.i4.0
                 IL_010c: ldloc.1
                 IL_010d: stelem.ref
-                IL_010e: call class [System.Linq.Expressions]System.Linq.Expressions.Expression`1<!!0> [System.Linq.Expressions]System.Linq.Expressions.Expression::Lambda<class [System.Runtime]System.Func`2<class AspNetCoreGeneratedDocument._TestPage/PageModel, string>>(class [System.Linq.Expressions]System.Linq.Expressions.Expression, class [System.Linq.Expressions]System.Linq.Expressions.ParameterExpression[])
-                IL_0113: callvirt instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ModelExpression [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider::CreateModelExpression<class AspNetCoreGeneratedDocument._TestPage/PageModel, string>(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<!!0>, class [System.Linq.Expressions]System.Linq.Expressions.Expression`1<class [System.Runtime]System.Func`2<!!0, !!1>>)
+                IL_010e: call class [System.Linq.Expressions]System.Linq.Expressions.Expression`1<!!0> [System.Linq.Expressions]System.Linq.Expressions.Expression::Lambda<class [System.Runtime]System.Func`2<class AspNetCoreGeneratedDocument.TestPage/PageModel, string>>(class [System.Linq.Expressions]System.Linq.Expressions.Expression, class [System.Linq.Expressions]System.Linq.Expressions.ParameterExpression[])
+                IL_0113: callvirt instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ModelExpression [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider::CreateModelExpression<class AspNetCoreGeneratedDocument.TestPage/PageModel, string>(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<!!0>, class [System.Linq.Expressions]System.Linq.Expressions.Expression`1<class [System.Runtime]System.Func`2<!!0, !!1>>)
                 IL_0118: callvirt instance void [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper::set_For(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ModelExpression)
                 IL_011d: nop
                 IL_011e: ldarg.0
-                IL_011f: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_0124: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_011f: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0124: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0129: ldstr "asp-for"
                 IL_012e: ldarg.0
-                IL_012f: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_0134: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
+                IL_012f: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0134: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper
                 IL_0139: callvirt instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ModelExpression [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.InputTagHelper::get_For()
                 IL_013e: ldc.i4.0
                 IL_013f: callvirt instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::AddTagHelperAttribute(string, object, valuetype [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.HtmlAttributeValueStyle)
                 IL_0144: nop
                 IL_0145: ldarg.0
-                IL_0146: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_014b: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument._TestPage::__tagHelperRunner
+                IL_0146: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_014b: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument.TestPage::__tagHelperRunner
                 IL_0150: ldarg.0
-                IL_0151: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_0156: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0151: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0156: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_015b: callvirt instance class [System.Runtime]System.Threading.Tasks.Task [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner::RunAsync(class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext)
                 IL_0160: callvirt instance valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter [System.Runtime]System.Threading.Tasks.Task::GetAwaiter()
                 IL_0165: stloc.2
@@ -402,38 +402,38 @@
                 IL_0170: ldc.i4.0
                 IL_0171: dup
                 IL_0172: stloc.0
-                IL_0173: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+                IL_0173: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
                 IL_0178: ldarg.0
                 IL_0179: ldloc.2
-                IL_017a: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_017a: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_017f: ldarg.0
                 IL_0180: stloc.3
                 IL_0181: ldarg.0
-                IL_0182: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+                IL_0182: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
                 IL_0187: ldloca.s 2
                 IL_0189: ldloca.s 3
-                IL_018b: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&, !!1&)
+                IL_018b: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&, !!1&)
                 IL_0190: nop
                 IL_0191: leave IL_02bf
 
                 IL_0196: ldarg.0
-                IL_0197: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_0197: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_019c: stloc.2
                 IL_019d: ldarg.0
-                IL_019e: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_019e: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_01a3: initobj [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter
                 IL_01a9: ldarg.0
                 IL_01aa: ldc.i4.m1
                 IL_01ab: dup
                 IL_01ac: stloc.0
-                IL_01ad: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+                IL_01ad: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
 
                 IL_01b2: ldloca.s 2
                 IL_01b4: call instance void [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter::GetResult()
                 IL_01b9: nop
                 IL_01ba: ldarg.0
-                IL_01bb: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_01c0: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_01bb: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_01c0: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_01c5: callvirt instance class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::get_Output()
                 IL_01ca: callvirt instance bool [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput::get_IsContentModified()
                 IL_01cf: ldc.i4.0
@@ -444,8 +444,8 @@
 
                 IL_01d8: nop
                 IL_01d9: ldarg.0
-                IL_01da: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_01df: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_01da: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_01df: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_01e4: callvirt instance class [System.Runtime]System.Threading.Tasks.Task [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::SetOutputContentAsync()
                 IL_01e9: callvirt instance valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter [System.Runtime]System.Threading.Tasks.Task::GetAwaiter()
                 IL_01ee: stloc.s 5
@@ -457,31 +457,31 @@
                 IL_01fa: ldc.i4.1
                 IL_01fb: dup
                 IL_01fc: stloc.0
-                IL_01fd: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+                IL_01fd: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
                 IL_0202: ldarg.0
                 IL_0203: ldloc.s 5
-                IL_0205: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_0205: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_020a: ldarg.0
                 IL_020b: stloc.3
                 IL_020c: ldarg.0
-                IL_020d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+                IL_020d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
                 IL_0212: ldloca.s 5
                 IL_0214: ldloca.s 3
-                IL_0216: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&, !!1&)
+                IL_0216: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&, !!1&)
                 IL_021b: nop
                 IL_021c: leave IL_02bf
 
                 IL_0221: ldarg.0
-                IL_0222: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_0222: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_0227: stloc.s 5
                 IL_0229: ldarg.0
-                IL_022a: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
+                IL_022a: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>u__1'
                 IL_022f: initobj [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter
                 IL_0235: ldarg.0
                 IL_0236: ldc.i4.m1
                 IL_0237: dup
                 IL_0238: stloc.0
-                IL_0239: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+                IL_0239: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
 
                 IL_023e: ldloca.s 5
                 IL_0240: call instance void [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter::GetResult()
@@ -489,22 +489,22 @@
                 IL_0246: nop
 
                 IL_0247: ldarg.0
-                IL_0248: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0248: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_024d: ldarg.0
-                IL_024e: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_0253: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_024e: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0253: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0258: callvirt instance class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::get_Output()
                 IL_025d: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::Write(object)
                 IL_0262: nop
                 IL_0263: ldarg.0
-                IL_0264: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_0264: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_0269: ldarg.0
-                IL_026a: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
-                IL_026f: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::get___tagHelperScopeManager()
+                IL_026a: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_026f: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::get___tagHelperScopeManager()
                 IL_0274: callvirt instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager::End()
-                IL_0279: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0279: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_027e: ldarg.0
-                IL_027f: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+                IL_027f: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
                 IL_0284: ldstr "\n    <input type=\"submit\" />\n"
                 IL_0289: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::WriteLiteral(string)
                 IL_028e: nop
@@ -515,9 +515,9 @@
                 IL_0291: stloc.s 6
                 IL_0293: ldarg.0
                 IL_0294: ldc.i4.s -2
-                IL_0296: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+                IL_0296: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
                 IL_029b: ldarg.0
-                IL_029c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+                IL_029c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
                 IL_02a1: ldloc.s 6
                 IL_02a3: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetException(class [System.Runtime]System.Exception)
                 IL_02a8: nop
@@ -526,9 +526,9 @@
 
             IL_02ab: ldarg.0
             IL_02ac: ldc.i4.s -2
-            IL_02ae: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+            IL_02ae: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
             IL_02b3: ldarg.0
-            IL_02b4: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+            IL_02b4: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
             IL_02b9: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetResult()
             IL_02be: nop
 
@@ -573,7 +573,7 @@
             // Fields
             .field public int32 '<>1__state'
             .field public valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder '<>t__builder'
-            .field public class AspNetCoreGeneratedDocument._TestPage/'<>c' '<>4__this'
+            .field public class AspNetCoreGeneratedDocument.TestPage/'<>c' '<>4__this'
             .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableAttribute::.ctor(uint8) = (
                 01 00 00 00 00
             )
@@ -607,7 +607,7 @@
                 )
 
                 IL_0000: ldarg.0
-                IL_0001: ldfld int32 AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
+                IL_0001: ldfld int32 AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
                 IL_0006: stloc.0
                 .try
                 {
@@ -619,9 +619,9 @@
                     IL_000a: stloc.1
                     IL_000b: ldarg.0
                     IL_000c: ldc.i4.s -2
-                    IL_000e: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
+                    IL_000e: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
                     IL_0013: ldarg.0
-                    IL_0014: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
+                    IL_0014: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
                     IL_0019: ldloc.1
                     IL_001a: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetException(class [System.Runtime]System.Exception)
                     IL_001f: nop
@@ -630,9 +630,9 @@
 
                 IL_0022: ldarg.0
                 IL_0023: ldc.i4.s -2
-                IL_0025: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
+                IL_0025: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
                 IL_002a: ldarg.0
-                IL_002b: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
+                IL_002b: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
                 IL_0030: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetResult()
                 IL_0035: nop
 
@@ -660,7 +660,7 @@
 
 
         // Fields
-        .field public static initonly class AspNetCoreGeneratedDocument._TestPage/'<>c' '<>9'
+        .field public static initonly class AspNetCoreGeneratedDocument.TestPage/'<>c' '<>9'
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableAttribute::.ctor(uint8) = (
             01 00 00 00 00
         )
@@ -678,8 +678,8 @@
             // Code size: 11 (0xb)
             .maxstack 8
 
-            IL_0000: newobj instance void AspNetCoreGeneratedDocument._TestPage/'<>c'::.ctor()
-            IL_0005: stsfld class AspNetCoreGeneratedDocument._TestPage/'<>c' AspNetCoreGeneratedDocument._TestPage/'<>c'::'<>9'
+            IL_0000: newobj instance void AspNetCoreGeneratedDocument.TestPage/'<>c'::.ctor()
+            IL_0005: stsfld class AspNetCoreGeneratedDocument.TestPage/'<>c' AspNetCoreGeneratedDocument.TestPage/'<>c'::'<>9'
             IL_000a: ret
         } // end of method '<>c'::.cctor
 
@@ -704,11 +704,11 @@
                 01 00 00 00 00
             )
             .custom instance void [System.Runtime]System.Runtime.CompilerServices.AsyncStateMachineAttribute::.ctor(class [System.Runtime]System.Type) = (
-                01 00 42 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
-                65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 5f
-                54 65 73 74 50 61 67 65 2b 3c 3e 63 2b 3c 3c 45
-                78 65 63 75 74 65 41 73 79 6e 63 3e 62 5f 5f 31
-                30 5f 31 3e 64 00 00
+                01 00 41 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
+                65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 54
+                65 73 74 50 61 67 65 2b 3c 3e 63 2b 3c 3c 45 78
+                65 63 75 74 65 41 73 79 6e 63 3e 62 5f 5f 31 30
+                5f 31 3e 64 00 00
             )
             .custom instance void [System.Runtime]System.Diagnostics.DebuggerStepThroughAttribute::.ctor() = (
                 01 00 00 00
@@ -718,26 +718,26 @@
             // Code size: 56 (0x38)
             .maxstack 2
             .locals init (
-                [0] class AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'
+                [0] class AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'
             )
 
-            IL_0000: newobj instance void AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::.ctor()
+            IL_0000: newobj instance void AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::.ctor()
             IL_0005: stloc.0
             IL_0006: ldloc.0
             IL_0007: call valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Create()
-            IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
+            IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
             IL_0011: ldloc.0
             IL_0012: ldarg.0
-            IL_0013: stfld class AspNetCoreGeneratedDocument._TestPage/'<>c' AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>4__this'
+            IL_0013: stfld class AspNetCoreGeneratedDocument.TestPage/'<>c' AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>4__this'
             IL_0018: ldloc.0
             IL_0019: ldc.i4.m1
-            IL_001a: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
+            IL_001a: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>1__state'
             IL_001f: ldloc.0
-            IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
+            IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
             IL_0025: ldloca.s 0
-            IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'>(!!0&)
+            IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'>(!!0&)
             IL_002c: ldloc.0
-            IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
+            IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<>c'/'<<ExecuteAsync>b__10_1>d'::'<>t__builder'
             IL_0032: call instance class [System.Runtime]System.Threading.Tasks.Task [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::get_Task()
             IL_0037: ret
         } // end of method '<>c'::'<ExecuteAsync>b__10_1'
@@ -759,7 +759,7 @@
         // Fields
         .field public int32 '<>1__state'
         .field public valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder '<>t__builder'
-        .field public class AspNetCoreGeneratedDocument._TestPage '<>4__this'
+        .field public class AspNetCoreGeneratedDocument.TestPage '<>4__this'
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableAttribute::.ctor(uint8) = (
             01 00 00 00 00
         )
@@ -791,14 +791,14 @@
             .locals init (
                 [0] int32,
                 [1] valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter,
-                [2] class AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10',
+                [2] class AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10',
                 [3] bool,
                 [4] valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter,
                 [5] class [System.Runtime]System.Exception
             )
 
             IL_0000: ldarg.0
-            IL_0001: ldfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+            IL_0001: ldfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
             IL_0006: stloc.0
             .try
             {
@@ -819,72 +819,72 @@
 
                 IL_001c: nop
                 IL_001d: ldarg.0
-                IL_001e: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_001e: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_0023: ldstr "\n"
                 IL_0028: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::WriteLiteral(string)
                 IL_002d: nop
                 IL_002e: ldarg.0
-                IL_002f: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_002f: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_0034: ldarg.0
-                IL_0035: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_003a: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::get___tagHelperScopeManager()
+                IL_0035: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_003a: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::get___tagHelperScopeManager()
                 IL_003f: ldstr "form"
                 IL_0044: ldc.i4.0
-                IL_0045: ldstr "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93316"
+                IL_0045: ldstr "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93314"
                 IL_004a: ldarg.0
-                IL_004b: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0050: ldftn instance class [System.Runtime]System.Threading.Tasks.Task AspNetCoreGeneratedDocument._TestPage::'<ExecuteAsync>b__10_0'()
+                IL_004b: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0050: ldftn instance class [System.Runtime]System.Threading.Tasks.Task AspNetCoreGeneratedDocument.TestPage::'<ExecuteAsync>b__10_0'()
                 IL_0056: newobj instance void class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task>::.ctor(object, native int)
                 IL_005b: callvirt instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager::Begin(string, valuetype [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagMode, string, class [System.Runtime]System.Func`1<class [System.Runtime]System.Threading.Tasks.Task>)
-                IL_0060: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0060: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0065: ldarg.0
-                IL_0066: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0066: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_006b: ldarg.0
-                IL_006c: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_006c: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_0071: call instance !!0 [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::CreateTagHelper<class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper>()
-                IL_0076: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
+                IL_0076: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
                 IL_007b: ldarg.0
-                IL_007c: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0081: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_007c: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0081: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0086: ldarg.0
-                IL_0087: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_008c: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
+                IL_0087: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_008c: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
                 IL_0091: callvirt instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::Add(class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper)
                 IL_0096: nop
                 IL_0097: ldarg.0
-                IL_0098: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0098: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_009d: ldarg.0
-                IL_009e: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_009e: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_00a3: call instance !!0 [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::CreateTagHelper<class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper>()
-                IL_00a8: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper
+                IL_00a8: stfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper
                 IL_00ad: ldarg.0
-                IL_00ae: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_00b3: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_00ae: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_00b3: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_00b8: ldarg.0
-                IL_00b9: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_00be: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper
+                IL_00b9: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_00be: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper
                 IL_00c3: callvirt instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::Add(class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper)
                 IL_00c8: nop
                 IL_00c9: ldarg.0
-                IL_00ca: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_00cf: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument._TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
-                IL_00d4: ldsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument._TestPage::__tagHelperAttribute_0
+                IL_00ca: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_00cf: ldfld class [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper AspNetCoreGeneratedDocument.TestPage::__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper
+                IL_00d4: ldsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument.TestPage::__tagHelperAttribute_0
                 IL_00d9: callvirt instance object [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute::get_Value()
                 IL_00de: castclass [System.Runtime]System.String
                 IL_00e3: callvirt instance void [Microsoft.AspNetCore.Mvc.TagHelpers]Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper::set_Method(string)
                 IL_00e8: nop
                 IL_00e9: ldarg.0
-                IL_00ea: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_00ef: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
-                IL_00f4: ldsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument._TestPage::__tagHelperAttribute_0
+                IL_00ea: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_00ef: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
+                IL_00f4: ldsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument.TestPage::__tagHelperAttribute_0
                 IL_00f9: callvirt instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::AddTagHelperAttribute(class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute)
                 IL_00fe: nop
                 IL_00ff: ldarg.0
-                IL_0100: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0105: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument._TestPage::__tagHelperRunner
+                IL_0100: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0105: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument.TestPage::__tagHelperRunner
                 IL_010a: ldarg.0
-                IL_010b: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0110: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_010b: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0110: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0115: callvirt instance class [System.Runtime]System.Threading.Tasks.Task [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner::RunAsync(class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext)
                 IL_011a: callvirt instance valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter [System.Runtime]System.Threading.Tasks.Task::GetAwaiter()
                 IL_011f: stloc.1
@@ -896,38 +896,38 @@
                 IL_012a: ldc.i4.0
                 IL_012b: dup
                 IL_012c: stloc.0
-                IL_012d: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+                IL_012d: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
                 IL_0132: ldarg.0
                 IL_0133: ldloc.1
-                IL_0134: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_0134: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_0139: ldarg.0
                 IL_013a: stloc.2
                 IL_013b: ldarg.0
-                IL_013c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+                IL_013c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
                 IL_0141: ldloca.s 1
                 IL_0143: ldloca.s 2
-                IL_0145: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'>(!!0&, !!1&)
+                IL_0145: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'>(!!0&, !!1&)
                 IL_014a: nop
                 IL_014b: leave IL_0277
 
                 IL_0150: ldarg.0
-                IL_0151: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_0151: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_0156: stloc.1
                 IL_0157: ldarg.0
-                IL_0158: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_0158: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_015d: initobj [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter
                 IL_0163: ldarg.0
                 IL_0164: ldc.i4.m1
                 IL_0165: dup
                 IL_0166: stloc.0
-                IL_0167: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+                IL_0167: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
 
                 IL_016c: ldloca.s 1
                 IL_016e: call instance void [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter::GetResult()
                 IL_0173: nop
                 IL_0174: ldarg.0
-                IL_0175: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_017a: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0175: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_017a: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_017f: callvirt instance class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::get_Output()
                 IL_0184: callvirt instance bool [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput::get_IsContentModified()
                 IL_0189: ldc.i4.0
@@ -938,8 +938,8 @@
 
                 IL_0190: nop
                 IL_0191: ldarg.0
-                IL_0192: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0197: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0192: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0197: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_019c: callvirt instance class [System.Runtime]System.Threading.Tasks.Task [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::SetOutputContentAsync()
                 IL_01a1: callvirt instance valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter [System.Runtime]System.Threading.Tasks.Task::GetAwaiter()
                 IL_01a6: stloc.s 4
@@ -951,31 +951,31 @@
                 IL_01b2: ldc.i4.1
                 IL_01b3: dup
                 IL_01b4: stloc.0
-                IL_01b5: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+                IL_01b5: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
                 IL_01ba: ldarg.0
                 IL_01bb: ldloc.s 4
-                IL_01bd: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_01bd: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_01c2: ldarg.0
                 IL_01c3: stloc.2
                 IL_01c4: ldarg.0
-                IL_01c5: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+                IL_01c5: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
                 IL_01ca: ldloca.s 4
                 IL_01cc: ldloca.s 2
-                IL_01ce: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'>(!!0&, !!1&)
+                IL_01ce: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter, class AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'>(!!0&, !!1&)
                 IL_01d3: nop
                 IL_01d4: leave IL_0277
 
                 IL_01d9: ldarg.0
-                IL_01da: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_01da: ldfld valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_01df: stloc.s 4
                 IL_01e1: ldarg.0
-                IL_01e2: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>u__1'
+                IL_01e2: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>u__1'
                 IL_01e7: initobj [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter
                 IL_01ed: ldarg.0
                 IL_01ee: ldc.i4.m1
                 IL_01ef: dup
                 IL_01f0: stloc.0
-                IL_01f1: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+                IL_01f1: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
 
                 IL_01f6: ldloca.s 4
                 IL_01f8: call instance void [System.Runtime]System.Runtime.CompilerServices.TaskAwaiter::GetResult()
@@ -983,22 +983,22 @@
                 IL_01fe: nop
 
                 IL_01ff: ldarg.0
-                IL_0200: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0200: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_0205: ldarg.0
-                IL_0206: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_020b: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0206: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_020b: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0210: callvirt instance class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperOutput [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext::get_Output()
                 IL_0215: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::Write(object)
                 IL_021a: nop
                 IL_021b: ldarg.0
-                IL_021c: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_021c: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_0221: ldarg.0
-                IL_0222: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
-                IL_0227: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::get___tagHelperScopeManager()
+                IL_0222: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0227: call instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::get___tagHelperScopeManager()
                 IL_022c: callvirt instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager::End()
-                IL_0231: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument._TestPage::__tagHelperExecutionContext
+                IL_0231: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext AspNetCoreGeneratedDocument.TestPage::__tagHelperExecutionContext
                 IL_0236: ldarg.0
-                IL_0237: ldfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+                IL_0237: ldfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
                 IL_023c: ldstr "\n\n"
                 IL_0241: callvirt instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::WriteLiteral(string)
                 IL_0246: nop
@@ -1009,9 +1009,9 @@
                 IL_0249: stloc.s 5
                 IL_024b: ldarg.0
                 IL_024c: ldc.i4.s -2
-                IL_024e: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+                IL_024e: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
                 IL_0253: ldarg.0
-                IL_0254: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+                IL_0254: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
                 IL_0259: ldloc.s 5
                 IL_025b: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetException(class [System.Runtime]System.Exception)
                 IL_0260: nop
@@ -1020,9 +1020,9 @@
 
             IL_0263: ldarg.0
             IL_0264: ldc.i4.s -2
-            IL_0266: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+            IL_0266: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
             IL_026b: ldarg.0
-            IL_026c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+            IL_026c: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
             IL_0271: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetResult()
             IL_0276: nop
 
@@ -1110,7 +1110,7 @@
     .custom instance void [System.Runtime]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [System.Runtime]System.Diagnostics.DebuggerBrowsableState) = (
         01 00 00 00 00 00 00 00
     )
-    .field private class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> '<Html>k__BackingField'
+    .field private class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> '<Html>k__BackingField'
     .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
         01 00 00 00
     )
@@ -1136,7 +1136,7 @@
 
         IL_0000: nop
         IL_0001: ldarg.0
-        IL_0002: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::__backed__tagHelperScopeManager
+        IL_0002: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::__backed__tagHelperScopeManager
         IL_0007: ldnull
         IL_0008: ceq
         IL_000a: stloc.0
@@ -1152,17 +1152,17 @@
         IL_001d: ldftn instance class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperContent [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.RazorPageBase::EndTagHelperWritingScope()
         IL_0023: newobj instance void class [System.Runtime]System.Func`1<class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperContent>::.ctor(object, native int)
         IL_0028: newobj instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager::.ctor(class [System.Runtime]System.Action`1<class [System.Text.Encodings.Web]System.Text.Encodings.Web.HtmlEncoder>, class [System.Runtime]System.Func`1<class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperContent>)
-        IL_002d: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::__backed__tagHelperScopeManager
+        IL_002d: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::__backed__tagHelperScopeManager
         IL_0032: nop
 
         IL_0033: ldarg.0
-        IL_0034: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::__backed__tagHelperScopeManager
+        IL_0034: ldfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::__backed__tagHelperScopeManager
         IL_0039: stloc.1
         IL_003a: br.s IL_003c
 
         IL_003c: ldloc.1
         IL_003d: ret
-    } // end of method _TestPage::get___tagHelperScopeManager
+    } // end of method TestPage::get___tagHelperScopeManager
 
     .method public hidebysig virtual 
         instance class [System.Runtime]System.Threading.Tasks.Task ExecuteAsync () cil managed 
@@ -1171,10 +1171,10 @@
             01 00 00 00 00
         )
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.AsyncStateMachineAttribute::.ctor(class [System.Runtime]System.Type) = (
-            01 00 39 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
-            65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 5f
-            54 65 73 74 50 61 67 65 2b 3c 45 78 65 63 75 74
-            65 41 73 79 6e 63 3e 64 5f 5f 31 30 00 00
+            01 00 38 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
+            65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 54
+            65 73 74 50 61 67 65 2b 3c 45 78 65 63 75 74 65
+            41 73 79 6e 63 3e 64 5f 5f 31 30 00 00
         )
         .custom instance void [System.Runtime]System.Diagnostics.DebuggerStepThroughAttribute::.ctor() = (
             01 00 00 00
@@ -1184,29 +1184,29 @@
         // Code size: 56 (0x38)
         .maxstack 2
         .locals init (
-            [0] class AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'
+            [0] class AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'
         )
 
-        IL_0000: newobj instance void AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::.ctor()
+        IL_0000: newobj instance void AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::.ctor()
         IL_0005: stloc.0
         IL_0006: ldloc.0
         IL_0007: call valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Create()
-        IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+        IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
         IL_0011: ldloc.0
         IL_0012: ldarg.0
-        IL_0013: stfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>4__this'
+        IL_0013: stfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>4__this'
         IL_0018: ldloc.0
         IL_0019: ldc.i4.m1
-        IL_001a: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>1__state'
+        IL_001a: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>1__state'
         IL_001f: ldloc.0
-        IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+        IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
         IL_0025: ldloca.s 0
-        IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'>(!!0&)
+        IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'>(!!0&)
         IL_002c: ldloc.0
-        IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
+        IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<ExecuteAsync>d__10'::'<>t__builder'
         IL_0032: call instance class [System.Runtime]System.Threading.Tasks.Task [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::get_Task()
         IL_0037: ret
-    } // end of method _TestPage::ExecuteAsync
+    } // end of method TestPage::ExecuteAsync
 
     .method public hidebysig specialname 
         instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider get_ModelExpressionProvider () cil managed 
@@ -1220,9 +1220,9 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument._TestPage::'<ModelExpressionProvider>k__BackingField'
+        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument.TestPage::'<ModelExpressionProvider>k__BackingField'
         IL_0006: ret
-    } // end of method _TestPage::get_ModelExpressionProvider
+    } // end of method TestPage::get_ModelExpressionProvider
 
     .method private hidebysig specialname 
         instance void set_ModelExpressionProvider (
@@ -1239,9 +1239,9 @@
 
         IL_0000: ldarg.0
         IL_0001: ldarg.1
-        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument._TestPage::'<ModelExpressionProvider>k__BackingField'
+        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument.TestPage::'<ModelExpressionProvider>k__BackingField'
         IL_0007: ret
-    } // end of method _TestPage::set_ModelExpressionProvider
+    } // end of method TestPage::set_ModelExpressionProvider
 
     .method public hidebysig specialname 
         instance class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper get_Url () cil managed 
@@ -1255,9 +1255,9 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument._TestPage::'<Url>k__BackingField'
+        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument.TestPage::'<Url>k__BackingField'
         IL_0006: ret
-    } // end of method _TestPage::get_Url
+    } // end of method TestPage::get_Url
 
     .method private hidebysig specialname 
         instance void set_Url (
@@ -1274,9 +1274,9 @@
 
         IL_0000: ldarg.0
         IL_0001: ldarg.1
-        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument._TestPage::'<Url>k__BackingField'
+        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument.TestPage::'<Url>k__BackingField'
         IL_0007: ret
-    } // end of method _TestPage::set_Url
+    } // end of method TestPage::set_Url
 
     .method public hidebysig specialname 
         instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper get_Component () cil managed 
@@ -1290,9 +1290,9 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument._TestPage::'<Component>k__BackingField'
+        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument.TestPage::'<Component>k__BackingField'
         IL_0006: ret
-    } // end of method _TestPage::get_Component
+    } // end of method TestPage::get_Component
 
     .method private hidebysig specialname 
         instance void set_Component (
@@ -1309,9 +1309,9 @@
 
         IL_0000: ldarg.0
         IL_0001: ldarg.1
-        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument._TestPage::'<Component>k__BackingField'
+        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument.TestPage::'<Component>k__BackingField'
         IL_0007: ret
-    } // end of method _TestPage::set_Component
+    } // end of method TestPage::set_Component
 
     .method public hidebysig specialname 
         instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper get_Json () cil managed 
@@ -1325,9 +1325,9 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument._TestPage::'<Json>k__BackingField'
+        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument.TestPage::'<Json>k__BackingField'
         IL_0006: ret
-    } // end of method _TestPage::get_Json
+    } // end of method TestPage::get_Json
 
     .method private hidebysig specialname 
         instance void set_Json (
@@ -1344,12 +1344,12 @@
 
         IL_0000: ldarg.0
         IL_0001: ldarg.1
-        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument._TestPage::'<Json>k__BackingField'
+        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument.TestPage::'<Json>k__BackingField'
         IL_0007: ret
-    } // end of method _TestPage::set_Json
+    } // end of method TestPage::set_Json
 
     .method public hidebysig specialname 
-        instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> get_Html () cil managed 
+        instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> get_Html () cil managed 
     {
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
             01 00 00 00
@@ -1360,13 +1360,13 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::'<Html>k__BackingField'
+        IL_0001: ldfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::'<Html>k__BackingField'
         IL_0006: ret
-    } // end of method _TestPage::get_Html
+    } // end of method TestPage::get_Html
 
     .method private hidebysig specialname 
         instance void set_Html (
-            class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> 'value'
+            class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> 'value'
         ) cil managed 
     {
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
@@ -1379,12 +1379,12 @@
 
         IL_0000: ldarg.0
         IL_0001: ldarg.1
-        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::'<Html>k__BackingField'
+        IL_0002: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::'<Html>k__BackingField'
         IL_0007: ret
-    } // end of method _TestPage::set_Html
+    } // end of method TestPage::set_Html
 
     .method public hidebysig specialname 
-        instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> get_ViewData () cil managed 
+        instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> get_ViewData () cil managed 
     {
         // Method begins at RVA 0x2135
         // Header size: 1
@@ -1402,12 +1402,12 @@
 
         IL_000d: callvirt instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary [Microsoft.AspNetCore.Mvc.RazorPages]Microsoft.AspNetCore.Mvc.RazorPages.PageContext::get_ViewData()
 
-        IL_0012: castclass class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel>
+        IL_0012: castclass class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel>
         IL_0017: ret
-    } // end of method _TestPage::get_ViewData
+    } // end of method TestPage::get_ViewData
 
     .method public hidebysig specialname 
-        instance class AspNetCoreGeneratedDocument._TestPage/PageModel get_Model () cil managed 
+        instance class AspNetCoreGeneratedDocument.TestPage/PageModel get_Model () cil managed 
     {
         // Method begins at RVA 0x214e
         // Header size: 1
@@ -1415,10 +1415,10 @@
         .maxstack 8
 
         IL_0000: ldarg.0
-        IL_0001: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::get_ViewData()
-        IL_0006: callvirt instance !0 class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel>::get_Model()
+        IL_0001: call instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::get_ViewData()
+        IL_0006: callvirt instance !0 class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel>::get_Model()
         IL_000b: ret
-    } // end of method _TestPage::get_Model
+    } // end of method TestPage::get_Model
 
     .method public hidebysig specialname rtspecialname 
         instance void .ctor () cil managed 
@@ -1430,30 +1430,30 @@
 
         IL_0000: ldarg.0
         IL_0001: newobj instance void [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner::.ctor()
-        IL_0006: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument._TestPage::__tagHelperRunner
+        IL_0006: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner AspNetCoreGeneratedDocument.TestPage::__tagHelperRunner
         IL_000b: ldarg.0
         IL_000c: ldnull
-        IL_000d: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::__backed__tagHelperScopeManager
+        IL_000d: stfld class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::__backed__tagHelperScopeManager
         IL_0012: ldarg.0
         IL_0013: ldnull
-        IL_0014: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument._TestPage::'<ModelExpressionProvider>k__BackingField'
+        IL_0014: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument.TestPage::'<ModelExpressionProvider>k__BackingField'
         IL_0019: ldarg.0
         IL_001a: ldnull
-        IL_001b: stfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument._TestPage::'<Url>k__BackingField'
+        IL_001b: stfld class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument.TestPage::'<Url>k__BackingField'
         IL_0020: ldarg.0
         IL_0021: ldnull
-        IL_0022: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument._TestPage::'<Component>k__BackingField'
+        IL_0022: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument.TestPage::'<Component>k__BackingField'
         IL_0027: ldarg.0
         IL_0028: ldnull
-        IL_0029: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument._TestPage::'<Json>k__BackingField'
+        IL_0029: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument.TestPage::'<Json>k__BackingField'
         IL_002e: ldarg.0
         IL_002f: ldnull
-        IL_0030: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::'<Html>k__BackingField'
+        IL_0030: stfld class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::'<Html>k__BackingField'
         IL_0035: ldarg.0
         IL_0036: call instance void [Microsoft.AspNetCore.Mvc.RazorPages]Microsoft.AspNetCore.Mvc.RazorPages.Page::.ctor()
         IL_003b: nop
         IL_003c: ret
-    } // end of method _TestPage::.ctor
+    } // end of method TestPage::.ctor
 
     .method private hidebysig specialname rtspecialname static 
         void .cctor () cil managed 
@@ -1467,9 +1467,9 @@
         IL_0005: ldstr "post"
         IL_000a: ldc.i4.0
         IL_000b: newobj instance void [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute::.ctor(string, object, valuetype [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.HtmlAttributeValueStyle)
-        IL_0010: stsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument._TestPage::__tagHelperAttribute_0
+        IL_0010: stsfld class [Microsoft.AspNetCore.Razor]Microsoft.AspNetCore.Razor.TagHelpers.TagHelperAttribute AspNetCoreGeneratedDocument.TestPage::__tagHelperAttribute_0
         IL_0015: ret
-    } // end of method _TestPage::.cctor
+    } // end of method TestPage::.cctor
 
     .method private hidebysig 
         instance class [System.Runtime]System.Threading.Tasks.Task '<ExecuteAsync>b__10_0' () cil managed 
@@ -1478,11 +1478,11 @@
             01 00 00 00 00
         )
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.AsyncStateMachineAttribute::.ctor(class [System.Runtime]System.Type) = (
-            01 00 3e 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
-            65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 5f
-            54 65 73 74 50 61 67 65 2b 3c 3c 45 78 65 63 75
-            74 65 41 73 79 6e 63 3e 62 5f 5f 31 30 5f 30 3e
-            64 00 00
+            01 00 3d 41 73 70 4e 65 74 43 6f 72 65 47 65 6e
+            65 72 61 74 65 64 44 6f 63 75 6d 65 6e 74 2e 54
+            65 73 74 50 61 67 65 2b 3c 3c 45 78 65 63 75 74
+            65 41 73 79 6e 63 3e 62 5f 5f 31 30 5f 30 3e 64
+            00 00
         )
         .custom instance void [System.Runtime]System.Diagnostics.DebuggerStepThroughAttribute::.ctor() = (
             01 00 00 00
@@ -1495,29 +1495,29 @@
         // Code size: 56 (0x38)
         .maxstack 2
         .locals init (
-            [0] class AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'
+            [0] class AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'
         )
 
-        IL_0000: newobj instance void AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::.ctor()
+        IL_0000: newobj instance void AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::.ctor()
         IL_0005: stloc.0
         IL_0006: ldloc.0
         IL_0007: call valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Create()
-        IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+        IL_000c: stfld valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
         IL_0011: ldloc.0
         IL_0012: ldarg.0
-        IL_0013: stfld class AspNetCoreGeneratedDocument._TestPage AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
+        IL_0013: stfld class AspNetCoreGeneratedDocument.TestPage AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>4__this'
         IL_0018: ldloc.0
         IL_0019: ldc.i4.m1
-        IL_001a: stfld int32 AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
+        IL_001a: stfld int32 AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>1__state'
         IL_001f: ldloc.0
-        IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+        IL_0020: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
         IL_0025: ldloca.s 0
-        IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&)
+        IL_0027: call instance void [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<class AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'>(!!0&)
         IL_002c: ldloc.0
-        IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument._TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
+        IL_002d: ldflda valuetype [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder AspNetCoreGeneratedDocument.TestPage/'<<ExecuteAsync>b__10_0>d'::'<>t__builder'
         IL_0032: call instance class [System.Runtime]System.Threading.Tasks.Task [System.Runtime]System.Runtime.CompilerServices.AsyncTaskMethodBuilder::get_Task()
         IL_0037: ret
-    } // end of method _TestPage::'<ExecuteAsync>b__10_0'
+    } // end of method TestPage::'<ExecuteAsync>b__10_0'
 
     // Properties
     .property instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager __tagHelperScopeManager()
@@ -1525,56 +1525,56 @@
         .custom instance void [System.Runtime]System.Runtime.CompilerServices.NullableAttribute::.ctor(uint8) = (
             01 00 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument._TestPage::get___tagHelperScopeManager()
+        .get instance class [Microsoft.AspNetCore.Razor.Runtime]Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperScopeManager AspNetCoreGeneratedDocument.TestPage::get___tagHelperScopeManager()
     }
     .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider ModelExpressionProvider()
     {
         .custom instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.Internal.RazorInjectAttribute::.ctor() = (
             01 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument._TestPage::get_ModelExpressionProvider()
-        .set instance void AspNetCoreGeneratedDocument._TestPage::set_ModelExpressionProvider(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider)
+        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider AspNetCoreGeneratedDocument.TestPage::get_ModelExpressionProvider()
+        .set instance void AspNetCoreGeneratedDocument.TestPage::set_ModelExpressionProvider(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.IModelExpressionProvider)
     }
     .property instance class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper Url()
     {
         .custom instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.Internal.RazorInjectAttribute::.ctor() = (
             01 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument._TestPage::get_Url()
-        .set instance void AspNetCoreGeneratedDocument._TestPage::set_Url(class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper)
+        .get instance class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper AspNetCoreGeneratedDocument.TestPage::get_Url()
+        .set instance void AspNetCoreGeneratedDocument.TestPage::set_Url(class [Microsoft.AspNetCore.Mvc.Abstractions]Microsoft.AspNetCore.Mvc.IUrlHelper)
     }
     .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper Component()
     {
         .custom instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.Internal.RazorInjectAttribute::.ctor() = (
             01 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument._TestPage::get_Component()
-        .set instance void AspNetCoreGeneratedDocument._TestPage::set_Component(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper)
+        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper AspNetCoreGeneratedDocument.TestPage::get_Component()
+        .set instance void AspNetCoreGeneratedDocument.TestPage::set_Component(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.IViewComponentHelper)
     }
     .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper Json()
     {
         .custom instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.Internal.RazorInjectAttribute::.ctor() = (
             01 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument._TestPage::get_Json()
-        .set instance void AspNetCoreGeneratedDocument._TestPage::set_Json(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper)
+        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper AspNetCoreGeneratedDocument.TestPage::get_Json()
+        .set instance void AspNetCoreGeneratedDocument.TestPage::set_Json(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IJsonHelper)
     }
-    .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> Html()
+    .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> Html()
     {
         .custom instance void [Microsoft.AspNetCore.Mvc.Razor]Microsoft.AspNetCore.Mvc.Razor.Internal.RazorInjectAttribute::.ctor() = (
             01 00 00 00
         )
-        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::get_Html()
-        .set instance void AspNetCoreGeneratedDocument._TestPage::set_Html(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument._TestPage/PageModel>)
+        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::get_Html()
+        .set instance void AspNetCoreGeneratedDocument.TestPage::set_Html(class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.Rendering.IHtmlHelper`1<class AspNetCoreGeneratedDocument.TestPage/PageModel>)
     }
-    .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> ViewData()
+    .property instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> ViewData()
     {
-        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument._TestPage/PageModel> AspNetCoreGeneratedDocument._TestPage::get_ViewData()
+        .get instance class [Microsoft.AspNetCore.Mvc.ViewFeatures]Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary`1<class AspNetCoreGeneratedDocument.TestPage/PageModel> AspNetCoreGeneratedDocument.TestPage::get_ViewData()
     }
-    .property instance class AspNetCoreGeneratedDocument._TestPage/PageModel Model()
+    .property instance class AspNetCoreGeneratedDocument.TestPage/PageModel Model()
     {
-        .get instance class AspNetCoreGeneratedDocument._TestPage/PageModel AspNetCoreGeneratedDocument._TestPage::get_Model()
+        .get instance class AspNetCoreGeneratedDocument.TestPage/PageModel AspNetCoreGeneratedDocument.TestPage::get_Model()
     }
 
-} // end of class AspNetCoreGeneratedDocument._TestPage
+} // end of class AspNetCoreGeneratedDocument.TestPage
 

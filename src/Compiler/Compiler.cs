@@ -247,7 +247,7 @@ public sealed class Compiler(
         options = Config.Instance.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
-        ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
+        ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument? DesignTime)>? razorMap = null;
 
         var effectiveToolchain = compilationInput.RazorToolchain switch
         {
@@ -692,7 +692,7 @@ public sealed class Compiler(
                     elementSelector: (item) =>
                     {
                         RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
-                        RazorCodeDocument designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
+                        RazorCodeDocument? designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
 
                         allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocumentSafe().GetDiagnostics().Select(RazorUtil.ToDiagnostic));
 

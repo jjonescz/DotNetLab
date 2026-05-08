@@ -147,7 +147,7 @@ internal sealed class CompilerProxy(
             "Microsoft.CodeAnalysis.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
-            "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Razor.UnitTests", // RazorAccess project produces this assembly
             "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
             "Microsoft.CodeAnalysis.Workspaces.UnitTests", // RoslynWorkspaceAccess project produces this assembly
         ];
