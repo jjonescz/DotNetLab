@@ -590,7 +590,7 @@ public sealed class Compiler(
                 additionalTextsBuilder.Add(new TestAdditionalText(text: input.Text, encoding: Encoding.UTF8, path: filePath));
                 optionsProvider.AdditionalTextOptions[filePath] = new TestAnalyzerConfigOptions
                 {
-                    ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
+                    ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(input.FileName)),
                 };
 
                 // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).

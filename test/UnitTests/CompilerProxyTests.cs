@@ -363,6 +363,31 @@ public sealed class CompilerProxyTests
     }
 
     [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
+    public async Task RazorImports(RazorToolchain toolchain, RazorStrategy strategy)
+    {
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new() { FileName = "TestComponent.razor", Text = "@{ _ = new HttpClient(); }" },
+                new() { FileName = "_Imports.razor", Text = "@using System.Net.Http" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                RazorStrategy = strategy,
+            });
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+    }
+
+    [TestMethod]
     public async Task ConfigurationFile()
     {
         var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
