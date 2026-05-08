@@ -12,6 +12,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <ArtifactsPath Condition="'$(FileBasedProgram)' != 'true'">$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
 
     <!--
       Needed to get diagnostics inside XML doc comments.
