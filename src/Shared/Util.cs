@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -329,7 +330,14 @@ public static partial class Util
 
     public static string GetAssemblyDiskPath(string assemblyName)
     {
-        return Path.Join(AppContext.BaseDirectory, $"{assemblyName}.dll");
+        var basePath = Path.Join(AppContext.BaseDirectory, $"{assemblyName}.dll");
+        if (File.Exists(basePath))
+        {
+            return basePath;
+        }
+
+        var assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName(assemblyName));
+        return assembly.Location;
     }
 
     public static string GetFirstLine(this string text)

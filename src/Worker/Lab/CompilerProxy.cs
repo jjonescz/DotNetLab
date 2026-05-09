@@ -302,13 +302,6 @@ internal sealed class CompilerLoader(
                 if (loadedAssembly.Data.IsDefault)
                 {
                     Debug.Assert(loadedAssembly.Format == AssemblyDataFormat.Dll);
-
-                    if (!File.Exists(loadedAssembly.DiskPath) && TryLoadFromDefault(assemblyName, out loaded))
-                    {
-                        loadedAssemblies.Add(name, loaded);
-                        return loaded;
-                    }
-
                     loaded = base.LoadFromAssemblyPath(loadedAssembly.DiskPath);
                     loadedAssemblies.Add(name, loaded);
                     return loaded;
