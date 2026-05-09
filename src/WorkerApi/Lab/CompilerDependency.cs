@@ -115,13 +115,19 @@ public sealed record CompilerInfo(
 
     public static readonly CompilerInfo Razor = new(
         CompilerKind: CompilerKind.Razor,
-        RepositoryUrl: "https://github.com/dotnet/razor",
+        RepositoryUrl: Roslyn.RepositoryUrl,
         PackageId: "Microsoft.Net.Compilers.Razor.Toolset",
         PackageFolder: "source-generators",
-        BuildDefinitionId: 103, // razor-tooling-ci
-        ArtifactNameFormat: "Packages_Windows_NT_{0}",
-        AssemblyNames: ["Microsoft.CodeAnalysis.Razor.Compiler", .. Roslyn.AssemblyNames],
-        NupkgArtifactPath: "Shipping");
+        BuildDefinitionId: Roslyn.BuildDefinitionId,
+        ArtifactNameFormat: Roslyn.ArtifactNameFormat,
+        AssemblyNames:
+        [
+            "Microsoft.CodeAnalysis.Razor.Compiler",
+            "Microsoft.AspNetCore.Razor.Utilities.Shared",
+            "Microsoft.Extensions.ObjectPool",
+            .. Roslyn.AssemblyNames,
+        ],
+        RehydratePathContains: "Razor");
 
     public static CompilerInfo For(CompilerKind kind)
     {

@@ -3,6 +3,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Runtime.CompilerServices;
 
+[assembly: IgnoresAccessChecksTo("Microsoft.CodeAnalysis.Razor.Compiler")]
+
 namespace DotNetLab;
 
 public static class RazorAccessors
@@ -36,22 +38,6 @@ public static class RazorAccessors
     private static object GetFileKindFromPath(string filePath)
     {
         return FileKinds.GetFileKindFromPath(filePath);
-    }
-
-    public static string Serialize(this RazorSyntaxTree tree)
-    {
-        // SerializedValue property has been moved to another type in https://github.com/dotnet/razor/pull/11859.
-
-        var root = tree.Root;
-
-        // For some reason, the property might not be returned by reflection if inherited, so look manually into the base type.
-        const string propName = "SerializedValue";
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-        var rootType = root.GetType();
-        var prop = rootType.GetProperty(propName, flags)
-            ?? rootType.BaseType!.GetProperty(propName, flags)!;
-
-        return (string)prop.GetValue(root)!;
     }
 }
 

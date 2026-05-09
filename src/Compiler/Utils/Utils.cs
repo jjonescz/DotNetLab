@@ -279,7 +279,7 @@ internal static class RazorUtil
     private static T GetDocumentDataSafe<T>(this RazorCodeDocument document, string methodName, string? instanceMethodName = null)
     {
         // GetCSharpDocument and similar extension methods have been turned into instance methods in https://github.com/dotnet/razor/pull/11939.
-        if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
+        if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is { } method)
         {
             return (T)method.Invoke(document, [])!;
         }
@@ -343,24 +343,28 @@ internal static class RazorUtil
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDeclarationOnly));
+        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDeclarationOnly))
+            ?? throw new InvalidOperationException($"Unexpected missing {nameof(RazorProjectEngine)}.{nameof(engine.ProcessDeclarationOnly)}");
     }
 
-    public static RazorCodeDocument ProcessDesignTimeSafe(
+    public static RazorCodeDocument? ProcessDesignTimeSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.ProcessDesignTime));
+        // Design-time was removed in https://github.com/dotnet/roslyn/pull/83510.
+
+        return engine.ProcessSafe(projectItem, "ProcessDesignTime");
     }
 
     public static RazorCodeDocument ProcessSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem)
     {
-        return engine.ProcessSafe(projectItem, nameof(engine.Process));
+        return engine.ProcessSafe(projectItem, nameof(engine.Process))
+            ?? throw new InvalidOperationException($"Unexpected missing {nameof(RazorProjectEngine)}.{nameof(engine.Process)}");
     }
 
-    private static RazorCodeDocument ProcessSafe(
+    private static RazorCodeDocument? ProcessSafe(
         this RazorProjectEngine engine,
         RazorProjectItem projectItem,
         string methodName)
@@ -370,17 +374,16 @@ internal static class RazorUtil
 
         var method = engine.GetType()
             .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-            .Where(m => m.Name == methodName &&
+            .FirstOrDefault(m => m.Name == methodName &&
                 m.GetParameters() is
                 [
-                { ParameterType.FullName: "Microsoft.AspNetCore.Razor.Language.RazorProjectItem" },
+                    { ParameterType.FullName: "Microsoft.AspNetCore.Razor.Language.RazorProjectItem" },
                     .. var rest
                 ] &&
-                rest.All(static p => p.IsOptional))
-            .First();
+                rest.All(static p => p.IsOptional));
 
-        return (RazorCodeDocument)method
-            .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)])!;
+        return (RazorCodeDocument?)method?
+            .Invoke(engine, [projectItem, .. Enumerable.Repeat<object?>(null, method.GetParameters().Length - 1)]);
     }
 
     public static string Serialize(this IntermediateNode node)
@@ -404,6 +407,22 @@ internal static class RazorUtil
                 .Invoke(formatter, [node]);
             return sb.ToString();
         }
+    }
+
+    public static string Serialize(this RazorSyntaxTree tree)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
+        var root = tree.GetType().GetProperty("Root", flags)!.GetValue(tree)!;
+
+        // SerializedValue property has been moved to another type in https://github.com/dotnet/razor/pull/11859.
+        // For some reason, the property might not be returned by reflection if inherited, so look manually into the base type.
+        const string propName = "SerializedValue";
+        var rootType = root.GetType();
+        var prop = rootType.GetProperty(propName, flags)
+            ?? rootType.BaseType!.GetProperty(propName, flags)!;
+
+        return (string)prop.GetValue(root)!;
     }
 
     public static void SetCSharpLanguageVersionSafe(this RazorProjectEngineBuilder builder, LanguageVersion languageVersion)

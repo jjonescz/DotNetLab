@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>Microsoft.CodeAnalysis.Razor.Test</AssemblyName>
+    <AssemblyName>Microsoft.CodeAnalysis.Razor.UnitTests</AssemblyName>
     <KeyOriginatorFile>$(PkgMicrosoft_DotNet_Arcade_Sdk)\tools\snk\AspNetCore.snk</KeyOriginatorFile>
   </PropertyGroup>
 

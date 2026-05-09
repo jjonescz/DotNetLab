@@ -22,7 +22,7 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 [assembly: CompilationRelaxations(8)]
 [assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
 [assembly: Debuggable(DebuggableAttribute.DebuggingModes.Default | DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints | DebuggableAttribute.DebuggingModes.EnableEditAndContinue | DebuggableAttribute.DebuggingModes.DisableOptimizations)]
-[assembly: RazorCompiledItem(typeof(_TestPage), "mvc.1.0.razor-page", "/TestPage.cshtml")]
+[assembly: RazorCompiledItem(typeof(TestPage), "mvc.1.0.razor-page", "/TestPage.cshtml")]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 [assembly: AssemblyVersion("0.0.0.0")]
 [module: UnverifiableCode]
@@ -33,7 +33,7 @@ namespace AspNetCoreGeneratedDocument
 	[Nullable(0)]
 	[RazorCompiledItemMetadata("Identifier", "/TestPage.cshtml")]
 	[CreateNewOnMetadataUpdate]
-	internal sealed class _TestPage : Page
+	internal sealed class TestPage : Page
 	{
 		[Nullable(0)]
 		public class PageModel
@@ -107,7 +107,7 @@ namespace AspNetCoreGeneratedDocument
 			public AsyncTaskMethodBuilder <>t__builder;
 
 			[Nullable(0)]
-			public _TestPage <>4__this;
+			public TestPage <>4__this;
 
 			private TaskAwaiter <>u__1;
 
@@ -128,7 +128,7 @@ namespace AspNetCoreGeneratedDocument
 							goto IL_023e;
 						}
 						<>4__this.WriteLiteral("\n    Name:\n    ");
-						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("input", TagMode.SelfClosing, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93585", <>c.<>9__10_1 ?? (<>c.<>9__10_1 = new Func<Task>(<>c.<>9.<ExecuteAsync>b__10_1)));
+						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("input", TagMode.SelfClosing, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93583", <>c.<>9__10_1 ?? (<>c.<>9__10_1 = new Func<Task>(<>c.<>9.<ExecuteAsync>b__10_1)));
 						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.CreateTagHelper<InputTagHelper>();
 						<>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper);
 						InputTagHelper _Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper = <>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper;
@@ -282,7 +282,7 @@ namespace AspNetCoreGeneratedDocument
 			public AsyncTaskMethodBuilder <>t__builder;
 
 			[Nullable(0)]
-			public _TestPage <>4__this;
+			public TestPage <>4__this;
 
 			private TaskAwaiter <>u__1;
 
@@ -303,7 +303,7 @@ namespace AspNetCoreGeneratedDocument
 							goto IL_01f6;
 						}
 						<>4__this.WriteLiteral("\n");
-						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("form", TagMode.StartTagAndEndTag, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93316", new Func<Task>(<>4__this.<ExecuteAsync>b__10_0));
+						<>4__this.__tagHelperExecutionContext = <>4__this.__tagHelperScopeManager.Begin("form", TagMode.StartTagAndEndTag, "6173d9ae52d013c69d3d7c4d0d8801b6fc27d6c93314", new Func<Task>(<>4__this.<ExecuteAsync>b__10_0));
 						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper = <>4__this.CreateTagHelper<FormTagHelper>();
 						<>4__this.__tagHelperExecutionContext.Add(<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper);
 						<>4__this.__Microsoft_AspNetCore_Mvc_TagHelpers_RenderAtEndOfFormTagHelper = <>4__this.CreateTagHelper<RenderAtEndOfFormTagHelper>();

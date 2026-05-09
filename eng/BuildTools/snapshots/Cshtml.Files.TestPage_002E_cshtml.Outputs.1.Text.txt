@@ -1,5 +1,5 @@
 ﻿Document "mvc.1.0.razor-page" { DocumentKind: "mvc.1.0.razor-page" }
-  RazorCompiledItemAttribute { Identifier: "/TestPage.cshtml", Kind: "mvc.1.0.razor-page", TypeName: "AspNetCoreGeneratedDocument._TestPage" }
+  RazorCompiledItemAttribute { Identifier: "/TestPage.cshtml", Kind: "mvc.1.0.razor-page", TypeName: "AspNetCoreGeneratedDocument.TestPage" }
   NamespaceDeclaration "AspNetCoreGeneratedDocument" { Name: "AspNetCoreGeneratedDocument" }
     UsingDirective "global::System" { Content: "global::System" }
     UsingDirective "global::System.Collections.Generic" { Content: "global::System.Collections.Generic" }
@@ -11,7 +11,7 @@
     UsingDirective "System.ComponentModel.DataAnnotations" { Content: "System.ComponentModel.DataAnnotations" }
     RazorCompiledItemMetadataAttribute { Key: "Identifier", Value: "/TestPage.cshtml" }
     CreateNewOnMetadataUpdateAttribute
-    ClassDeclaration "_TestPage" { Name: "_TestPage", Interfaces: "", Modifiers: "internal, sealed", TypeParameters: "" }
+    ClassDeclaration "TestPage" { Name: "TestPage", Interfaces: "", Modifiers: "internal, sealed", TypeParameters: "" }
       PreallocatedTagHelperPropertyValue "method" { AttributeName: "method", AttributeStructure: "DoubleQuotes", Value: "post", VariableName: "__tagHelperAttribute_0" }
       DefaultTagHelperRuntime
       FieldDeclaration "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper" { Name: "__Microsoft_AspNetCore_Mvc_TagHelpers_FormTagHelper", Type: "global::Microsoft.AspNetCore.Mvc.TagHelpers.FormTagHelper", Modifiers: "private" }

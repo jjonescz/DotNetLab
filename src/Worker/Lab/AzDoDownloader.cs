@@ -1,4 +1,5 @@
-﻿using Microsoft.TeamFoundation.Build.WebApi;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using System.ComponentModel;
@@ -10,6 +11,7 @@ using System.Text.Json.Serialization;
 namespace DotNetLab.Lab;
 
 internal sealed class AzDoDownloader(
+    ILogger<AzDoDownloader> logger,
     HttpClient client)
     : ICompilerDependencyResolver
 {
@@ -215,7 +217,15 @@ internal sealed class AzDoDownloader(
 
         if (names.Count > 0)
         {
-            throw new InvalidOperationException($"No files found for {names.JoinToString(", ", quote: "'")} in artifact '{artifactName}' of build {buildId}.");
+            var message = $"No files found for {names.JoinToString(", ", quote: "'")} in artifact '{artifactName}' of build {buildId}.";
+            if (builder.Count == 0)
+            {
+                throw new InvalidOperationException(message);
+            }
+            else
+            {
+                logger.LogWarning(message);
+            }
         }
 
         return builder.ToImmutable();

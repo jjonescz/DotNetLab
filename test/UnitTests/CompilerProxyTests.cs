@@ -251,6 +251,7 @@ public sealed class CompilerProxyTests
     [DataRow("10.0.0-preview.25311.107")]
     [DataRow("10.0.0-preview.25314.101")]
     [DataRow("10.0.0-preview.25429.2")]
+    [DataRow("10.4.0-preview.26257.103")]
     [DataRow("main")] // test that we can download a branch
     [DataRow("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version, bool sgUnsupported = false)
@@ -327,6 +328,13 @@ public sealed class CompilerProxyTests
     {
         var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
 
+        // Design-time was removed in https://github.com/dotnet/roslyn/pull/83510.
+        if (strategy == RazorStrategy.DesignTime)
+        {
+            await services.GetRequiredService<CompilerDependencyProvider>()
+                .UseAsync(CompilerKind.Razor, "10.0.0-preview.25429.2", BuildConfiguration.Release);
+        }
+
         string code = """
             <div>@Param</div>
             @if (Param == 0)
@@ -359,6 +367,31 @@ public sealed class CompilerProxyTests
         var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync()).Text;
         TestContext.WriteLine(htmlText);
         Assert.AreEqual("<div>42</div>", htmlText);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
+    public async Task RazorImports(RazorToolchain toolchain, RazorStrategy strategy)
+    {
+        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new() { FileName = "TestComponent.razor", Text = "@{ _ = new HttpClient(); }" },
+                new() { FileName = "_Imports.razor", Text = "@using System.Net.Http" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                RazorStrategy = strategy,
+            });
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
     }
 
     [TestMethod]
@@ -458,6 +491,77 @@ public sealed class CompilerProxyTests
         var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
         TestContext.WriteLine(cSharpText);
         Assert.Contains("[Extension]", cSharpText);
+    }
+
+    [TestMethod]
+    public async Task Interceptor_EmitOnlyWarning()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([
+                new()
+                {
+                    FileName = "Program.cs",
+                    Text = """
+                        #:property InterceptorsNamespaces=global
+
+                        class C
+                        {
+                            public void Method1(string? param1) => throw null!;
+
+                            public string Method2() => throw null!;
+                        }
+
+                        static class Program
+                        {
+                            public static void Main()
+                            {
+                                var c = new C();
+                                c.Method1("call site");
+                                _ = c.Method2();
+                            }
+                        }
+                        """.ReplaceLineEndings("\n"),
+                },
+                new()
+                {
+                    FileName = "Interceptor.cs",
+                    Text = """
+                        using System.Runtime.CompilerServices;
+
+                        static class D
+                        {
+                            [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
+                            public static void Interceptor1(this C s, string param2) => throw null!;
+
+                            [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
+                            public static string? Interceptor2(this C s) => throw null!;
+                        }
+
+                        namespace System.Runtime.CompilerServices
+                        { 
+                            [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+                            public sealed class InterceptsLocationAttribute : Attribute
+                            {
+                                public InterceptsLocationAttribute(int version, string data) { }
+                            }
+                        }
+                        """.ReplaceLineEndings("\n"),
+                },
+            ])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual("""
+            // (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
+            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
+            Diagnostic(ErrorCode.WRN_NullabilityMismatchInParameterTypeOnInterceptor, "InterceptsLocation").WithArguments("param2", "C.Method1(string?)").WithLocation(5, 6),
+            // (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
+            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
+            Diagnostic(ErrorCode.WRN_NullabilityMismatchInReturnTypeOnInterceptor, "InterceptsLocation").WithArguments("C.Method2()").WithLocation(8, 6)
+            """.ReplaceLineEndings(), diagnosticsText);
     }
 
     [TestMethod]

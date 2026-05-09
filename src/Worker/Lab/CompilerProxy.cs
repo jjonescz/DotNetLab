@@ -147,7 +147,7 @@ internal sealed class CompilerProxy(
             "Microsoft.CodeAnalysis.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.CodeStyle",
             "Microsoft.CodeAnalysis.CSharp.Test.Utilities", // RoslynAccess project produces this assembly
-            "Microsoft.CodeAnalysis.Razor.Test", // RazorAccess project produces this assembly
+            "Microsoft.CodeAnalysis.Razor.UnitTests", // RazorAccess project produces this assembly
             "Microsoft.CodeAnalysis.CSharp.CodeStyle.UnitTests", // RoslynCodeStyleAccess project produces this assembly
             "Microsoft.CodeAnalysis.Workspaces.UnitTests", // RoslynWorkspaceAccess project produces this assembly
         ];
@@ -302,6 +302,13 @@ internal sealed class CompilerLoader(
                 if (loadedAssembly.Data.IsDefault)
                 {
                     Debug.Assert(loadedAssembly.Format == AssemblyDataFormat.Dll);
+
+                    if (!File.Exists(loadedAssembly.DiskPath) && TryLoadFromDefault(assemblyName, out loaded))
+                    {
+                        loadedAssemblies.Add(name, loaded);
+                        return loaded;
+                    }
+
                     loaded = base.LoadFromAssemblyPath(loadedAssembly.DiskPath);
                     loadedAssemblies.Add(name, loaded);
                     return loaded;
@@ -313,11 +320,7 @@ internal sealed class CompilerLoader(
                 return loaded;
             }
 
-            try
-            {
-                loaded = Default.LoadFromAssemblyName(assemblyName);
-            }
-            catch (FileNotFoundException)
+            if (!TryLoadFromDefault(assemblyName, out loaded))
             {
                 services.Logger.LogDebug("✗ {AssemblyName}", assemblyName);
                 return null;
@@ -329,5 +332,19 @@ internal sealed class CompilerLoader(
         }
 
         return null;
+    }
+
+    private static bool TryLoadFromDefault(AssemblyName assemblyName, [NotNullWhen(true)] out Assembly? assembly)
+    {
+        try
+        {
+            assembly = Default.LoadFromAssemblyName(assemblyName);
+            return true;
+        }
+        catch (FileNotFoundException)
+        {
+            assembly = null;
+            return false;
+        }
     }
 }

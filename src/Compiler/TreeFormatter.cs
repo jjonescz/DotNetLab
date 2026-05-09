@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections;
 using System.IO.Compression;
@@ -181,6 +182,9 @@ public sealed class TreeFormatter
 
                 // .GetImplicitInterfaceImplementations()
                 .. PropertyLike.Create(options, obj is ISymbol s && s.CanHaveImplicitInterfaceImplementations() ? s : null, nameof(CodeAnalysisUtil.GetImplicitInterfaceImplementations), (symbol) => symbol.GetImplicitInterfaceImplementations()),
+
+                // .GetInterceptableLocation()
+                .. PropertyLike.Create(options, obj as InvocationExpressionSyntax, nameof(Microsoft.CodeAnalysis.CSharp.CSharpExtensions.GetInterceptableLocation), (node) => model.GetInterceptableLocation(node)),
 
                 // Public instance properties
                 .. type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
@@ -534,7 +538,9 @@ public sealed class TreeFormatter
 
         static bool isMoreInterestingProperty(Type parentType, in PropertyLike property)
         {
-            if (property.Name is nameof(SyntaxToken.Text) or nameof(RoslynAccessors.GetBoundRoot))
+            if (property.Name is nameof(SyntaxToken.Text)
+                or nameof(RoslynAccessors.GetBoundRoot)
+                or nameof(Microsoft.CodeAnalysis.CSharp.CSharpExtensions.GetInterceptableLocation))
             {
                 return true;
             }

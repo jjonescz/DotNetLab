@@ -41,20 +41,6 @@ public sealed class Compiler(
 
         [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis")]
         [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis.CSharp")]
-
-        namespace System.Runtime.CompilerServices
-        {
-            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-            public class IgnoresAccessChecksToAttribute : Attribute
-            {
-                public IgnoresAccessChecksToAttribute(string assemblyName)
-                {
-                    AssemblyName = assemblyName;
-                }
-
-                public string AssemblyName { get; }
-            }
-        }
         """;
 
     private readonly TreeFormatter treeFormatter = new();
@@ -247,7 +233,7 @@ public sealed class Compiler(
         options = Config.Instance.ConfigureCSharpCompilationOptions(options);
 
         GeneratorRunResult razorResult = default;
-        ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument DesignTime)>? razorMap = null;
+        ImmutableDictionary<string, (RazorCodeDocument Runtime, RazorCodeDocument? DesignTime)>? razorMap = null;
 
         var effectiveToolchain = compilationInput.RazorToolchain switch
         {
@@ -590,7 +576,7 @@ public sealed class Compiler(
                 additionalTextsBuilder.Add(new TestAdditionalText(text: input.Text, encoding: Encoding.UTF8, path: filePath));
                 optionsProvider.AdditionalTextOptions[filePath] = new TestAnalyzerConfigOptions
                 {
-                    ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(filePath)),
+                    ["build_metadata.AdditionalFiles.TargetPath"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(input.FileName)),
                 };
 
                 // If this Razor file has a corresponding CSS file, enable scoping (CSS isolation).
@@ -692,7 +678,7 @@ public sealed class Compiler(
                     elementSelector: (item) =>
                     {
                         RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
-                        RazorCodeDocument designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
+                        RazorCodeDocument? designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
 
                         allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocumentSafe().GetDiagnostics().Select(RazorUtil.ToDiagnostic));
 
@@ -816,15 +802,15 @@ public sealed class Compiler(
                 options: emitOptions.EmitOptions,
                 embeddedTexts: embeddedTexts);
 
+            diagnostics = emitResult.Diagnostics;
+
             if (!emitResult.Success)
             {
-                diagnostics = emitResult.Diagnostics;
                 return null;
             }
 
             peStream.Position = 0;
             pdbStream?.Position = 0;
-            diagnostics = compilation.GetDiagnostics();
             return (peStream, pdbStream);
         }
 
