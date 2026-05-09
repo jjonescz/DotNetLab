@@ -41,20 +41,6 @@ public sealed class Compiler(
 
         [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis")]
         [assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Microsoft.CodeAnalysis.CSharp")]
-
-        namespace System.Runtime.CompilerServices
-        {
-            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-            public class IgnoresAccessChecksToAttribute : Attribute
-            {
-                public IgnoresAccessChecksToAttribute(string assemblyName)
-                {
-                    AssemblyName = assemblyName;
-                }
-
-                public string AssemblyName { get; }
-            }
-        }
         """;
 
     private readonly TreeFormatter treeFormatter = new();
