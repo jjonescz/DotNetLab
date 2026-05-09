@@ -198,7 +198,7 @@ public static class Executor
             configureServicesMethod?.Invoke(null, [services]);
             var serviceProvider = services.BuildServiceProvider();
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+            using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
             var html = await renderer.Dispatcher.InvokeAsync(async () =>
             {
                 var output = await renderer.RenderComponentAsync(componentType);

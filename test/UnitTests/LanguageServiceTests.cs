@@ -208,7 +208,8 @@ public sealed class LanguageServiceTests
             Configuration = "void F() { }",
         };
 
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
 

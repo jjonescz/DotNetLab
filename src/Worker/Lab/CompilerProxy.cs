@@ -37,16 +37,23 @@ internal sealed class CompilerProxy(
             {
                 var previousIteration = dependencyRegistry.Iteration;
                 var currentlyLoaded = await LoadCompilerAsync(onlyLoadBuiltInCompiler: false);
-
-                if (dependencyRegistry.Iteration == previousIteration)
+                try
                 {
-                    loaded?.Dispose();
-                    loaded = currentlyLoaded;
-                    iteration = dependencyRegistry.Iteration;
+                    if (dependencyRegistry.Iteration == previousIteration)
+                    {
+                        loaded?.Dispose();
+                        loaded = currentlyLoaded;
+                        currentlyLoaded = null;
+                        iteration = dependencyRegistry.Iteration;
+                    }
+                    else
+                    {
+                        Debug.Assert(loaded is not null);
+                    }
                 }
-                else
+                finally
                 {
-                    Debug.Assert(loaded is not null);
+                    currentlyLoaded?.Dispose();
                 }
             }
 

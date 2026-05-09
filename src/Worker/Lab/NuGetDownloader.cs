@@ -638,8 +638,7 @@ internal sealed class NuGetDownloadablePackageResult
             await zipFactory.Value is { } zip)
         {
             var nuspecEntry = zip.Directory.Entries
-                .Where(e => PackageHelper.IsManifest(e.GetName()))
-                .FirstOrDefault()
+                .FirstOrDefault(e => PackageHelper.IsManifest(e.GetName()))
                 ?? throw new InvalidOperationException($"Nuspec file not found in the package: {DependencyInfo.DownloadUri}");
             var nuspecBytes = await zip.Reader.ReadFileDataAsync(zip.Directory, nuspecEntry);
             return new NuspecReader(new MemoryStream(nuspecBytes));
@@ -647,7 +646,8 @@ internal sealed class NuGetDownloadablePackageResult
 
         var nupkgStream = await NupkgStream.Value;
         nupkgStream.Position = 0;
-        return new PackageArchiveReader(nupkgStream, leaveStreamOpen: true).NuspecReader;
+        using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
+        return reader.NuspecReader;
     }
 }
 
@@ -750,7 +750,7 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
 
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
     {
-        var reader = new VirtualPackageReader(allFiles);
+        using var reader = new VirtualPackageReader(allFiles);
         var group = reader.GetLibItems()
             .GetNearest(TargetFramework);
 
@@ -923,7 +923,9 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     {
         if (source.PackageSource.IsHttp)
         {
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to HttpHandlerResourceV3
             var messageHandler = new ServerWarningLogHandler(corsClientHandler);
+#pragma warning restore CA2000
             return new(true, new HttpHandlerResourceV3(corsClientHandler, messageHandler));
         }
 

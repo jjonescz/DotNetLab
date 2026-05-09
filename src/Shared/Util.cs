@@ -202,6 +202,14 @@ public static partial class Util
         }
     }
 
+    extension(ValueTask? task)
+    {
+        public ValueTaskAwaiter GetAwaiter()
+        {
+            return task?.GetAwaiter() ?? new ValueTask().GetAwaiter();
+        }
+    }
+
     public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)
     {
         foreach (var item in items)

@@ -7,11 +7,19 @@ public sealed class AsyncLock : IDisposable
     public async Task<IDisposable> LockAsync(CancellationToken cancellationToken = default)
     {
         await semaphore.WaitAsync(cancellationToken);
-        return this;
+        return new Scope(this);
     }
 
     public void Dispose()
     {
-        semaphore.Release();
+        semaphore.Dispose();
+    }
+
+    private sealed class Scope(AsyncLock asyncLock) : IDisposable
+    {
+        public void Dispose()
+        {
+            asyncLock.semaphore.Release();
+        }
     }
 }

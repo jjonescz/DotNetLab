@@ -44,7 +44,7 @@ internal sealed class FileLevelDirectiveParser
         foreach (var input in inputs)
         {
             var text = SourceText.From(input.Text);
-            var tokenizer = text.CreateTokenizer();
+            using var tokenizer = text.CreateTokenizer();
 
             var result = tokenizer.ParseLeadingTrivia();
 

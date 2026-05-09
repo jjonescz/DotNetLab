@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace DotNetLab;
 
-internal sealed class LanguageServices : ILanguageServices
+internal sealed class LanguageServices : ILanguageServices, IDisposable
 {
     private readonly ILogger<LanguageServices> logger;
     private readonly Compiler compiler;
@@ -100,6 +100,12 @@ internal sealed class LanguageServices : ILanguageServices
                 .ToImmutableArray();
             return new AnalyzerImageReference(analyzers).RegisterAnalyzer();
         }
+    }
+
+    public void Dispose()
+    {
+        workspace.Dispose();
+        workspaceLock.Dispose();
     }
 
     /// <returns>

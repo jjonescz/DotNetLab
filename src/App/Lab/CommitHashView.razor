@@ -1,3 +1,4 @@
+@implements IDisposable
 @inject ILocalStorageService LocalStorage
 @inject WorkerController Worker
 @inject HttpClient Client
@@ -119,6 +120,11 @@
                 return null;
             }
         }
+    }
+
+    void IDisposable.Dispose()
+    {
+        loading.Dispose();
     }
 
     private async Task LoadCommitInfoAsync()

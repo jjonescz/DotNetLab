@@ -19,7 +19,8 @@ public sealed class CompilerProxyTests
     [DataRow("latest", "5.")] // `latest` works
     public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -83,7 +84,8 @@ public sealed class CompilerProxyTests
         "https://dev.azure.com/dnceng/public/_artifacts/feed/darc-pub-dotnet-dotnet-fad253f5/NuGet/Microsoft.Net.Compilers.Toolset/overview/5.0.0-2.25569.105")]
     public async Task SpecifiedNuGetRoslynVersion_Info(string version, string expectedVersion, string expectedCommit, string expectedRepoName, string expectedVersionLink)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         var dependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
 
@@ -104,7 +106,8 @@ public sealed class CompilerProxyTests
     [DataRow("5.0.0-1.25252.6", "b6ec1031", "10.0.0-preview.25523.111")]
     public async Task SpecifiedNuGetRoslynVersion_WithConfiguration(string roslynVersion, string expectedRoslynCommit, string razorVersion)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
         await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, roslynVersion, BuildConfiguration.Release);
@@ -147,7 +150,8 @@ public sealed class CompilerProxyTests
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
 
-            var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+            using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+            var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
             await services.GetRequiredService<CompilerDependencyProvider>()
                 .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -219,7 +223,8 @@ public sealed class CompilerProxyTests
 
         var version = "5.0.0-1.25206.1";
 
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
@@ -256,7 +261,8 @@ public sealed class CompilerProxyTests
     [DataRow("latest")] // `latest` works
     public async Task SpecifiedNuGetRazorVersion(string version, bool sgUnsupported = false)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         await services.GetRequiredService<CompilerDependencyProvider>()
             .UseAsync(CompilerKind.Razor, version, BuildConfiguration.Release);
@@ -326,7 +332,8 @@ public sealed class CompilerProxyTests
     [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
     public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         // Design-time was removed in https://github.com/dotnet/roslyn/pull/83510.
         if (strategy == RazorStrategy.DesignTime)
@@ -375,7 +382,8 @@ public sealed class CompilerProxyTests
     [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
     public async Task RazorImports(RazorToolchain toolchain, RazorStrategy strategy)
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         var compiled = await services.GetRequiredService<CompilerProxy>()
             .CompileAsync(new(new(
@@ -397,7 +405,8 @@ public sealed class CompilerProxyTests
     [TestMethod]
     public async Task ConfigurationFile()
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         var source = "unsafe { int* p = null; }";
 
@@ -438,7 +447,8 @@ public sealed class CompilerProxyTests
     [TestMethod]
     public async Task ConfigurationFile_MakeMemberMissing()
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
         var source = "class C;";
 
@@ -624,7 +634,8 @@ public sealed class CompilerProxyTests
     [TestMethod]
     public async Task ILDecompilationUsesSpacesForIndentation()
     {
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
         var compiler = services.GetRequiredService<CompilerProxy>();
 
         var code = """

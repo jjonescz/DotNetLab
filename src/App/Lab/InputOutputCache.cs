@@ -18,9 +18,8 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
         try
         {
             var key = SlugToCacheKey(state.ToCacheSlug());
-            var response = await client.PostAsync(
-                $"{endpoint}/add/{key}",
-                new StringContent(JsonSerializer.Serialize(output, WorkerJsonContext.Default.CompiledAssembly), Encoding.UTF8, "text/plain"));
+            using var content = new StringContent(JsonSerializer.Serialize(output, WorkerJsonContext.Default.CompiledAssembly), Encoding.UTF8, "text/plain");
+            using var response = await client.PostAsync($"{endpoint}/add/{key}", content);
             response.EnsureSuccessStatusCode();
         }
         catch (Exception e)
@@ -34,7 +33,7 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
         try
         {
             var key = SlugToCacheKey(state.ToCacheSlug());
-            var response = await client.PostAsync($"{endpoint}/get/{key}", content: null);
+            using var response = await client.PostAsync($"{endpoint}/get/{key}", content: null);
             response.EnsureSuccessStatusCode();
 
             if (!response.Headers.TryGetValues("X-Timestamp", out var values) ||
