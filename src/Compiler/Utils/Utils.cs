@@ -279,7 +279,7 @@ internal static class RazorUtil
     private static T GetDocumentDataSafe<T>(this RazorCodeDocument document, string methodName, string? instanceMethodName = null)
     {
         // GetCSharpDocument and similar extension methods have been turned into instance methods in https://github.com/dotnet/razor/pull/11939.
-        if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic) is { } method)
+        if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is { } method)
         {
             return (T)method.Invoke(document, [])!;
         }
@@ -411,12 +411,13 @@ internal static class RazorUtil
 
     public static string Serialize(this RazorSyntaxTree tree)
     {
-        var root = tree.GetType().GetProperty("Root", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tree)!;
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
+        var root = tree.GetType().GetProperty("Root", flags)!.GetValue(tree)!;
 
         // SerializedValue property has been moved to another type in https://github.com/dotnet/razor/pull/11859.
         // For some reason, the property might not be returned by reflection if inherited, so look manually into the base type.
         const string propName = "SerializedValue";
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var rootType = root.GetType();
         var prop = rootType.GetProperty(propName, flags)
             ?? rootType.BaseType!.GetProperty(propName, flags)!;
