@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "server: watch",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "watch",
+                "--project",
+                "src/Server",
+                "--artifacts-path",
+                "artifacts/watch"
+            ],
+            "options": {
+                "env": {
+                    "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "1"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
