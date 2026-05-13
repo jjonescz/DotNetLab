@@ -13,7 +13,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
-    <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.4.0" />
     <PackageVersion Include="Combinatorial.MSTest" Version="2.0.0" />
