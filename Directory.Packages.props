@@ -52,4 +52,8 @@
     <PackageVersion Include="System.Drawing.Common" Version="5.0.3" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="6.0.2" />
   </ItemGroup>
+  <ItemGroup Label="Avoid warning MSB3277 (conflicts between different versions)">
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="$(NetCoreVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(NetCoreVersion)" />
+  </ItemGroup>
 </Project>
