@@ -668,7 +668,7 @@ internal sealed class LanguageServices : ILanguageServices, IDisposable
                         if (model.FileName.IsCSharpFileName())
                         {
                             modelUris.Add(docId, model.Uri);
-                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(docId, model.FileName));
+                            ApplyChanges(UpdateDocumentFileInfo(workspace.CurrentSolution, docId, model.FileName));
 
                             if (model.NewContent != null)
                             {
@@ -713,6 +713,7 @@ internal sealed class LanguageServices : ILanguageServices, IDisposable
                     name: model.FileName,
                     text: model.NewContent ?? string.Empty,
                     filePath: model.FileName);
+                doc = doc.WithSourceCodeKind(GetSourceCodeKind(model.FileName));
                 modelUris.Add(doc.Id, model.Uri);
                 ApplyChanges(doc.Project.Solution);
 
@@ -729,6 +730,21 @@ internal sealed class LanguageServices : ILanguageServices, IDisposable
         }
 
         await UpdateOptionsIfNecessaryAsync();
+    }
+
+    private static Solution UpdateDocumentFileInfo(Solution solution, DocumentId docId, string fileName)
+    {
+        return solution
+            .WithDocumentName(docId, fileName)
+            .WithDocumentFilePath(docId, fileName)
+            .WithDocumentSourceCodeKind(docId, GetSourceCodeKind(fileName));
+    }
+
+    private static SourceCodeKind GetSourceCodeKind(string fileName)
+    {
+        return fileName.IsCSharpFileName(out bool script) && script
+            ? SourceCodeKind.Script
+            : SourceCodeKind.Regular;
     }
 
     private async Task UpdateOptionsIfNecessaryAsync()
