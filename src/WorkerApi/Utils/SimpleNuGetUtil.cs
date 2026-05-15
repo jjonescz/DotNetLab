@@ -1,9 +1,26 @@
-﻿namespace DotNetLab;
+﻿using System.Collections.Concurrent;
+
+namespace DotNetLab;
 
 public static class SimpleNuGetUtil
 {
+    private static readonly ConcurrentDictionary<string, byte> nuGetOrgHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [NuGetApiHost] = 0,
+    };
+
     public const string NuGetApiHost = "api.nuget.org";
     public static readonly Uri DotNetToolsFeedUrl = new("https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json");
+
+    public static bool IsNuGetOrgHost(string host)
+    {
+        return nuGetOrgHosts.ContainsKey(host);
+    }
+
+    public static void RegisterNuGetOrgHost(string host)
+    {
+        nuGetOrgHosts.TryAdd(host, 0);
+    }
 
     public static string? TryGetPackageVersionListUrl(string packageId, Uri feedUrl)
     {
@@ -26,7 +43,7 @@ public static class SimpleNuGetUtil
         string version,
         Uri feedUrl)
     {
-        if (feedUrl.Host == NuGetApiHost)
+        if (IsNuGetOrgHost(feedUrl.Host))
         {
             return $"https://www.nuget.org/packages/{packageId}/{version}";
         }
