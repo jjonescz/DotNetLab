@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Scripting.Hosting;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Razor;
+using Microsoft.CodeAnalysis.Scripting.Hosting;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -455,7 +457,7 @@ public sealed class Compiler(
                     LazyText = async () =>
                     {
                         string output = tryGetEmitStreams(getExecutableCompilation(), emitOptions.WithoutPdb(), out var emitStreams, out var error)
-                            ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies)
+                            ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies, FormatScriptReturnValue)
                             : error;
                         return output;
                     },
@@ -1165,6 +1167,11 @@ public sealed class Compiler(
                 // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
                 KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
             ]);
+    }
+
+    private static string FormatScriptReturnValue(object? value)
+    {
+        return CSharpObjectFormatter.Instance.FormatObject(value, new PrintOptions());
     }
 }
 

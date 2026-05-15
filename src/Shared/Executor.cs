@@ -10,7 +10,10 @@ namespace DotNetLab;
 
 public static class Executor
 {
-    public static async Task<string> ExecuteAsync(MemoryStream emitStream, ImmutableArray<RefAssembly> assemblies)
+    public static async Task<string> ExecuteAsync(
+        MemoryStream emitStream,
+        ImmutableArray<RefAssembly> assemblies,
+        Func<object?, string>? formatScriptReturnValue = null)
     {
         var alc = new ExecutorLoader(assemblies);
         try
@@ -32,7 +35,13 @@ public static class Executor
                     SynchronizationContext.SetSynchronizationContext(null);
                     try
                     {
-                        exitCode = await InvokeEntryPointAsync(entryPoint);
+                        var result = await InvokeEntryPointCoreAsync(entryPoint);
+                        exitCode = result.ExitCode;
+
+                        if (result is { IsScriptReturnValue: true, ReturnValue: not null } && formatScriptReturnValue != null)
+                        {
+                            Console.WriteLine(formatScriptReturnValue(result.ReturnValue));
+                        }
                     }
                     catch (Exception e)
                     {
@@ -59,7 +68,12 @@ public static class Executor
 
     public static async Task<int> InvokeEntryPointAsync(MethodInfo entryPoint)
     {
-        (object? target, entryPoint) = getEntryPoint(entryPoint);
+        return (await InvokeEntryPointCoreAsync(entryPoint)).ExitCode;
+    }
+
+    private static async Task<EntryPointResult> InvokeEntryPointCoreAsync(MethodInfo entryPoint)
+    {
+        (object? target, entryPoint, bool isScript) = getEntryPoint(entryPoint);
         var parameters = entryPoint.GetParameters().Length == 0
             ? null
             : new object[] { Array.Empty<string>() };
@@ -75,6 +89,7 @@ public static class Executor
             throw ex.InnerException;
         }
 
+        var hasReturnValue = entryPoint.ReturnType != typeof(void);
         switch (@return)
         {
             case Task<int> taskInt:
@@ -86,6 +101,7 @@ public static class Executor
             case Task task:
                 await task;
                 @return = 0;
+                hasReturnValue = false;
                 break;
             case ValueTask<int> valueTaskInt:
                 @return = await valueTaskInt;
@@ -93,18 +109,23 @@ public static class Executor
             case ValueTask valueTask:
                 await valueTask;
                 @return = 0;
+                hasReturnValue = false;
                 break;
         }
-        return @return is int e ? e : 0;
+
+        return new(
+            ExitCode: @return is int e ? e : 0,
+            ReturnValue: @return,
+            IsScriptReturnValue: isScript && hasReturnValue);
 
         // Obtains the async Main method if available because we cannot run the synchronous Main method
         // (because it uses Task.Wait which is unsupported in browser wasm).
-        static (object? Target, MethodInfo Method) getEntryPoint(MethodInfo main)
+        static (object? Target, MethodInfo Method, bool IsScript) getEntryPoint(MethodInfo main)
         {
             try
             {
                 var bytes = main.GetMethodBody()?.GetILAsByteArray();
-                (object? Target, MethodBase? Method) invoke = bytes switch
+                (object? Target, MethodBase? Method, bool IsScript) invoke = bytes switch
                 {
                     // Patterns for async Main method with arguments
                     [
@@ -115,7 +136,7 @@ public static class Executor
                         (byte)ILOpCode.Ldloca_s, 0,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4)))),
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4))), false),
                     // Patterns for async Main method without arguments
                     [
                         (byte)ILOpCode.Call, _, _, _, _,
@@ -124,20 +145,20 @@ public static class Executor
                         (byte)ILOpCode.Ldloca_s, 0,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))), false),
                     // Patterns for AsyncHelpers.HandleAsyncEntryPoint with arguments
                     [
                         (byte)ILOpCode.Ldarg_0,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4)))),
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(2, 4))), false),
                     // Patterns for AsyncHelpers.HandleAsyncEntryPoint without arguments
                     [
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Call, _, _, _, _,
                         (byte)ILOpCode.Ret
-                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4)))),
+                    ] => (null, main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))), false),
                     // Patterns for async Script Main method
                     [
                         (byte)ILOpCode.Newobj, _, _, _, _,
@@ -149,13 +170,13 @@ public static class Executor
                         (byte)ILOpCode.Pop,
                         (byte)ILOpCode.Ret
                     ] => CreateScriptMain(main, bytes),
-                    _ => (null, null),
+                    _ => (null, null, false),
                 };
-                static (object? Target, MethodInfo? Method) CreateScriptMain(MethodInfo main, byte[] bytes)
+                static (object? Target, MethodInfo? Method, bool IsScript) CreateScriptMain(MethodInfo main, byte[] bytes)
                 {
                     ConstructorInfo? constructor = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(1, 4))) as ConstructorInfo;
                     MethodInfo? initialize = main.Module.ResolveMethod(BitConverter.ToInt32(bytes.AsSpan(6, 4))) as MethodInfo;
-                    if (constructor == null || initialize == null) { return (null, null); }
+                    if (constructor == null || initialize == null) { return (null, null, false); }
 
                     object instance;
 
@@ -169,17 +190,19 @@ public static class Executor
                         throw ex.InnerException;
                     }
 
-                    return (instance, initialize);
+                    return (instance, initialize, true);
                 }
                 if (invoke.Method is MethodInfo { ReturnType: Type type } info && (type == typeof(Task) || type.IsSubclassOf(typeof(Task))))
                 {
-                    return (invoke.Target, info);
+                    return (invoke.Target, info, invoke.IsScript);
                 }
             }
             catch { }
-            return (null, main);
+            return (null, main, false);
         }
     }
+
+    private readonly record struct EntryPointResult(int ExitCode, object? ReturnValue, bool IsScriptReturnValue);
 
     public static async Task<string> RenderComponentToHtmlAsync(MemoryStream emitStream, string componentTypeName)
     {

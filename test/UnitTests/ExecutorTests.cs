@@ -47,6 +47,35 @@ public sealed class ExecutorTests
             """.ReplaceLineEndings("\n"), runText);
     }
 
+    [TestMethod]
+    public async Task ScriptReturnValue_PrintsFormattedValue()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        string code = /* lang=C# */ """
+            return "Hello result";
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.csx", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            "Hello result"
+
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), runText);
+    }
+
     [TestMethod, CombinatorialData]
     public async Task AsyncMain_TopLevel(bool script)
     {
@@ -72,10 +101,11 @@ public sealed class ExecutorTests
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         TestContext.WriteLine(runText);
-        Assert.AreEqual("""
+        var expectedStdout = script ? "Hello.42\n" : "Hello.";
+        Assert.AreEqual($$"""
             Exit code: 42
             Stdout:
-            Hello.
+            {{expectedStdout}}
             Stderr:
 
             """.ReplaceLineEndings("\n"), runText);

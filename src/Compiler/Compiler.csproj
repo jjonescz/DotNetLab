@@ -4,6 +4,7 @@
     <PackageReference Include="ICSharpCode.Decompiler" />
     <PackageReference Include="MetadataReferenceService.BlazorWasm" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Features" />
     <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
   </ItemGroup>
