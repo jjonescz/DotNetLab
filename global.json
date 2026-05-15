@@ -4,7 +4,7 @@
     "workloadVersion": "11.0.100-preview.4.26261.2"
   },
   "msbuild-sdks": {
-    "MSTest.Sdk": "4.2.1"
+    "MSTest.Sdk": "4.2.3"
   },
   "test": {
     "runner": "Microsoft.Testing.Platform"
