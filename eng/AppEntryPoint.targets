@@ -8,7 +8,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeStyle" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
     <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CodeStyle.dll" />
     <Reference Include="$(PkgMicrosoft_CodeAnalysis_CSharp_CodeStyle)\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.CodeStyle.dll" />
-    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
+    <!-- Note: PackageReference for Microsoft.Net.Compilers.Razor.Toolset is specified in the top-level Directory.Build.props file. -->
     <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\*.dll" />
   </ItemGroup>
 
