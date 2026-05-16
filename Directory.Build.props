@@ -46,9 +46,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset"
-                      Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'"
-                      GeneratePathProperty="true">
+    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
