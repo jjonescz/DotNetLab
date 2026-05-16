@@ -1116,6 +1116,7 @@
         {
             return diagnostics
                 .Select(static d => d.ToMarkerData())
+                .Select(static m => m.WithSeverityIcon())
                 .ToList();
         }
     }

@@ -1,4 +1,5 @@
-﻿using BlazorMonaco.Editor;
+﻿using BlazorMonaco;
+using BlazorMonaco.Editor;
 using Microsoft.JSInterop;
 
 namespace DotNetLab;
@@ -22,6 +23,20 @@ internal static class MonacoUtil
         {
             await module.InvokeVoidAsync("restoreMonacoEditorViewState", editor.Id, inner);
         }
+    }
+
+    public static MarkerData WithSeverityIcon(this MarkerData markerData)
+    {
+        var prefix = markerData.Severity switch
+        {
+            MarkerSeverity.Error => "\u2715 ",
+            MarkerSeverity.Warning => "\u26a0\ufe0e ",
+            _ => "\u24d8 ",
+        };
+
+        markerData.Message = prefix + markerData.Message;
+
+        return markerData;
     }
 }
 

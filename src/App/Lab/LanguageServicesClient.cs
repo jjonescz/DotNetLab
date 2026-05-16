@@ -328,7 +328,9 @@ internal sealed class LanguageServicesClient(
             await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
                 var (worker, jsRuntime, currentModelUrl) = args;
-                var markers = (await worker.GetDiagnosticsAsync(currentModelUrl)).ToList();
+                var markers = (await worker.GetDiagnosticsAsync(currentModelUrl))
+                    .Select(static m => m.WithSeverityIcon())
+                    .ToList();
                 var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
                 cancellationToken.ThrowIfCancellationRequested();
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers);
