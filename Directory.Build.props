@@ -11,6 +11,7 @@
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <UseArtifactsOutput>true</UseArtifactsOutput>
+    <Deterministic>true</Deterministic>
     <ArtifactsPath Condition="'$(FileBasedProgram)' != 'true'">$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
 
@@ -39,6 +40,13 @@
       See also https://github.com/dotnet/runtime/issues/110870.
     -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);WASM0001</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == ''">
+    <EnableSourceLink>false</EnableSourceLink>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Features>$(Features);use-global-cache</Features>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
   </PropertyGroup>
 
   <ItemGroup>
