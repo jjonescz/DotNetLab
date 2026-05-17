@@ -80,7 +80,7 @@ public sealed class ExecutorTests
             """.ReplaceLineEndings("\n"), $"""
             {value}
 
-            """), runText);
+            """.ReplaceLineEndings()), runText);
     }
 
     [TestMethod, CombinatorialData]
@@ -113,7 +113,7 @@ public sealed class ExecutorTests
             ? $"""
                 Hello.42
 
-                """
+                """.ReplaceLineEndings()
             : "Hello.";
         Assert.AreEqual(string.Format($$"""
             Exit code: {{expectedExitCode}}
@@ -235,7 +235,7 @@ public sealed class ExecutorTests
                at Program.<<Main>$>g__M|0_0()
                at Program.<Main>$(String[] args)
 
-            """), runText);
+            """.ReplaceLineEndings()), runText);
     }
 
     [TestMethod]
@@ -276,6 +276,6 @@ public sealed class ExecutorTests
                at Program.<<Main>$>g__M|0_0()
                at Program.<Main>$(String[] args)
 
-            """), runText);
+            """.ReplaceLineEndings()), runText);
     }
 }
