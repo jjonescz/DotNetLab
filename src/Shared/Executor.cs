@@ -38,7 +38,7 @@ public static class Executor
                         var result = await InvokeEntryPointCoreAsync(entryPoint);
                         exitCode = result.ExitCode;
 
-                        if (result is { IsScriptReturnValue: true, ReturnValue: not null } && formatScriptReturnValue != null)
+                        if (result is { IsScriptReturnValue: true } && formatScriptReturnValue != null)
                         {
                             Console.WriteLine(formatScriptReturnValue(result.ReturnValue));
                         }

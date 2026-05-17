@@ -52,6 +52,7 @@ public sealed class ExecutorTests
     [DataRow("\"Hello result\"")]
     [DataRow("123")]
     [DataRow("true")]
+    [DataRow("null")]
     public async Task ScriptReturnValue_PrintsFormattedValue(string value)
     {
         var services = WorkerServices.CreateTest(TestContext);
