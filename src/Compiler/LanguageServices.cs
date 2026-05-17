@@ -102,6 +102,12 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
+    public void Dispose()
+    {
+        workspace.Dispose();
+        workspaceLock.Dispose();
+    }
+
     /// <returns>
     /// JSON-serialized <see cref="MonacoCompletionList"/>.
     /// We serialize here to avoid serializing twice unnecessarily
@@ -662,7 +668,7 @@ internal sealed class LanguageServices : ILanguageServices
                         if (model.FileName.IsCSharpFileName())
                         {
                             modelUris.Add(docId, model.Uri);
-                            ApplyChanges(workspace.CurrentSolution.WithDocumentFilePath(docId, model.FileName));
+                            ApplyChanges(UpdateDocumentFileInfo(workspace.CurrentSolution, docId, model.FileName));
 
                             if (model.NewContent != null)
                             {
@@ -707,6 +713,7 @@ internal sealed class LanguageServices : ILanguageServices
                     name: model.FileName,
                     text: model.NewContent ?? string.Empty,
                     filePath: model.FileName);
+                doc = doc.WithSourceCodeKind(GetSourceCodeKind(model.FileName));
                 modelUris.Add(doc.Id, model.Uri);
                 ApplyChanges(doc.Project.Solution);
 
@@ -723,6 +730,21 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         await UpdateOptionsIfNecessaryAsync();
+    }
+
+    private static Solution UpdateDocumentFileInfo(Solution solution, DocumentId docId, string fileName)
+    {
+        return solution
+            .WithDocumentName(docId, fileName)
+            .WithDocumentFilePath(docId, fileName)
+            .WithDocumentSourceCodeKind(docId, GetSourceCodeKind(fileName));
+    }
+
+    private static SourceCodeKind GetSourceCodeKind(string fileName)
+    {
+        return fileName.IsCSharpFileName(out bool script) && script
+            ? SourceCodeKind.Script
+            : SourceCodeKind.Regular;
     }
 
     private async Task UpdateOptionsIfNecessaryAsync()

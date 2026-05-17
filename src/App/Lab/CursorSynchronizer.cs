@@ -4,15 +4,23 @@ internal sealed class CursorSynchronizer(
     CursorSynchronizer.Services services,
     BlazorMonaco.Editor.Editor inputEditor,
     BlazorMonaco.Editor.Editor outputEditor)
+    : IAsyncDisposable
 {
     public sealed record Services(BlazorMonacoInterop Interop);
 
     private DocumentMapping inputToOutputMapping, outputToInputMapping;
+    private IAsyncDisposable? inputCursorSubscription, outputCursorSubscription;
 
     public async Task InitAsync()
     {
-        await services.Interop.OnDidChangeCursorPositionAsync(inputEditor.Id, OnInputCursorPositionChangedAsync);
-        await services.Interop.OnDidChangeCursorPositionAsync(outputEditor.Id, OnOutputCursorPositionChangedAsync);
+        inputCursorSubscription = await services.Interop.OnDidChangeCursorPositionAsync(inputEditor.Id, OnInputCursorPositionChangedAsync);
+        outputCursorSubscription = await services.Interop.OnDidChangeCursorPositionAsync(outputEditor.Id, OnOutputCursorPositionChangedAsync);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await inputCursorSubscription?.DisposeAsync();
+        await outputCursorSubscription?.DisposeAsync();
     }
 
     public void Enable(CompiledFileOutputMetadata? metadata)

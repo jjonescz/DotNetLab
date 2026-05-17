@@ -126,9 +126,9 @@ public sealed class LanguageServiceTests
         }
     }
 
-    private async Task VerifyDiagnosticsAsync(ILanguageServices languageServices, string file, string[] expectedDiagnostics)
+    private async Task VerifyDiagnosticsAsync(ILanguageServices languageServices, string file, string[] expectedDiagnostics, string? modelUri = null)
     {
-        var uri = CompiledAssembly.GetInputModelUri(file, guidOverride: uriGuidOverride);
+        var uri = modelUri ?? CompiledAssembly.GetInputModelUri(file, guidOverride: uriGuidOverride);
         var markers = await languageServices.GetDiagnosticsAsync(uri);
         var actualDiagnostics = markers
             .OrderBy(m => (m.StartLineNumber, m.StartColumn, m.Severity, m.GetCode(), m.Message))
@@ -208,7 +208,8 @@ public sealed class LanguageServiceTests
             Configuration = "void F() { }",
         };
 
-        var services = WorkerServices.CreateTest(TestContext, new MockHttpMessageHandler(TestContext));
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
 
@@ -358,6 +359,26 @@ public sealed class LanguageServiceTests
             "(5,5): hint IDE0059: Unnecessary assignment of a value to 'i'",
             "(5,9): error CS0266: Cannot implicitly convert type 'object' to 'int'. An explicit conversion exists (are you missing a cast?)",
         ]);
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_RenameToScript()
+    {
+        const string code = "return \"string\";";
+        var modelUri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(modelUri, "test.cs") { NewContent = code }]);
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            "(1,8): error CS0029: Cannot implicitly convert type 'string' to 'int'",
+        ], modelUri);
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(modelUri, "test.csx") { NewContent = code }]);
+        await VerifyDiagnosticsAsync(languageServices, "test.csx", [], modelUri);
     }
 
     [TestMethod]

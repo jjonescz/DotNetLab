@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Scripting.Hosting;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Razor;
+using Microsoft.CodeAnalysis.Scripting.Hosting;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -71,6 +73,11 @@ public sealed class Compiler(
         UsingStatement = false,
     };
 
+    public void Dispose()
+    {
+        LastResult?.Output.Dispose();
+    }
+
     public async ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
@@ -86,6 +93,7 @@ public sealed class Compiler(
         }
 
         var result = await CompileNoCacheAsync(input, assemblies, builtInAssemblies, alc);
+        LastResult?.Output.Dispose();
         LastResult = (input, result);
         return result.CompiledAssembly;
     }
@@ -121,6 +129,8 @@ public sealed class Compiler(
     {
         const string projectName = "TestProject";
         const string directory = "/";
+
+        PeFileWithPdbStream? peFile;
 
         var parseOptions = CreateDefaultParseOptions();
         CSharpCompilationOptions? options = null;
@@ -170,6 +180,7 @@ public sealed class Compiler(
                 {
                     ConfigDiagnosticCount = failedConfigDiagnosticData.Length,
                 };
+                peFile = null;
                 return getResult(configResult, additionalSyntaxTrees: []);
             }
         }
@@ -257,7 +268,7 @@ public sealed class Compiler(
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
 
-        var peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
+        peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
@@ -425,7 +436,9 @@ public sealed class Compiler(
                     Label = "Sequence points",
                     LazyText = () =>
                     {
+#pragma warning disable CA2025 // Do not pass 'IDisposable' instances into unawaited tasks - LiveCompilationResult owns the peFile and it should be disposed only when outputs are no longer needed
                         return new(getSequencePoints(peFile));
+#pragma warning restore CA2025
                     },
                 },
                 new()
@@ -435,7 +448,9 @@ public sealed class Compiler(
                     Language = CompiledAssembly.CSharpLanguageId,
                     LazyText = () =>
                     {
+#pragma warning disable CA2025 // Do not pass 'IDisposable' instances into unawaited tasks - LiveCompilationResult owns the peFile and it should be disposed only when outputs are no longer needed
                         return new(getCSharpAsync(peFile));
+#pragma warning restore CA2025
                     },
                 },
                 getAsmOutput(),
@@ -447,7 +462,7 @@ public sealed class Compiler(
                     LazyText = async () =>
                     {
                         string output = tryGetEmitStreams(getExecutableCompilation(), emitOptions.WithoutPdb(), out var emitStreams, out var error)
-                            ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies)
+                            ? await Executor.ExecuteAsync(emitStreams.Value.PeStream, references.Assemblies, FormatScriptReturnValue)
                             : error;
                         return output;
                     },
@@ -470,7 +485,12 @@ public sealed class Compiler(
         {
             Debug.Assert(!additionalSyntaxTrees.IsDefault);
 
-            return new LiveCompilationResult
+            var dispose = () => 
+            {
+                peFile?.Dispose();
+            };
+
+            return new LiveCompilationResult(dispose)
             {
                 CompiledAssembly = result,
                 CompilerAssemblies = compilerAssemblies,
@@ -839,9 +859,11 @@ public sealed class Compiler(
         {
             try
             {
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to PeFileWithPdbStream
                 return getEmitStreams(compilation, emitOptions, out diagnostics) is { } emitStreams
                     ? new(exception: null, new(compilation.AssemblyName ?? "", emitStreams.PeStream), emitStreams.PdbStream)
                     : null;
+#pragma warning restore CA2000
             }
             catch (Exception ex)
             {
@@ -1151,6 +1173,11 @@ public sealed class Compiler(
                 KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
             ]);
     }
+
+    private static string FormatScriptReturnValue(object? value)
+    {
+        return CSharpObjectFormatter.Instance.FormatObject(value, new PrintOptions());
+    }
 }
 
 internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
@@ -1166,7 +1193,9 @@ internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResol
         {
             if (r.Name.Equals(reference.Name, StringComparison.OrdinalIgnoreCase))
             {
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to PEFile
                 var peReader = new PEReader(r.Bytes);
+#pragma warning restore CA2000
                 return new ICSharpCode.Decompiler.Metadata.PEFile(r.FileName, peReader);
             }
         }
@@ -1409,7 +1438,7 @@ internal sealed class DebugInfoProvider : ICSharpCode.Decompiler.DebugInfo.IDebu
 /// This can throw an exception lazily to prevent the whole compilation from failing
 /// which allows inspecting stuff that doesn't depend on the compilation like syntax trees.
 /// </summary>
-internal sealed class PeFileWithPdbStream(ExceptionDispatchInfo? exception, ICSharpCode.Decompiler.Metadata.PEFile? peFile, MemoryStream? pdbStream)
+internal sealed class PeFileWithPdbStream(ExceptionDispatchInfo? exception, ICSharpCode.Decompiler.Metadata.PEFile? peFile, MemoryStream? pdbStream) : IDisposable
 {
     public ICSharpCode.Decompiler.Metadata.PEFile PeFile
     {
@@ -1427,6 +1456,12 @@ internal sealed class PeFileWithPdbStream(ExceptionDispatchInfo? exception, ICSh
             exception?.Throw();
             return pdbStream;
         }
+    }
+
+    public void Dispose()
+    {
+        peFile?.Dispose();
+        pdbStream?.Dispose();
     }
 }
 
@@ -1561,7 +1596,7 @@ internal readonly struct Result<T>
 /// <summary>
 /// Additional data on top of <see cref="CompiledAssembly"/> that are never cached.
 /// </summary>
-internal sealed class LiveCompilationResult
+internal sealed class LiveCompilationResult(Action dispose) : IDisposable
 {
     public required CompiledAssembly CompiledAssembly { get; init; }
 
@@ -1591,4 +1626,6 @@ internal sealed class LiveCompilationResult
     /// Set to <see langword="default"/> if the default reference assemblies were used.
     /// </summary>
     public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
+
+    public void Dispose() => dispose();
 }

@@ -3,7 +3,7 @@ using BlazorMonaco.Editor;
 
 namespace DotNetLab;
 
-public interface ILanguageServices
+public interface ILanguageServices : IDisposable
 {
     CompiledAssembly? CompilerCache { get; }
 

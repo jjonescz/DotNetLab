@@ -1,6 +1,7 @@
 ﻿using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
 
@@ -47,6 +48,41 @@ public sealed class ExecutorTests
             """.ReplaceLineEndings("\n"), runText);
     }
 
+    [TestMethod]
+    [DataRow("\"Hello result\"")]
+    [DataRow("123")]
+    [DataRow("true")]
+    [DataRow("null")]
+    public async Task ScriptReturnValue_PrintsFormattedValue(string value)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        string code = $"""
+            return {value};
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.csx", Text = code }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.AreEqual(string.Format("""
+            Exit code: 0
+            Stdout:
+            {0}
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), $"""
+            {value}
+
+            """.ReplaceLineEndings()), runText);
+    }
+
     [TestMethod, CombinatorialData]
     public async Task AsyncMain_TopLevel(bool script)
     {
@@ -72,13 +108,50 @@ public sealed class ExecutorTests
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         TestContext.WriteLine(runText);
-        Assert.AreEqual("""
-            Exit code: 42
+        var expectedExitCode = script ? 0 : 42;
+        var expectedStdout = script
+            ? $"""
+                Hello.42
+
+                """.ReplaceLineEndings()
+            : "Hello.";
+        Assert.AreEqual(string.Format($$"""
+            Exit code: {{expectedExitCode}}
             Stdout:
-            Hello.
+            {0}
             Stderr:
 
-            """.ReplaceLineEndings("\n"), runText);
+            """.ReplaceLineEndings("\n"), expectedStdout), runText);
+    }
+
+    /// <summary>
+    /// Simulate a scenario that can happen in the app: the user's code is executing
+    /// while the app's code logs some messages (e.g., IDE is logging info about semantic colorization which is happening in parallel).
+    /// The app's logs should not be captured into user's code output.
+    /// </summary>
+    [TestMethod]
+    public async Task AsyncCapture_Logging()
+    {
+        var services = WorkerServices.CreateTest(TestContext, configureServices: static services =>
+        {
+            services.AddLogging(static builder =>
+            {
+                // We only really care about this provider which is used by the background worker.
+                // The app itself shouldn't be logging anything while user's code is executing.
+                builder.AddProvider(new SimpleConsoleLoggerProvider()); 
+            });
+        });
+
+        var logger = services.GetRequiredService<ILogger<ExecutorTests>>();
+
+        var (stdout, stderr) = await Util.CaptureConsoleOutputAsync(async () =>
+        {
+            logger.LogError("log");
+            Console.Write("console");
+        });
+
+        Assert.AreEqual("console", stdout);
+        Assert.AreEqual(string.Empty, stderr);
     }
 
     /// <summary>
@@ -162,7 +235,7 @@ public sealed class ExecutorTests
                at Program.<<Main>$>g__M|0_0()
                at Program.<Main>$(String[] args)
 
-            """), runText);
+            """.ReplaceLineEndings()), runText);
     }
 
     [TestMethod]
@@ -203,6 +276,6 @@ public sealed class ExecutorTests
                at Program.<<Main>$>g__M|0_0()
                at Program.<Main>$(String[] args)
 
-            """), runText);
+            """.ReplaceLineEndings()), runText);
     }
 }

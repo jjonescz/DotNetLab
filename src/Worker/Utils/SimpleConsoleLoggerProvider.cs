@@ -24,12 +24,15 @@ internal sealed class SimpleConsoleLoggerProvider : ILoggerProvider
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            Console.WriteLine(Format(categoryName, logLevel, eventId, state, exception, formatter));
+            var message = Format(categoryName, logLevel, eventId, state, exception, formatter);
 
-            if (exception != null)
+            if (exception == null)
             {
-                Console.WriteLine(exception);
+                Util.WriteConsoleLinesOutsideCapture(message);
+                return;
             }
+
+            Util.WriteConsoleLinesOutsideCapture(message, exception.ToString());
         }
     }
 

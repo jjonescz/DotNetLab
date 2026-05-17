@@ -1,6 +1,4 @@
-﻿using Blazored.LocalStorage;
-
-namespace DotNetLab;
+﻿namespace DotNetLab;
 
 internal static class LocalStorageUtil
 {

@@ -37,16 +37,23 @@ internal sealed class CompilerProxy(
             {
                 var previousIteration = dependencyRegistry.Iteration;
                 var currentlyLoaded = await LoadCompilerAsync(onlyLoadBuiltInCompiler: false);
-
-                if (dependencyRegistry.Iteration == previousIteration)
+                try
                 {
-                    loaded?.Dispose();
-                    loaded = currentlyLoaded;
-                    iteration = dependencyRegistry.Iteration;
+                    if (dependencyRegistry.Iteration == previousIteration)
+                    {
+                        loaded?.Dispose();
+                        loaded = currentlyLoaded;
+                        currentlyLoaded = null;
+                        iteration = dependencyRegistry.Iteration;
+                    }
+                    else
+                    {
+                        Debug.Assert(loaded is not null);
+                    }
                 }
-                else
+                finally
                 {
-                    Debug.Assert(loaded is not null);
+                    currentlyLoaded?.Dispose();
                 }
             }
 
@@ -138,6 +145,8 @@ internal sealed class CompilerProxy(
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
             "Microsoft.CodeAnalysis.VisualBasic",
+            "Microsoft.CodeAnalysis.Scripting",
+            "Microsoft.CodeAnalysis.CSharp.Scripting",
             "Microsoft.CodeAnalysis.Workspaces",
             "Microsoft.CodeAnalysis.CSharp.Workspaces",
             "Microsoft.CodeAnalysis.VisualBasic.Workspaces",
@@ -243,6 +252,13 @@ internal sealed class CompilerProxy(
             {
                 LoadContext.Unload();
             }
+
+            if (LanguageServices.IsValueCreated)
+            {
+                LanguageServices.Value.Dispose();
+            }
+
+            Compiler.Dispose();
         }
     }
 }
@@ -302,13 +318,6 @@ internal sealed class CompilerLoader(
                 if (loadedAssembly.Data.IsDefault)
                 {
                     Debug.Assert(loadedAssembly.Format == AssemblyDataFormat.Dll);
-
-                    if (!File.Exists(loadedAssembly.DiskPath) && TryLoadFromDefault(assemblyName, out loaded))
-                    {
-                        loadedAssemblies.Add(name, loaded);
-                        return loaded;
-                    }
-
                     loaded = base.LoadFromAssemblyPath(loadedAssembly.DiskPath);
                     loadedAssemblies.Add(name, loaded);
                     return loaded;

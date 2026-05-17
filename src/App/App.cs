@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Hosting;
@@ -20,7 +19,7 @@ public partial class App
 
     public static void RegisterServices(IServiceCollection services)
     {
-        services.AddBlazoredLocalStorage();
+        services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddFluentUIComponents();
 
         services.AddScoped<WorkerController>();

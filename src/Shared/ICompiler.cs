@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace DotNetLab;
 
-public interface ICompiler
+public interface ICompiler : IDisposable
 {
     ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,

@@ -14,8 +14,10 @@ internal static class RefAssemblyMetadata
 
         foreach (var assembly in assemblies)
         {
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to the reference
             builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
                 .GetReference(filePath: assembly.FileName, display: assembly.FileName));
+#pragma warning restore CA2000
         }
 
         return builder.DrainToImmutable();

@@ -76,7 +76,15 @@ public static partial class VersionUtil
         return null;
     }
 
-    public static string GetShortCommitHash(string commitHash) => commitHash[..7];
+    public static string GetShortCommitHash(string commitHash)
+    {
+        if (commitHash.Length < 7)
+        {
+            return commitHash;
+        }
+
+        return commitHash[..7];
+    }
 
     public static bool TryParseInformationalVersion(
         string informationalVersion,

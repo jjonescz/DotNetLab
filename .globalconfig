@@ -2,6 +2,10 @@
 dotnet_analyzer_diagnostic.category-ApiDesign.severity = none
 dotnet_analyzer_diagnostic.category-RoslynDiagnosticsMaintainability.severity = suggestion
 
+# CA2000: Dispose objects before losing scope
+dotnet_diagnostic.CA2000.severity = warning
+dotnet_code_quality.CA2000.dispose_ownership_transfer_at_constructor = true
+
 # CA2012: Use ValueTasks correctly
 dotnet_diagnostic.CA2012.severity = warning
 
@@ -9,7 +13,10 @@ dotnet_diagnostic.CA2012.severity = warning
 dotnet_diagnostic.CA2016.severity = warning
 
 # CA2025: Do not pass 'IDisposable' instances into unawaited tasks
-dotnet_diagnostic.CA2025.severity = suggestion
+dotnet_diagnostic.CA2025.severity = warning
+
+# CA2213: Disposable fields should be disposed
+dotnet_diagnostic.CA2213.severity = warning
 
 # IDE0052: Remove unread private members
 dotnet_diagnostic.IDE0052.severity = warning

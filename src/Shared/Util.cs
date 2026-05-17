@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -22,6 +23,8 @@ public static partial class Util
     internal static partial Regex OutputModelUri { get; }
 
     private static readonly AsyncLock ConsoleCaptureLock = new();
+    private static readonly Lock ConsoleCaptureStateLock = new();
+    private static List<string>? consoleCaptureDeferredLines;
 
     extension(AsyncEnumerable)
     {
@@ -201,6 +204,14 @@ public static partial class Util
         }
     }
 
+    extension(ValueTask? task)
+    {
+        public ValueTaskAwaiter GetAwaiter()
+        {
+            return task?.GetAwaiter() ?? new ValueTask().GetAwaiter();
+        }
+    }
+
     public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)
     {
         foreach (var item in items)
@@ -225,23 +236,56 @@ public static partial class Util
         using var stderrWriter = new StringWriter(formatProvider: null);
         using (await ConsoleCaptureLock.LockAsync())
         {
-            var originalOut = Console.Out;
-            var originalError = Console.Error;
-            Console.SetOut(stdoutWriter);
-            Console.SetError(stderrWriter);
+            TextWriter originalOut;
+            TextWriter originalError;
+            lock (ConsoleCaptureStateLock)
+            {
+                originalOut = Console.Out;
+                originalError = Console.Error;
+                consoleCaptureDeferredLines = [];
+                Console.SetOut(stdoutWriter);
+                Console.SetError(stderrWriter);
+            }
             try
             {
                 await action();
             }
             finally
             {
-                Console.SetOut(originalOut);
-                Console.SetError(originalError);
+                lock (ConsoleCaptureStateLock)
+                {
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalError);
+
+                    var deferredLines = consoleCaptureDeferredLines;
+                    consoleCaptureDeferredLines = null;
+                    foreach (var line in deferredLines)
+                    {
+                        Console.WriteLine(line);
+                    }
+                }
             }
         }
         var stdout = stdoutWriter.ToString();
         var stderr = stderrWriter.ToString();
         return (stdout, stderr);
+    }
+
+    public static void WriteConsoleLinesOutsideCapture(params string[] lines)
+    {
+        lock (ConsoleCaptureStateLock)
+        {
+            if (consoleCaptureDeferredLines != null)
+            {
+                consoleCaptureDeferredLines.AddRange(lines);
+                return;
+            }
+
+            foreach (var line in lines)
+            {
+                Console.WriteLine(line);
+            }
+        }
     }
 
     public static int Compare<T, A, R>(T a, T? b, A arg, Func<T, A, R> selector) where R : IComparable
@@ -329,7 +373,14 @@ public static partial class Util
 
     public static string GetAssemblyDiskPath(string assemblyName)
     {
-        return Path.Join(AppContext.BaseDirectory, $"{assemblyName}.dll");
+        var basePath = Path.Join(AppContext.BaseDirectory, $"{assemblyName}.dll");
+        if (File.Exists(basePath))
+        {
+            return basePath;
+        }
+
+        var assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName(assemblyName));
+        return assembly.Location;
     }
 
     public static string GetFirstLine(this string text)

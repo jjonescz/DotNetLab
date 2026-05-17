@@ -577,6 +577,8 @@
 
         unregisterEventListeners?.Invoke();
 
+        await cursorSynchronizer?.DisposeAsync();
+
         foreach (var input in inputs)
         {
             await input.DisposeAsync();
@@ -597,6 +599,8 @@
         }
 
         dotNetObjectReference?.Dispose();
+
+        inputsLock.Dispose();
     }
 
     private async Task OnLocationChanged(string targetSlug)
@@ -1112,6 +1116,7 @@
         {
             return diagnostics
                 .Select(static d => d.ToMarkerData())
+                .Select(static m => m.WithSeverityIcon())
                 .ToList();
         }
     }

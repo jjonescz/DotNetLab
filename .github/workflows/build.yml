@@ -9,8 +9,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +33,50 @@ jobs:
         if: ${{ always() && steps.build.outcome == 'success' }}
         run: dotnet test --no-build --report-trx
 
+      - name: Upload Windows UnitTests binaries
+        if: ${{ matrix.os == 'windows-latest' && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-unit-tests
+          path: |
+            artifacts/bin/UnitTests/debug/
+            !artifacts/bin/UnitTests/debug/TestResults/**
+          if-no-files-found: error
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: logs
+          name: logs-${{ matrix.os }}
           path: |
             *.binlog
+            **/TestResults/*.*
+
+  # Verify it's possible to run tests in WSL (e.g., from Visual Studio),
+  # since some tests (e.g., TemplateCacheTests) are only enabled on Linux.
+  test-windows-built-unit-tests-on-linux:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Download Windows UnitTests binaries
+        uses: actions/download-artifact@v6
+        with:
+          name: windows-unit-tests
+          path: windows-unit-tests
+
+      - name: Test Windows-built UnitTests on Linux
+        run: dotnet windows-unit-tests/DotNetLab.UnitTests.dll --report-trx
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: logs-windows-unit-tests-on-linux
+          path: |
             **/TestResults/*.*

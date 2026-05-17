@@ -23,7 +23,7 @@ internal static class NuGetUtil
 {
     extension(PackageSource packageSource)
     {
-        public bool IsNuGetOrg => packageSource.SourceUri.Host == SimpleNuGetUtil.NuGetApiHost;
+        public bool IsNuGetOrg => SimpleNuGetUtil.IsNuGetOrgHost(packageSource.SourceUri.Host);
     }
 
     private static readonly VersionRange anyVersionRange = VersionRange.Parse("*-*");
@@ -149,11 +149,15 @@ internal readonly record struct PackageKey
 
 internal sealed class NuGetDownloader : ICompilerDependencyResolver
 {
+    private const string NuGetOrgSourceUrl = "https://api.nuget.org/v3/index.json";
+    private static readonly Uri NuGetOrgSourceUri = new(NuGetOrgSourceUrl);
+
     private readonly ILogger<NuGetDownloader> logger;
     private readonly SdkDownloader sdkDownloader;
     private readonly SourceCacheContext cacheContext;
     private readonly ImmutableArray<Lazy<INuGetResourceProvider>> providers;
     private readonly ImmutableArray<SourceRepository> repositories;
+    private readonly Lazy<Task<SourceRepository?>> redirectedNuGetOrgRepository;
     private readonly HttpClient httpClient;
     private readonly HttpZipProvider httpZipProvider;
     private readonly ConcurrentDictionary<DependencyKey, NuGetResults> dependencyCache = new();
@@ -181,7 +185,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         IEnumerable<string> sources =
         [
             // NuGet.org should be tried first because it supports more efficient range requests.
-            "https://api.nuget.org/v3/index.json",
+            NuGetOrgSourceUrl,
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-libraries/nuget/v3/index.json",
         ];
@@ -202,6 +206,74 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
         };
         httpZipProvider = new HttpZipProvider(httpClient);
+        redirectedNuGetOrgRepository = new(TryCreateRedirectedNuGetOrgRepositoryAsync);
+    }
+
+    private async Task<ImmutableArray<SourceRepository>> GetRepositoriesAsync()
+    {
+        var redirectedRepository = await redirectedNuGetOrgRepository.Value;
+        if (redirectedRepository == null)
+        {
+            return repositories;
+        }
+
+        var builder = ImmutableArray.CreateBuilder<SourceRepository>(repositories.Length + 1);
+        for (int index = 0; index < repositories.Length; index++)
+        {
+            builder.Add(repositories[index]);
+            if (index == 0)
+            {
+                builder.Add(redirectedRepository);
+            }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private async Task<SourceRepository?> TryCreateRedirectedNuGetOrgRepositoryAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await httpClient.GetAsync(NuGetOrgSourceUri, HttpCompletionOption.ResponseHeadersRead);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning(
+                    "Cannot discover redirected NuGet.org source because '{Source}' returned {StatusCode}.",
+                    NuGetOrgSourceUri,
+                    response.StatusCode);
+                return null;
+            }
+
+            var redirectedUri = response.RequestMessage?.RequestUri;
+            if (redirectedUri == null || Uri.Compare(
+                redirectedUri,
+                NuGetOrgSourceUri,
+                UriComponents.HttpRequestUrl,
+                UriFormat.SafeUnescaped,
+                StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return null;
+            }
+
+            SimpleNuGetUtil.RegisterNuGetOrgHost(redirectedUri.Host);
+            logger.LogInformation(
+                "Discovered redirected NuGet.org source '{RedirectedSource}' from '{Source}'.",
+                redirectedUri,
+                NuGetOrgSourceUri);
+            return Repository.CreateSource(providers, redirectedUri.ToString());
+        }
+        catch (Exception ex) when (IsSourceFailure(ex))
+        {
+            logger.LogWarning(ex,
+                "Cannot discover redirected NuGet.org source from '{Source}'.",
+                NuGetOrgSourceUri);
+            return null;
+        }
     }
 
     public async Task<NuGetResults> DownloadAsync(
@@ -235,6 +307,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     {
         var errors = new ConcurrentDictionary<NuGetDependency, ConcurrentBag<string>>();
         var dependencyInfos = new ConcurrentDictionary<(Comparable<string, Comparers.String.OrdinalIgnoreCase> Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
+        var sourceRepositories = await GetRepositoriesAsync();
 
         void enqueueDependency(NuGetDependency dependency, VersionRange? range, NuGetDependency forErrors)
         {
@@ -253,15 +326,9 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             // If we have a range, find the best version.
             if (!range.IsExact(out var version))
             {
-                foreach (var repository in repositories)
+                foreach (var repository in sourceRepositories)
                 {
-                    var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
-                    var versions = await findPackageById.GetAllVersionsAsync(
-                        dependency.PackageId,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None);
-                    var best = range.FindBestMatch(versions);
+                    var best = await TryFindBestVersionAsync(repository, dependency.PackageId, range);
                     if (best != null)
                     {
                         version = best;
@@ -278,15 +345,9 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
             SourcePackageDependencyInfo? dep = null;
 
-            foreach (var repository in repositories)
+            foreach (var repository in sourceRepositories)
             {
-                var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
-                dep = await depResource.ResolvePackage(
-                    new PackageIdentity(dependency.PackageId, version),
-                    targetFramework,
-                    cacheContext,
-                    NullLogger.Instance,
-                    CancellationToken.None);
+                dep = await TryResolvePackageAsync(repository, new PackageIdentity(dependency.PackageId, version), targetFramework);
                 if (dep == null)
                 {
                     continue;
@@ -351,7 +412,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             packagesConfig: [],
             preferredVersions: [],
             availablePackages: dependencyValues,
-            packageSources: repositories.Select(static r => r.PackageSource),
+            packageSources: sourceRepositories.Select(static r => r.PackageSource),
             NullLogger.Instance);
         var resolved = new PackageResolver().Resolve(context, CancellationToken.None);
 
@@ -442,6 +503,57 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         }
     }
 
+    private async Task<NuGetVersion?> TryFindBestVersionAsync(SourceRepository repository, string packageId, VersionRange range)
+    {
+        try
+        {
+            var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
+            var versions = await findPackageById.GetAllVersionsAsync(
+                packageId,
+                cacheContext,
+                NullLogger.Instance,
+                CancellationToken.None);
+            return range.FindBestMatch(versions);
+        }
+        catch (Exception ex) when (IsSourceFailure(ex))
+        {
+            LogSourceFailure(repository, ex, $"find versions for package '{packageId}'");
+            return null;
+        }
+    }
+
+    private async Task<SourcePackageDependencyInfo?> TryResolvePackageAsync(SourceRepository repository, PackageIdentity packageIdentity, NuGetFramework framework)
+    {
+        try
+        {
+            var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
+            return await depResource.ResolvePackage(
+                packageIdentity,
+                framework,
+                cacheContext,
+                NullLogger.Instance,
+                CancellationToken.None);
+        }
+        catch (Exception ex) when (IsSourceFailure(ex))
+        {
+            LogSourceFailure(repository, ex, $"resolve package '{packageIdentity}'");
+            return null;
+        }
+    }
+
+    private static bool IsSourceFailure(Exception ex)
+    {
+        return ex is FatalProtocolException or HttpRequestException;
+    }
+
+    private void LogSourceFailure(SourceRepository repository, Exception exception, string operation)
+    {
+        logger.LogWarning(exception,
+            "Failed to {Operation} from NuGet source '{Source}'. Trying the next source.",
+            operation,
+            repository.PackageSource.Source);
+    }
+
     public async Task<PackageDependency> DownloadAsync(
         string packageId,
         VersionRange range,
@@ -456,23 +568,14 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         {
             // NOTE: The first source feed that has a matching version wins. That is to save on HTTP requests.
 
-            // If range "any" is used, demote the nuget.org feed (the first one) which usually doesn't have the latest versions.
-            Debug.Assert(repositories.Length >= 2 && repositories[0].PackageSource.IsNuGetOrg);
+            // If range "any" is used, demote nuget.org-compatible feeds which usually don't have the latest compiler builds.
+            var sourceRepositories = await GetRepositoriesAsync();
             var orderedRepositories = VersionRange.Any.Equals(range)
-                ? [repositories[1], repositories[0], .. repositories.Skip(2)]
-                : repositories;
+                ? [.. sourceRepositories.Where(static repository => !repository.PackageSource.IsNuGetOrg), .. sourceRepositories.Where(static repository => repository.PackageSource.IsNuGetOrg)]
+                : sourceRepositories;
 
             var results = orderedRepositories.ToAsyncEnumerable()
-                .Select(async repository =>
-                {
-                    var findPackageById = await repository.GetResourceAsync<FindPackageByIdResource>();
-                    var versions = await findPackageById.GetAllVersionsAsync(
-                        packageId,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None);
-                    return (repository, Version: range.FindBestMatch(versions));
-                })
+                .Select(async repository => (repository, Version: await TryFindBestVersionAsync(repository, packageId, range)))
                 .Where(t => t.Version != null);
             var result = await results.FirstOrNullAsync() ??
                 throw new InvalidOperationException($"Package '{packageId}@{range.OriginalString}' not found.");
@@ -495,19 +598,13 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         {
             var repos = repository is { } r
                 ? AsyncEnumerable.Create(r)
-                : repositories.ToAsyncEnumerable();
+                : (await GetRepositoriesAsync()).ToAsyncEnumerable();
 
             return await repos
                 .Concat(createFallbackRepositoryAsync())
                 .SelectNonNull(async Task<NuGetDownloadablePackageResult?> (repository) =>
                 {
-                    var depResource = await repository.GetResourceAsync<DependencyInfoResource>();
-                    var dep = await depResource.ResolvePackage(
-                        packageIdentity,
-                        NuGetFramework.AnyFramework,
-                        cacheContext,
-                        NullLogger.Instance,
-                        CancellationToken.None);
+                    var dep = await TryResolvePackageAsync(repository, packageIdentity, NuGetFramework.AnyFramework);
                     return Download(dep);
                 })
                 .FirstOrDefaultAsync()
@@ -638,8 +735,7 @@ internal sealed class NuGetDownloadablePackageResult
             await zipFactory.Value is { } zip)
         {
             var nuspecEntry = zip.Directory.Entries
-                .Where(e => PackageHelper.IsManifest(e.GetName()))
-                .FirstOrDefault()
+                .FirstOrDefault(e => PackageHelper.IsManifest(e.GetName()))
                 ?? throw new InvalidOperationException($"Nuspec file not found in the package: {DependencyInfo.DownloadUri}");
             var nuspecBytes = await zip.Reader.ReadFileDataAsync(zip.Directory, nuspecEntry);
             return new NuspecReader(new MemoryStream(nuspecBytes));
@@ -647,7 +743,8 @@ internal sealed class NuGetDownloadablePackageResult
 
         var nupkgStream = await NupkgStream.Value;
         nupkgStream.Position = 0;
-        return new PackageArchiveReader(nupkgStream, leaveStreamOpen: true).NuspecReader;
+        using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
+        return reader.NuspecReader;
     }
 }
 
@@ -750,7 +847,7 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
 
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
     {
-        var reader = new VirtualPackageReader(allFiles);
+        using var reader = new VirtualPackageReader(allFiles);
         var group = reader.GetLibItems()
             .GetNearest(TargetFramework);
 
@@ -820,7 +917,7 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
             throw new NotImplementedException();
         }
 
-        public override Task<PrimarySignature> GetPrimarySignatureAsync(CancellationToken token)
+        public override Task<PrimarySignature?> GetPrimarySignatureAsync(CancellationToken token)
         {
             throw new NotImplementedException();
         }
@@ -923,7 +1020,9 @@ internal sealed class CustomHttpHandlerResourceV3Provider : ResourceProvider
     {
         if (source.PackageSource.IsHttp)
         {
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to HttpHandlerResourceV3
             var messageHandler = new ServerWarningLogHandler(corsClientHandler);
+#pragma warning restore CA2000
             return new(true, new HttpHandlerResourceV3(corsClientHandler, messageHandler));
         }
 
@@ -946,7 +1045,8 @@ internal sealed class CorsClientHandler : LoggingHttpClientHandler
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true)
+        if (request.RequestUri?.AbsolutePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase) == true &&
+            !SimpleNuGetUtil.IsNuGetOrgHost(request.RequestUri.Host))
         {
             request.RequestUri = request.RequestUri.WithCorsProxy();
         }

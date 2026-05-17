@@ -11,10 +11,12 @@ internal sealed class LanguageServicesClient(
     IJSRuntime jsRuntime,
     WorkerController worker,
     BlazorMonacoInterop blazorMonacoInterop)
+    : IAsyncDisposable
 {
     private readonly LanguageSelector cSharpLanguageSelector = new(CompiledAssembly.CSharpLanguageId);
     private readonly LanguageSelector outputLanguageSelector = new(CompiledAssembly.OutputLanguageId);
     private IAsyncDisposable? completionProvider, semanticTokensProvider, codeActionProvider, hoverProvider, signatureHelpProvider;
+    private IAsyncDisposable? outputSemanticTokensProvider, outputDefinitionProvider;
     private int outputRegistered;
     private string? currentModelUrl;
     private DebounceInfo completionDebounce = new(new CancellationTokenSource());
@@ -25,6 +27,15 @@ internal sealed class LanguageServicesClient(
     public bool Enabled => completionProvider != null;
 
     public (string ModelUri, CompiledFileOutputMetadata? Metadata)? CurrentMetadata { get; set; }
+
+    public async ValueTask DisposeAsync()
+    {
+        await UnregisterAsync();
+        await outputSemanticTokensProvider?.DisposeAsync();
+        await outputDefinitionProvider?.DisposeAsync();
+        completionDebounce.Dispose();
+        diagnosticsDebounce.Dispose();
+    }
 
     public bool TryGetOutputToOutputMapping(CompiledFileOutputMetadata metadata, out DocumentMapping result)
     {
@@ -49,7 +60,10 @@ internal sealed class LanguageServicesClient(
     {
         TimeSpan wait = TimeSpan.FromSeconds(1) - (DateTime.UtcNow - info.Timestamp);
         info.CancellationTokenSource.Cancel();
+        info.CancellationTokenSource.Dispose();
+#pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to DebounceInfo
         info = new(CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
+#pragma warning restore CA2000
 
         if (skipDebounce)
         {
@@ -101,7 +115,7 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
-        await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(outputLanguageSelector, new(loggerFactory)
+        outputSemanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(outputLanguageSelector, new(loggerFactory)
         {
             Legend = new SemanticTokensLegend
             {
@@ -123,7 +137,7 @@ internal sealed class LanguageServicesClient(
             RegisterRangeProvider = false,
         });
 
-        await blazorMonacoInterop.RegisterDefinitionProviderAsync(outputLanguageSelector, new(loggerFactory)
+        outputDefinitionProvider = await blazorMonacoInterop.RegisterDefinitionProviderAsync(outputLanguageSelector, new(loggerFactory)
         {
             ProvideDefinition = (modelUri, offset) =>
             {
@@ -316,7 +330,9 @@ internal sealed class LanguageServicesClient(
             await DebounceAsync(ref diagnosticsDebounce, (worker, jsRuntime, currentModelUrl), 0, static async (args, cancellationToken) =>
             {
                 var (worker, jsRuntime, currentModelUrl) = args;
-                var markers = (await worker.GetDiagnosticsAsync(currentModelUrl)).ToList();
+                var markers = (await worker.GetDiagnosticsAsync(currentModelUrl))
+                    .Select(static m => m.WithSeverityIcon())
+                    .ToList();
                 var model = await BlazorMonaco.Editor.Global.GetModel(jsRuntime, currentModelUrl);
                 cancellationToken.ThrowIfCancellationRequested();
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers);
@@ -336,8 +352,13 @@ internal sealed class LanguageServicesClient(
     }
 }
 
-internal readonly struct DebounceInfo(CancellationTokenSource cts)
+internal readonly struct DebounceInfo(CancellationTokenSource cts) : IDisposable
 {
     public CancellationTokenSource CancellationTokenSource { get; } = cts;
     public DateTime Timestamp { get; } = DateTime.UtcNow;
+
+    public void Dispose()
+    {
+        CancellationTokenSource.Dispose();
+    }
 }

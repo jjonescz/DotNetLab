@@ -54,6 +54,7 @@ internal sealed class WorkerController : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await DisposeWorkerAsync();
+        workerGuard.Dispose();
     }
 
     [SupportedOSPlatform("browser")]

@@ -11,6 +11,7 @@
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <UseArtifactsOutput>true</UseArtifactsOutput>
+    <Deterministic>true</Deterministic>
     <ArtifactsPath Condition="'$(FileBasedProgram)' != 'true'">$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
 
@@ -41,8 +42,21 @@
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);WASM0001</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(CI)' == ''">
+    <EnableSourceLink>false</EnableSourceLink>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Features>$(Features);use-global-cache</Features>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Net.Compilers.Toolset">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset"
+                      Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'"
+                      GeneratePathProperty="true">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
