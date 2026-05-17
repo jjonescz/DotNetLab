@@ -145,6 +145,8 @@ internal sealed class CompilerProxy(
             ..CompilerInfo.Roslyn.AssemblyNames,
             ..CompilerInfo.Razor.AssemblyNames,
             "Microsoft.CodeAnalysis.VisualBasic",
+            "Microsoft.CodeAnalysis.Scripting",
+            "Microsoft.CodeAnalysis.CSharp.Scripting",
             "Microsoft.CodeAnalysis.Workspaces",
             "Microsoft.CodeAnalysis.CSharp.Workspaces",
             "Microsoft.CodeAnalysis.VisualBasic.Workspaces",
