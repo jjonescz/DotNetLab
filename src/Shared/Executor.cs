@@ -114,7 +114,7 @@ public static class Executor
         }
 
         return new(
-            ExitCode: @return is int e ? e : 0,
+            ExitCode: !isScript && @return is int e ? e : 0,
             ReturnValue: @return,
             IsScriptReturnValue: isScript && hasReturnValue);
 

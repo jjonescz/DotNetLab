@@ -48,12 +48,15 @@ public sealed class ExecutorTests
     }
 
     [TestMethod]
-    public async Task ScriptReturnValue_PrintsFormattedValue()
+    [DataRow("\"Hello result\"")]
+    [DataRow("123")]
+    [DataRow("true")]
+    public async Task ScriptReturnValue_PrintsFormattedValue(string value)
     {
         var services = WorkerServices.CreateTest(TestContext);
 
-        string code = /* lang=C# */ """
-            return "Hello result";
+        string code = $"""
+            return {value};
             """;
 
         var compiled = await services.GetRequiredService<CompilerProxy>()
@@ -66,14 +69,16 @@ public sealed class ExecutorTests
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         TestContext.WriteLine(runText);
-        Assert.AreEqual("""
+        Assert.AreEqual(string.Format("""
             Exit code: 0
             Stdout:
-            "Hello result"
-
+            {0}
             Stderr:
 
-            """.ReplaceLineEndings("\n"), runText);
+            """.ReplaceLineEndings("\n"), $"""
+            {value}
+
+            """), runText);
     }
 
     [TestMethod, CombinatorialData]
@@ -101,14 +106,20 @@ public sealed class ExecutorTests
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
         TestContext.WriteLine(runText);
-        var expectedStdout = script ? "Hello.42\n" : "Hello.";
-        Assert.AreEqual($$"""
-            Exit code: 42
+        var expectedExitCode = script ? 0 : 42;
+        var expectedStdout = script
+            ? $"""
+                Hello.42
+
+                """
+            : "Hello.";
+        Assert.AreEqual(string.Format($$"""
+            Exit code: {{expectedExitCode}}
             Stdout:
-            {{expectedStdout}}
+            {0}
             Stderr:
 
-            """.ReplaceLineEndings("\n"), runText);
+            """.ReplaceLineEndings("\n"), expectedStdout), runText);
     }
 
     /// <summary>
