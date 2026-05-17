@@ -1,6 +1,7 @@
 ﻿using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
 
@@ -120,6 +121,36 @@ public sealed class ExecutorTests
             Stderr:
 
             """.ReplaceLineEndings("\n"), expectedStdout), runText);
+    }
+
+    /// <summary>
+    /// Simulate a scenario that can happen in the app: the user's code is executing
+    /// while the app's code logs some messages (e.g., IDE is logging info about semantic colorization which is happening in parallel).
+    /// The app's logs should not be captured into user's code output.
+    /// </summary>
+    [TestMethod]
+    public async Task AsyncCapture_Logging()
+    {
+        var services = WorkerServices.CreateTest(TestContext, configureServices: static services =>
+        {
+            services.AddLogging(static builder =>
+            {
+                // We only really care about this provider which is used by the background worker.
+                // The app itself shouldn't be logging anything while user's code is executing.
+                builder.AddProvider(new SimpleConsoleLoggerProvider()); 
+            });
+        });
+
+        var logger = services.GetRequiredService<ILogger<ExecutorTests>>();
+
+        var (stdout, stderr) = await Util.CaptureConsoleOutputAsync(async () =>
+        {
+            logger.LogError("log");
+            Console.Write("console");
+        });
+
+        Assert.AreEqual("console", stdout);
+        Assert.AreEqual(string.Empty, stderr);
     }
 
     /// <summary>

@@ -23,6 +23,8 @@ public static partial class Util
     internal static partial Regex OutputModelUri { get; }
 
     private static readonly AsyncLock ConsoleCaptureLock = new();
+    private static readonly Lock ConsoleCaptureStateLock = new();
+    private static List<string>? consoleCaptureDeferredLines;
 
     extension(AsyncEnumerable)
     {
@@ -234,23 +236,56 @@ public static partial class Util
         using var stderrWriter = new StringWriter(formatProvider: null);
         using (await ConsoleCaptureLock.LockAsync())
         {
-            var originalOut = Console.Out;
-            var originalError = Console.Error;
-            Console.SetOut(stdoutWriter);
-            Console.SetError(stderrWriter);
+            TextWriter originalOut;
+            TextWriter originalError;
+            lock (ConsoleCaptureStateLock)
+            {
+                originalOut = Console.Out;
+                originalError = Console.Error;
+                consoleCaptureDeferredLines = [];
+                Console.SetOut(stdoutWriter);
+                Console.SetError(stderrWriter);
+            }
             try
             {
                 await action();
             }
             finally
             {
-                Console.SetOut(originalOut);
-                Console.SetError(originalError);
+                lock (ConsoleCaptureStateLock)
+                {
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalError);
+
+                    var deferredLines = consoleCaptureDeferredLines;
+                    consoleCaptureDeferredLines = null;
+                    foreach (var line in deferredLines)
+                    {
+                        Console.WriteLine(line);
+                    }
+                }
             }
         }
         var stdout = stdoutWriter.ToString();
         var stderr = stderrWriter.ToString();
         return (stdout, stderr);
+    }
+
+    public static void WriteConsoleLinesOutsideCapture(params string[] lines)
+    {
+        lock (ConsoleCaptureStateLock)
+        {
+            if (consoleCaptureDeferredLines != null)
+            {
+                consoleCaptureDeferredLines.AddRange(lines);
+                return;
+            }
+
+            foreach (var line in lines)
+            {
+                Console.WriteLine(line);
+            }
+        }
     }
 
     public static int Compare<T, A, R>(T a, T? b, A arg, Func<T, A, R> selector) where R : IComparable
