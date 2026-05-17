@@ -1,0 +1,5 @@
+{
+    "csharp.debug.sourceFileMap": {
+        "/_/": "${workspaceFolder}/"
+    }
+}
