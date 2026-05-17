@@ -255,6 +255,8 @@ internal sealed class CompilerProxy(
             {
                 LanguageServices.Value.Dispose();
             }
+
+            Compiler.Dispose();
         }
     }
 }

@@ -73,6 +73,11 @@ public sealed class Compiler(
         UsingStatement = false,
     };
 
+    public void Dispose()
+    {
+        LastResult?.Output.Dispose();
+    }
+
     public async ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
         ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
