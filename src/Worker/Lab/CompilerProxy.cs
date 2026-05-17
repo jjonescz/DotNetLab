@@ -250,6 +250,11 @@ internal sealed class CompilerProxy(
             {
                 LoadContext.Unload();
             }
+
+            if (LanguageServices.IsValueCreated)
+            {
+                LanguageServices.Value.Dispose();
+            }
         }
     }
 }

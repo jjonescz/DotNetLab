@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace DotNetLab;
 
-internal sealed class LanguageServices : ILanguageServices, IDisposable
+internal sealed class LanguageServices : ILanguageServices
 {
     private readonly ILogger<LanguageServices> logger;
     private readonly Compiler compiler;

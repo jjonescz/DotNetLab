@@ -33,6 +33,8 @@ internal sealed class LanguageServicesClient(
         await UnregisterAsync();
         await outputSemanticTokensProvider?.DisposeAsync();
         await outputDefinitionProvider?.DisposeAsync();
+        completionDebounce.Dispose();
+        diagnosticsDebounce.Dispose();
     }
 
     public bool TryGetOutputToOutputMapping(CompiledFileOutputMetadata metadata, out DocumentMapping result)
@@ -350,8 +352,13 @@ internal sealed class LanguageServicesClient(
     }
 }
 
-internal readonly struct DebounceInfo(CancellationTokenSource cts)
+internal readonly struct DebounceInfo(CancellationTokenSource cts) : IDisposable
 {
     public CancellationTokenSource CancellationTokenSource { get; } = cts;
     public DateTime Timestamp { get; } = DateTime.UtcNow;
+
+    public void Dispose()
+    {
+        CancellationTokenSource.Dispose();
+    }
 }
