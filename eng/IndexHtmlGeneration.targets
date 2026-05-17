@@ -6,11 +6,18 @@
     <IndexHtmlOutputPath Condition="'$(IndexHtmlOutputPath)' == ''">$(MSBuildProjectDirectory)\$(IndexHtmlOutputRelativePath)</IndexHtmlOutputPath>
     <IndexHtmlScriptPath Condition="'$(IndexHtmlScriptPath)' == ''">_framework/blazor.js</IndexHtmlScriptPath>
     <IndexHtmlGoatcounterPath Condition="'$(IndexHtmlGoatcounterPath)' == ''">/</IndexHtmlGoatcounterPath>
+    <_IndexHtmlInputsStamp>$(IndexHtmlScriptPath)
+$(IndexHtmlHead)
+$(AssemblyName)
+$(IndexHtmlGoatcounterPath)
+$(IndexHtmlLoadingInfoFooter)
+$(IndexHtmlScripts)</_IndexHtmlInputsStamp>
+    <_IndexHtmlInputsHash>$([MSBuild]::StableStringHash(`$(_IndexHtmlInputsStamp)`))</_IndexHtmlInputsHash>
     <!--
       Synthetic input file to make property changes participate in up-to-date checks.
       Don't use `$(IntermediateOutputPath)` as it's not defined at this point (it's defined in SDK targets which are imported afterwards).
     -->
-    <IndexHtmlInputsPath>$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.inputs.stamp</IndexHtmlInputsPath>
+    <IndexHtmlInputsPath>$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.$(_IndexHtmlInputsHash).inputs.stamp</IndexHtmlInputsPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,17 +40,17 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="PrepareIndexHtmlInputsStamp">
+  <Target Name="PrepareIndexHtmlInputsStamp" Inputs="$(MSBuildProjectFullPath);$(MSBuildThisFileFullPath)" Outputs="$(IndexHtmlInputsPath)">
+    <ItemGroup>
+      <_OldIndexHtmlInputsStamp Include="$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.inputs.stamp" />
+      <_OldIndexHtmlInputsStamp Include="$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.*.inputs.stamp" Exclude="$(IndexHtmlInputsPath)" />
+    </ItemGroup>
+
+    <Delete Files="@(_OldIndexHtmlInputsStamp)" />
     <WriteLinesToFile
       File="$(IndexHtmlInputsPath)"
-      Lines="$(IndexHtmlScriptPath)
-$(IndexHtmlHead)
-$(AssemblyName)
-$(IndexHtmlGoatcounterPath)
-$(IndexHtmlLoadingInfoFooter)
-$(IndexHtmlScripts)"
-      Overwrite="true"
-      WriteOnlyWhenDifferent="true" />
+      Lines="$(_IndexHtmlInputsStamp)"
+      Overwrite="true" />
   </Target>
 
   <Target Name="GenerateIndexHtml" DependsOnTargets="PrepareIndexHtmlInputsStamp" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath);$(IndexHtmlInputsPath)" Outputs="$(IndexHtmlOutputPath)">
