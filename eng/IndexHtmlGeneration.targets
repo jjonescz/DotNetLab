@@ -41,13 +41,14 @@ $(IndexHtmlScripts)</_IndexHtmlInputsStamp>
     </ItemGroup>
   </Target>
 
-  <Target Name="GenerateIndexHtml" BeforeTargets="PreBuildEvent" Inputs="$(IndexHtmlTemplatePath);$(MSBuildThisFileFullPath)" Outputs="$(IndexHtmlOutputPath);$(IndexHtmlInputsPath)">
+  <Target Name="GenerateIndexHtml" BeforeTargets="ResolveProjectStaticWebAssets;PreBuildEvent" Inputs="$(IndexHtmlTemplatePath);$(MSBuildThisFileFullPath)" Outputs="$(IndexHtmlOutputPath);$(IndexHtmlInputsPath)">
     <ItemGroup>
       <_OldIndexHtmlInputsStamp Include="$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.inputs.stamp" />
       <_OldIndexHtmlInputsStamp Include="$(ArtifactsPath)\obj\$(ArtifactsProjectName)\index.html.*.inputs.stamp" Exclude="$(IndexHtmlInputsPath)" />
     </ItemGroup>
 
     <Delete Files="@(_OldIndexHtmlInputsStamp)" />
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(IndexHtmlOutputPath)'))" />
     <WriteLinesToFile
       File="$(IndexHtmlOutputPath)"
       Lines="$([System.IO.File]::ReadAllText('$(IndexHtmlTemplatePath)')

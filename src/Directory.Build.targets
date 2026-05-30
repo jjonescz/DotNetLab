@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <!-- Allow self-contained publishing. -->
-    <RuntimeIdentifiers Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == ''">win-x64;android-arm64;android-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
 </Project>
