@@ -321,7 +321,7 @@
             {
                 <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
                     JIT disassembler is not available on this platform
-                    (it's only available in the <a href="@App.DesktopAppLink" target="_blank">desktop app</a>).<br/>
+                    (it's only available in the <a href="@App.DesktopAppLink" target="_blank" rel="noopener noreferrer">desktop app</a>).<br/>
                     Displaying cached output@(compiled?.CacheInfo?.Timestamp is { } cacheTimestamp ? $" ({FormatCacheTimestamp(cacheTimestamp)})" : "").
                 </FluentMessageBar>
             }

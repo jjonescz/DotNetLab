@@ -413,7 +413,7 @@
                         <FluentIcon Color="Color.Neutral" Value="new Icons.Regular.Size20.ArrowClockwise()" />
                     </Icon>
                     <Header>
-                        <h4 class="unset">.NET Lab (<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank">GitHub</a>)</h4>
+                        <h4 class="unset">.NET Lab (<a href="@VersionUtil.CurrentCommit.RepoUrl" target="_blank" rel="noopener noreferrer">GitHub</a>)</h4>
                     </Header>
                     <Description>
                         <CommitHashView Enabled="!modalHidden" Commit="VersionUtil.CurrentCommit" SaveKey="commitInfo" TopLevelDateAndVersion />
@@ -433,7 +433,7 @@
                         <FluentStack Style="margin-top: 0.5em" HorizontalAlignment="HorizontalAlignment.Stretch">
                             <FluentButton Appearance="Appearance.Accent" Style="width: 100%" OnClick="() => LoadUpdateAsync(loadUpdate)"
                                           IconStart="@(new Icons.Regular.Size16.ArrowClockwise())">Reload</FluentButton>
-                            <FluentAnchor Href="@VersionUtil.CurrentCommit.ReleasesUrl" Target="_blank" Style="width: 100%"
+                            <FluentAnchor Href="@VersionUtil.CurrentCommit.ReleasesUrl" Target="_blank" Rel="noopener noreferrer" Style="width: 100%"
                                           IconStart="@(new Icons.Regular.Size16.DocumentBulletList())">Release notes</FluentAnchor>
                         </FluentStack>
                     </FluentMessageBar>
@@ -452,7 +452,7 @@
                 @* Desktop app link *@
                 @if (HostEnvironment.DesktopAppLink is { } desktopAppLink)
                 {
-                    <a href="@desktopAppLink.Url" target="_blank" style="text-decoration: none"
+                    <a href="@desktopAppLink.Url" target="_blank" rel="noopener noreferrer" style="text-decoration: none"
                        @onclick="desktopAppLink.OnClick == null ? null! : desktopAppLink.OnClick"
                        @onclick:preventDefault="desktopAppLink.OnClick != null">
                         <SettingsButton Class="settings-nowarp">

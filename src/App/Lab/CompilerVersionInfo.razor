@@ -4,7 +4,7 @@
         Using
         @if (Info.VersionLink != null)
         {
-            <a href="@Info.VersionLink" target="_blank">@(Info.Version)</a>
+            <a href="@Info.VersionLink" target="_blank" rel="noopener noreferrer">@(Info.Version)</a>
         }
         else
         {
@@ -17,7 +17,7 @@
         {
             @(", ")
             <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
-               target="_blank">@Info.AdditionalLink.Text</a>
+               target="_blank" rel="noopener noreferrer">@Info.AdditionalLink.Text</a>
         }
         @("),")
         <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.

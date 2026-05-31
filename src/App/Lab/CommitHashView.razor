@@ -9,7 +9,7 @@
     @(" / ")
 }
 
-<a href="@Commit.Url" target="_blank"
+<a href="@Commit.Url" target="_blank" rel="noopener noreferrer"
    title="@GetTitle()">@Commit.ShortHash</a>
 @if (TopLevelDateAndVersion && commitInfo != null)
 {
@@ -22,7 +22,7 @@
 
         <a title="Click to see release notes"
            href="@Commit.ReleasesUrl"
-           target="_blank">@commitInfo.Version</a>
+           target="_blank" rel="noopener noreferrer">@commitInfo.Version</a>
     }
 }
 
