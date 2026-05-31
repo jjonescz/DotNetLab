@@ -80,3 +80,25 @@ jobs:
           name: logs-windows-unit-tests-on-linux
           path: |
             **/TestResults/*.*
+
+  # When using dotnet-watch, we turn off toolset compilers,
+  # so make sure the project is buildable without them.
+  build-without-toolset-compilers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Build
+        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -p:DotNetLabUseCompilerToolset=false -bl
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: logs-build-without-toolset-compilers
+          path: |
+            *.binlog
