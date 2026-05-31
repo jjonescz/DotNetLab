@@ -1,7 +1,6 @@
 using DotNetLab;
 using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.JSInterop;
 using System.Runtime.Versioning;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -44,6 +43,8 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
 
     public bool SupportsWebWorkers => true;
     public bool SupportsThreads => false;
+
+    public ValueTask<bool> HasHardwareKeyboardAsync() => new(true);
 }
 
 file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer

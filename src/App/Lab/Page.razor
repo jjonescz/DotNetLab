@@ -564,7 +564,10 @@
 
         await LoadStateFromUrlAsync();
 
-        await inputEditor.Focus();
+        if (await HostEnvironment.HasHardwareKeyboardAsync())
+        {
+            await inputEditor.Focus();
+        }
 
         if (!editorInitialized.TrySetResult())
         {
@@ -913,7 +916,10 @@
 
         await SaveStateToUrlAsync();
 
-        await inputEditor.Focus();
+        if (await HostEnvironment.HasHardwareKeyboardAsync())
+        {
+            await inputEditor.Focus();
+        }
     }
 
     internal async Task SelectConfigurationAsync()
@@ -1022,7 +1028,11 @@
                 var viewState = await inputEditor.SaveViewStateAsync(module);
                 await BlazorMonacoInterop.SetModelValueUndoable(inputEditor.Id, input.Model.Uri, formattedCode);
                 await inputEditor.RestoreViewStateAsync(viewState, module);
-                await inputEditor.Focus();
+
+                if (await HostEnvironment.HasHardwareKeyboardAsync())
+                {
+                    await inputEditor.Focus();
+                }
             }
         }
         catch (Exception ex)
@@ -1136,14 +1146,20 @@
         }
     }
 
-    private Task OnInputTabClickAsync()
+    private async Task OnInputTabClickAsync()
     {
-        return inputEditor.Focus();
+        if (await HostEnvironment.HasHardwareKeyboardAsync())
+        {
+            await inputEditor.Focus();
+        }
     }
 
-    private Task OnOutputTabClickAsync()
+    private async Task OnOutputTabClickAsync()
     {
-        return outputEditor.Focus();
+        if (await HostEnvironment.HasHardwareKeyboardAsync())
+        {
+            await outputEditor.Focus();
+        }
     }
 
     private async Task UpdateOutputDisplayAsync()

@@ -61,6 +61,8 @@ public interface IAppHostEnvironment
     bool SupportsWebWorkers { get; }
     bool SupportsThreads { get; }
 
+    ValueTask<bool> HasHardwareKeyboardAsync();
+
     sealed bool IsDevelopment => Environments.Development.Equals(Environment, StringComparison.OrdinalIgnoreCase);
 }
 
@@ -69,5 +71,5 @@ public sealed record DesktopAppLink
     public required string Url { get; init; }
     public required string Title { get; init; }
     public required string Description { get; init; }
-    public Func<IJSRuntime, Task>? OnClick { get; init; }
+    public Action? OnClick { get; init; }
 }

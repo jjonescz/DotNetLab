@@ -453,7 +453,7 @@
                 @if (HostEnvironment.DesktopAppLink is { } desktopAppLink)
                 {
                     <a href="@desktopAppLink.Url" target="_blank" style="text-decoration: none"
-                       @onclick="desktopAppLink.OnClick == null ? null! : () => desktopAppLink.OnClick(JSRuntime)"
+                       @onclick="desktopAppLink.OnClick == null ? null! : desktopAppLink.OnClick"
                        @onclick:preventDefault="desktopAppLink.OnClick != null">
                         <SettingsButton Class="settings-nowarp">
                             <Icon>
