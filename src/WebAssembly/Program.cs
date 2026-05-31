@@ -36,8 +36,8 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
 
     public DesktopAppLink DesktopAppLink { get; } = new()
     {
-        Url = App.DesktopAppLink,
-        Title = "Desktop App",
+        Url = "https://github.com/jjonescz/DotNetLab/blob/main/docs/native-apps.md",
+        Title = "Native apps available",
         Description = "Faster version of .NET Lab running on full .NET.",
     };
 

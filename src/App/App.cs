@@ -2,7 +2,6 @@ using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Hosting;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Microsoft.JSInterop;
 
 namespace DotNetLab;
 

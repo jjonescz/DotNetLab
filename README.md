@@ -4,11 +4,13 @@
 
 C# and Razor compiler playground.
 <br/>In the browser via Blazor WebAssembly. https://lab.razor.fyi/
-<br/>Desktop app on [Windows Store](https://apps.microsoft.com/detail/9PCPMM329DZT) (full .NET, best performance).
+<br/>Native app (full .NET, best performance) on [Windows Store](https://apps.microsoft.com/detail/9PCPMM329DZT)
+and [Android Play Store](https://play.google.com/store/apps/details?id=me.janjones.dotnetlab).
 
 <table><tr>
 <td><a href="https://github.com/jjonescz/DotNetLab"><img src="./src/App/wwwroot/favicon.png" height="40" alt=".NET Lab" /></a></td>
 <td><a href="https://apps.microsoft.com/detail/9PCPMM329DZT"><img src="./docs/badges/windows.png" width="150" alt="Windows app" /></a></td>
+<td><a href="https://play.google.com/store/apps/details?id=me.janjones.dotnetlab"><img src="./docs/badges/android.png" width="150" alt="Android app" /></a></td>
 <td><a href="https://lab.razor.fyi/"><img src="./docs/badges/web.png" width="150" alt="Web app" /></a></td>
 </tr></table>
 
