@@ -4742,7 +4742,7 @@
                                         .TypeParameters = [1]
                                           PETypeParameterSymbol "T"
                                             .Name = "T"
-                                            .MetadataToken = 704643636
+                                            .MetadataToken = 704643640
                                             .ContainingSymbol = PENamedTypeSymbolGeneric "IEnumerable"
                                             .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                             .AllowsRefLikeType = true
@@ -4788,7 +4788,7 @@
                                             .IsDefinition = true
                                             .CanBeReferencedByName = true
                                         .ExtendedSpecialType = ExtendedSpecialType
-                                        .MetadataToken = 33555312
+                                        .MetadataToken = 33555316
                                         .ConstructedFrom = PENamedTypeSymbolGeneric "IEnumerable"
                                         .ContainingSymbol = PENestedNamespaceSymbol "Generic"
                                         .DeclaredAccessibility = Public
@@ -4882,7 +4882,7 @@
                                         .CanBeReferencedByName = true
                                         .IsAbstract = true
                                         .IsDefinition = true
-                                        .MetadataToken = 33555312
+                                        .MetadataToken = 33555316
                                         .MetadataName = "IEnumerable`1"
                                         .Name = "IEnumerable"
                                         .Language = "C#"
@@ -4904,14 +4904,14 @@
                                             .CanBeReferencedByName = true
                                             .IsAbstract = true
                                             .IsDefinition = true
-                                            .MetadataToken = 33555294
+                                            .MetadataToken = 33555298
                                             .MetadataName = "IEnumerable"
                                             .Name = "IEnumerable"
                                             .Language = "C#"
                                             .Kind = NamedType
                                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "IEnumerable"
                                             .ExtendedSpecialType = ExtendedSpecialType
-                                            .MetadataToken = 33555294
+                                            .MetadataToken = 33555298
                                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "IEnumerable"
                                             .ContainingSymbol = PENestedNamespaceSymbol "Collections"
                                             .DeclaredAccessibility = Public
@@ -4948,7 +4948,7 @@
                                             .IsType = true
                                             .CanBeReferencedByName = true
                                             .IsDefinition = true
-                                            .MetadataToken = 704643636
+                                            .MetadataToken = 704643640
                                             .MetadataName = "T"
                                             .Name = "T"
                                             .Language = "C#"
@@ -6034,7 +6034,7 @@
                                                       .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                     .IsDefinition = true
                                                     .CanBeReferencedByName = true
-                                                .MetadataToken = 33555115
+                                                .MetadataToken = 33555116
                                                 .ConstructedFrom = PENamedTypeSymbolGeneric "IAdditionOperators"
                                                 .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                 .DeclaredAccessibility = Public
@@ -6113,7 +6113,7 @@
                                                 .CanBeReferencedByName = true
                                                 .IsAbstract = true
                                                 .IsDefinition = true
-                                                .MetadataToken = 33555115
+                                                .MetadataToken = 33555116
                                                 .MetadataName = "IAdditionOperators`3"
                                                 .Name = "IAdditionOperators"
                                                 .Language = "C#"
@@ -6258,7 +6258,7 @@
                                                       .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                     .IsDefinition = true
                                                     .CanBeReferencedByName = true
-                                                .MetadataToken = 33555116
+                                                .MetadataToken = 33555117
                                                 .ConstructedFrom = PENamedTypeSymbolGeneric "IAdditiveIdentity"
                                                 .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                 .DeclaredAccessibility = Public
@@ -6318,7 +6318,7 @@
                                                 .CanBeReferencedByName = true
                                                 .IsAbstract = true
                                                 .IsDefinition = true
-                                                .MetadataToken = 33555116
+                                                .MetadataToken = 33555117
                                                 .MetadataName = "IAdditiveIdentity`2"
                                                 .Name = "IAdditiveIdentity"
                                                 .Language = "C#"
@@ -6421,7 +6421,7 @@
                                                       .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                     .IsDefinition = true
                                                     .CanBeReferencedByName = true
-                                                .MetadataToken = 33555118
+                                                .MetadataToken = 33555119
                                                 .ConstructedFrom = PENamedTypeSymbolGeneric "IBinaryInteger"
                                                 .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                 .DeclaredAccessibility = Public
@@ -6479,7 +6479,7 @@
                                                 .CanBeReferencedByName = true
                                                 .IsAbstract = true
                                                 .IsDefinition = true
-                                                .MetadataToken = 33555118
+                                                .MetadataToken = 33555119
                                                 .MetadataName = "IBinaryInteger`1"
                                                 .Name = "IBinaryInteger"
                                                 .Language = "C#"
@@ -6863,7 +6863,7 @@
                                                             .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                           .IsDefinition = true
                                                           .CanBeReferencedByName = true
-                                                      .MetadataToken = 33555119
+                                                      .MetadataToken = 33555120
                                                       .ConstructedFrom = PENamedTypeSymbolGeneric "IBinaryNumber"
                                                       .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                       .DeclaredAccessibility = Public
@@ -6921,7 +6921,7 @@
                                                       .CanBeReferencedByName = true
                                                       .IsAbstract = true
                                                       .IsDefinition = true
-                                                      .MetadataToken = 33555119
+                                                      .MetadataToken = 33555120
                                                       .MetadataName = "IBinaryNumber`1"
                                                       .Name = "IBinaryNumber"
                                                       .Language = "C#"
@@ -7343,7 +7343,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555120
+                                                            .MetadataToken = 33555121
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IBitwiseOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -7405,7 +7405,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555120
+                                                            .MetadataToken = 33555121
                                                             .MetadataName = "IBitwiseOperators`3"
                                                             .Name = "IBitwiseOperators"
                                                             .Language = "C#"
@@ -7569,7 +7569,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555121
+                                                            .MetadataToken = 33555122
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IComparisonOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -7631,7 +7631,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555121
+                                                            .MetadataToken = 33555122
                                                             .MetadataName = "IComparisonOperators`3"
                                                             .Name = "IComparisonOperators"
                                                             .Language = "C#"
@@ -7718,7 +7718,7 @@
                                                                         .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                       .IsDefinition = true
                                                                       .CanBeReferencedByName = true
-                                                                  .MetadataToken = 33555124
+                                                                  .MetadataToken = 33555125
                                                                   .ConstructedFrom = PENamedTypeSymbolGeneric "IEqualityOperators"
                                                                   .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                                   .DeclaredAccessibility = Public
@@ -7780,7 +7780,7 @@
                                                                   .CanBeReferencedByName = true
                                                                   .IsAbstract = true
                                                                   .IsDefinition = true
-                                                                  .MetadataToken = 33555124
+                                                                  .MetadataToken = 33555125
                                                                   .MetadataName = "IEqualityOperators`3"
                                                                   .Name = "IEqualityOperators"
                                                                   .Language = "C#"
@@ -8364,7 +8364,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555122
+                                                            .MetadataToken = 33555123
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IDecrementOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -8422,7 +8422,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555122
+                                                            .MetadataToken = 33555123
                                                             .MetadataName = "IDecrementOperators`1"
                                                             .Name = "IDecrementOperators"
                                                             .Language = "C#"
@@ -8540,7 +8540,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555123
+                                                            .MetadataToken = 33555124
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IDivisionOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -8602,7 +8602,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555123
+                                                            .MetadataToken = 33555124
                                                             .MetadataName = "IDivisionOperators`3"
                                                             .Name = "IDivisionOperators"
                                                             .Language = "C#"
@@ -8713,7 +8713,7 @@
                                                             .TypeParameters = [1]
                                                               PETypeParameterSymbol "TSelf"
                                                                 .Name = "TSelf"
-                                                                .MetadataToken = 704643587
+                                                                .MetadataToken = 704643588
                                                                 .ContainingSymbol = PENamedTypeSymbolGeneric "IIncrementOperators"
                                                                 .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                                                 .OriginalDefinition = PETypeParameterSymbol "TSelf"
@@ -8728,7 +8728,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555130
+                                                            .MetadataToken = 33555131
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IIncrementOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -8786,7 +8786,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555130
+                                                            .MetadataToken = 33555131
                                                             .MetadataName = "IIncrementOperators`1"
                                                             .Name = "IIncrementOperators"
                                                             .Language = "C#"
@@ -8806,7 +8806,7 @@
                                                                 .IsType = true
                                                                 .CanBeReferencedByName = true
                                                                 .IsDefinition = true
-                                                                .MetadataToken = 704643587
+                                                                .MetadataToken = 704643588
                                                                 .MetadataName = "TSelf"
                                                                 .Name = "TSelf"
                                                                 .Language = "C#"
@@ -8904,7 +8904,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555133
+                                                            .MetadataToken = 33555134
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IModulusOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -8966,7 +8966,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555133
+                                                            .MetadataToken = 33555134
                                                             .MetadataName = "IModulusOperators`3"
                                                             .Name = "IModulusOperators"
                                                             .Language = "C#"
@@ -9111,7 +9111,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555134
+                                                            .MetadataToken = 33555135
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IMultiplicativeIdentity"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -9171,7 +9171,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555134
+                                                            .MetadataToken = 33555135
                                                             .MetadataName = "IMultiplicativeIdentity`2"
                                                             .Name = "IMultiplicativeIdentity"
                                                             .Language = "C#"
@@ -9312,7 +9312,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555135
+                                                            .MetadataToken = 33555136
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "IMultiplyOperators"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -9374,7 +9374,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555135
+                                                            .MetadataToken = 33555136
                                                             .MetadataName = "IMultiplyOperators`3"
                                                             .Name = "IMultiplyOperators"
                                                             .Language = "C#"
@@ -9500,7 +9500,7 @@
                                                                   .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                 .IsDefinition = true
                                                                 .CanBeReferencedByName = true
-                                                            .MetadataToken = 33555137
+                                                            .MetadataToken = 33555138
                                                             .ConstructedFrom = PENamedTypeSymbolGeneric "INumber"
                                                             .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                             .DeclaredAccessibility = Public
@@ -9558,7 +9558,7 @@
                                                             .CanBeReferencedByName = true
                                                             .IsAbstract = true
                                                             .IsDefinition = true
-                                                            .MetadataToken = 33555137
+                                                            .MetadataToken = 33555138
                                                             .MetadataName = "INumber`1"
                                                             .Name = "INumber"
                                                             .Language = "C#"
@@ -10382,7 +10382,7 @@
                                                                         .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                       .IsDefinition = true
                                                                       .CanBeReferencedByName = true
-                                                                  .MetadataToken = 33555136
+                                                                  .MetadataToken = 33555137
                                                                   .ConstructedFrom = PENamedTypeSymbolGeneric "INumberBase"
                                                                   .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                                   .DeclaredAccessibility = Public
@@ -10440,7 +10440,7 @@
                                                                   .CanBeReferencedByName = true
                                                                   .IsAbstract = true
                                                                   .IsDefinition = true
-                                                                  .MetadataToken = 33555136
+                                                                  .MetadataToken = 33555137
                                                                   .MetadataName = "INumberBase`1"
                                                                   .Name = "INumberBase"
                                                                   .Language = "C#"
@@ -11184,7 +11184,7 @@
                                                                               .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                             .IsDefinition = true
                                                                             .CanBeReferencedByName = true
-                                                                        .MetadataToken = 33555142
+                                                                        .MetadataToken = 33555143
                                                                         .ConstructedFrom = PENamedTypeSymbolGeneric "ISubtractionOperators"
                                                                         .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                                         .DeclaredAccessibility = Public
@@ -11246,7 +11246,7 @@
                                                                         .CanBeReferencedByName = true
                                                                         .IsAbstract = true
                                                                         .IsDefinition = true
-                                                                        .MetadataToken = 33555142
+                                                                        .MetadataToken = 33555143
                                                                         .MetadataName = "ISubtractionOperators`3"
                                                                         .Name = "ISubtractionOperators"
                                                                         .Language = "C#"
@@ -11391,7 +11391,7 @@
                                                                               .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                             .IsDefinition = true
                                                                             .CanBeReferencedByName = true
-                                                                        .MetadataToken = 33555144
+                                                                        .MetadataToken = 33555145
                                                                         .ConstructedFrom = PENamedTypeSymbolGeneric "IUnaryNegationOperators"
                                                                         .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                                         .DeclaredAccessibility = Public
@@ -11451,7 +11451,7 @@
                                                                         .CanBeReferencedByName = true
                                                                         .IsAbstract = true
                                                                         .IsDefinition = true
-                                                                        .MetadataToken = 33555144
+                                                                        .MetadataToken = 33555145
                                                                         .MetadataName = "IUnaryNegationOperators`2"
                                                                         .Name = "IUnaryNegationOperators"
                                                                         .Language = "C#"
@@ -11573,7 +11573,7 @@
                                                                               .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                             .IsDefinition = true
                                                                             .CanBeReferencedByName = true
-                                                                        .MetadataToken = 33555145
+                                                                        .MetadataToken = 33555146
                                                                         .ConstructedFrom = PENamedTypeSymbolGeneric "IUnaryPlusOperators"
                                                                         .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                                         .DeclaredAccessibility = Public
@@ -11633,7 +11633,7 @@
                                                                         .CanBeReferencedByName = true
                                                                         .IsAbstract = true
                                                                         .IsDefinition = true
-                                                                        .MetadataToken = 33555145
+                                                                        .MetadataToken = 33555146
                                                                         .MetadataName = "IUnaryPlusOperators`2"
                                                                         .Name = "IUnaryPlusOperators"
                                                                         .Language = "C#"
@@ -13418,7 +13418,7 @@
                                                             .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                           .IsDefinition = true
                                                           .CanBeReferencedByName = true
-                                                      .MetadataToken = 33555140
+                                                      .MetadataToken = 33555141
                                                       .ConstructedFrom = PENamedTypeSymbolGeneric "IShiftOperators"
                                                       .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                       .DeclaredAccessibility = Public
@@ -13480,7 +13480,7 @@
                                                       .CanBeReferencedByName = true
                                                       .IsAbstract = true
                                                       .IsDefinition = true
-                                                      .MetadataToken = 33555140
+                                                      .MetadataToken = 33555141
                                                       .MetadataName = "IShiftOperators`3"
                                                       .Name = "IShiftOperators"
                                                       .Language = "C#"
@@ -15085,7 +15085,7 @@
                                                               .TypeParameters = [1]
                                                                 PETypeParameterSymbol "TSelf"
                                                                   .Name = "TSelf"
-                                                                  .MetadataToken = 704643591
+                                                                  .MetadataToken = 704643592
                                                                   .ContainingSymbol = PENamedTypeSymbolGeneric "IMinMaxValue"
                                                                   .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                                                   .OriginalDefinition = PETypeParameterSymbol "TSelf"
@@ -15100,7 +15100,7 @@
                                                                     .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                   .IsDefinition = true
                                                                   .CanBeReferencedByName = true
-                                                              .MetadataToken = 33555132
+                                                              .MetadataToken = 33555133
                                                               .ConstructedFrom = PENamedTypeSymbolGeneric "IMinMaxValue"
                                                               .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                               .DeclaredAccessibility = Public
@@ -15158,7 +15158,7 @@
                                                               .CanBeReferencedByName = true
                                                               .IsAbstract = true
                                                               .IsDefinition = true
-                                                              .MetadataToken = 33555132
+                                                              .MetadataToken = 33555133
                                                               .MetadataName = "IMinMaxValue`1"
                                                               .Name = "IMinMaxValue"
                                                               .Language = "C#"
@@ -15178,7 +15178,7 @@
                                                                   .IsType = true
                                                                   .CanBeReferencedByName = true
                                                                   .IsDefinition = true
-                                                                  .MetadataToken = 704643591
+                                                                  .MetadataToken = 704643592
                                                                   .MetadataName = "TSelf"
                                                                   .Name = "TSelf"
                                                                   .Language = "C#"
@@ -15238,7 +15238,7 @@
                                                                     .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                                   .IsDefinition = true
                                                                   .CanBeReferencedByName = true
-                                                              .MetadataToken = 33555141
+                                                              .MetadataToken = 33555142
                                                               .ConstructedFrom = PENamedTypeSymbolGeneric "ISignedNumber"
                                                               .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                               .DeclaredAccessibility = Public
@@ -15296,7 +15296,7 @@
                                                               .CanBeReferencedByName = true
                                                               .IsAbstract = true
                                                               .IsDefinition = true
-                                                              .MetadataToken = 33555141
+                                                              .MetadataToken = 33555142
                                                               .MetadataName = "ISignedNumber`1"
                                                               .Name = "ISignedNumber"
                                                               .Language = "C#"
@@ -17528,7 +17528,7 @@
                                                       .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
                                                     .IsDefinition = true
                                                     .CanBeReferencedByName = true
-                                                .MetadataToken = 33555146
+                                                .MetadataToken = 33555147
                                                 .ConstructedFrom = PENamedTypeSymbolGeneric "IUnsignedNumber"
                                                 .ContainingSymbol = PENestedNamespaceSymbol "Numerics"
                                                 .DeclaredAccessibility = Public
@@ -17586,7 +17586,7 @@
                                                 .CanBeReferencedByName = true
                                                 .IsAbstract = true
                                                 .IsDefinition = true
-                                                .MetadataToken = 33555146
+                                                .MetadataToken = 33555147
                                                 .MetadataName = "IUnsignedNumber`1"
                                                 .Name = "IUnsignedNumber"
                                                 .Language = "C#"
@@ -19169,13 +19169,13 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555290
+                                                  .MetadataToken = 33555294
                                                   .MetadataName = "ICollection"
                                                   .Name = "ICollection"
                                                   .Language = "C#"
                                                   .Kind = NamedType
                                                 .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "ICollection"
-                                                  .MetadataToken = 33555290
+                                                  .MetadataToken = 33555294
                                                   .ConstructedFrom = PENamedTypeSymbolNonGeneric "ICollection"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Collections"
                                                   .DeclaredAccessibility = Public
@@ -19214,13 +19214,13 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555298
+                                                  .MetadataToken = 33555302
                                                   .MetadataName = "IList"
                                                   .Name = "IList"
                                                   .Language = "C#"
                                                   .Kind = NamedType
                                                 .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "IList"
-                                                  .MetadataToken = 33555298
+                                                  .MetadataToken = 33555302
                                                   .ConstructedFrom = PENamedTypeSymbolNonGeneric "IList"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Collections"
                                                   .DeclaredAccessibility = Public
@@ -19236,14 +19236,14 @@
                                                       .ContainingType = PENamedTypeSymbolNonGeneric "IList"
                                                       .Name = "this[]"
                                                       .MetadataName = "Item"
-                                                      .MetadataToken = 385877609
+                                                      .MetadataToken = 385877618
                                                       .DeclaredAccessibility = Public
                                                       .IsAbstract = true
                                                       .Parameters = [1]
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134233978
+                                                          .MetadataToken = 134234061
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -19280,14 +19280,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolNonGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolNonGeneric "IList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100674562
+                                                        .MetadataToken = 100674624
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134233977
+                                                            .MetadataToken = 134234060
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19340,7 +19340,7 @@
                                                         .ContainingSymbol = PENamedTypeSymbolNonGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolNonGeneric "IList"
                                                         .Name = "set_Item"
-                                                        .MetadataToken = 100674563
+                                                        .MetadataToken = 100674625
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .ReturnsVoid = true
@@ -19348,7 +19348,7 @@
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134233978
+                                                            .MetadataToken = 134234061
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19374,7 +19374,7 @@
                                                           PEParameterSymbol "value"
                                                             .Name = "value"
                                                             .MetadataName = "value"
-                                                            .MetadataToken = 134233979
+                                                            .MetadataToken = 134234062
                                                             .Ordinal = 1
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
@@ -19462,13 +19462,13 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555299
+                                                  .MetadataToken = 33555303
                                                   .MetadataName = "IStructuralComparable"
                                                   .Name = "IStructuralComparable"
                                                   .Language = "C#"
                                                   .Kind = NamedType
                                                 .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "IStructuralComparable"
-                                                  .MetadataToken = 33555299
+                                                  .MetadataToken = 33555303
                                                   .ConstructedFrom = PENamedTypeSymbolNonGeneric "IStructuralComparable"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Collections"
                                                   .DeclaredAccessibility = Public
@@ -19502,13 +19502,13 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555300
+                                                  .MetadataToken = 33555304
                                                   .MetadataName = "IStructuralEquatable"
                                                   .Name = "IStructuralEquatable"
                                                   .Language = "C#"
                                                   .Kind = NamedType
                                                 .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "IStructuralEquatable"
-                                                  .MetadataToken = 33555300
+                                                  .MetadataToken = 33555304
                                                   .ConstructedFrom = PENamedTypeSymbolNonGeneric "IStructuralEquatable"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Collections"
                                                   .DeclaredAccessibility = Public
@@ -19565,7 +19565,7 @@
                                                   .TypeParameters = [1]
                                                     PETypeParameterSymbol "T"
                                                       .Name = "T"
-                                                      .MetadataToken = 704643642
+                                                      .MetadataToken = 704643643
                                                       .ContainingSymbol = PENamedTypeSymbolGeneric "IList"
                                                       .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                                       .OriginalDefinition = PETypeParameterSymbol "T"
@@ -19581,7 +19581,7 @@
                                                       .IsDefinition = true
                                                       .CanBeReferencedByName = true
                                                   .ExtendedSpecialType = ExtendedSpecialType
-                                                  .MetadataToken = 33555315
+                                                  .MetadataToken = 33555319
                                                   .ConstructedFrom = PENamedTypeSymbolGeneric "IList"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Generic"
                                                   .DeclaredAccessibility = Public
@@ -19597,14 +19597,14 @@
                                                       .ContainingType = PENamedTypeSymbolGeneric "IList"
                                                       .Name = "this[]"
                                                       .MetadataName = "Item"
-                                                      .MetadataToken = 385877662
+                                                      .MetadataToken = 385877671
                                                       .DeclaredAccessibility = Public
                                                       .IsAbstract = true
                                                       .Parameters = [1]
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134234119
+                                                          .MetadataToken = 134234202
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -19638,14 +19638,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100674732
+                                                        .MetadataToken = 100674794
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134234118
+                                                            .MetadataToken = 134234201
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19695,7 +19695,7 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IList"
                                                         .Name = "set_Item"
-                                                        .MetadataToken = 100674733
+                                                        .MetadataToken = 100674795
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .ReturnsVoid = true
@@ -19703,7 +19703,7 @@
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134234119
+                                                            .MetadataToken = 134234202
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19729,7 +19729,7 @@
                                                           PEParameterSymbol "value"
                                                             .Name = "value"
                                                             .MetadataName = "value"
-                                                            .MetadataToken = 134234120
+                                                            .MetadataToken = 134234203
                                                             .Ordinal = 1
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
@@ -20027,7 +20027,7 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555315
+                                                  .MetadataToken = 33555319
                                                   .MetadataName = "IList`1"
                                                   .Name = "IList"
                                                   .Language = "C#"
@@ -20061,7 +20061,7 @@
                                                         .TypeParameters = [1]
                                                           PETypeParameterSymbol "T"
                                                             .Name = "T"
-                                                            .MetadataToken = 704643630
+                                                            .MetadataToken = 704643633
                                                             .ContainingSymbol = PENamedTypeSymbolGeneric "ICollection"
                                                             .ContainingAssembly = PEAssemblySymbol "System.Runtime"
                                                             .OriginalDefinition = PETypeParameterSymbol "T"
@@ -20077,7 +20077,7 @@
                                                             .IsDefinition = true
                                                             .CanBeReferencedByName = true
                                                         .ExtendedSpecialType = ExtendedSpecialType
-                                                        .MetadataToken = 33555309
+                                                        .MetadataToken = 33555313
                                                         .ConstructedFrom = PENamedTypeSymbolGeneric "ICollection"
                                                         .ContainingSymbol = PENestedNamespaceSymbol "Generic"
                                                         .DeclaredAccessibility = Public
@@ -20137,7 +20137,7 @@
                                                         .CanBeReferencedByName = true
                                                         .IsAbstract = true
                                                         .IsDefinition = true
-                                                        .MetadataToken = 33555309
+                                                        .MetadataToken = 33555313
                                                         .MetadataName = "ICollection`1"
                                                         .Name = "ICollection"
                                                         .Language = "C#"
@@ -20206,7 +20206,7 @@
                                                                 .TypeKind = TypeParameter
                                                                 .IsType = true
                                                                 .CanBeReferencedByName = true
-                                                                .MetadataToken = 704643630
+                                                                .MetadataToken = 704643633
                                                                 .MetadataName = "T"
                                                                 .Name = "T"
                                                                 .Language = "C#"
@@ -20287,7 +20287,7 @@
                                                               .TypeKind = TypeParameter
                                                               .IsType = true
                                                               .CanBeReferencedByName = true
-                                                              .MetadataToken = 704643642
+                                                              .MetadataToken = 704643643
                                                               .MetadataName = "T"
                                                               .Name = "T"
                                                               .Language = "C#"
@@ -20427,7 +20427,7 @@
                                                       .IsDefinition = true
                                                       .CanBeReferencedByName = true
                                                   .ExtendedSpecialType = ExtendedSpecialType
-                                                  .MetadataToken = 33555318
+                                                  .MetadataToken = 33555322
                                                   .ConstructedFrom = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                   .ContainingSymbol = PENestedNamespaceSymbol "Generic"
                                                   .DeclaredAccessibility = Public
@@ -20443,14 +20443,14 @@
                                                       .ContainingType = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                       .Name = "this[]"
                                                       .MetadataName = "Item"
-                                                      .MetadataToken = 385877667
+                                                      .MetadataToken = 385877676
                                                       .DeclaredAccessibility = Public
                                                       .IsAbstract = true
                                                       .Parameters = [1]
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134234129
+                                                          .MetadataToken = 134234212
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -20484,14 +20484,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100674743
+                                                        .MetadataToken = 100674805
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134234129
+                                                            .MetadataToken = 134234212
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -20706,7 +20706,7 @@
                                                   .CanBeReferencedByName = true
                                                   .IsAbstract = true
                                                   .IsDefinition = true
-                                                  .MetadataToken = 33555318
+                                                  .MetadataToken = 33555322
                                                   .MetadataName = "IReadOnlyList`1"
                                                   .Name = "IReadOnlyList"
                                                   .Language = "C#"
@@ -20830,7 +20830,7 @@
                                                             .IsDefinition = true
                                                             .CanBeReferencedByName = true
                                                         .ExtendedSpecialType = ExtendedSpecialType
-                                                        .MetadataToken = 33555316
+                                                        .MetadataToken = 33555320
                                                         .ConstructedFrom = PENamedTypeSymbolGeneric "IReadOnlyCollection"
                                                         .ContainingSymbol = PENestedNamespaceSymbol "Generic"
                                                         .DeclaredAccessibility = Public
@@ -20890,7 +20890,7 @@
                                                         .CanBeReferencedByName = true
                                                         .IsAbstract = true
                                                         .IsDefinition = true
-                                                        .MetadataToken = 33555316
+                                                        .MetadataToken = 33555320
                                                         .MetadataName = "IReadOnlyCollection`1"
                                                         .Name = "IReadOnlyCollection"
                                                         .Language = "C#"
@@ -24747,13 +24747,13 @@
                                     .CanBeReferencedByName = true
                                     .IsAbstract = true
                                     .IsDefinition = true
-                                    .MetadataToken = 33555075
+                                    .MetadataToken = 33555076
                                     .MetadataName = "MemberInfo"
                                     .Name = "MemberInfo"
                                     .Language = "C#"
                                     .Kind = NamedType
                                   .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "MemberInfo"
-                                    .MetadataToken = 33555075
+                                    .MetadataToken = 33555076
                                     .ConstructedFrom = PENamedTypeSymbolNonGeneric "MemberInfo"
                                     .ContainingSymbol = PENestedNamespaceSymbol "Reflection"
                                       .ContainingSymbol = PENestedNamespaceSymbol "System"
@@ -24782,7 +24782,7 @@
                                         .ContainingSymbol = PENamedTypeSymbolNonGeneric "MemberInfo"
                                         .ContainingType = PENamedTypeSymbolNonGeneric "MemberInfo"
                                         .Name = ".ctor"
-                                        .MetadataToken = 100671730
+                                        .MetadataToken = 100671733
                                         .DeclaredAccessibility = Protected
                                         .ReturnsVoid = true
                                         .ReturnTypeWithAnnotations = TypeWithAnnotations
@@ -24854,13 +24854,13 @@
                                         .CanBeReferencedByName = true
                                         .IsAbstract = true
                                         .IsDefinition = true
-                                        .MetadataToken = 33555065
+                                        .MetadataToken = 33555066
                                         .MetadataName = "ICustomAttributeProvider"
                                         .Name = "ICustomAttributeProvider"
                                         .Language = "C#"
                                         .Kind = NamedType
                                       .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "ICustomAttributeProvider"
-                                        .MetadataToken = 33555065
+                                        .MetadataToken = 33555066
                                         .ConstructedFrom = PENamedTypeSymbolNonGeneric "ICustomAttributeProvider"
                                         .ContainingSymbol = PENestedNamespaceSymbol "Reflection"
                                         .DeclaredAccessibility = Public
@@ -24897,7 +24897,7 @@
                                         .MethodKind = Constructor
                                         .DeclaredAccessibility = Protected
                                         .IsDefinition = true
-                                        .MetadataToken = 100671730
+                                        .MetadataToken = 100671733
                                         .MetadataName = ".ctor"
                                         .Name = ".ctor"
                                         .Language = "C#"
@@ -24924,13 +24924,13 @@
                                       .CanBeReferencedByName = true
                                       .IsAbstract = true
                                       .IsDefinition = true
-                                      .MetadataToken = 33555070
+                                      .MetadataToken = 33555071
                                       .MetadataName = "IReflect"
                                       .Name = "IReflect"
                                       .Language = "C#"
                                       .Kind = NamedType
                                     .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "IReflect"
-                                      .MetadataToken = 33555070
+                                      .MetadataToken = 33555071
                                       .ConstructedFrom = PENamedTypeSymbolNonGeneric "IReflect"
                                       .ContainingSymbol = PENestedNamespaceSymbol "Reflection"
                                       .DeclaredAccessibility = Public
@@ -29045,7 +29045,7 @@
                         .Name = ""
                         .Language = "C#"
                         .Kind = Namespace
-                      .GetMembers() = [385]
+                      .GetMembers() = [386]
                         NonErrorNamedTypeSymbol "C"
                         NonErrorNamedTypeSymbol "<Module>"
                           //
@@ -68711,13 +68711,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554468
+                            .MetadataToken = 33554469
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554468
+                            .MetadataToken = 33554469
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -68789,13 +68789,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554666
+                            .MetadataToken = 33554662
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554666
+                            .MetadataToken = 33554662
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -68828,13 +68828,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554628
+                            .MetadataToken = 33554636
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554628
+                            .MetadataToken = 33554636
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69101,13 +69101,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554554
+                            .MetadataToken = 33554556
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554554
+                            .MetadataToken = 33554556
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69179,13 +69179,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554477
+                            .MetadataToken = 33554479
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554477
+                            .MetadataToken = 33554479
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69257,13 +69257,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554526
+                            .MetadataToken = 33554527
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554526
+                            .MetadataToken = 33554527
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69530,13 +69530,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554624
+                            .MetadataToken = 33554626
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554624
+                            .MetadataToken = 33554626
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69608,13 +69608,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554668
+                            .MetadataToken = 33554670
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554668
+                            .MetadataToken = 33554670
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69647,13 +69647,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554606
+                            .MetadataToken = 33554608
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554606
+                            .MetadataToken = 33554608
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69686,13 +69686,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554575
+                            .MetadataToken = 33554576
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554575
+                            .MetadataToken = 33554576
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69725,13 +69725,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554742
+                            .MetadataToken = 33554744
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554742
+                            .MetadataToken = 33554744
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69764,13 +69764,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554463
+                            .MetadataToken = 33554464
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554463
+                            .MetadataToken = 33554464
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -82341,6 +82341,786 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
+                            .MetadataToken = 33554436
+                            .MetadataName = "<>z__ReadOnlySingleElementList`1"
+                            .Name = "<>z__ReadOnlySingleElementList"
+                            .Language = "C#"
+                            .Kind = NamedType
+                          .UnderlyingSymbol = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                            .Arity = 1
+                            .TypeParameters = [1]
+                              PETypeParameterSymbol "T"
+                                .Name = "T"
+                                .MetadataToken = 704643075
+                                .ContainingSymbol = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .ContainingAssembly = PEAssemblySymbol "Microsoft.AspNetCore.Identity"
+                                .OriginalDefinition = PETypeParameterSymbol "T"
+                                .DeclaringType = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .Kind = TypeParameter
+                                .TypeKind = TypeParameter
+                                .IsType = true
+                                .MetadataName = "T"
+                                .ContainingType = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .ContainingNamespace = PEGlobalNamespaceSymbol ""
+                                .MetadataVisibility = InvalidOperationException
+                                  .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                .IsDefinition = true
+                                .CanBeReferencedByName = true
+                            .MetadataToken = 33554436
+                            .ConstructedFrom = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                            .ContainingSymbol = PEGlobalNamespaceSymbol ""
+                            .DeclaredAccessibility = Internal
+                            .Name = "<>z__ReadOnlySingleElementList"
+                            .MetadataName = "<>z__ReadOnlySingleElementList`1"
+                            .IsSealed = true
+                            .AreLocalsZeroed = InvalidOperationException
+                              .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PENamedTypeSymbol.cs' Line=2183"
+                            .TypeKind = Class
+                            .InstanceConstructors = [1]
+                              PEMethodSymbol ".ctor"
+                                .ContainingSymbol = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .ContainingType = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .Name = ".ctor"
+                                .MetadataToken = 100663361
+                                .DeclaredAccessibility = Public
+                                .ReturnsVoid = true
+                                .Parameters = [1]
+                                  PEParameterSymbol "item"
+                                    .Name = "item"
+                                    .MetadataName = "item"
+                                    .MetadataToken = 134217781
+                                    .ContainingSymbol = PEMethodSymbol ".ctor"
+                                    .TypeWithAnnotations = TypeWithAnnotations
+                                      .IsResolved = true
+                                      .Type = PETypeParameterSymbol "T"
+                                      .NullableAnnotation = Oblivious
+                                      .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                      .TypeKind = TypeParameter
+                                      .PrimitiveTypeCode = NotPrimitive
+                                      .DefaultNullableAnnotation = Oblivious
+                                    .OriginalDefinition = PEParameterSymbol "item"
+                                    .Type = PETypeParameterSymbol "T"
+                                    .ExplicitDefaultValue = InvalidOperationException
+                                      .Message = "Operation is not valid due to the current state of the object."
+                                    .Kind = Parameter
+                                    .ContainingType = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                    .ContainingNamespace = PEGlobalNamespaceSymbol ""
+                                    .ContainingAssembly = PEAssemblySymbol "Microsoft.AspNetCore.Identity"
+                                    .MetadataVisibility = InvalidOperationException
+                                      .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                    .IsDefinition = true
+                                    .CanBeReferencedByName = true
+                                .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                  .IsResolved = true
+                                  .Type = PENamedTypeSymbolNonGeneric "Void"
+                                  .NullableAnnotation = Oblivious
+                                  .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Void"
+                                  .TypeKind = Struct
+                                  .SpecialType = System_Void
+                                  .PrimitiveTypeCode = Void
+                                  .DefaultNullableAnnotation = Oblivious
+                                .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                                .MetadataSignatureHandle = BlobHandle
+                                .MethodKind = Constructor
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEMethodSymbol.cs' Line=1795"
+                                .OriginalDefinition = PEMethodSymbol ".ctor"
+                                .RequiresInstanceReceiver = true
+                                .ReturnType = PENamedTypeSymbolNonGeneric "Void"
+                                .ConstructedFrom = PEMethodSymbol ".ctor"
+                                .Kind = Method
+                                .ReceiverType = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                                .MetadataName = ".ctor"
+                                .ContainingNamespace = PEGlobalNamespaceSymbol ""
+                                .ContainingAssembly = PEAssemblySymbol "Microsoft.AspNetCore.Identity"
+                                .MetadataVisibility = Public
+                                .IsDefinition = true
+                            .Constructors = [1]
+                              PEMethodSymbol ".ctor"
+                            .IsReferenceType = true
+                            .Kind = NamedType
+                            .IsGenericType = true
+                            .OriginalDefinition = PENamedTypeSymbolGeneric "<>z__ReadOnlySingleElementList"
+                            .IsType = true
+                            .ContainingNamespace = PEGlobalNamespaceSymbol ""
+                            .ContainingAssembly = PEAssemblySymbol "Microsoft.AspNetCore.Identity"
+                            .MetadataVisibility = Assembly
+                            .IsDefinition = true
+                          .ContainingSymbol = NamespaceSymbol ""
+                          .ContainingAssembly = NonSourceAssemblySymbol "Microsoft.AspNetCore.Identity"
+                          .ContainingModule = ModuleSymbol "Microsoft.AspNetCore.Identity.dll"
+                          .ContainingNamespace = NamespaceSymbol ""
+                          .OriginalDefinition = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                          .BaseType = NonErrorNamedTypeSymbol "Object"
+                          .Interfaces = [8]
+                            NonErrorNamedTypeSymbol "IEnumerable"
+                            NonErrorNamedTypeSymbol "ICollection"
+                            NonErrorNamedTypeSymbol "IList"
+                            NonErrorNamedTypeSymbol "IEnumerable"
+                              //
+                                .TypeArgumentNullableAnnotations = [1]
+                                  None
+                                .IsGenericType = true
+                                .Arity = 1
+                                .IsReferenceType = true
+                                .TypeKind = Interface
+                                .IsType = true
+                                .DeclaredAccessibility = Public
+                                .CanBeReferencedByName = true
+                                .IsAbstract = true
+                                .MetadataName = "IEnumerable`1"
+                                .Name = "IEnumerable"
+                                .Language = "C#"
+                                .Kind = NamedType
+                              .UnderlyingSymbol = ConstructedNamedTypeSymbol "IEnumerable"
+                                .ConstructedFrom = PENamedTypeSymbolGeneric "IEnumerable"
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/ConstructedNamedTypeSymbol.cs' Line=135"
+                                .TypeParameters = [1]
+                                  PETypeParameterSymbol "T"
+                                .ContainingSymbol = PENestedNamespaceSymbol "Generic"
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolGeneric "IEnumerable"
+                                .UnderlyingNamedType = PENamedTypeSymbolGeneric "IEnumerable"
+                                .Arity = 1
+                                .Name = "IEnumerable"
+                                .MetadataName = "IEnumerable`1"
+                                .DeclaredAccessibility = Public
+                                .TypeKind = Interface
+                                .IsAbstract = true
+                                .IsReferenceType = true
+                                .IsGenericType = true
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                .MetadataVisibility = Public
+                                .CanBeReferencedByName = true
+                              .ContainingSymbol = NamespaceSymbol "Generic"
+                              .ContainingAssembly = NonSourceAssemblySymbol "System.Runtime"
+                              .ContainingModule = ModuleSymbol "System.Runtime.dll"
+                              .ContainingNamespace = NamespaceSymbol "Generic"
+                              .OriginalDefinition = NonErrorNamedTypeSymbol "IEnumerable"
+                              .Interfaces = [1]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .AllInterfaces = [1]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .TypeParameters = [1]
+                                TypeParameterSymbol "T"
+                              .TypeArguments = [1]
+                                TypeParameterSymbol "T"
+                                  //
+                                    .TypeKind = TypeParameter
+                                    .IsType = true
+                                    .CanBeReferencedByName = true
+                                    .IsDefinition = true
+                                    .MetadataToken = 704643075
+                                    .MetadataName = "T"
+                                    .Name = "T"
+                                    .Language = "C#"
+                                    .Kind = TypeParameter
+                                  .UnderlyingSymbol = PETypeParameterSymbol "T"
+                                  .ContainingSymbol = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                                  .ContainingAssembly = NonSourceAssemblySymbol "Microsoft.AspNetCore.Identity"
+                                  .ContainingModule = ModuleSymbol "Microsoft.AspNetCore.Identity.dll"
+                                  .ContainingType = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                                  .ContainingNamespace = NamespaceSymbol ""
+                                  .OriginalDefinition = TypeParameterSymbol "T"
+                                  .DeclaringType = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                              .ConstructedFrom = NonErrorNamedTypeSymbol "IEnumerable"
+                            NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                              //
+                                .TypeArgumentNullableAnnotations = [1]
+                                  None
+                                .IsGenericType = true
+                                .Arity = 1
+                                .IsReferenceType = true
+                                .TypeKind = Interface
+                                .IsType = true
+                                .DeclaredAccessibility = Public
+                                .CanBeReferencedByName = true
+                                .IsAbstract = true
+                                .MetadataName = "IReadOnlyCollection`1"
+                                .Name = "IReadOnlyCollection"
+                                .Language = "C#"
+                                .Kind = NamedType
+                              .UnderlyingSymbol = ConstructedNamedTypeSymbol "IReadOnlyCollection"
+                                .ConstructedFrom = PENamedTypeSymbolGeneric "IReadOnlyCollection"
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/ConstructedNamedTypeSymbol.cs' Line=135"
+                                .TypeParameters = [1]
+                                  PETypeParameterSymbol "T"
+                                .ContainingSymbol = PENestedNamespaceSymbol "Generic"
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolGeneric "IReadOnlyCollection"
+                                .UnderlyingNamedType = PENamedTypeSymbolGeneric "IReadOnlyCollection"
+                                .Arity = 1
+                                .Name = "IReadOnlyCollection"
+                                .MetadataName = "IReadOnlyCollection`1"
+                                .DeclaredAccessibility = Public
+                                .TypeKind = Interface
+                                .IsAbstract = true
+                                .IsReferenceType = true
+                                .IsGenericType = true
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                .MetadataVisibility = Public
+                                .CanBeReferencedByName = true
+                              .ContainingSymbol = NamespaceSymbol "Generic"
+                              .ContainingAssembly = NonSourceAssemblySymbol "System.Runtime"
+                              .ContainingModule = ModuleSymbol "System.Runtime.dll"
+                              .ContainingNamespace = NamespaceSymbol "Generic"
+                              .OriginalDefinition = NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                              .Interfaces = [2]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .AllInterfaces = [2]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .TypeParameters = [1]
+                                TypeParameterSymbol "T"
+                              .TypeArguments = [1]
+                                TypeParameterSymbol "T"
+                              .ConstructedFrom = NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                            NonErrorNamedTypeSymbol "IReadOnlyList"
+                              //
+                                .TypeArgumentNullableAnnotations = [1]
+                                  None
+                                .IsGenericType = true
+                                .Arity = 1
+                                .IsReferenceType = true
+                                .TypeKind = Interface
+                                .IsType = true
+                                .DeclaredAccessibility = Public
+                                .CanBeReferencedByName = true
+                                .IsAbstract = true
+                                .MetadataName = "IReadOnlyList`1"
+                                .Name = "IReadOnlyList"
+                                .Language = "C#"
+                                .Kind = NamedType
+                              .UnderlyingSymbol = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                .ConstructedFrom = PENamedTypeSymbolGeneric "IReadOnlyList"
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/ConstructedNamedTypeSymbol.cs' Line=135"
+                                .TypeParameters = [1]
+                                  PETypeParameterSymbol "T"
+                                .ContainingSymbol = PENestedNamespaceSymbol "Generic"
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolGeneric "IReadOnlyList"
+                                .UnderlyingNamedType = PENamedTypeSymbolGeneric "IReadOnlyList"
+                                .Arity = 1
+                                .Name = "IReadOnlyList"
+                                .MetadataName = "IReadOnlyList`1"
+                                .DeclaredAccessibility = Public
+                                .TypeKind = Interface
+                                .IsAbstract = true
+                                .Indexers = [1]
+                                  SubstitutedPropertySymbol "this[]"
+                                    .TypeWithAnnotations = TypeWithAnnotations
+                                      .IsResolved = true
+                                      .Type = PETypeParameterSymbol "T"
+                                      .NullableAnnotation = Oblivious
+                                      .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                      .TypeKind = TypeParameter
+                                      .PrimitiveTypeCode = NotPrimitive
+                                      .DefaultNullableAnnotation = Ignored
+                                    .ContainingSymbol = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                    .ContainingType = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                    .OriginalDefinition = PEPropertySymbol "this[]"
+                                    .Parameters = [1]
+                                      SubstitutedParameterSymbol "index"
+                                        .OriginalDefinition = PEParameterSymbol "index"
+                                        .ContainingSymbol = SubstitutedPropertySymbol "this[]"
+                                        .TypeWithAnnotations = TypeWithAnnotations
+                                          .IsResolved = true
+                                          .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                          .NullableAnnotation = Oblivious
+                                          .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Int32"
+                                          .TypeKind = Struct
+                                          .SpecialType = System_Int32
+                                          .PrimitiveTypeCode = Int32
+                                          .DefaultNullableAnnotation = Oblivious
+                                        .UnderlyingParameter = PEParameterSymbol "index"
+                                        .Name = "index"
+                                        .MetadataName = "index"
+                                        .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                        .ExplicitDefaultValue = InvalidOperationException
+                                          .Message = "Operation is not valid due to the current state of the object."
+                                        .Kind = Parameter
+                                        .ContainingType = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                        .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                        .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                        .MetadataVisibility = InvalidOperationException
+                                          .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                        .CanBeReferencedByName = true
+                                    .GetMethod = SubstitutedMethodSymbol "get_Item"
+                                      .UnderlyingMethod = PEMethodSymbol "get_Item"
+                                      .ConstructedFrom = SubstitutedMethodSymbol "get_Item"
+                                      .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                      .OriginalDefinition = PEMethodSymbol "get_Item"
+                                      .ReceiverType = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                      .ContainingSymbol = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                      .ContainingType = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                      .AssociatedSymbol = SubstitutedPropertySymbol "this[]"
+                                      .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                        .IsResolved = true
+                                        .Type = PETypeParameterSymbol "T"
+                                        .NullableAnnotation = Oblivious
+                                        .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                        .TypeKind = TypeParameter
+                                        .PrimitiveTypeCode = NotPrimitive
+                                        .DefaultNullableAnnotation = Ignored
+                                      .Parameters = [1]
+                                        SubstitutedParameterSymbol "index"
+                                          .OriginalDefinition = PEParameterSymbol "index"
+                                          .ContainingSymbol = SubstitutedMethodSymbol "get_Item"
+                                          .TypeWithAnnotations = TypeWithAnnotations
+                                            .IsResolved = true
+                                            .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                            .NullableAnnotation = Oblivious
+                                            .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Int32"
+                                            .TypeKind = Struct
+                                            .SpecialType = System_Int32
+                                            .PrimitiveTypeCode = Int32
+                                            .DefaultNullableAnnotation = Oblivious
+                                          .UnderlyingParameter = PEParameterSymbol "index"
+                                          .Name = "index"
+                                          .MetadataName = "index"
+                                          .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                          .ExplicitDefaultValue = InvalidOperationException
+                                            .Message = "Operation is not valid due to the current state of the object."
+                                          .Kind = Parameter
+                                          .ContainingType = ConstructedNamedTypeSymbol "IReadOnlyList"
+                                          .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                          .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                          .MetadataVisibility = InvalidOperationException
+                                            .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                          .CanBeReferencedByName = true
+                                      .AreLocalsZeroed = InvalidOperationException
+                                        .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEMethodSymbol.cs' Line=1795"
+                                      .DeclaredAccessibility = Public
+                                      .RequiresInstanceReceiver = true
+                                      .IsAbstract = true
+                                      .Name = "get_Item"
+                                      .MethodKind = PropertyGet
+                                      .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                                      .ReturnType = PETypeParameterSymbol "T"
+                                      .Kind = Method
+                                      .MetadataName = "get_Item"
+                                      .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                      .MetadataVisibility = Public
+                                    .UnderlyingProperty = PEPropertySymbol "this[]"
+                                    .IsIndexer = true
+                                    .Name = "this[]"
+                                    .DeclaredAccessibility = Public
+                                    .IsAbstract = true
+                                    .MetadataName = "Item"
+                                    .Type = PETypeParameterSymbol "T"
+                                    .RequiresInstanceReceiver = true
+                                    .IsReadOnly = true
+                                    .Kind = Property
+                                    .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                    .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                    .MetadataVisibility = Public
+                                .IsReferenceType = true
+                                .IsGenericType = true
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                .MetadataVisibility = Public
+                                .CanBeReferencedByName = true
+                              .ContainingSymbol = NamespaceSymbol "Generic"
+                              .ContainingAssembly = NonSourceAssemblySymbol "System.Runtime"
+                              .ContainingModule = ModuleSymbol "System.Runtime.dll"
+                              .ContainingNamespace = NamespaceSymbol "Generic"
+                              .OriginalDefinition = NonErrorNamedTypeSymbol "IReadOnlyList"
+                              .Interfaces = [3]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                              .AllInterfaces = [3]
+                                NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .TypeParameters = [1]
+                                TypeParameterSymbol "T"
+                              .TypeArguments = [1]
+                                TypeParameterSymbol "T"
+                              .ConstructedFrom = NonErrorNamedTypeSymbol "IReadOnlyList"
+                            NonErrorNamedTypeSymbol "ICollection"
+                              //
+                                .TypeArgumentNullableAnnotations = [1]
+                                  None
+                                .IsGenericType = true
+                                .Arity = 1
+                                .IsReferenceType = true
+                                .TypeKind = Interface
+                                .IsType = true
+                                .DeclaredAccessibility = Public
+                                .CanBeReferencedByName = true
+                                .IsAbstract = true
+                                .MetadataName = "ICollection`1"
+                                .Name = "ICollection"
+                                .Language = "C#"
+                                .Kind = NamedType
+                              .UnderlyingSymbol = ConstructedNamedTypeSymbol "ICollection"
+                                .ConstructedFrom = PENamedTypeSymbolGeneric "ICollection"
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/ConstructedNamedTypeSymbol.cs' Line=135"
+                                .TypeParameters = [1]
+                                  PETypeParameterSymbol "T"
+                                .ContainingSymbol = PENestedNamespaceSymbol "Generic"
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolGeneric "ICollection"
+                                .UnderlyingNamedType = PENamedTypeSymbolGeneric "ICollection"
+                                .Arity = 1
+                                .Name = "ICollection"
+                                .MetadataName = "ICollection`1"
+                                .DeclaredAccessibility = Public
+                                .TypeKind = Interface
+                                .IsAbstract = true
+                                .IsReferenceType = true
+                                .IsGenericType = true
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                .MetadataVisibility = Public
+                                .CanBeReferencedByName = true
+                              .ContainingSymbol = NamespaceSymbol "Generic"
+                              .ContainingAssembly = NonSourceAssemblySymbol "System.Runtime"
+                              .ContainingModule = ModuleSymbol "System.Runtime.dll"
+                              .ContainingNamespace = NamespaceSymbol "Generic"
+                              .OriginalDefinition = NonErrorNamedTypeSymbol "ICollection"
+                              .Interfaces = [2]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .AllInterfaces = [2]
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .TypeParameters = [1]
+                                TypeParameterSymbol "T"
+                              .TypeArguments = [1]
+                                TypeParameterSymbol "T"
+                              .ConstructedFrom = NonErrorNamedTypeSymbol "ICollection"
+                            NonErrorNamedTypeSymbol "IList"
+                              //
+                                .TypeArgumentNullableAnnotations = [1]
+                                  None
+                                .IsGenericType = true
+                                .Arity = 1
+                                .IsReferenceType = true
+                                .TypeKind = Interface
+                                .IsType = true
+                                .DeclaredAccessibility = Public
+                                .CanBeReferencedByName = true
+                                .IsAbstract = true
+                                .MetadataName = "IList`1"
+                                .Name = "IList"
+                                .Language = "C#"
+                                .Kind = NamedType
+                              .UnderlyingSymbol = ConstructedNamedTypeSymbol "IList"
+                                .ConstructedFrom = PENamedTypeSymbolGeneric "IList"
+                                .AreLocalsZeroed = InvalidOperationException
+                                  .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/ConstructedNamedTypeSymbol.cs' Line=135"
+                                .TypeParameters = [1]
+                                  PETypeParameterSymbol "T"
+                                .ContainingSymbol = PENestedNamespaceSymbol "Generic"
+                                .Kind = NamedType
+                                .OriginalDefinition = PENamedTypeSymbolGeneric "IList"
+                                .UnderlyingNamedType = PENamedTypeSymbolGeneric "IList"
+                                .Arity = 1
+                                .Name = "IList"
+                                .MetadataName = "IList`1"
+                                .DeclaredAccessibility = Public
+                                .TypeKind = Interface
+                                .IsAbstract = true
+                                .Indexers = [1]
+                                  SubstitutedPropertySymbol "this[]"
+                                    .TypeWithAnnotations = TypeWithAnnotations
+                                      .IsResolved = true
+                                      .Type = PETypeParameterSymbol "T"
+                                      .NullableAnnotation = Oblivious
+                                      .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                      .TypeKind = TypeParameter
+                                      .PrimitiveTypeCode = NotPrimitive
+                                      .DefaultNullableAnnotation = Ignored
+                                    .ContainingSymbol = ConstructedNamedTypeSymbol "IList"
+                                    .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                    .OriginalDefinition = PEPropertySymbol "this[]"
+                                    .Parameters = [1]
+                                      SubstitutedParameterSymbol "index"
+                                        .OriginalDefinition = PEParameterSymbol "index"
+                                        .ContainingSymbol = SubstitutedPropertySymbol "this[]"
+                                        .TypeWithAnnotations = TypeWithAnnotations
+                                          .IsResolved = true
+                                          .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                          .NullableAnnotation = Oblivious
+                                          .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Int32"
+                                          .TypeKind = Struct
+                                          .SpecialType = System_Int32
+                                          .PrimitiveTypeCode = Int32
+                                          .DefaultNullableAnnotation = Oblivious
+                                        .UnderlyingParameter = PEParameterSymbol "index"
+                                        .Name = "index"
+                                        .MetadataName = "index"
+                                        .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                        .ExplicitDefaultValue = InvalidOperationException
+                                          .Message = "Operation is not valid due to the current state of the object."
+                                        .Kind = Parameter
+                                        .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                        .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                        .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                        .MetadataVisibility = InvalidOperationException
+                                          .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                        .CanBeReferencedByName = true
+                                    .GetMethod = SubstitutedMethodSymbol "get_Item"
+                                      .UnderlyingMethod = PEMethodSymbol "get_Item"
+                                      .ConstructedFrom = SubstitutedMethodSymbol "get_Item"
+                                      .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                      .OriginalDefinition = PEMethodSymbol "get_Item"
+                                      .ReceiverType = ConstructedNamedTypeSymbol "IList"
+                                      .ContainingSymbol = ConstructedNamedTypeSymbol "IList"
+                                      .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                      .AssociatedSymbol = SubstitutedPropertySymbol "this[]"
+                                      .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                        .IsResolved = true
+                                        .Type = PETypeParameterSymbol "T"
+                                        .NullableAnnotation = Oblivious
+                                        .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                        .TypeKind = TypeParameter
+                                        .PrimitiveTypeCode = NotPrimitive
+                                        .DefaultNullableAnnotation = Ignored
+                                      .Parameters = [1]
+                                        SubstitutedParameterSymbol "index"
+                                          .OriginalDefinition = PEParameterSymbol "index"
+                                          .ContainingSymbol = SubstitutedMethodSymbol "get_Item"
+                                          .TypeWithAnnotations = TypeWithAnnotations
+                                            .IsResolved = true
+                                            .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                            .NullableAnnotation = Oblivious
+                                            .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Int32"
+                                            .TypeKind = Struct
+                                            .SpecialType = System_Int32
+                                            .PrimitiveTypeCode = Int32
+                                            .DefaultNullableAnnotation = Oblivious
+                                          .UnderlyingParameter = PEParameterSymbol "index"
+                                          .Name = "index"
+                                          .MetadataName = "index"
+                                          .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                          .ExplicitDefaultValue = InvalidOperationException
+                                            .Message = "Operation is not valid due to the current state of the object."
+                                          .Kind = Parameter
+                                          .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                          .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                          .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                          .MetadataVisibility = InvalidOperationException
+                                            .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                          .CanBeReferencedByName = true
+                                      .AreLocalsZeroed = InvalidOperationException
+                                        .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEMethodSymbol.cs' Line=1795"
+                                      .DeclaredAccessibility = Public
+                                      .RequiresInstanceReceiver = true
+                                      .IsAbstract = true
+                                      .Name = "get_Item"
+                                      .MethodKind = PropertyGet
+                                      .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                                      .ReturnType = PETypeParameterSymbol "T"
+                                      .Kind = Method
+                                      .MetadataName = "get_Item"
+                                      .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                      .MetadataVisibility = Public
+                                    .SetMethod = SubstitutedMethodSymbol "set_Item"
+                                      .UnderlyingMethod = PEMethodSymbol "set_Item"
+                                      .ConstructedFrom = SubstitutedMethodSymbol "set_Item"
+                                      .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                      .OriginalDefinition = PEMethodSymbol "set_Item"
+                                      .ReceiverType = ConstructedNamedTypeSymbol "IList"
+                                      .ContainingSymbol = ConstructedNamedTypeSymbol "IList"
+                                      .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                      .AssociatedSymbol = SubstitutedPropertySymbol "this[]"
+                                      .ReturnTypeWithAnnotations = TypeWithAnnotations
+                                        .IsResolved = true
+                                        .Type = PENamedTypeSymbolNonGeneric "Void"
+                                        .NullableAnnotation = Oblivious
+                                        .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Void"
+                                        .TypeKind = Struct
+                                        .SpecialType = System_Void
+                                        .PrimitiveTypeCode = Void
+                                        .DefaultNullableAnnotation = Oblivious
+                                      .Parameters = [2]
+                                        SubstitutedParameterSymbol "index"
+                                          .OriginalDefinition = PEParameterSymbol "index"
+                                          .ContainingSymbol = SubstitutedMethodSymbol "set_Item"
+                                          .TypeWithAnnotations = TypeWithAnnotations
+                                            .IsResolved = true
+                                            .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                            .NullableAnnotation = Oblivious
+                                            .NullableUnderlyingTypeOrSelf = PENamedTypeSymbolNonGeneric "Int32"
+                                            .TypeKind = Struct
+                                            .SpecialType = System_Int32
+                                            .PrimitiveTypeCode = Int32
+                                            .DefaultNullableAnnotation = Oblivious
+                                          .UnderlyingParameter = PEParameterSymbol "index"
+                                          .Name = "index"
+                                          .MetadataName = "index"
+                                          .Type = PENamedTypeSymbolNonGeneric "Int32"
+                                          .ExplicitDefaultValue = InvalidOperationException
+                                            .Message = "Operation is not valid due to the current state of the object."
+                                          .Kind = Parameter
+                                          .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                          .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                          .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                          .MetadataVisibility = InvalidOperationException
+                                            .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                          .CanBeReferencedByName = true
+                                        SubstitutedParameterSymbol "value"
+                                          .OriginalDefinition = PEParameterSymbol "value"
+                                          .ContainingSymbol = SubstitutedMethodSymbol "set_Item"
+                                          .TypeWithAnnotations = TypeWithAnnotations
+                                            .IsResolved = true
+                                            .Type = PETypeParameterSymbol "T"
+                                            .NullableAnnotation = Oblivious
+                                            .NullableUnderlyingTypeOrSelf = PETypeParameterSymbol "T"
+                                            .TypeKind = TypeParameter
+                                            .PrimitiveTypeCode = NotPrimitive
+                                            .DefaultNullableAnnotation = Ignored
+                                          .UnderlyingParameter = PEParameterSymbol "value"
+                                          .Ordinal = 1
+                                          .Name = "value"
+                                          .MetadataName = "value"
+                                          .Type = PETypeParameterSymbol "T"
+                                          .ExplicitDefaultValue = InvalidOperationException
+                                            .Message = "Operation is not valid due to the current state of the object."
+                                          .Kind = Parameter
+                                          .ContainingType = ConstructedNamedTypeSymbol "IList"
+                                          .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                          .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                          .MetadataVisibility = InvalidOperationException
+                                            .Message = "Unexpected value 'NotApplicable' of type 'Microsoft.CodeAnalysis.Accessibility'"
+                                          .CanBeReferencedByName = true
+                                      .AreLocalsZeroed = InvalidOperationException
+                                        .Message = "This program location is thought to be unreachable. File='/_/src/Compilers/CSharp/Portable/Symbols/Metadata/PE/PEMethodSymbol.cs' Line=1795"
+                                      .DeclaredAccessibility = Public
+                                      .RequiresInstanceReceiver = true
+                                      .IsAbstract = true
+                                      .Name = "set_Item"
+                                      .MethodKind = PropertySet
+                                      .ReturnsVoid = true
+                                      .ReturnNotNullIfParameterNotNull = ImmutableHashSet`1
+                                      .ReturnType = PENamedTypeSymbolNonGeneric "Void"
+                                      .Kind = Method
+                                      .MetadataName = "set_Item"
+                                      .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                      .MetadataVisibility = Public
+                                    .UnderlyingProperty = PEPropertySymbol "this[]"
+                                    .IsIndexer = true
+                                    .Name = "this[]"
+                                    .DeclaredAccessibility = Public
+                                    .IsAbstract = true
+                                    .MetadataName = "Item"
+                                    .Type = PETypeParameterSymbol "T"
+                                    .RequiresInstanceReceiver = true
+                                    .Kind = Property
+                                    .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                    .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                    .MetadataVisibility = Public
+                                .IsReferenceType = true
+                                .IsGenericType = true
+                                .IsType = true
+                                .ContainingNamespace = PENestedNamespaceSymbol "Generic"
+                                .ContainingAssembly = PEAssemblySymbol "System.Runtime"
+                                .MetadataVisibility = Public
+                                .CanBeReferencedByName = true
+                              .ContainingSymbol = NamespaceSymbol "Generic"
+                              .ContainingAssembly = NonSourceAssemblySymbol "System.Runtime"
+                              .ContainingModule = ModuleSymbol "System.Runtime.dll"
+                              .ContainingNamespace = NamespaceSymbol "Generic"
+                              .OriginalDefinition = NonErrorNamedTypeSymbol "IList"
+                              .Interfaces = [3]
+                                NonErrorNamedTypeSymbol "ICollection"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .AllInterfaces = [3]
+                                NonErrorNamedTypeSymbol "ICollection"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                                NonErrorNamedTypeSymbol "IEnumerable"
+                              .TypeParameters = [1]
+                                TypeParameterSymbol "T"
+                              .TypeArguments = [1]
+                                TypeParameterSymbol "T"
+                              .ConstructedFrom = NonErrorNamedTypeSymbol "IList"
+                          .AllInterfaces = [8]
+                            NonErrorNamedTypeSymbol "IList"
+                            NonErrorNamedTypeSymbol "ICollection"
+                            NonErrorNamedTypeSymbol "IReadOnlyList"
+                            NonErrorNamedTypeSymbol "IReadOnlyCollection"
+                            NonErrorNamedTypeSymbol "IList"
+                            NonErrorNamedTypeSymbol "ICollection"
+                            NonErrorNamedTypeSymbol "IEnumerable"
+                            NonErrorNamedTypeSymbol "IEnumerable"
+                          .TypeParameters = [1]
+                            TypeParameterSymbol "T"
+                          .TypeArguments = [1]
+                            TypeParameterSymbol "T"
+                          .ConstructedFrom = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                          .InstanceConstructors = [1]
+                            MethodSymbol ".ctor"
+                              //
+                                .ReceiverNullableAnnotation = NotAnnotated
+                                .ReturnNullableAnnotation = NotAnnotated
+                                .ReturnsVoid = true
+                                .MethodKind = Constructor
+                                .DeclaredAccessibility = Public
+                                .IsDefinition = true
+                                .MetadataToken = 100663361
+                                .MetadataName = ".ctor"
+                                .Name = ".ctor"
+                                .Language = "C#"
+                                .Kind = Method
+                              .UnderlyingSymbol = PEMethodSymbol ".ctor"
+                              .ContainingSymbol = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                              .ContainingAssembly = NonSourceAssemblySymbol "Microsoft.AspNetCore.Identity"
+                              .ContainingModule = ModuleSymbol "Microsoft.AspNetCore.Identity.dll"
+                              .ContainingType = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                              .ContainingNamespace = NamespaceSymbol ""
+                              .OriginalDefinition = MethodSymbol ".ctor"
+                              .ReturnType = NonErrorNamedTypeSymbol "Void"
+                              .Parameters = [1]
+                                ParameterSymbol "item"
+                                  //
+                                    .ExplicitDefaultValue = InvalidOperationException
+                                      .Message = "Operation is not valid due to the current state of the object."
+                                    .CanBeReferencedByName = true
+                                    .IsDefinition = true
+                                    .MetadataToken = 134217781
+                                    .MetadataName = "item"
+                                    .Name = "item"
+                                    .Language = "C#"
+                                    .Kind = Parameter
+                                  .UnderlyingSymbol = PEParameterSymbol "item"
+                                  .ContainingSymbol = MethodSymbol ".ctor"
+                                  .ContainingAssembly = NonSourceAssemblySymbol "Microsoft.AspNetCore.Identity"
+                                  .ContainingModule = ModuleSymbol "Microsoft.AspNetCore.Identity.dll"
+                                  .ContainingType = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                                  .ContainingNamespace = NamespaceSymbol ""
+                                  .OriginalDefinition = ParameterSymbol "item"
+                                  .Type = TypeParameterSymbol "T"
+                              .ConstructedFrom = MethodSymbol ".ctor"
+                              .ReceiverType = NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                          .Constructors = [1]
+                            MethodSymbol ".ctor"
+                        NonErrorNamedTypeSymbol "<>z__ReadOnlySingleElementList"
+                          //
+                            .TypeArgumentNullableAnnotations = [1]
+                              None
+                            .IsGenericType = true
+                            .Arity = 1
+                            .IsReferenceType = true
+                            .TypeKind = Class
+                            .IsType = true
+                            .DeclaredAccessibility = Internal
+                            .IsSealed = true
+                            .IsDefinition = true
                             .MetadataToken = 33554434
                             .MetadataName = "<>z__ReadOnlySingleElementList`1"
                             .Name = "<>z__ReadOnlySingleElementList"
@@ -88173,7 +88953,7 @@
                                     .TypeWithAnnotations = TypeWithAnnotations
                                       .IsResolved = true
                                       .Type = PENamedTypeSymbolNonGeneric "Stream"
-                                        .MetadataToken = 33555181
+                                        .MetadataToken = 33555182
                                         .ConstructedFrom = PENamedTypeSymbolNonGeneric "Stream"
                                         .ContainingSymbol = PENestedNamespaceSymbol "IO"
                                           .ContainingSymbol = PENestedNamespaceSymbol "System"
@@ -88202,7 +88982,7 @@
                                             .ContainingSymbol = PENamedTypeSymbolNonGeneric "Stream"
                                             .ContainingType = PENamedTypeSymbolNonGeneric "Stream"
                                             .Name = ".ctor"
-                                            .MetadataToken = 100673126
+                                            .MetadataToken = 100673129
                                             .DeclaredAccessibility = Protected
                                             .ReturnsVoid = true
                                             .ReturnTypeWithAnnotations = TypeWithAnnotations
@@ -88960,7 +89740,7 @@
                               .CanBeReferencedByName = true
                               .IsAbstract = true
                               .IsDefinition = true
-                              .MetadataToken = 33555181
+                              .MetadataToken = 33555182
                               .MetadataName = "Stream"
                               .Name = "Stream"
                               .Language = "C#"
@@ -89187,7 +89967,7 @@
                                   .MethodKind = Constructor
                                   .DeclaredAccessibility = Protected
                                   .IsDefinition = true
-                                  .MetadataToken = 100673126
+                                  .MetadataToken = 100673129
                                   .MetadataName = ".ctor"
                                   .Name = ".ctor"
                                   .Language = "C#"
