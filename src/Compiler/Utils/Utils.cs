@@ -281,7 +281,10 @@ internal static class RazorUtil
         // GetCSharpDocument and similar extension methods have been turned into instance methods in https://github.com/dotnet/razor/pull/11939.
         if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is { } method)
         {
-            return (T)method.Invoke(document, [])!;
+            return (T)method.Invoke(document,
+                method.GetParameters() is [{ }]
+                    ? [/* declarationDocument */ false]
+                    : [])!;
         }
 
         return (T)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
