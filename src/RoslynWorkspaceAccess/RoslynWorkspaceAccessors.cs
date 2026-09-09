@@ -168,9 +168,9 @@ public static class RoslynWorkspaceAccessors
         return analyzer;
     }
 
-    public static void SetLogger(Action<string> logger)
+    public static IDisposable RegisterLogger(Action<string> logger)
     {
-        Logger.SetLogger(new RoslynLogger(logger));
+        return RoslynTelemetry.AddEventSink(new RoslynLogger(logger));
     }
 
     public static Task<Solution> WithMergedLinkedFileChangesAsync(
@@ -183,7 +183,7 @@ public static class RoslynWorkspaceAccessors
     }
 }
 
-internal sealed class RoslynLogger(Action<string> logger) : ILogger
+internal sealed class RoslynLogger(Action<string> logger) : IEventSink
 {
     public bool IsEnabled(FunctionId functionId)
     {
