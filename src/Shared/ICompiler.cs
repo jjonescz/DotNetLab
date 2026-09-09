@@ -73,6 +73,7 @@ public sealed record CompilationPreferences
     public SymbolDisplayKinds ShowSymbolKinds { get; init; }
     public bool ShowOperations { get; init; }
     public bool ShowBoundNodes { get; init; }
+    public bool ShowDeclarationDocument { get; init; }
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }
