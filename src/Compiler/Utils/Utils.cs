@@ -262,11 +262,17 @@ internal static class RazorUtil
         }
     }
 
-    public static RazorCSharpDocument GetCSharpDocumentSafe(this RazorCodeDocument document, bool declarationDocument)
+    public static RazorCSharpDocument? GetCSharpDocumentSafe(this RazorCodeDocument document, bool declarationDocument)
     {
-        return document.GetDocumentDataSafe<RazorCSharpDocument>(
+        return document.GetDocumentDataSafe<RazorCSharpDocument?>(
             methodName: "GetCSharpDocument",
             declarationDocument: declarationDocument);
+    }
+
+    public static RazorCSharpDocument GetRequiredCSharpDocumentSafe(this RazorCodeDocument document, bool declarationDocument)
+    {
+        return document.GetCSharpDocumentSafe(declarationDocument)
+            ?? throw new InvalidOperationException($"No Razor C# document available (declarationDocument: {declarationDocument}).");
     }
 
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)

@@ -337,7 +337,7 @@ public sealed class Compiler(
                     return KeyValuePair.Create(input.FileName, new CompiledFile([]));
                 }
 
-                string razorDiagnostics = codeDocument.Map(c => c?.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument).GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
+                string razorDiagnostics = codeDocument.Map(c => c?.GetRequiredCSharpDocumentSafe(declarationDocument: false).GetDiagnostics().JoinToString(Environment.NewLine) ?? "").Serialize();
 
                 var compiledFile = new CompiledFile([
                     new()
@@ -368,7 +368,7 @@ public sealed class Compiler(
                         Type = "gcs",
                         Label = "C#",
                         Language = CompiledAssembly.CSharpLanguageId,
-                        EagerText = codeDocument.Map(d => d ?.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument).GetGeneratedCode() ?? "").Serialize(),
+                        EagerText = codeDocument.Map(d => d?.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument)?.GetGeneratedCode() ?? "").Serialize(),
                     },
                     new()
                     {
@@ -678,7 +678,8 @@ public sealed class Compiler(
                     .. fileSystem.Inner.EnumerateItemsSafe("/").Select((item) =>
                     {
                         RazorCodeDocument declarationCodeDocument = declarationProjectEngine.ProcessDeclarationOnlySafe(item);
-                        string declarationCSharp = declarationCodeDocument.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument).GetGeneratedCode();
+                        // Declaration-only processing produces a single document, not a separate declaration half.
+                        string declarationCSharp = declarationCodeDocument.GetRequiredCSharpDocumentSafe(declarationDocument: false).GetGeneratedCode();
                         return CSharpSyntaxTree.ParseText(declarationCSharp, parseOptions, encoding: Encoding.UTF8);
                     }),
                     .. cSharpSyntaxTrees,
@@ -700,7 +701,7 @@ public sealed class Compiler(
                         RazorCodeDocument codeDocument = projectEngine.ProcessSafe(item);
                         RazorCodeDocument? designTimeDocument = projectEngine.ProcessDesignTimeSafe(item);
 
-                        allRazorDiagnostics.AddRange(codeDocument.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument).GetDiagnostics().Select(RazorUtil.ToDiagnostic));
+                        allRazorDiagnostics.AddRange(codeDocument.GetRequiredCSharpDocumentSafe(declarationDocument: false).GetDiagnostics().Select(RazorUtil.ToDiagnostic));
 
                         return (codeDocument, designTimeDocument);
                     });
@@ -709,7 +710,7 @@ public sealed class Compiler(
                 [
                     .. razorMap.Values.Select((docs) =>
                     {
-                        var cSharpText = docs.Runtime.GetCSharpDocumentSafe(declarationDocument: compilationInput.Preferences.ShowDeclarationDocument).GetGeneratedCode();
+                        var cSharpText = docs.Runtime.GetRequiredCSharpDocumentSafe(declarationDocument: false).GetGeneratedCode();
                         return CSharpSyntaxTree.ParseText(cSharpText, parseOptions, encoding: Encoding.UTF8);
                     }),
                     .. cSharpSyntaxTrees,
