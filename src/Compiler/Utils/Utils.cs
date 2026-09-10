@@ -262,9 +262,17 @@ internal static class RazorUtil
         }
     }
 
-    public static RazorCSharpDocument GetCSharpDocumentSafe(this RazorCodeDocument document)
+    public static RazorCSharpDocument? GetCSharpDocumentSafe(this RazorCodeDocument document, bool declarationDocument)
     {
-        return document.GetDocumentDataSafe<RazorCSharpDocument>("GetCSharpDocument");
+        return document.GetDocumentDataSafe<RazorCSharpDocument?>(
+            methodName: "GetCSharpDocument",
+            declarationDocument: declarationDocument);
+    }
+
+    public static RazorCSharpDocument GetRequiredCSharpDocumentSafe(this RazorCodeDocument document, bool declarationDocument)
+    {
+        return document.GetCSharpDocumentSafe(declarationDocument)
+            ?? throw new InvalidOperationException($"No Razor C# document available (declarationDocument: {declarationDocument}).");
     }
 
     public static IReadOnlyList<RazorDiagnostic> GetDiagnostics(this RazorCSharpDocument document)
@@ -276,12 +284,19 @@ internal static class RazorUtil
             .GetValue(document)!;
     }
 
-    private static T GetDocumentDataSafe<T>(this RazorCodeDocument document, string methodName, string? instanceMethodName = null)
+    private static T GetDocumentDataSafe<T>(
+        this RazorCodeDocument document,
+        string methodName,
+        string? instanceMethodName = null,
+        bool? declarationDocument = null)
     {
         // GetCSharpDocument and similar extension methods have been turned into instance methods in https://github.com/dotnet/razor/pull/11939.
         if (document.GetType().GetMethod(instanceMethodName ?? methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is { } method)
         {
-            return (T)method.Invoke(document, [])!;
+            return (T)method.Invoke(document,
+                method.GetParameters() is [{ }] && declarationDocument is { } declarationDocumentValue
+                    ? [declarationDocumentValue]
+                    : [])!;
         }
 
         return (T)typeof(RazorCodeDocument).Assembly.GetType("Microsoft.AspNetCore.Razor.Language.RazorCodeDocumentExtensions")!
@@ -291,7 +306,9 @@ internal static class RazorUtil
 
     public static DocumentIntermediateNode GetDocumentIntermediateNodeSafe(this RazorCodeDocument document)
     {
-        return document.GetDocumentDataSafe<DocumentIntermediateNode>("GetDocumentIntermediateNode", "GetDocumentNode");
+        return document.GetDocumentDataSafe<DocumentIntermediateNode>(
+            methodName: "GetDocumentIntermediateNode",
+            instanceMethodName: "GetDocumentNode");
     }
 
     public static string? GetNameSafe(this NamespaceDeclarationIntermediateNode node)

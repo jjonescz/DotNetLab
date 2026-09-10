@@ -26,5 +26,3 @@
             CSharpIntermediateToken "1" { Content: "1" }
         CSharpCode "}\n"
           CSharpIntermediateToken "}\n" { Content: "}\n" }
-      CSharpCode "\n    [Parameter] public int Param { get; set; }\n"
-        CSharpIntermediateToken "\n    [Parameter] public int Param { get; set; }\n" { Content: "\n    [Parameter] public int Param { get; set; }\n" }

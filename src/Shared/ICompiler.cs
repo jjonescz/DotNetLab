@@ -73,6 +73,7 @@ public sealed record CompilationPreferences
     public SymbolDisplayKinds ShowSymbolKinds { get; init; }
     public bool ShowOperations { get; init; }
     public bool ShowBoundNodes { get; init; }
+    public bool ShowDeclarationDocument { get; init; }
     public bool DecodeCustomAttributeBlobs { get; init; }
     public bool ShowSequencePoints { get; init; }
     public bool FullIl { get; init; }
@@ -264,7 +265,16 @@ public sealed record CompiledAssembly(
             }
         }
 
-        return builder;
+        return builder.DistinctBy(static d => (
+            d.Data.Severity,
+            d.Data.Id,
+            d.Data.HelpLinkUri,
+            d.Data.Message,
+            d.Unmapped ? d.Data.UnmappedStartLineNumber : d.Data.StartLineNumber,
+            d.Unmapped ? d.Data.UnmappedStartColumn : d.Data.StartColumn,
+            d.Unmapped ? d.Data.UnmappedEndLineNumber : d.Data.EndLineNumber,
+            d.Unmapped ? d.Data.UnmappedEndColumn : d.Data.EndColumn,
+            d.Data.Tags));
     }
 
     public CompiledFileOutput? GetGlobalOutput(string type)

@@ -23,6 +23,7 @@ internal sealed class LanguageServices : ILanguageServices
     private readonly AsyncLock workspaceLock = new();
     private readonly AdhocWorkspace workspace;
     private readonly ProjectId projectId;
+    private readonly IDisposable? roslynLoggerRegistration;
 
     /// <summary>
     /// Project containing the <see cref="CompilationInput.Configuration"/>.
@@ -48,7 +49,7 @@ internal sealed class LanguageServices : ILanguageServices
 
         if (logger.IsEnabled(LogLevel.Trace))
         {
-            RoslynWorkspaceAccessors.SetLogger(message => logger.LogTrace("Roslyn: {Message}", message));
+            roslynLoggerRegistration = RoslynWorkspaceAccessors.RegisterLogger(message => logger.LogTrace("Roslyn: {Message}", message));
         }
 
         workspace = new(MefHostServices.Create(
@@ -106,6 +107,7 @@ internal sealed class LanguageServices : ILanguageServices
     {
         workspace.Dispose();
         workspaceLock.Dispose();
+        roslynLoggerRegistration?.Dispose();
     }
 
     /// <returns>

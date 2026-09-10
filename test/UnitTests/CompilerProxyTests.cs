@@ -12,18 +12,19 @@ public sealed class CompilerProxyTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
-    [DataRow("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
-    [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
-    [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
-    [DataRow("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [DataRow("latest", "5.")] // `latest` works
-    public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
+    [DataRow("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)", "9.0.0-preview.24413.5")] // preview version is downloaded from an AzDo feed
+    [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)", "9.0.0-preview.25128.1")] // non-preview version is downloaded from nuget.org
+    [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)", "10.0.0-preview.25429.2")]
+    [DataRow("main", "-ci (<developer build>)", "main")] // a branch can be downloaded
+    [DataRow("latest", "5.", "latest")] // `latest` works
+    public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic, string razorVersion)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+        var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
+        await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
@@ -32,6 +33,7 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.Contains(expectedDiagnostic, diagnosticsText);
+        Assert.AreEqual(0, compiled.NumWarnings);
 
         // Language services should also pick up the custom compiler version.
         // There are bunch of tests that do not assert much but they verify no type load exceptions happen.
@@ -139,8 +141,8 @@ public sealed class CompilerProxyTests
     /// <see href="https://github.com/jjonescz/DotNetLab/issues/102"/>
     /// </summary>
     [TestMethod]
-    [DataRow("5.0.0-2.25451.107", "2db1f5ee")]
-    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
+    [DataRow("5.0.0-2.25451.107", "2db1f5ee", "10.0.0-preview.25429.2")]
+    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit, string razorVersion)
     {
         var culture = new CultureInfo("cs");
         var previousCulture = CultureInfo.CurrentCulture;
@@ -153,8 +155,9 @@ public sealed class CompilerProxyTests
             using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
             var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-            await services.GetRequiredService<CompilerDependencyProvider>()
-                .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+            var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+            await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
+            await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
             var compiled = await services.GetRequiredService<CompilerProxy>()
                 .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
@@ -226,8 +229,9 @@ public sealed class CompilerProxyTests
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+        var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await compilerDependencyProvider.UseAsync(CompilerKind.Razor, "9.0.0-preview.25128.1", BuildConfiguration.Release);
+        await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
@@ -327,10 +331,13 @@ public sealed class CompilerProxyTests
     }
 
     [TestMethod]
-    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime)]
-    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime)]
-    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime)]
-    public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy)
+    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime, false)]
+    [DataRow(RazorToolchain.SourceGenerator, RazorStrategy.Runtime, true)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime, false)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.Runtime, true)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime, false)]
+    [DataRow(RazorToolchain.InternalApi, RazorStrategy.DesignTime, true)]
+    public async Task SpecifiedRazorOptions(RazorToolchain toolchain, RazorStrategy strategy, bool showDeclarationDocument)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
@@ -359,6 +366,7 @@ public sealed class CompilerProxyTests
             {
                 RazorToolchain = toolchain,
                 RazorStrategy = strategy,
+                Preferences = CompilationPreferences.Default with { ShowDeclarationDocument = showDeclarationDocument },
             });
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
@@ -371,9 +379,58 @@ public sealed class CompilerProxyTests
         Assert.Contains("class TestComponent", cSharpText);
         Assert.Contains("AddComponentParameter", cSharpText);
 
+        var generatedCSharpText = (await compiled.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text;
+        TestContext.WriteLine(generatedCSharpText);
+        if (showDeclarationDocument && toolchain == RazorToolchain.InternalApi && strategy == RazorStrategy.Runtime)
+        {
+            Assert.AreEqual(string.Empty, generatedCSharpText);
+        }
+        else
+        {
+            Assert.Contains("class TestComponent", generatedCSharpText);
+            if (toolchain == RazorToolchain.SourceGenerator && showDeclarationDocument)
+            {
+                Assert.Contains("public int Param", generatedCSharpText);
+                Assert.DoesNotContain("BuildRenderTree", generatedCSharpText);
+            }
+            else
+            {
+                Assert.Contains("BuildRenderTree", generatedCSharpText);
+            }
+        }
+
         var htmlText = (await compiled.Files.Single().Value.GetRequiredOutput("html").LoadAsync()).Text;
         TestContext.WriteLine(htmlText);
         Assert.AreEqual("<div>42</div>", htmlText);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task RazorDeclarationDocument_Diagnostics(RazorToolchain toolchain)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var input = new CompilationInput(new([new() { FileName = "TestComponent.razor", Text = "<UnknownComponent />" }]))
+        {
+            RazorToolchain = toolchain,
+        };
+
+        var implementation = await compiler.CompileAsync(input);
+        var declaration = await compiler.CompileAsync(input with
+        {
+            Preferences = CompilationPreferences.Default with { ShowDeclarationDocument = true },
+        });
+
+        var diagnostics = implementation.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnostics);
+        Assert.Contains("RZ10012", diagnostics);
+        Assert.AreEqual(diagnostics, declaration.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+
+        var razorDiagnostics = implementation.GetRequiredOutput("TestComponent.razor", "razorErrors").Text;
+        Assert.IsNotNull(razorDiagnostics);
+        Assert.Contains("RZ10012", razorDiagnostics);
+        Assert.AreEqual(razorDiagnostics, declaration.GetRequiredOutput("TestComponent.razor", "razorErrors").Text);
     }
 
     [TestMethod]

@@ -15,12 +15,47 @@
     )
 
     // Methods
+    .method public hidebysig specialname 
+        instance int32 get_Param () cil managed 
+    {
+        .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
+            01 00 00 00
+        )
+        // Method begins at RVA 0x2050
+        // Header size: 1
+        // Code size: 7 (0x7)
+        .maxstack 8
+
+        IL_0000: ldarg.0
+        IL_0001: ldfld int32 TestNamespace.TestComponent::'<Param>k__BackingField'
+        IL_0006: ret
+    } // end of method TestComponent::get_Param
+
+    .method public hidebysig specialname 
+        instance void set_Param (
+            int32 'value'
+        ) cil managed 
+    {
+        .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
+            01 00 00 00
+        )
+        // Method begins at RVA 0x2058
+        // Header size: 1
+        // Code size: 8 (0x8)
+        .maxstack 8
+
+        IL_0000: ldarg.0
+        IL_0001: ldarg.1
+        IL_0002: stfld int32 TestNamespace.TestComponent::'<Param>k__BackingField'
+        IL_0007: ret
+    } // end of method TestComponent::set_Param
+
     .method family hidebysig virtual 
         instance void BuildRenderTree (
             class [Microsoft.AspNetCore.Components]Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder
         ) cil managed 
     {
-        // Method begins at RVA 0x2050
+        // Method begins at RVA 0x2064
         // Header size: 12
         // Code size: 95 (0x5f)
         .maxstack 4
@@ -73,45 +108,10 @@
         IL_005e: ret
     } // end of method TestComponent::BuildRenderTree
 
-    .method public hidebysig specialname 
-        instance int32 get_Param () cil managed 
-    {
-        .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
-            01 00 00 00
-        )
-        // Method begins at RVA 0x20bb
-        // Header size: 1
-        // Code size: 7 (0x7)
-        .maxstack 8
-
-        IL_0000: ldarg.0
-        IL_0001: ldfld int32 TestNamespace.TestComponent::'<Param>k__BackingField'
-        IL_0006: ret
-    } // end of method TestComponent::get_Param
-
-    .method public hidebysig specialname 
-        instance void set_Param (
-            int32 'value'
-        ) cil managed 
-    {
-        .custom instance void [System.Runtime]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = (
-            01 00 00 00
-        )
-        // Method begins at RVA 0x20c3
-        // Header size: 1
-        // Code size: 8 (0x8)
-        .maxstack 8
-
-        IL_0000: ldarg.0
-        IL_0001: ldarg.1
-        IL_0002: stfld int32 TestNamespace.TestComponent::'<Param>k__BackingField'
-        IL_0007: ret
-    } // end of method TestComponent::set_Param
-
     .method public hidebysig specialname rtspecialname 
         instance void .ctor () cil managed 
     {
-        // Method begins at RVA 0x20cc
+        // Method begins at RVA 0x20cf
         // Header size: 1
         // Code size: 8 (0x8)
         .maxstack 8
@@ -141,7 +141,7 @@
     .method family hidebysig 
         instance void Execute () cil managed 
     {
-        // Method begins at RVA 0x20d5
+        // Method begins at RVA 0x20d8
         // Header size: 1
         // Code size: 2 (0x2)
         .maxstack 8
@@ -153,7 +153,7 @@
     .method public hidebysig specialname rtspecialname 
         instance void .ctor () cil managed 
     {
-        // Method begins at RVA 0x20d8
+        // Method begins at RVA 0x20db
         // Header size: 1
         // Code size: 8 (0x8)
         .maxstack 8

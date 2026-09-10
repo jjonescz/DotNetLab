@@ -290,6 +290,13 @@
                                     *@<FluentIcon Value="@(new Icons.Regular.Size20.ArrowCollapseAll())" Color="Color.Neutral" /></FluentButton>
                             }
                             break;
+                        case "gcs":
+                            {
+                                <FluentCheckbox @bind-Value:get="savedState.ShowDeclarationDocument"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { ShowDeclarationDocument = v })"
+                                                Label="Declaration document" />
+                            }
+                            break;
                         case "html":
                             {
                                 <FluentCheckbox @bind-Value="showRenderedHtml" Label="Rendered" Disabled="htmlOutput == null"
@@ -524,7 +531,7 @@
         => compiled is not { Start: var compileStart } || compileStart < inputChanged;
 
     private bool OutputHasToolbar
-        => DisplayOutputType is "tree" or "html" or "il" or CompiledAssembly.DiagnosticsOutputType;
+        => DisplayOutputType is "tree" or "gcs" or "html" or "il" or CompiledAssembly.DiagnosticsOutputType;
 
     public Page()
     {
