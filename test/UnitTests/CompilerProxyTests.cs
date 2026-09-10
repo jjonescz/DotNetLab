@@ -12,18 +12,19 @@ public sealed class CompilerProxyTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
-    [DataRow("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)")] // preview version is downloaded from an AzDo feed
-    [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)")] // non-preview version is downloaded from nuget.org
-    [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)")]
-    [DataRow("main", "-ci (<developer build>)")] // a branch can be downloaded
-    [DataRow("latest", "5.")] // `latest` works
-    public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic)
+    [DataRow("4.12.0-2.24409.2", "4.12.0-2.24409.2 (2158b591)", "9.0.0-preview.24413.5")] // preview version is downloaded from an AzDo feed
+    [DataRow("4.14.0", "4.14.0-3.25262.10 (8edf7bcd)", "9.0.0-preview.25128.1")] // non-preview version is downloaded from nuget.org
+    [DataRow("5.0.0-2.25472.1", "5.0.0-2.25472.1 (68435db2)", "10.0.0-preview.25429.2")]
+    [DataRow("main", "-ci (<developer build>)", "main")] // a branch can be downloaded
+    [DataRow("latest", "5.", "latest")] // `latest` works
+    public async Task SpecifiedNuGetRoslynVersion(string version, string expectedDiagnostic, string razorVersion)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+        var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
+        await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
@@ -32,6 +33,7 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.Contains(expectedDiagnostic, diagnosticsText);
+        Assert.AreEqual(0, compiled.NumWarnings);
 
         // Language services should also pick up the custom compiler version.
         // There are bunch of tests that do not assert much but they verify no type load exceptions happen.
@@ -139,8 +141,8 @@ public sealed class CompilerProxyTests
     /// <see href="https://github.com/jjonescz/DotNetLab/issues/102"/>
     /// </summary>
     [TestMethod]
-    [DataRow("5.0.0-2.25451.107", "2db1f5ee")]
-    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit)
+    [DataRow("5.0.0-2.25451.107", "2db1f5ee", "10.0.0-preview.25429.2")]
+    public async Task SpecifiedNuGetRoslynVersion_WithNonEnglishCulture(string version, string commit, string razorVersion)
     {
         var culture = new CultureInfo("cs");
         var previousCulture = CultureInfo.CurrentCulture;
@@ -153,8 +155,9 @@ public sealed class CompilerProxyTests
             using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
             var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-            await services.GetRequiredService<CompilerDependencyProvider>()
-                .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+            var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+            await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
+            await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
             var compiled = await services.GetRequiredService<CompilerProxy>()
                 .CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));
@@ -226,8 +229,9 @@ public sealed class CompilerProxyTests
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
 
-        await services.GetRequiredService<CompilerDependencyProvider>()
-            .UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+        var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await compilerDependencyProvider.UseAsync(CompilerKind.Razor, "9.0.0-preview.25128.1", BuildConfiguration.Release);
+        await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
 
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
