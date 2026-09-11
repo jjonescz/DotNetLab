@@ -878,6 +878,89 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
         return HashCode.Combine(TargetFramework);
     }
 
+    private sealed class AnalyzerNuGetDllFilter(Version compilerRoslynVersion) : NuGetDllFilter
+    {
+        public Version CompilerRoslynVersion { get; } = compilerRoslynVersion;
+        
+        public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
+        {
+            var analyzerDlls = allFiles
+                .Where(file => IsDll(file) && file.StartsWith("analyzers/", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!analyzerDlls.Any())
+            {
+                return static _ => false;
+            }
+
+            // Prefer analyzers/dotnet/roslyn4.4/cs, then analyzers/dotnet/cs, then analyzers/dotnet.
+            // Skip vb/ and roslyn folders newer than the compiler we actually loaded.
+            var selectedFolder = analyzerDlls
+                .Select(GetAnalyzerFolder)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(folder => IsUsableAnalyzerFolder(folder, CompilerRoslynVersion))
+                .OrderBy(GetRoslynFolderVersion)
+                .ThenByDescending(static folder => folder.Contains("/cs/", StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault();
+
+            if (selectedFolder is null)
+            {
+                return static _ => false;
+            }
+            
+            return filePath =>
+                IsDll(filePath) &&
+                filePath.StartsWith(selectedFolder, StringComparison.OrdinalIgnoreCase) &&
+                filePath.Count('/') == selectedFolder.Count(static c => c == '/') + 1;
+        }
+        
+        public override bool Equals(NuGetDllFilter? other) =>
+            other is AnalyzerNuGetDllFilter filter &&
+            CompilerRoslynVersion == filter.CompilerRoslynVersion;
+
+        public override int GetHashCode() => CompilerRoslynVersion.GetHashCode();
+        
+        static string GetAnalyzerFolder(string filePath)
+        {
+            int slash = filePath.LastIndexOf('/');
+            return slash < 0 ? filePath : filePath[..(slash + 1)];
+        }
+        
+        static bool IsUsableAnalyzerFolder(string folder, Version compilerRoslynVersion)
+        {
+            // Skip vb/ and roslyn folders newer than the compiler we actually loaded.
+            if (folder.StartsWith("analyzers/dotnet/vb/", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase))
+            {
+                var versionString = folder["analyzers/dotnet/roslyn".Length..].TrimEnd('/');
+                if (Version.TryParse(versionString, out var version))
+                {
+                    return version <= compilerRoslynVersion;
+                }
+            }
+
+            return true;
+        }
+        
+        static Version GetRoslynFolderVersion(string folder)
+        {
+            if (folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase))
+            {
+                var versionString = folder["analyzers/dotnet/roslyn".Length..].TrimEnd('/');
+                if (Version.TryParse(versionString, out var version))
+                {
+                    return version;
+                }
+            }
+
+            return new Version(0, 0);
+        }
+    }
+
     private sealed class VirtualPackageReader(IEnumerable<string> files)
         : PackageReaderBase(DefaultFrameworkNameProvider.Instance)
     {
