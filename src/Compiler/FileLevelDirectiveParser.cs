@@ -332,6 +332,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     Assemblies = result.Assemblies,
                     Metadata = RefAssemblyMetadata.Create(result.Assemblies),
                 });
+                
+                if (!result.Analyzers.IsDefaultOrEmpty)
+                {
+                    context.Config.AdditionalAnalyzers(() => result.Analyzers);
+                }
             }
             catch (Exception ex)
             {

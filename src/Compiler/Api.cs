@@ -36,12 +36,14 @@ internal sealed class ConfigCollector : IConfig
     private readonly List<Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>>> additionalSources = new();
     private readonly List<Func<RefAssemblyList, RefAssemblyList>> references = new();
     private readonly List<Func<RefAssemblyList>> additionalReferences = new();
+    private readonly List<Func<ImmutableArray<RefAssembly>>> additionalAnalyzers = new();
 
     public bool HasParseOptions => cSharpParseOptions.Count > 0;
     public bool HasCompilationOptions => cSharpCompilationOptions.Count > 0;
     public bool HasEmitOptions => emitOptions.Count > 0 || extendedEmitOptions.Count > 0;
     public bool HasAdditionalSources => additionalSources.Count > 0;
     public bool HasReferences => references.Count > 0 || additionalReferences.Count > 0;
+    public bool HasAnalyzers => additionalAnalyzers.Count > 0;
 
     public void Reset()
     {
@@ -53,6 +55,7 @@ internal sealed class ConfigCollector : IConfig
         additionalSources.Clear();
         references.Clear();
         additionalReferences.Clear();
+        additionalAnalyzers.Clear();
     }
 
     public void CSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> configure)
@@ -93,6 +96,32 @@ internal sealed class ConfigCollector : IConfig
     public void AdditionalReferences(Func<RefAssemblyList> configure)
     {
         additionalReferences.Add(configure);
+    }
+
+    public void AdditionalAnalyzers(Func<ImmutableArray<RefAssembly>> configure)
+    {
+        additionalAnalyzers.Add(configure);
+    }
+    
+    public ImmutableArray<RefAssembly> ConfigureAnalyzers()
+    {
+        if (additionalAnalyzers.Count == 0)
+        {
+            return [];
+        }
+        var builder = ImmutableArray.CreateBuilder<RefAssembly>();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var configure in additionalAnalyzers)
+        {
+            foreach (var analyzer in configure())
+            {
+                if (names.Add(analyzer.Name))
+                {
+                    builder.Add(analyzer);
+                }
+            }
+        }
+        return builder.DrainToImmutable();
     }
 
     public CSharpParseOptions ConfigureCSharpParseOptions(CSharpParseOptions options) => Configure(options, cSharpParseOptions);
@@ -146,6 +175,7 @@ internal interface IConfig
     void AdditionalSources(Func<ImmutableArray<SourceFile>, ImmutableArray<SourceFile>> configure);
     void References(Func<RefAssemblyList, RefAssemblyList> configure);
     void AdditionalReferences(Func<RefAssemblyList> configure);
+    void AdditionalAnalyzers(Func<ImmutableArray<RefAssembly>> configure);
 }
 
 public sealed record ExtendedEmitOptions(EmitOptions EmitOptions)
