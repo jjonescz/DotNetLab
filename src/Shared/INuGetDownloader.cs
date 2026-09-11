@@ -5,7 +5,8 @@ public interface INuGetDownloader
     Task<NuGetResults> DownloadAsync(
         Set<NuGetDependency> dependencies,
         string targetFramework,
-        bool loadForExecution);
+        bool loadForExecution,
+        Version? compilerRoslynVersion = null);
 }
 
 public readonly record struct NuGetDependency

@@ -303,7 +303,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
-                var result = await downloader.DownloadAsync(dependencies.Keys.ToHashSet(), targetFramework, loadForExecution: true);
+                var result = await downloader.DownloadAsync(
+                    dependencies.Keys.ToHashSet(),
+                    targetFramework,
+                    loadForExecution: true,
+                    compilerRoslynVersion: typeof(Compilation).Assembly.GetName().Version);
 
                 // Collect errors.
                 int foundErrors = 0;
@@ -317,7 +321,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 }
                 Debug.Assert(foundErrors == result.Errors.Count);
 
-                if (result.Assemblies.IsDefaultOrEmpty)
+                if (result.Assemblies.IsDefaultOrEmpty && result.Analyzers.IsDefaultOrEmpty)
                 {
                     Info.Errors.Add("No assemblies found across all dependencies.");
                     return;
