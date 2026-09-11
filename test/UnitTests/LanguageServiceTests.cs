@@ -69,7 +69,7 @@ public sealed class LanguageServiceTests
         var input = getInput("v1");
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -179,7 +179,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "Input.razor",
         [
@@ -215,7 +215,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "A.cs",
         [
@@ -263,7 +263,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -291,7 +291,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -304,7 +304,7 @@ public sealed class LanguageServiceTests
         input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = true } };
 
         await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -338,7 +338,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         var compiled = await compiler.CompileAsync(input);
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.IsNotNull(diagnosticsText);
@@ -378,6 +378,42 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync([new(modelUri, "test.csx") { NewContent = code }]);
         await VerifyDiagnosticsAsync(languageServices, "test.csx", [], modelUri);
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_PackageSourceGenerator()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:package CommunityToolkit.Mvvm
+                    using System;
+                    using CommunityToolkit.Mvvm.ComponentModel;
+                    Console.Write(new C { Name = "x" }.Name);
+                    partial class C : ObservableObject
+                    {
+                        [ObservableProperty] private string name = "";
+                    }
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        await languageServices.OnCompilationFinished();
+
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        TestContext.WriteLine(markers.Select(static m => m.ToDisplayString()).JoinToString("\n"));
+        markers.Should().NotContain(static m => m.GetCode() == "CS0117");
     }
 
     [TestMethod]

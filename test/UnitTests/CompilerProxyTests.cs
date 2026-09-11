@@ -1066,7 +1066,7 @@ public class C
         Assert.AreEqual(string.Empty, diagnosticsText);
 
         var languageServices = await compiler.GetLanguageServicesAsync();
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinished();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
