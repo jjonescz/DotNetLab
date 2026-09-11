@@ -23,4 +23,5 @@ public readonly struct NuGetResults
 {
     public required IReadOnlyDictionary<NuGetDependency, IReadOnlyList<string>> Errors { get; init; }
     public required ImmutableArray<RefAssembly> Assemblies { get; init; }
+    public required ImmutableArray<RefAssembly> Analyzers { get; init; }
 }

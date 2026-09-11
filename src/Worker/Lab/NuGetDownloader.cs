@@ -899,7 +899,7 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
                 .Select(GetAnalyzerFolder)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Where(folder => IsUsableAnalyzerFolder(folder, CompilerRoslynVersion))
-                .OrderBy(GetRoslynFolderVersion)
+                .OrderByDescending(GetRoslynFolderVersion)
                 .ThenByDescending(static folder => folder.Contains("/cs/", StringComparison.OrdinalIgnoreCase))
                 .FirstOrDefault();
 
@@ -911,7 +911,7 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
             return filePath =>
                 IsDll(filePath) &&
                 filePath.StartsWith(selectedFolder, StringComparison.OrdinalIgnoreCase) &&
-                filePath.Count('/') == selectedFolder.Count(static c => c == '/') + 1;
+                filePath.Count('/') == selectedFolder.Count('/') ;
         }
         
         public override bool Equals(NuGetDllFilter? other) =>
@@ -928,36 +928,43 @@ internal sealed class LibNuGetDllFilter(ILogger<LibNuGetDllFilter> logger, NuGet
         
         static bool IsUsableAnalyzerFolder(string folder, Version compilerRoslynVersion)
         {
-            // Skip vb/ and roslyn folders newer than the compiler we actually loaded.
-            if (folder.StartsWith("analyzers/dotnet/vb/", StringComparison.OrdinalIgnoreCase))
+            if (FolderIsVisualBasic(folder))
             {
                 return false;
             }
-
-            if (folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase))
+            if (TryGetRoslynFolderVersion(folder, out var version))
             {
-                var versionString = folder["analyzers/dotnet/roslyn".Length..].TrimEnd('/');
-                if (Version.TryParse(versionString, out var version))
-                {
-                    return version <= compilerRoslynVersion;
-                }
+                return version <= compilerRoslynVersion;
             }
-
-            return true;
+            // Looks like analyzers/dotnet/roslyn... but "4.4/cs" would no longer happen.
+            // If the prefix matched and parse failed, reject rather than accept.
+            return !folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase);
         }
         
+        static bool FolderIsVisualBasic(string folder)
+        {
+            return folder.Contains("/vb/", StringComparison.OrdinalIgnoreCase);
+        }
+
         static Version GetRoslynFolderVersion(string folder)
         {
-            if (folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase))
+            return TryGetRoslynFolderVersion(folder, out var version)
+                ? version
+                : new Version(0, 0);
+        }
+        
+        static bool TryGetRoslynFolderVersion(ReadOnlySpan<char> folder, out Version version)
+        {
+            const string prefix = "analyzers/dotnet/roslyn";
+            version = null!;
+            if (!folder.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
-                var versionString = folder["analyzers/dotnet/roslyn".Length..].TrimEnd('/');
-                if (Version.TryParse(versionString, out var version))
-                {
-                    return version;
-                }
+                return false;
             }
-
-            return new Version(0, 0);
+            ReadOnlySpan<char> rest = folder[prefix.Length..];
+            int slash = rest.IndexOf('/');
+            ReadOnlySpan<char> versionSpan = slash < 0 ? rest : rest[..slash];
+            return Version.TryParse(versionSpan, out version!);
         }
     }
 
