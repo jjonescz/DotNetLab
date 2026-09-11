@@ -17,6 +17,7 @@ using Microsoft.NET.Sdk.Razor.SourceGenerators;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
 namespace DotNetLab;
@@ -195,7 +196,53 @@ public sealed class Compiler(
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
+        
+        var analyzerAssemblies = Config.Instance.ConfigureAnalyzers();
+        
+        var packageGenerators = ImmutableArray.CreateBuilder<ISourceGenerator>();
+        var generatorLoadDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
 
+        foreach (var analyzer in analyzerAssemblies)
+        {
+            try
+            {
+                var assembly = alc.LoadFromStream(new MemoryStream(
+                    ImmutableCollectionsMarshal.AsArray(analyzer.Bytes)!));
+
+                foreach (var type in assembly.GetTypes())
+                {
+                    if (!HasGeneratorAttribute(type) || type.IsAbstract)
+                    {
+                        continue;
+                    }
+
+                    object instance = Activator.CreateInstance(type)!;
+                    if (instance is IIncrementalGenerator incremental)
+                    {
+                        packageGenerators.Add(incremental.AsSourceGenerator());
+                    }
+                    else if (instance is ISourceGenerator source)
+                    {
+                        packageGenerators.Add(source);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                generatorLoadDiagnostics.Add(Diagnostic.Create(
+                    id: "LAB",
+                    category: "FileLevelDirective",
+                    message: $"Failed to load analyzer '{analyzer.Name}'.",
+                    DiagnosticSeverity.Warning,
+                    DiagnosticSeverity.Warning,
+                    isEnabledByDefault: true,
+                    warningLevel: 1,
+                    location: Location.None));
+                
+                logger.LogWarning(ex, "Failed to load analyzer '{Name}'.", analyzer.Name);
+            }
+        }
+        
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
             logger.LogDebug("Using references:\n{References}", references.Assemblies
@@ -275,7 +322,8 @@ public sealed class Compiler(
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
-            .Concat(additionalDiagnostics);
+            .Concat(additionalDiagnostics)
+            .Concat(generatorLoadDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
@@ -625,10 +673,16 @@ public sealed class Compiler(
                 references: references.Metadata,
                 options: options);
 
-            if (generatorDriver is null)
+            ISourceGenerator[] generators =
+            [
+                new RazorSourceGenerator().AsSourceGenerator(),
+                .. packageGenerators,
+            ];
+            
+            if (generatorDriver is null || packageGenerators.Count > 0)
             {
                 generatorDriver = CSharpGeneratorDriver.Create(
-                    generators: [new RazorSourceGenerator().AsSourceGenerator()],
+                    generators: generators,
                     additionalTexts: additionalTextsBuilder.ToImmutable(),
                     parseOptions: parseOptions,
                     optionsProvider: optionsProvider);
@@ -1185,6 +1239,10 @@ public sealed class Compiler(
     {
         return CSharpObjectFormatter.Instance.FormatObject(value, new PrintOptions());
     }
+    
+    static bool HasGeneratorAttribute(Type type) =>
+        type.GetCustomAttributesData().Any(static a =>
+            a.AttributeType.FullName == "Microsoft.CodeAnalysis.GeneratorAttribute");
 }
 
 internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
