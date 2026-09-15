@@ -59,7 +59,10 @@ public static class RoslynAccessors
         return new CSharpCompilerDiagnosticAnalyzer();
     }
 
-    public static string GetDiagnosticsText(this IEnumerable<Diagnostic> actual, bool excludeSingleFileName = false)
+    public static string GetDiagnosticsText(
+        this IEnumerable<Diagnostic> actual,
+        bool excludeSingleFileName = false,
+        bool roslynTestFormat = false)
     {
         excludeSingleFileName = excludeSingleFileName && hasSingleFileName(actual);
         var sb = new StringBuilder();
@@ -69,7 +72,7 @@ public static class RoslynAccessors
             Diagnostic d = e.Current;
             ReadOnlySpan<char> message = ((IFormattable)d).ToString(null, CultureInfo.InvariantCulture);
 
-            // Remove file name to resemble Roslyn test output.
+            // The file name is redundant when all diagnostics belong to the same file.
             var l = d.Location;
             if (excludeSingleFileName)
             {
@@ -84,26 +87,48 @@ public static class RoslynAccessors
                 }
             }
 
-            if (i > 0)
+            if (roslynTestFormat)
             {
-                sb.AppendLine(",");
-            }
+                if (i > 0)
+                {
+                    sb.AppendLine(",");
+                }
 
-            foreach (var messageLine in message.EnumerateLines())
+                foreach (var messageLine in message.EnumerateLines())
+                {
+                    sb.Append("// ");
+                    sb.Append(messageLine);
+                    sb.AppendLine();
+                }
+
+                if (l.IsInSource)
+                {
+                    sb.Append("// ");
+                    sb.AppendLine(l.SourceTree.GetText().Lines.GetLineFromPosition(l.SourceSpan.Start).ToString());
+                }
+
+                var description = new DiagnosticDescription(d, errorCodeOnly: false);
+                sb.Append(description.ToString());
+            }
+            else
             {
-                sb.Append("// ");
-                sb.Append(messageLine);
-                sb.AppendLine();
-            }
+                if (i > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine();
+                }
 
-            if (l.IsInSource)
-            {
-                sb.Append("// ");
-                sb.AppendLine(l.SourceTree.GetText().Lines.GetLineFromPosition(l.SourceSpan.Start).ToString());
-            }
+                sb.Append(message);
 
-            var description = new DiagnosticDescription(d, errorCodeOnly: false);
-            sb.Append(description.ToString());
+                if (l.IsInSource)
+                {
+                    var line = l.SourceTree.GetText().Lines.GetLineFromPosition(l.SourceSpan.Start);
+
+                    sb.AppendLine();
+                    sb.Append("    ");
+                    sb.Append(line);
+                }
+            }
         }
 
         return sb.ToString();

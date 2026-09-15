@@ -79,6 +79,7 @@ public sealed record CompilationPreferences
     public bool FullIl { get; init; }
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
     public bool IncludeHiddenDiagnostics { get; init; }
+    public bool RoslynTestDiagnosticFormat { get; init; }
 }
 
 [ProtoContract]
@@ -219,6 +220,7 @@ public sealed record CompiledAssembly(
     public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
     public static readonly string CSharpLanguageId = "csharp";
+    public static readonly string DiagnosticsLanguageId = "diagnostics";
     public static readonly string OutputLanguageId = "output";
 
     public static CompiledAssembly Fail(string output)

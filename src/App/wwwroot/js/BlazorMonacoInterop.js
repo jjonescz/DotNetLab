@@ -364,6 +364,20 @@ export function registerLanguage(languageId) {
     });
 }
 
+export function registerDiagnosticsLanguage(languageId) {
+    registerLanguage(languageId);
+    monaco.languages.setMonarchTokensProvider(languageId, {
+        defaultToken: '',
+        tokenizer: {
+            root: [
+                [/^((?:.*?\(\d+,\d+\): )?)(error\s+[^:\s]+)(:)/, ['', 'diagnostic-error', '']],
+                [/^((?:.*?\(\d+,\d+\): )?)(warning\s+[^:\s]+)(:)/, ['', 'diagnostic-warning', '']],
+                [/^((?:.*?\(\d+,\d+\): )?)(info\s+[^:\s]+)(:)/, ['', 'diagnostic-info', '']],
+            ],
+        },
+    });
+}
+
 export function hasDarkTheme(editorId) {
     const editor = window.blazorMonaco.editor.getEditor(editorId);
     const theme = editor.getRawOptions().theme;
