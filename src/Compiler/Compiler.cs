@@ -155,7 +155,8 @@ public sealed class Compiler(
             (bool configExecutionSuccess, configDiagnostics) = await executeConfigurationAsync(configuration);
             if (!configExecutionSuccess)
             {
-                string configDiagnosticsText = configDiagnostics.GetDiagnosticsText();
+                string configDiagnosticsText = configDiagnostics.GetDiagnosticsText(
+                    roslynTestFormat: compilationInput.Preferences.RoslynTestDiagnosticFormat);
                 ImmutableArray<DiagnosticData> failedConfigDiagnosticData = configDiagnostics
                     .Select(toDiagnosticData)
                     .Distinct()
@@ -169,7 +170,9 @@ public sealed class Compiler(
                         {
                             Type = CompiledAssembly.DiagnosticsOutputType,
                             Label = CompiledAssembly.DiagnosticsOutputLabel,
-                            Language = CompiledAssembly.CSharpLanguageId,
+                            Language = compilationInput.Preferences.RoslynTestDiagnosticFormat
+                                ? CompiledAssembly.CSharpLanguageId
+                                : CompiledAssembly.DiagnosticsLanguageId,
                             EagerText = configDiagnosticsText,
                         },
                     ],
@@ -278,7 +281,8 @@ public sealed class Compiler(
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
 
         string diagnosticsText = filteredDiagnostics.GetDiagnosticsText(
-            excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics);
+            excludeSingleFileName: compilationInput.Preferences.ExcludeSingleFileNameInDiagnostics,
+            roslynTestFormat: compilationInput.Preferences.RoslynTestDiagnosticFormat);
         int numWarnings = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning);
         int numErrors = filteredDiagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
 
@@ -471,7 +475,9 @@ public sealed class Compiler(
                 {
                     Type = CompiledAssembly.DiagnosticsOutputType,
                     Label = CompiledAssembly.DiagnosticsOutputLabel,
-                    Language = CompiledAssembly.CSharpLanguageId,
+                    Language = compilationInput.Preferences.RoslynTestDiagnosticFormat
+                        ? CompiledAssembly.CSharpLanguageId
+                        : CompiledAssembly.DiagnosticsLanguageId,
                     EagerText = diagnosticsText,
                 },
             ])

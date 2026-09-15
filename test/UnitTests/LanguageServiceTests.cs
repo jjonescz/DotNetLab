@@ -344,12 +344,11 @@ public sealed class LanguageServiceTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // /test.cs(100,12): error CS0266: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)
-            // string s = o;
-            Diagnostic(ErrorCode.ERR_NoImplicitConvCast, "o").WithArguments("object", "string").WithLocation(100, 12),
-            // another.cs(200,9): error CS0266: Cannot implicitly convert type 'object' to 'int'. An explicit conversion exists (are you missing a cast?)
-            // int i = o;
-            Diagnostic(ErrorCode.ERR_NoImplicitConvCast, "o").WithArguments("object", "int").WithLocation(200, 9)
+            /test.cs(100,12): error CS0266: Cannot implicitly convert type 'object' to 'string'. An explicit conversion exists (are you missing a cast?)
+                string s = o;
+
+            another.cs(200,9): error CS0266: Cannot implicitly convert type 'object' to 'int'. An explicit conversion exists (are you missing a cast?)
+                int i = o;
             """.ReplaceLineEndings(), diagnosticsText);
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",

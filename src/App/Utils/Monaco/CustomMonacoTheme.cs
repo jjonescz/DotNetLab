@@ -96,6 +96,10 @@ internal static class CustomMonacoTheme
                 new() { Token = "jsonObject", Foreground = "000000" },
                 new() { Token = "jsonPropertyName", Foreground = "0451a5" },
                 new() { Token = "jsonConstructorName", Foreground = "795e26" },
+                new() { Token = "diagnostic-error", Foreground = "cd3131" },
+                new() { Token = "diagnostic-warning", Foreground = "bf8803" },
+                new() { Token = "diagnostic-info", Foreground = "1a85ff" },
+                new() { Token = "diagnostic-hidden", Foreground = "6e7781" },
             ],
         });
 
@@ -159,6 +163,10 @@ internal static class CustomMonacoTheme
                 new() { Token = "regexSelfEscapedCharacter", Foreground = "d69d85" },
                 new() { Token = "regexOtherEscape", Foreground = "ffd68f" },
                 new() { Token = "regexText", Foreground = "d69d85" },
+                new() { Token = "diagnostic-error", Foreground = "f14c4c" },
+                new() { Token = "diagnostic-warning", Foreground = "cca700" },
+                new() { Token = "diagnostic-info", Foreground = "3794ff" },
+                new() { Token = "diagnostic-hidden", Foreground = "8b949e" },
             ],
         });
     }

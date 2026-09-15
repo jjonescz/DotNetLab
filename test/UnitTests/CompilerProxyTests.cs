@@ -128,12 +128,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual($"""
-            // (1,8): error CS1029: #error: 'version'
-            // #error version
-            Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-            // (1,8): error CS8304: Compiler version: '{roslynVersion} ({expectedRoslynCommit})'. Language version: 10.0.
-            // #error version
-            Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{roslynVersion} ({expectedRoslynCommit})", "10.0").WithLocation(1, 8)
+            (1,8): error CS1029: #error: 'version'
+                #error version
+
+            (1,8): error CS8304: Compiler version: '{roslynVersion} ({expectedRoslynCommit})'. Language version: 10.0.
+                #error version
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -166,12 +165,11 @@ public sealed class CompilerProxyTests
             Assert.IsNotNull(diagnosticsText);
             TestContext.WriteLine(diagnosticsText);
             Assert.AreEqual($"""
-                // (1,8): error CS1029: #error: 'version'
-                // #error version
-                Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-                // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
-                // #error version
-                Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "preview").WithLocation(1, 8)
+                (1,8): error CS1029: #error: 'version'
+                    #error version
+
+                (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
+                    #error version
                 """.ReplaceLineEndings(), diagnosticsText);
 
             // TODO: This happens because we currently don't download satellite resource assemblies
@@ -480,9 +478,8 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
-            // unsafe { int* p = null; }
-            Diagnostic(ErrorCode.ERR_IllegalUnsafe, "unsafe").WithLocation(1, 1)
+            (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
+                unsafe { int* p = null; }
             """.ReplaceLineEndings(), diagnosticsText);
 
         // Changing configuration should work.
@@ -499,6 +496,27 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual(string.Empty, diagnosticsText);
+    }
+
+    [TestMethod]
+    public async Task RoslynTestDiagnosticFormat()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        const string source = "#error test";
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Preferences = CompilationPreferences.Default with { RoslynTestDiagnosticFormat = true },
+            });
+
+        var diagnosticsOutput = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType);
+        Assert.AreEqual(CompiledAssembly.CSharpLanguageId, diagnosticsOutput.Language);
+        Assert.AreEqual("""
+            // (1,8): error CS1029: #error: 'test'
+            // #error test
+            Diagnostic(ErrorCode.ERR_ErrorDirective, "test").WithArguments("test").WithLocation(1, 8)
+            """.ReplaceLineEndings(), diagnosticsOutput.Text);
     }
 
     [TestMethod]
@@ -526,12 +544,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (1,7): error CS0518: Predefined type 'System.Object' is not defined or imported
-            // class C;
-            Diagnostic(ErrorCode.ERR_PredefinedTypeNotFound, "C").WithArguments("System.Object").WithLocation(1, 7),
-            // (1,7): error CS1729: 'object' does not contain a constructor that takes 0 arguments
-            // class C;
-            Diagnostic(ErrorCode.ERR_BadCtorArgCount, "C").WithArguments("object", "0").WithLocation(1, 7)
+            (1,7): error CS0518: Predefined type 'System.Object' is not defined or imported
+                class C;
+
+            (1,7): error CS1729: 'object' does not contain a constructor that takes 0 arguments
+                class C;
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -622,12 +639,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
-            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
-            Diagnostic(ErrorCode.WRN_NullabilityMismatchInParameterTypeOnInterceptor, "InterceptsLocation").WithArguments("param2", "C.Method1(string?)").WithLocation(5, 6),
-            // (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
-            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
-            Diagnostic(ErrorCode.WRN_NullabilityMismatchInReturnTypeOnInterceptor, "InterceptsLocation").WithArguments("C.Method2()").WithLocation(8, 6)
+            (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
+                    [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
+
+            (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
+                    [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -793,9 +809,8 @@ public class C
         if (old)
         {
             Assert.AreEqual("""
-                // (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
-                // class C<T> where T : allows ref struct;
-                Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
+                (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                    class C<T> where T : allows ref struct;
                 """.ReplaceLineEndings(), diagnosticsText);
         }
         else
@@ -832,9 +847,8 @@ public class C
         if (fx)
         {
             Assert.AreEqual("""
-                // (7,16): warning CS8603: Possible null reference return.
-                //         return x;
-                Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
+                (7,16): warning CS8603: Possible null reference return.
+                            return x;
                 """.ReplaceLineEndings(), diagnosticsText);
         }
         else
@@ -1005,9 +1019,8 @@ public class C
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
-            // #:package Microsoft.CodeAnalysis@1000
-            Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
+            (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+                #:package Microsoft.CodeAnalysis@1000
             """.ReplaceLineEndings(), diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;

@@ -324,6 +324,9 @@
                                 <FluentCheckbox @bind-Value:get="savedState.IncludeHiddenDiagnostics"
                                                 @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { IncludeHiddenDiagnostics = v })"
                                                 Label="Include hidden diagnostics" />
+                                <FluentCheckbox @bind-Value:get="savedState.RoslynTestDiagnosticFormat"
+                                                @bind-Value:set="(v) => ChangePreferencesAsync((s) => s with { RoslynTestDiagnosticFormat = v })"
+                                                Label="Roslyn test format" />
                             }
                             break;
                     }
@@ -578,6 +581,7 @@
 
         await BlazorMonacoInterop.EnableSemanticHighlightingAsync();
         await BlazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+        await BlazorMonacoInterop.RegisterDiagnosticsLanguageAsync(CompiledAssembly.DiagnosticsLanguageId);
         await (await JSRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/asm.js")).InvokeVoidAsync("registerX86Language");
         await DefineMonacoThemeAsync();
         await RegisterWordWrapActionAsync();
