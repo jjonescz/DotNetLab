@@ -30,7 +30,7 @@ jobs:
 
       - name: Test
         if: ${{ always() && steps.build.outcome == 'success' }}
-        run: dotnet test --no-build --report-trx
+        run: dotnet test --project test/UnitTests --no-build --report-trx
 
       - name: Check BOM changes
         if: always()
