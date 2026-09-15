@@ -41,11 +41,14 @@ The recommended startup app for development is `src/Server`.
 To hit breakpoints, it is recommended to turn off the worker (in app settings).
 
 - `eng/BuildTools`: build-time tools.
-- `src/App`: the core app.
+- `eng/Wap`: Windows Application Packaging project (for publishing the app to Microsoft Store).
+- `src/Android`: an Android frontend. Needs `maui-android` workload.
+- `src/App`: the core app (shared between `Android`/`Desktop`/`WebAssembly` hosts).
 - `src/Compiler`: self-contained project referencing Roslyn/Razor.
   It's reloaded at runtime with a user-chosen version of Roslyn/Razor.
   It should be small (for best reloading perf). It can reference shared code
   which does not depend on Roslyn/Razor from elsewhere (e.g., `Shared.csproj`).
+- `src/Desktop`: desktop host of the `App`.
 - `src/RazorAccess`: `internal` access to Razor DLLs (via fake assembly name).
 - `src/RoslynAccess`: `internal` access to Roslyn Compiler DLLs (via fake assembly name).
 - `src/RoslynCodeStyleAccess`: `internal` access to Roslyn CodeStyle DLLs (via fake assembly name).

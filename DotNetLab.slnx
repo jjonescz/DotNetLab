@@ -1,4 +1,11 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
   <Folder Name="/eng/">
     <File Path="eng/AppEntryPoint.targets" />
     <File Path="eng/build.sh" />
@@ -6,12 +13,17 @@
     <File Path="eng/IndexHtmlGeneration.targets" />
     <File Path="eng/PatchCoreLib.targets" />
     <Project Path="eng/BuildTools/BuildTools.csproj" />
+    <Project Path="eng/Wap/Wap.wapproj" Type="c7167f0d-bc9f-4e6e-afe1-012c56b48db5" Id="128fb654-3ca2-4016-9544-353d2637ce88">
+      <Deploy />
+    </Project>
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
     <File Path="src/Directory.Build.targets" />
+    <Project Path="src/Android/Android.csproj" />
     <Project Path="src/App/App.csproj" />
     <Project Path="src/Compiler/Compiler.csproj" />
+    <Project Path="src/Desktop/Desktop.csproj" />
     <Project Path="src/RazorAccess/RazorAccess.csproj" />
     <Project Path="src/RoslynAccess/RoslynAccess.csproj" />
     <Project Path="src/RoslynCodeStyleAccess/RoslynCodeStyleAccess.csproj" />

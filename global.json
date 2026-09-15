@@ -5,6 +5,7 @@
     "allowPrerelease": true
   },
   "msbuild-sdks": {
+    "Microsoft.Build.NoTargets": "3.7.134",
     "MSTest.Sdk": "4.4.0"
   },
   "test": {

@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Use Exe to produce logs in console during development. -->
+    <OutputType Condition="'$(Configuration)' == 'Debug'">Exe</OutputType>
+    <OutputType Condition="'$(Configuration)' != 'Debug'">WinExe</OutputType>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- This appears in the .exe's File Description and Product Name, respectively. -->
+    <AssemblyTitle>.NET Lab</AssemblyTitle>
+    <Product>.NET Lab</Product>
+
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <IndexHtmlScriptPath>_framework/blazor.webview.js</IndexHtmlScriptPath>
+    <IndexHtmlTitle>dnlab</IndexHtmlTitle>
+    <IndexHtmlHead><link rel="stylesheet" href="css/desktop.css" /></IndexHtmlHead>
+    <IndexHtmlGoatcounterPath>/desktop</IndexHtmlGoatcounterPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JitInspect" />
+    <PackageReference Include="Photino.Blazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\App\App.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\eng\AppEntryPoint.targets" />
+  <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
+
+</Project>

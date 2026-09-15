@@ -1,0 +1,132 @@
+# Builds and deploys to Google Play internal testing track.
+#
+# Required repository secrets:
+#   KEYSTORE_BASE64          - Base64-encoded keystore
+#                              [Convert]::ToBase64String([IO.File]::ReadAllBytes("dotnetlab.keystore"))
+#   KEYSTORE_PASSWORD        - Keystore and key password
+#   PLAY_SERVICE_ACCOUNT_JSON - Google Play API service account JSON
+#                               (create one in Google Cloud Console, then grant it access in Play Console → API access;
+#                               see https://github.com/r0adkll/upload-google-play/tree/v1/#configure-access-via-service-account)
+
+name: Pack Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code_offset:
+        description: Extra value to add to the Android version code
+        required: false
+        default: '0'
+        type: number
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > dotnetlab.keystore
+
+      - name: Read keystore alias
+        id: keystore
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          alias="$(keytool -list -v -keystore dotnetlab.keystore -storepass "$KEYSTORE_PASSWORD" 2>/dev/null | sed -n 's/^Alias name: //p' | head -n 1)"
+          if [ -z "$alias" ]; then
+            echo "Could not determine keystore alias." >&2
+            exit 1
+          fi
+          echo "alias=$alias" >> "$GITHUB_OUTPUT"
+
+      - name: Get release notes
+        id: notes
+        run: |
+          notes=$(dotnet run --file eng/pack-desktop.cs -- --print-release-notes)
+          first_line="${notes%%$'\n'*}"
+          if [[ "$first_line" != v*:* ]]; then
+            echo "Could not determine release version from notes." >&2
+            exit 1
+          fi
+          version="${first_line%%:*}"
+          version="${version#v}"
+          if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)([-+].*)?$ ]]; then
+            echo "Could not convert release version '$version' to Android version code." >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          if (( 10#$minor >= 1000 || 10#$patch >= 1000 )); then
+            echo "Cannot convert release version '$version' to Android version code because minor and patch must be below 1000." >&2
+            exit 1
+          fi
+          base_version_code=$((10#$major * 1000000 + 10#$minor * 1000 + 10#$patch))
+          version_code_offset="${VERSION_CODE_OFFSET:-0}"
+          if [[ ! "$version_code_offset" =~ ^[0-9]+$ ]]; then
+            echo "Version code offset must be a non-negative integer." >&2
+            exit 1
+          fi
+          version_code=$((base_version_code + 10#$version_code_offset))
+          if (( version_code <= 0 || version_code > 2100000000 )); then
+            echo "Android version code '$version_code' is outside the allowed Play Store range." >&2
+            exit 1
+          fi
+          mkdir -p release-notes
+          echo "$notes" > release-notes/whatsnew-en-US
+          echo "Release notes for $version ($version_code):"
+          cat release-notes/whatsnew-en-US
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_CODE_OFFSET: ${{ inputs.version_code_offset }}
+
+      - name: Install workloads
+        run: dotnet workload install maui-android
+
+      - name: Ensure public commit hash
+        run: dotnet run --file eng/pack-desktop.cs -- --ensure-public-commit-hash-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Restore
+        run: dotnet restore src/Android -r android-arm64
+
+      - name: Build
+        run: >
+          dotnet publish src/Android
+          --no-restore
+          -r android-arm64
+          /bl
+          /p:AndroidPackageFormat=aab
+          /p:AndroidKeyStore=true
+          /p:AndroidSigningKeyStore=$(pwd)/dotnetlab.keystore
+          /p:AndroidSigningKeyAlias=${{ steps.keystore.outputs.alias }}
+          /p:AndroidSigningStorePass=${{ secrets.KEYSTORE_PASSWORD }}
+          /p:AndroidSigningKeyPass=${{ secrets.KEYSTORE_PASSWORD }}
+          /p:ApplicationDisplayVersion=${{ steps.notes.outputs.version }}
+          /p:ApplicationVersion=${{ steps.notes.outputs.version_code }}
+
+      - name: Upload to Play Store (internal track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: me.janjones.dotnetlab
+          releaseFiles: artifacts/publish/Android/release_android-arm64/me.janjones.dotnetlab-Signed.aab
+          whatsNewDirectory: release-notes
+          tracks: internal
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: artifacts
+          path: |
+            *.binlog
+            artifacts/publish/Android/**

@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\App\App.csproj" />
     <ProjectReference Include="..\..\eng\BuildTools\BuildTools.csproj" />
+    <ProjectReference Include="..\..\src\Desktop\Desktop.csproj" />
   </ItemGroup>
 
 </Project>
