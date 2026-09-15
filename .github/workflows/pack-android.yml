@@ -87,9 +87,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE_OFFSET: ${{ inputs.version_code_offset }}
 
-      - name: Install workloads
-        run: dotnet workload install maui-android
-
       - name: Ensure public commit hash
         run: dotnet run --file eng/pack-desktop.cs -- --ensure-public-commit-hash-only
         env:
