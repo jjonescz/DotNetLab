@@ -3,7 +3,6 @@ name: Build
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ main, features/** ]
   push:
     branches: [ main, features/** ]
 
