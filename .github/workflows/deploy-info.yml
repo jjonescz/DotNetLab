@@ -12,7 +12,7 @@ on:
       simulate_fork_pr:
         description: 'Simulate fork for this PR number'
   pull_request:
-    branches: [ main ]
+    branches: [ main, features/** ]
 
 jobs:
   deploy-info:
