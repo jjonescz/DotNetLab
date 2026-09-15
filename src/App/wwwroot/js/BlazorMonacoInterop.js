@@ -373,6 +373,7 @@ export function registerDiagnosticsLanguage(languageId) {
                 [/^((?:.*?\(\d+,\d+\): )?)(error\s+[^:\s]+)(:)/, ['', 'diagnostic-error', '']],
                 [/^((?:.*?\(\d+,\d+\): )?)(warning\s+[^:\s]+)(:)/, ['', 'diagnostic-warning', '']],
                 [/^((?:.*?\(\d+,\d+\): )?)(info\s+[^:\s]+)(:)/, ['', 'diagnostic-info', '']],
+                [/^((?:.*?\(\d+,\d+\): )?)(hidden\s+[^:\s]+)(:)/, ['', 'diagnostic-hidden', '']],
             ],
         },
     });

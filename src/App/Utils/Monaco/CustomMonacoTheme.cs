@@ -99,6 +99,7 @@ internal static class CustomMonacoTheme
                 new() { Token = "diagnostic-error", Foreground = "cd3131" },
                 new() { Token = "diagnostic-warning", Foreground = "bf8803" },
                 new() { Token = "diagnostic-info", Foreground = "1a85ff" },
+                new() { Token = "diagnostic-hidden", Foreground = "6e7781" },
             ],
         });
 
@@ -165,6 +166,7 @@ internal static class CustomMonacoTheme
                 new() { Token = "diagnostic-error", Foreground = "f14c4c" },
                 new() { Token = "diagnostic-warning", Foreground = "cca700" },
                 new() { Token = "diagnostic-info", Foreground = "3794ff" },
+                new() { Token = "diagnostic-hidden", Foreground = "8b949e" },
             ],
         });
     }
