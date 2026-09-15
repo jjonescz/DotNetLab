@@ -128,7 +128,7 @@ else
     ensurePublicCommitHash();
 
     // Build the app package.
-    exec("msbuild", "./eng/Wap/Wap.wapproj /v:m /m /bl /restore /p:Configuration=Release /p:Platform=x64 /p:UseRuntimeAsync=true " +
+    exec("msbuild", "./eng/Wap/Wap.wapproj /v:m /m /bl /restore /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:UseRuntimeAsync=true " +
         "/p:RequireDesktopBridge=true /p:UapAppxPackageBuildMode=StoreAndSideload /p:AppxBuildConfigurationSelection=x64");
 }
 
