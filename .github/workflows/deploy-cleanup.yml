@@ -9,7 +9,6 @@ on:
         description: 'Simulate fork for this PR number'
   pull_request:
     types: [ closed ]
-    branches: [ main, features/** ]
 
 jobs:
   deploy-cleanup:
