@@ -6,7 +6,7 @@ namespace DotNetLab;
 [TestClass]
 // JitInspect's process-wide caches are not thread-safe.
 [DoNotParallelize]
-public sealed class DesktopTests
+public sealed class JitDisassemblerTests
 {
     public required TestContext TestContext { get; set; }
 
