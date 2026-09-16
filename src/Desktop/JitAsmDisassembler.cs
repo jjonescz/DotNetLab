@@ -14,8 +14,9 @@ internal sealed class JitAsmDisassembler : IJitAsmDisassembler
         {
             var assembly = alc.LoadFromStream(emitStream);
 
+            var runtimeAsyncMethods = RuntimeAsyncMethodResolver.GetMethods(assembly);
             using var jitDisassembler = JitDisassembler.Create();
-            using var asyncMethods = RuntimeAsyncMethodResolver.Create(jitDisassembler, assembly);
+            using var asyncMethods = RuntimeAsyncMethodResolver.Create(jitDisassembler, runtimeAsyncMethods);
 
             var writer = new ArrayBufferWriter<char>();
 

@@ -21,12 +21,24 @@ internal sealed class RuntimeAsyncMethodResolver : EventListener
         }
     }
 
-    public static RuntimeAsyncMethodResolver? Create(JitDisassembler disassembler, Assembly assembly)
+    public static MethodInfo[] GetMethods(Assembly assembly)
     {
         var methods = assembly.DefinedTypes.SelectMany(t => t.DeclaredMethods)
             .Where(m => m.MethodImplementationFlags.HasFlag(MethodImplAttributes.Async) &&
                 !m.ContainsGenericParameters && !m.IsAbstract)
             .ToArray();
+
+        // Linux snapshots cannot see method handles materialized after JitDisassembler.Create().
+        foreach (var method in methods)
+        {
+            _ = method.MethodHandle;
+        }
+
+        return methods;
+    }
+
+    public static RuntimeAsyncMethodResolver? Create(JitDisassembler disassembler, MethodInfo[] methods)
+    {
         if (methods.Length == 0)
         {
             return null;
