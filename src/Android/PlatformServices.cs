@@ -117,19 +117,6 @@ internal sealed class AndroidScreenInfo : IScreenInfo
     }
 }
 
-internal sealed class AndroidWorkerConfigurer : IWorkerConfigurer
-{
-    public void ConfigureWorkerServices(ServiceCollection services)
-    {
-        services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
-        services.Configure<CompilerProxyOptions>(static options =>
-        {
-            options.AssembliesAreAlwaysInDllFormat = true;
-            options.LoadAssembliesFromDisk = true;
-        });
-    }
-}
-
 internal sealed class AndroidCompilerOutputPlugin : ICompilerOutputPlugin
 {
     public string GetText(
