@@ -1,0 +1,59 @@
+name: Pack Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      store-package-flight-id:
+        description: Microsoft Store package flight ID
+        required: false
+        default: ca3ec8ba-40df-41b1-bab6-11ac99c6e6f1
+        type: string
+      publish-to-flight-and-production:
+        description: Publish also to production
+        required: false
+        default: true
+        type: boolean
+      commit-submission:
+        description: Commit the submission
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  pack:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Test
+        run: dotnet test ./test/UnitTests --report-trx --filter "DesktopTests"
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Pack
+        run: dotnet run --file ./eng/pack-desktop.cs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STORE_ASSOCIATION_FILE_CONTENT: ${{ secrets.STORE_ASSOCIATION_FILE_CONTENT }}
+          STORE_UPLOAD_ENABLED: "true"
+          STORE_APPLICATION_ID: "9PCPMM329DZT"
+          STORE_COMMIT_SUBMISSION: ${{ inputs['commit-submission'] }}
+          STORE_PUBLISH_TO_FLIGHT_AND_PRODUCTION: ${{ inputs['publish-to-flight-and-production'] }}
+          STORE_PACKAGE_FLIGHT_ID: ${{ inputs['store-package-flight-id'] }}
+          STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+          STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: artifacts
+          path: |
+            **/TestResults/*.*
+            artifacts/AppPackages/**
+            !artifacts/AppPackages/**/*.store-submission.zip

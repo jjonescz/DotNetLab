@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
+    <OriginalTargetFramework>$(TargetFramework)</OriginalTargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DotNetLab</RootNamespace>
@@ -43,8 +44,13 @@
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);WASM0001</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(UseRuntimeAsync)' == 'true'">
+    <Features>$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+
   <PropertyGroup>
     <DotNetLabUseCachingCompiler Condition="'$(DotNetLabUseCachingCompiler)' == '' and '$(CI)' != ''">false</DotNetLabUseCachingCompiler>
+    <DotNetLabUseCachingCompiler Condition="'$(DotNetLabUseCachingCompiler)' == '' and '$(AndroidAttachDebugger)' == 'true'">false</DotNetLabUseCachingCompiler>
     <DotNetLabUseCachingCompiler Condition="'$(DotNetLabUseCachingCompiler)' == '' and '$(DotNetLabWatchBuild)' == 'true'">false</DotNetLabUseCachingCompiler>
     <DotNetLabUseCachingCompiler Condition="'$(DotNetLabUseCachingCompiler)' == ''">true</DotNetLabUseCachingCompiler>
   </PropertyGroup>

@@ -15,4 +15,4 @@ runs:
 
     - name: Install workloads
       shell: pwsh
-      run: dotnet workload install wasm-tools wasm-experimental
+      run: dotnet workload install wasm-tools wasm-experimental maui-android
