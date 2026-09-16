@@ -25,4 +25,7 @@ internal static class MonoInterop
 
     [DllImport(MonoLib, ExactSpelling = true)]
     public static extern void* mono_pmip(void* ip);
+
+    [DllImport(MonoLib, ExactSpelling = true)]
+    public static extern void mono_free(void* ptr);
 }

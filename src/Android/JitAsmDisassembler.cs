@@ -124,7 +124,7 @@ internal sealed class JitAsmDisassembler : IJitAsmDisassembler
                 PrepareMethod(writer, constructor);
             }
 
-            foreach (var method in type.GetRuntimeMethods())
+            foreach (var method in type.GetTypeInfo().DeclaredMethods)
             {
                 ProcessMethod(writer, method);
             }

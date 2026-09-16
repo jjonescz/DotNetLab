@@ -138,7 +138,14 @@ internal sealed class MonoSymbolResolver : ISymbolResolver
             return false;
         }
 
-        symbol = new SymbolResult(address, Marshal.PtrToStringAnsi((nint)name)?.Trim() ?? "unknown");
-        return true;
+        try
+        {
+            symbol = new SymbolResult(address, Marshal.PtrToStringAnsi((nint)name)?.Trim() ?? "unknown");
+            return true;
+        }
+        finally
+        {
+            mono_free(name);
+        }
     }
 }
