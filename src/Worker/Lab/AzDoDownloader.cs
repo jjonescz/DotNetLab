@@ -272,11 +272,32 @@ internal sealed class AzDoDownloader(
     {
         var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString(), "artifacts");
-        uri.AppendQuery("artifactName", artifactName);
         uri.AppendQuery("api-version", "7.1");
 
-        return await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.BuildArtifact)
-            .ThrowOn404($"No artifact '{artifactName}' found in build {buildId}.");
+        var missingArtifactMessage = $"No artifact '{artifactName}' found in build {buildId}.";
+        var artifacts = await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.AzDoCollectionBuildArtifact)
+            .ThrowOn404(missingArtifactMessage);
+
+        // Prefer the latest build-job attempt, falling back to the name used by older builds.
+        BuildArtifact? selectedArtifact = null;
+        var latestAttempt = 0;
+        var attemptPrefix = $"{artifactName}-Attempt";
+        foreach (var artifact in artifacts.Value)
+        {
+            if (artifact.Name == artifactName && selectedArtifact is null)
+            {
+                selectedArtifact = artifact;
+            }
+            else if (artifact.Name.StartsWith(attemptPrefix, StringComparison.Ordinal) &&
+                int.TryParse(artifact.Name.AsSpan(attemptPrefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var attempt) &&
+                attempt > latestAttempt)
+            {
+                selectedArtifact = artifact;
+                latestAttempt = attempt;
+            }
+        }
+
+        return selectedArtifact ?? throw new InvalidOperationException(missingArtifactMessage);
     }
 
     private async Task<ArtifactFiles> GetArtifactFilesAsync(int buildId, BuildArtifact artifact)
@@ -437,7 +458,7 @@ internal sealed class ArtifactFileBlob
         typeof(JsonStringEnumConverter<QueuePriority>),
     ])]
 [JsonSerializable(typeof(AzDoCollection<ImprovedBuild>))]
-[JsonSerializable(typeof(BuildArtifact))]
+[JsonSerializable(typeof(AzDoCollection<BuildArtifact>))]
 [JsonSerializable(typeof(ArtifactFiles))]
 internal sealed partial class AzDoJsonContext : JsonSerializerContext;
 
