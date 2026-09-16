@@ -10,6 +10,15 @@ public sealed class DesktopTests
 {
     public required TestContext TestContext { get; set; }
 
+    [TestInitialize]
+    public void Initialize()
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            Assert.Inconclusive("Temporarily skipped on Linux: JitInspect writes a multi-GB full-process dump per method, slowing down the tests a lot.");
+        }
+    }
+
     [TestMethod]
     public async Task AsmDecompilation()
     {
