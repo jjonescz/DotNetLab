@@ -181,6 +181,12 @@ public closed record CompilerVersionSpecifier
             yield return new NuGet(nuGetVersion);
         }
 
+        if (Path.IsPathFullyQualified(specifier) && Path.IsPathRooted(specifier))
+        {
+            yield return new Local(specifier);
+            yield break;
+        }
+
         yield return new Branch(specifier);
     }
 
@@ -190,6 +196,7 @@ public closed record CompilerVersionSpecifier
     public sealed record Build(int BuildId) : CompilerVersionSpecifier;
     public sealed record PullRequest(int PullRequestNumber) : CompilerVersionSpecifier;
     public sealed record Branch(string BranchName) : CompilerVersionSpecifier;
+    public sealed record Local(string Path) : CompilerVersionSpecifier;
 }
 
 internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>

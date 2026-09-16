@@ -222,6 +222,7 @@ file sealed class DesktopWorkerConfigurer : IWorkerConfigurer
     public void ConfigureWorkerServices(ServiceCollection services)
     {
         services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
+        services.AddScoped<ICompilerDependencyResolver, LocalCompilerDependencyResolver>();
         services.Configure<CompilerProxyOptions>(static options =>
         {
             options.AssembliesAreAlwaysInDllFormat = true;

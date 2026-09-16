@@ -122,7 +122,7 @@ internal sealed class CompilerDependencyProvider(
     }
 }
 
-internal interface ICompilerDependencyResolver
+public interface ICompilerDependencyResolver
 {
     /// <returns>
     /// <see langword="null"/> if the <paramref name="specifier"/> is not supported by this resolver.
@@ -186,7 +186,7 @@ internal sealed class CompilerDependencyUserInput
     public required BuildConfiguration Configuration { get; init; }
 }
 
-internal sealed class PackageDependency
+public sealed class PackageDependency
 {
     public required Lazy<Task<PackageDependencyInfo>> Info { get; init; }
     public required Lazy<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
