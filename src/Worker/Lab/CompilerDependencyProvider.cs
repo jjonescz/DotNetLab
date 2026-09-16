@@ -72,7 +72,29 @@ internal sealed class CompilerDependencyProvider(
             {
                 bool any = false;
                 List<string>? errors = null;
-                PackageDependency? found = await findAsync();
+                PackageDependency? found = null;
+
+                var specifiers = CompilerVersionSpecifier.Parse(version);
+                specifierLoop: foreach (var specifier in specifiers)
+                {
+                    any = true;
+                    foreach (var plugin in resolvers)
+                    {
+                        try
+                        {
+                            if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
+                            {
+                                found = dependency;
+                                break specifierLoop;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            errors ??= new();
+                            errors.Add($"{plugin.GetType().Name}: {ex.Message}");
+                        }
+                    }
+                }
 
                 if (!any)
                 {
@@ -81,37 +103,12 @@ internal sealed class CompilerDependencyProvider(
 
                 if (found is null)
                 {
-                    throw new InvalidOperationException($"Specified version was not found.\n{errors?.JoinToString("\n")}");
+                    throw new InvalidOperationException($"Specified version could not be resolved.\nTried:\n- {specifiers.JoinToString("\n- ")}\n{errors?.JoinToString("\n")}");
                 }
 
                 loaded[compilerKind] = (userInput, found);
 
                 return found;
-
-                async Task<PackageDependency?> findAsync()
-                {
-                    foreach (var specifier in CompilerVersionSpecifier.Parse(version))
-                    {
-                        any = true;
-                        foreach (var plugin in resolvers)
-                        {
-                            try
-                            {
-                                if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
-                                {
-                                    return dependency;
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                errors ??= new();
-                                errors.Add($"{plugin.GetType().Name}: {ex.Message}");
-                            }
-                        }
-                    }
-
-                    return null;
-                }
             }
             catch
             {
