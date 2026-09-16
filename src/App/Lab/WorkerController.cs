@@ -14,7 +14,9 @@ internal sealed class WorkerController : IAsyncDisposable
     private readonly ILogger<WorkerController> logger;
     private readonly Logging logging;
     private readonly IAppHostEnvironment hostEnvironment;
+    private readonly IInProcessWorkerFactory? inProcessWorkerFactory;
     private readonly Dispatcher dispatcher;
+    private readonly Lazy<IServiceProvider>? workerServices;
     private readonly ConcurrentDictionary<int, TaskCompletionSource<WorkerOutputMessage>> pendingRequests = new();
     private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
     private Task<WorkerInstance?>? worker;
@@ -26,12 +28,15 @@ internal sealed class WorkerController : IAsyncDisposable
     public WorkerController(
         ILogger<WorkerController> logger,
         Logging logging,
-        IAppHostEnvironment hostEnvironment)
+        IAppHostEnvironment hostEnvironment,
+        IInProcessWorkerFactory? inProcessWorkerFactory = null)
     {
         this.logger = logger;
         this.logging = logging;
         this.hostEnvironment = hostEnvironment;
+        this.inProcessWorkerFactory = inProcessWorkerFactory;
         dispatcher = Dispatcher.CreateDefault();
+        workerServices = hostEnvironment.SupportsWebWorkers ? null : new(CreateWorkerServices);
     }
 
     public event Action<string>? Failed;
@@ -41,11 +46,34 @@ internal sealed class WorkerController : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await DisposeWorkerAsync();
+        if (workerServices is { IsValueCreated: true })
+        {
+            if (workerServices.Value is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync();
+            }
+            else if (workerServices.Value is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
         workerGuard.Dispose();
     }
 
     [SupportedOSPlatform("browser")]
     private Task EnsureInteropScriptInitializedAsync() => initializeInteropScript.Value;
+
+    private IServiceProvider CreateWorkerServices()
+    {
+        if (inProcessWorkerFactory == null)
+        {
+            throw new InvalidOperationException(
+                "Non-browser hosts must register the in-process compiler worker by calling AddDotNetLabInProcessWorker.");
+        }
+
+        return inProcessWorkerFactory.Create(hostEnvironment.BaseAddress, logging.LogLevel);
+    }
 
     private async Task<WorkerInstance?> GetWorkerAsync()
     {
@@ -124,9 +152,15 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<Task<WorkerInstance?>> RecreateWorkerNoLockAsync()
     {
+        if (!hostEnvironment.SupportsWebWorkers)
+        {
+            worker = Task.FromResult<WorkerInstance?>(null);
+            return worker;
+        }
+
         if (!OperatingSystem.IsBrowser())
         {
-            throw new PlatformNotSupportedException("The compiler worker requires a browser.");
+            throw new InvalidOperationException("The host reports Web Worker support outside the browser.");
         }
 
         if (worker == null)
@@ -291,7 +325,18 @@ internal sealed class WorkerController : IAsyncDisposable
 
         if (workerInstance == null)
         {
-            throw new InvalidOperationException("The compiler worker was not created.");
+            var services = workerServices?.Value
+                ?? throw new InvalidOperationException("The compiler worker was not created.");
+            var executor = services.GetRequiredService<WorkerInputMessage.IExecutor>();
+
+            if (hostEnvironment.SupportsThreads)
+            {
+                LogOutgoingMessage(message, details: "bg");
+                return await Task.Run(() => message.HandleAndGetOutputAsync(executor));
+            }
+
+            LogOutgoingMessage(message, details: "fg");
+            return await message.HandleAndGetOutputAsync(executor);
         }
 
         // Register pending request before sending to avoid race conditions.
