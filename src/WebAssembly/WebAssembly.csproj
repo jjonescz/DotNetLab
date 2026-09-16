@@ -8,7 +8,7 @@
     <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
     <StaticWebAssetsGetBuildAssetsTargets>GetWebAssemblyBuildStaticWebAssetItems</StaticWebAssetsGetBuildAssetsTargets>
-    <WorkerPublishDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsPath)', 'publish', 'WorkerWebAssembly', '$(Configuration)'))</WorkerPublishDirectory>
+    <WorkerPublishDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsPath)', 'publish', 'WorkerWebAssembly', '$(Configuration.ToLowerInvariant())'))</WorkerPublishDirectory>
     <!-- Microsoft Store SVG source: https://upload.wikimedia.org/wikipedia/commons/a/a7/Microsoft_Store.svg -->
     <!-- Google Play SVG source: https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_Play_2022_icon.svg -->
     <IndexHtmlLoadingInfoFooter>
@@ -45,6 +45,15 @@
                       Condition="'$(_IsPublishing)' != 'true'"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="IncludeWorkerWebAssemblyInPublishRestore"
+          BeforeTargets="_GenerateRestoreProjectPathItemsPerFramework"
+          Condition="'$(_IsPublishing)' == 'true'">
+    <ItemGroup>
+      <ProjectReference Include="..\WorkerWebAssembly\WorkerWebAssembly.csproj"
+                        ReferenceOutputAssembly="false" />
+    </ItemGroup>
+  </Target>
 
   <Target Name="GetWebAssemblyBuildStaticWebAssetItems"
           DependsOnTargets="GetCurrentProjectBuildStaticWebAssetItems"
