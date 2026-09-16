@@ -1,9 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputType>Exe</OutputType>
-    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <StaticWebAssetBasePath>worker</StaticWebAssetBasePath>
+    <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+    <WasmMainJSPath>wwwroot\main.js</WasmMainJSPath>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 

@@ -14,11 +14,7 @@ internal sealed class WorkerController : IAsyncDisposable
     private readonly ILogger<WorkerController> logger;
     private readonly Logging logging;
     private readonly IAppHostEnvironment hostEnvironment;
-    private readonly SettingsService settingsService;
-    private readonly IWorkerConfigurer? workerConfigurer;
     private readonly Dispatcher dispatcher;
-    private readonly Lazy<Task<bool>>? isEnabled;
-    private readonly Lazy<IServiceProvider> workerServices;
     private readonly ConcurrentDictionary<int, TaskCompletionSource<WorkerOutputMessage>> pendingRequests = new();
     private readonly SemaphoreSlim workerGuard = new(initialCount: 1, maxCount: 1);
     private Task<WorkerInstance?>? worker;
@@ -30,18 +26,12 @@ internal sealed class WorkerController : IAsyncDisposable
     public WorkerController(
         ILogger<WorkerController> logger,
         Logging logging,
-        IAppHostEnvironment hostEnvironment,
-        SettingsService settingsService,
-        IWorkerConfigurer? workerConfigurer)
+        IAppHostEnvironment hostEnvironment)
     {
         this.logger = logger;
         this.logging = logging;
         this.hostEnvironment = hostEnvironment;
-        this.settingsService = settingsService;
-        this.workerConfigurer = workerConfigurer;
         dispatcher = Dispatcher.CreateDefault();
-        isEnabled = !hostEnvironment.SupportsWebWorkers ? null : new(ComputeIsEnabledAsync);
-        workerServices = new(CreateWorkerServices);
     }
 
     public event Action<string>? Failed;
@@ -54,32 +44,8 @@ internal sealed class WorkerController : IAsyncDisposable
         workerGuard.Dispose();
     }
 
-    private ValueTask<bool> GetIsEnabledAsync()
-    {
-        if (isEnabled is null)
-        {
-            return new(false);
-        }
-
-        return new(isEnabled.Value);
-    }
-
-    private async Task<bool> ComputeIsEnabledAsync()
-    {
-        await settingsService.LoadIfNeededAsync();
-        return settingsService.EnableWorker;
-    }
-
     [SupportedOSPlatform("browser")]
     private Task EnsureInteropScriptInitializedAsync() => initializeInteropScript.Value;
-
-    private IServiceProvider CreateWorkerServices()
-    {
-        return WorkerServices.Create(
-           baseUrl: hostEnvironment.BaseAddress,
-           logLevel: logging.LogLevel,
-           configureServices: workerConfigurer is null ? null : workerConfigurer.ConfigureWorkerServices);
-    }
 
     private async Task<WorkerInstance?> GetWorkerAsync()
     {
@@ -158,21 +124,9 @@ internal sealed class WorkerController : IAsyncDisposable
 
     private async Task<Task<WorkerInstance?>> RecreateWorkerNoLockAsync()
     {
-        if (!await GetIsEnabledAsync())
-        {
-            if (OperatingSystem.IsBrowser())
-            {
-                // One-time initialization.
-                await JSHost.ImportAsync("worker-interop.js", "../_content/DotNetLab.WorkerWebAssembly/interop.js");
-            }
-
-            worker = Task.FromResult<WorkerInstance?>(null);
-            return worker;
-        }
-
         if (!OperatingSystem.IsBrowser())
         {
-            throw new InvalidOperationException("Workers are only supported in the browser.");
+            throw new PlatformNotSupportedException("The compiler worker requires a browser.");
         }
 
         if (worker == null)
@@ -212,8 +166,6 @@ internal sealed class WorkerController : IAsyncDisposable
     [SupportedOSPlatform("browser")]
     private async Task<WorkerInstance?> CreateWorkerAsync()
     {
-        Debug.Assert(await GetIsEnabledAsync());
-
         // Some errors like StackOverflow don't propagate correctly from the worker unless we ping it explicitly.
         var pingTimer = new Timer(TimeSpan.FromSeconds(10));
         pingTimer.Elapsed += void (sender, args) =>
@@ -230,7 +182,7 @@ internal sealed class WorkerController : IAsyncDisposable
 
         var workerReady = new TaskCompletionSource();
         var worker = WorkerControllerInterop.CreateWorker(
-            scriptUrl: getWorkerUrl("../_content/DotNetLab.WorkerWebAssembly/main.js", [hostEnvironment.BaseAddress, logging.LogLevel.ToString()]),
+            scriptUrl: getWorkerUrl("../worker/main.js", [hostEnvironment.BaseAddress, logging.LogLevel.ToString()]),
             messageHandler: void (string data) =>
             {
                 dispatcher.InvokeAsync(async () =>
@@ -314,16 +266,13 @@ internal sealed class WorkerController : IAsyncDisposable
         WorkerControllerInterop.CollectAndDownloadGcDump();
 
         // Download worker's GC dump.
-        if (await GetIsEnabledAsync())
+        JSObject? worker = (await GetWorkerAsync())?.Handle;
+        if (worker == null)
         {
-            JSObject? worker = (await GetWorkerAsync())?.Handle;
-            if (worker == null)
-            {
-                return;
-            }
-
-            WorkerControllerInterop.PostSideMessage(worker, "collect-gc-dump");
+            return;
         }
+
+        WorkerControllerInterop.PostSideMessage(worker, "collect-gc-dump");
     }
 
     private void LogOutgoingMessage(IWorkerInputMessage message, string details)
@@ -340,20 +289,9 @@ internal sealed class WorkerController : IAsyncDisposable
     {
         var workerInstance = await GetWorkerAsync();
 
-        // If there is no background worker, let the in-process worker handle the message.
         if (workerInstance == null)
         {
-            var workerServices = this.workerServices.Value;
-            var executor = workerServices.GetRequiredService<WorkerInputMessage.IExecutor>();
-
-            if (hostEnvironment.SupportsThreads)
-            {
-                LogOutgoingMessage(message, details: "bg");
-                return await Task.Run(() => message.HandleAndGetOutputAsync(executor));
-            }
-
-            LogOutgoingMessage(message, details: "fg");
-            return await message.HandleAndGetOutputAsync(executor);
+            throw new InvalidOperationException("The compiler worker was not created.");
         }
 
         // Register pending request before sending to avoid race conditions.
@@ -472,7 +410,7 @@ internal sealed class WorkerController : IAsyncDisposable
     }
 
     /// <summary>
-    /// Instructs the <see cref="DependencyRegistry"/> to use this package.
+    /// Instructs the worker's dependency registry to use this package.
     /// </summary>
     public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
     {
@@ -624,9 +562,4 @@ internal sealed class WorkerException(WorkerOutputMessage.Failure failure)
     : Exception(failure.FullString)
 {
     public WorkerOutputMessage.Failure Failure { get; } = failure;
-}
-
-public interface IWorkerConfigurer
-{
-    void ConfigureWorkerServices(ServiceCollection services);
 }

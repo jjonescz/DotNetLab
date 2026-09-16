@@ -6,7 +6,7 @@ globalThis.document = {
 globalThis.window = globalThis;
 
 /** @type {import('./dotnet').ModuleAPI} */
-import { dotnet as dn } from '../../_framework/dotnet.js';
+import { dotnet as dn } from './_framework/dotnet.js';
 import * as interop from './interop.js';
 
 // Extract arguments from URL of the script.

@@ -38,8 +38,6 @@ and workloads `wasm-tools wasm-experimental`).
 
 The recommended startup app for development is `src/Server`.
 
-To hit breakpoints, it is recommended to turn off the worker (in app settings).
-
 - `eng/BuildTools`: build-time tools.
 - `src/App`: the core app.
 - `src/Compiler`: self-contained project referencing Roslyn/Razor.
@@ -63,9 +61,9 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
 - `src/Worker`: a separate component that can be loaded in a web worker (a separate process in the browser),
   so it does all the CPU-intensive work to avoid lagging the user interface.
 - `src/WorkerApi`: shared code between `Worker` and `App`.
-  This is in preparation for making the worker independent of the app,
-  so the app can be optimized (trimming, NativeAOT) and the worker can be loaded more lazily.
-- `src/WorkerWebAssembly`: web-assembly host of the `Worker`.
+  This keeps the worker implementation independent of the app.
+- `src/WorkerWebAssembly`: independently published web-assembly host of the `Worker`,
+  loaded after the app UI is ready.
 - `test/UnitTests`
 
 ## Attribution

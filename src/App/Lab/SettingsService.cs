@@ -20,7 +20,6 @@ internal sealed partial class SettingsService : INotifyPropertyChanged
         // Set default values.
         DebugLogs = hostEnvironment.IsDevelopment;
         EnableLanguageServices = true;
-        EnableWorker = true;
         EnableCaching = true;
         AutoCompileOnStart = true;
         CompilationPreferences = CompilationPreferences.Default;
@@ -64,8 +63,6 @@ internal sealed partial class SettingsService : INotifyPropertyChanged
 
     [DisplayName("EnableLanguageServices2")] // Turning this on by default for existing users means we need new key, hence the `2`.
     [OnPropertyChanged] public partial bool EnableLanguageServices { get; set; }
-
-    [OnPropertyChanged] public partial bool EnableWorker { get; set; }
 
     [OnPropertyChanged] public partial bool EnableCaching { get; set; }
 

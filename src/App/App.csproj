@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Worker\Worker.csproj" />
+    <ProjectReference Include="..\WorkerApi\WorkerApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
