@@ -6,6 +6,8 @@
     <StaticWebAssetBasePath>worker</StaticWebAssetBasePath>
     <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
     <WasmMainJSPath>wwwroot\main.js</WasmMainJSPath>
+    <!-- Forwarded worker assets must not register a second Hot Reload agent in the UI runtime. -->
+    <WasmEnableHotReload>false</WasmEnableHotReload>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 
