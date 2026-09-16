@@ -8,7 +8,10 @@
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"
       PrivateAssets="all"
-      SetPlatform="Platform=AnyCPU" />
+      SetPlatform="Platform=AnyCPU">
+      <Watch Condition="'$(DotNetLabWatchBuild)' == 'true'">false</Watch>
+      <Targets Condition="'$(DotNetLabWatchBuild)' == 'true'">BuildForWatch</Targets>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>
