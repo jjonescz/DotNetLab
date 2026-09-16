@@ -1166,6 +1166,13 @@ internal sealed partial class MockHttpMessageHandler : HttpClientHandler
             {
                 var assemblyName = fileName[..^5];
                 var assemblyPath = Path.Join(directory, assemblyName) + ".dll";
+
+                if (!File.Exists(assemblyPath))
+                {
+                    // Shared-framework assemblies are not copied to the test output.
+                    assemblyPath = Assembly.Load(assemblyName.ToString()).Location;
+                }
+
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StreamContent(File.OpenRead(assemblyPath)),

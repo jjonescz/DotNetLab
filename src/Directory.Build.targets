@@ -2,9 +2,4 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..'))" />
 
-  <PropertyGroup>
-    <!-- Allow self-contained publishing. -->
-    <RuntimeIdentifiers Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == ''">win-x64;android-arm64;android-x64</RuntimeIdentifiers>
-  </PropertyGroup>
-
 </Project>

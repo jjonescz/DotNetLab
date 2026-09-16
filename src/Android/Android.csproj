@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>$(OriginalTargetFramework)-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+
+    <ApplicationTitle>.NET Lab</ApplicationTitle>
+    <ApplicationId>me.janjones.dotnetlab</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+    <MauiAndroidSystemBarsUseMauiChrome>true</MauiAndroidSystemBarsUseMauiChrome>
+
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">android-x64</RuntimeIdentifier>
+
+    <!-- Need to use Mono runtime for now due to https://github.com/dotnet/android/issues/11025. -->
+    <UseMonoRuntime>true</UseMonoRuntime>
+    <_DisableCheckForUnsupportedMonoMobileRuntime>true</_DisableCheckForUnsupportedMonoMobileRuntime>
+  
+    <PublishAot>false</PublishAot>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <BuildInParallel>false</BuildInParallel>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+
+    <IndexHtmlScriptPath>_framework/blazor.webview.js</IndexHtmlScriptPath>
+    <IndexHtmlHead><link rel="stylesheet" href="css/android.css" /><script src="blazor-webview-android-bridge.js"></script><script src="android-clipboard.js"></script></IndexHtmlHead>
+    <IndexHtmlGoatcounterPath>/android</IndexHtmlGoatcounterPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Iced" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="Microsoft.Maui.Controls" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\App\App.csproj" />
+  </ItemGroup>
+
+  <!-- Android's inner build must not delete shared satellite assemblies needed by other apps. -->
+  <ItemDefinitionGroup>
+    <ProjectReference>
+      <GlobalPropertiesToRemove>%(GlobalPropertiesToRemove);ResolveAssemblyReferencesFindRelatedSatellites</GlobalPropertiesToRemove>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <Import Project="..\..\eng\AppEntryPoint.targets" />
+  <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
+
+</Project>

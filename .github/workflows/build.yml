@@ -26,11 +26,24 @@ jobs:
         run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -bl:build.binlog
 
       - name: Incremental re-build
-        run: dotnet build -warnaserror -p:TreatWarningsAsErrors=true -question -bl:question.binlog
+        shell: pwsh
+        run: |
+          # Temporarily exclude Android until its SDK resource targets support clean-build incrementality.
+          [xml]$solution = Get-Content -Raw DotNetLab.slnx
+          $filterPath = Join-Path $env:RUNNER_TEMP 'incremental.slnf'
+          @{
+            solution = @{
+              path = (Join-Path $PWD 'DotNetLab.slnx')
+              projects = @($solution.SelectNodes('//Project') |
+                ForEach-Object { $_.Path } |
+                Where-Object { $_ -ne 'src/Android/Android.csproj' })
+            }
+          } | ConvertTo-Json -Depth 3 | Set-Content $filterPath
+          dotnet build $filterPath -warnaserror -p:TreatWarningsAsErrors=true -question -bl:question.binlog
 
       - name: Test
         if: ${{ always() && steps.build.outcome == 'success' }}
-        run: dotnet test --no-build --report-trx
+        run: dotnet test --project test/UnitTests --no-build --report-trx
 
       - name: Check BOM changes
         if: always()
