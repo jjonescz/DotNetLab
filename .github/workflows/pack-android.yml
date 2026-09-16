@@ -125,5 +125,4 @@ jobs:
         with:
           name: artifacts
           path: |
-            *.binlog
             artifacts/publish/Android/**

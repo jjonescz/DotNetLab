@@ -54,7 +54,6 @@ jobs:
         with:
           name: artifacts
           path: |
-            *.binlog
             **/TestResults/*.*
             artifacts/AppPackages/**
             !artifacts/AppPackages/**/*.store-submission.zip
