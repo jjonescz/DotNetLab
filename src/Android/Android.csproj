@@ -42,6 +42,13 @@
     <ProjectReference Include="..\App\App.csproj" />
   </ItemGroup>
 
+  <!-- Android's inner build must not delete shared satellite assemblies needed by other apps. -->
+  <ItemDefinitionGroup>
+    <ProjectReference>
+      <GlobalPropertiesToRemove>%(GlobalPropertiesToRemove);ResolveAssemblyReferencesFindRelatedSatellites</GlobalPropertiesToRemove>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
   <Import Project="..\..\eng\AppEntryPoint.targets" />
   <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 
