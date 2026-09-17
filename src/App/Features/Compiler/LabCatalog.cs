@@ -173,6 +173,7 @@ public static class LabCatalog
         => type switch
         {
             "cs" or "gcs" or "il" or "ir" or "errors" => "csharp",
+            "asm" => "x86",
             "html" => "html",
             "xml" => "xml",
             _ => "plaintext"

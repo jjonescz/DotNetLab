@@ -259,6 +259,19 @@ public sealed class LabLanguageServices(
         try
         {
             await blazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+            try
+            {
+                var asm = await jsRuntime.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "../_content/DotNetLab.App/js/asm.js");
+                await using (asm)
+                {
+                    await asm.InvokeVoidAsync("registerX86Language");
+                }
+            }
+            catch (JSException)
+            {
+            }
 
             _outputSemanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(_outputLanguageSelector, new(loggerFactory)
             {

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using DotNetLab.Editor.Monaco;
 using DotNetLab.Infrastructure.Caching.Compilation;
+using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Updates;
 using DotNetLab.Features.Workspace;
 using DotNetLab.Infrastructure.Browser;
@@ -36,6 +37,8 @@ public sealed class AddDotNetLabAppTests
             d.ServiceType == typeof(IWorkerTransport) &&
             d.ImplementationType == typeof(UnsupportedWorkerTransport) &&
             d.Lifetime == ServiceLifetime.Scoped);
+        HasScoped<IWorkerConfigurer>(services).Should().BeTrue();
+        HasScoped<ICompilerOutputPlugin>(services).Should().BeTrue();
         HasScoped<ICompilationCache>(services).Should().BeTrue();
     }
 

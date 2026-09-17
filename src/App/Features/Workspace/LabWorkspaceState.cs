@@ -46,7 +46,8 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         IState<CompilationOptionsState> options,
         IState<OutputState> output,
         IDispatcher dispatcher,
-        ILogger<LabWorkspaceState> logger)
+        ILogger<LabWorkspaceState> logger,
+        ICompilerOutputPlugin outputPlugin)
     {
         _worker = worker;
         _language = language;
@@ -60,7 +61,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         _dispatcher = dispatcher;
         Documents = new LabDocuments(this);
         Tabs = new OutputTabLayout(this);
-        Outputs = new OutputSession(this);
+        Outputs = new OutputSession(this, outputPlugin);
         Compilation = new CompilationSession(
             this,
             worker,
