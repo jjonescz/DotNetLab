@@ -1,0 +1,12 @@
+.lab-setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--lab-hairline);
+}
+
+.lab-setting-row:last-child {
+    border-bottom: 0;
+}

@@ -1,0 +1,82 @@
+@inherits FluxorComponent
+@inject IState<PreferencesState> Prefs
+@inject LabWorkspaceState Workspace
+@inject IDispatcher Dispatcher
+@inject IWorkerTransport Transport
+
+<div class="lab-preference-settings">
+    <div class="lab-setting-toggles">
+        <label class="lab-setting-chip">
+            <span>Alt+Z in the editors</span>
+            <FluentSwitch Value="Prefs.Value.WordWrap"
+                          ValueChanged="@(value => Persist(new SetWordWrapAction(value)))"
+                          AriaLabel="Word wrap" />
+        </label>
+        <label class="lab-setting-chip">
+            <span>VIM keybindings in the editors</span>
+            <FluentSwitch Value="Prefs.Value.UseVim"
+                          ValueChanged="@(value => Persist(new SetUseVimAction(value)))"
+                          AriaLabel="Use VIM" />
+        </label>
+    </div>
+
+    <details class="lab-settings-fold">
+        <summary>Advanced</summary>
+        <div class="lab-settings-fold-body">
+            <SettingRow Title="Language Services" Hint="Completions and live diagnostics">
+                <FluentSwitch Value="Prefs.Value.LanguageServices"
+                              ValueChanged="Workspace.SetLanguageServicesAsync"
+                              AriaLabel="Language services" />
+            </SettingRow>
+            <SettingRow Title="Debug Logs" Hint="Debug logs in the browser console">
+                <FluentSwitch Value="Prefs.Value.DebugLogs"
+                              ValueChanged="@(value => Persist(new SetDebugLogsAction(value)))"
+                              AriaLabel="Debug logs" />
+            </SettingRow>
+            <SettingRow Title="Trace Logs" Hint="Trace logs in the browser console">
+                <FluentSwitch Value="Prefs.Value.TraceLogs"
+                              ValueChanged="@(value => Persist(new SetTraceLogsAction(value)))"
+                              AriaLabel="Trace logs" />
+            </SettingRow>
+            <SettingRow Title="Memory Usage View" Hint="Header memory widget and GC trace download (browser only)">
+                <FluentSwitch Value="Prefs.Value.MemoryUsageView"
+                              ValueChanged="@(value => Persist(new SetMemoryUsageViewAction(value)))"
+                              AriaLabel="Memory usage view" />
+            </SettingRow>
+            @if (Transport.SupportsBackgroundWorker)
+            {
+                <SettingRow Title="Background worker" Hint="Compile in a background worker thread (requires restart)">
+                    <FluentSwitch Value="Prefs.Value.BackgroundWorker"
+                                  ValueChanged="@(value => Persist(new SetBackgroundWorkerAction(value)))"
+                                  AriaLabel="Background worker" />
+                </SettingRow>
+            }
+            <SettingRow Title="Worker stuck?" Hint="Restart the compilation worker">
+                <FluentButton Size="ButtonSize.Small"
+                              IconStart="@(new Icons.Regular.Size20.ArrowSync())"
+                              OnClick="Workspace.ReloadWorkerAsync">Restart the worker</FluentButton>
+            </SettingRow>
+            <SettingRow Title="Enable Caching" Hint="Server cache for faster sharing">
+                <FluentSwitch Value="Prefs.Value.EnableCaching"
+                              ValueChanged="@(value => Persist(new SetEnableCachingAction(value)))"
+                              AriaLabel="Enable caching" />
+            </SettingRow>
+            <SettingRow Title="Automatic Compilation" Hint="Compile on start">
+                <FluentSwitch Value="Prefs.Value.AutomaticCompilation"
+                              ValueChanged="@(value => Persist(new SetAutomaticCompilationAction(value)))"
+                              AriaLabel="Automatic compilation" />
+            </SettingRow>
+            @ChildContent
+        </div>
+    </details>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private void Persist(object action)
+    {
+        Dispatcher.Dispatch(action);
+        Dispatcher.Dispatch(new PersistPreferencesAction());
+    }
+}

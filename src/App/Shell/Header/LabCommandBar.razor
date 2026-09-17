@@ -1,0 +1,190 @@
+@inherits FluxorComponent
+@inject LabDialogs Dialogs
+@inject LabPlatform Platform
+@inject IState<CompilerState> Compiler
+@inject IState<CompilationState> Compilation
+@inject IState<PreferencesState> Prefs
+@inject IDispatcher Dispatcher
+
+<div class="lab-command-bar">
+    @if (Busy)
+    {
+        <FluentButton Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      Class="lab-compile"
+                      Color="@Success"
+                      IconStart="@(new Icons.Regular.Size20.ArrowSync())"
+                      Loading="true"
+                      Disabled="true"
+                      Label="@(Compiler.Value.Loading ? "Loading compiler" : "Compiling")" />
+    }
+    else
+    {
+        <FluentButton Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      Class="lab-compile"
+                      Color="@Success"
+                      IconStart="@(new Icons.Filled.Size20.Play())"
+                      Label="Compile"
+                      OnClick="@RequestCompile" />
+    }
+
+    <span class="lab-vsep" aria-hidden="true"></span>
+
+    <div aria-label="Compiler selection" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+        <CompilerPicker Id="lab-sdk"
+                        Label="SDK"
+                        Value="@Compiler.Value.Sdk"
+                        IconStart="@(new Icons.Regular.Size20.Toolbox())"
+                        Options="@SdkOptions"
+                        Selected="SelectSdk">
+            <Trailing>
+                <FluentMenuItem Label="More SDK versions…" OnClick="Dialogs.ShowSettingsAsync" />
+            </Trailing>
+        </CompilerPicker>
+
+        <CompilerPicker Id="lab-roslyn"
+                        Label="Roslyn"
+                        Value="@Compiler.Value.Roslyn"
+                        IconStart="@(new Icons.Regular.Size20.CodeText())"
+                        Options="@CompilerRefOptions"
+                        Selected="SelectRoslyn">
+            <Trailing>
+                <FluentMenuItem Label="Version, PR, branch or build…" OnClick="Dialogs.ShowSettingsAsync" />
+            </Trailing>
+        </CompilerPicker>
+
+        <CompilerPicker Id="lab-razor"
+                        Label="Razor"
+                        Value="@Compiler.Value.Razor"
+                        IconStart="@(new Icons.Regular.Size20.CodeBlock())"
+                        Options="@CompilerRefOptions"
+                        Selected="SelectRazor">
+            <Trailing>
+                @foreach (var item in LabCatalog.RazorToolchainOptions)
+                {
+                    <FluentMenuItem Label="@($"Toolchain: {LabCatalog.RazorToolchainLabel(item)}")"
+                                    OnClick="@(() => Dispatcher.Dispatch(new SetRazorToolchainAction(item)))" />
+                }
+                <FluentDivider />
+                @foreach (var item in LabCatalog.RazorStrategyOptions)
+                {
+                    <FluentMenuItem Label="@($"Strategy: {LabCatalog.RazorStrategyLabel(item)}")"
+                                    OnClick="@(() => Dispatcher.Dispatch(new SetRazorStrategyAction(item)))" />
+                }
+            </Trailing>
+        </CompilerPicker>
+    </div>
+
+    <span class="lab-spacer"></span>
+    @if (Prefs.Value.MemoryUsageView)
+    {
+        <MemoryUsageView />
+        <span class="lab-vsep" aria-hidden="true"></span>
+    }
+
+    <div aria-label="Workspace commands" style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+        <FluentButton Id="lab-cmd-palette"
+                      Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      IconOnly="true"
+                      Title="@Platform.PaletteLabel"
+                      AriaLabel="@Platform.PaletteLabel"
+                      IconStart="@(new Icons.Regular.Size20.KeyCommand())"
+                      OnClick="Dialogs.ShowPaletteAsync" />
+        <FluentTooltip Anchor="lab-cmd-palette"
+                       Class="lab-command-tooltip"
+                       Positioning="Positioning.Below"
+                       UseTooltipService="false">
+            @Platform.PaletteLabel
+        </FluentTooltip>
+        <FluentButton Id="lab-cmd-keyboard"
+                      Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      IconOnly="true"
+                      Class="@(Prefs.Value.DisableInputVirtualKeyboard ? "lab-toolbar-toggle-on" : null)"
+                      Title="@(Prefs.Value.DisableInputVirtualKeyboard ? "Show on-screen keyboard" : "Hide on-screen keyboard")"
+                      AriaLabel="@(Prefs.Value.DisableInputVirtualKeyboard ? "Show on-screen keyboard" : "Hide on-screen keyboard")"
+                      IconStart="@(Prefs.Value.DisableInputVirtualKeyboard ? new Icons.Regular.Size20.KeyboardOff() : new Icons.Regular.Size20.Keyboard())"
+                      OnClick="ToggleKeyboard" />
+        <FluentTooltip Anchor="lab-cmd-keyboard"
+                       Class="lab-command-tooltip"
+                       Positioning="Positioning.Below"
+                       UseTooltipService="false">
+            @(Prefs.Value.DisableInputVirtualKeyboard ? "Show on-screen keyboard" : "Hide on-screen keyboard")
+        </FluentTooltip>
+        <FluentButton Id="lab-cmd-layout"
+                      Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      IconOnly="true"
+                      Title="@(Prefs.Value.Stacked ? "Show panes side by side" : "Stack panes vertically")"
+                      AriaLabel="@(Prefs.Value.Stacked ? "Show panes side by side" : "Stack panes vertically")"
+                      IconStart="@(Prefs.Value.Stacked ? new Icons.Regular.Size20.LayoutColumnTwo() : new Icons.Regular.Size20.LayoutRowTwo())"
+                      OnClick="ToggleStacked" />
+        <FluentTooltip Anchor="lab-cmd-layout"
+                       Class="lab-command-tooltip"
+                       Positioning="Positioning.Below"
+                       UseTooltipService="false">
+            @(Prefs.Value.Stacked ? "Show panes side by side" : "Stack panes vertically")
+        </FluentTooltip>
+    </div>
+</div>
+
+@code {
+    private const string Success = "#6ecf97";
+
+    private static readonly CompilerPickerOption[] CompilerRefOptions =
+        [.. LabCatalog.CompilerRefs.Select(item => new CompilerPickerOption(item, item))];
+
+    private bool Busy => Compilation.Value.Running || Compiler.Value.Loading;
+
+    private IReadOnlyList<CompilerPickerOption> SdkOptions
+    {
+        get
+        {
+            var options = new List<CompilerPickerOption> { new("built-in", "built-in") };
+            var first = true;
+            foreach (var sdk in Compiler.Value.AvailableSdks)
+            {
+                options.Add(new(sdk.Value, sdk.Label, DividerBefore: first));
+                first = false;
+            }
+
+            return options;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Dispatcher.Dispatch(new EnsureSdkVersionsAction());
+    }
+
+    private Task SelectSdk(string value)
+    {
+        Dispatcher.Dispatch(new ApplySdkAction(value));
+        return Task.CompletedTask;
+    }
+
+    private Task SelectRoslyn(string value)
+    {
+        Dispatcher.Dispatch(new SetRoslynAction(value));
+        return Task.CompletedTask;
+    }
+
+    private Task SelectRazor(string value)
+    {
+        Dispatcher.Dispatch(new SetRazorAction(value));
+        return Task.CompletedTask;
+    }
+
+    private void ToggleKeyboard()
+    {
+        Dispatcher.Dispatch(new ToggleInputVirtualKeyboardAction());
+        Dispatcher.Dispatch(new PersistPreferencesAction());
+    }
+
+    private void ToggleStacked() => Dispatcher.Dispatch(new ToggleStackedAction());
+
+    private void RequestCompile() => Dispatcher.Dispatch(new CompileRequestedAction());
+}

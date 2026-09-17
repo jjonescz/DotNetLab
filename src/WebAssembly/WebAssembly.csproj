@@ -2,8 +2,16 @@
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Fluent UI 5 RC5 (net10 assets on net11 WASM) loses enum/interface typedefs
+      when converted to WebCIL. Serve the original DLLs so Mono can resolve them.
+    -->
+    <WasmEnableWebcil>false</WasmEnableWebcil>
+    <!-- Separate .pdb files are listed in blazor.boot.json with SRI; a 404 is empty and fails integrity, which aborts boot. -->
+    <DebugType>embedded</DebugType>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
+    <IndexHtmlTemplatePath>$(MSBuildProjectDirectory)\..\..\eng\index.template.html</IndexHtmlTemplatePath>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
     <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
@@ -35,6 +43,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Gateway" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" VersionOverride="5.0.0-rc.5-26219.1" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" VersionOverride="5.0.0-rc.5-26219.1" />
   </ItemGroup>
 
   <ItemGroup>
