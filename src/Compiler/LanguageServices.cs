@@ -531,11 +531,9 @@ internal sealed class LanguageServices : ILanguageServices
     public void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output)
     {
         compilerDiagnostics = output;
-        // Package/metadata references are only applied in OnCompilationFinished.
-        // Skip IDE diagnostics until then so a cached load does not show false
-        // errors for types that come from #:package (e.g. Bogus).
-        notFullyInitialized = true;
-        _ = config;
+        // Configuration / custom compiler refs are only applied in OnCompilationFinished.
+        // Skip IDE diagnostics until then so a cached load does not show false errors.
+        notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
     }
 
     public async Task OnCompilationFinishedAsync()
