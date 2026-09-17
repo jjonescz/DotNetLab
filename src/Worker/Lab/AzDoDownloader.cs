@@ -270,6 +270,30 @@ internal sealed class AzDoDownloader(
 
     private async Task<BuildArtifact> GetArtifactAsync(int buildId, string artifactName)
     {
+        try
+        {
+            return await GetNamedArtifactAsync(buildId, artifactName);
+        }
+        catch (InvalidOperationException)
+        {
+            // Failed or retried CI jobs publish Transport_Artifacts_Windows_{Release|Debug}-AttemptN
+            // instead of the unsuffixed name.
+            if (await TryGetAttemptArtifactAsync(buildId, artifactName) is { } fallback)
+            {
+                logger.LogInformation(
+                    "Using artifact '{Fallback}' instead of '{Expected}' for build {BuildId}.",
+                    fallback.Name,
+                    artifactName,
+                    buildId);
+                return fallback;
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<BuildArtifact> GetNamedArtifactAsync(int buildId, string artifactName)
+    {
         var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
         uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString(), "artifacts");
         uri.AppendQuery("api-version", "7.1");
@@ -298,6 +322,46 @@ internal sealed class AzDoDownloader(
         }
 
         return selectedArtifact ?? throw new InvalidOperationException(missingArtifactMessage);
+    }
+
+    private async Task<BuildArtifact?> TryGetAttemptArtifactAsync(int buildId, string artifactName)
+    {
+        var uri = new UriBuilder(SimpleAzDoUtil.BaseAddress);
+        uri.AppendPathSegments("_apis", "build", "builds", buildId.ToString(), "artifacts");
+        uri.AppendQuery("api-version", "7.1");
+
+        AzDoCollection<BuildArtifact>? artifacts;
+        try
+        {
+            artifacts = await client.GetFromJsonAsync(uri.ToString(), AzDoJsonContext.Default.AzDoCollectionBuildArtifact);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+
+        if (artifacts?.Value is not { Length: > 0 } listed)
+        {
+            return null;
+        }
+
+        var prefix = artifactName + "-Attempt";
+        return listed
+            .Select(artifact => (Artifact: artifact, Attempt: TryParseAttemptSuffix(artifact.Name, prefix)))
+            .Where(entry => entry.Attempt is not null)
+            .OrderByDescending(entry => entry.Attempt)
+            .Select(entry => entry.Artifact)
+            .FirstOrDefault();
+    }
+
+    private static int? TryParseAttemptSuffix(string? name, string prefix)
+    {
+        if (name is null || !name.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return int.TryParse(name.AsSpan(prefix.Length), out var attempt) ? attempt : null;
     }
 
     private async Task<ArtifactFiles> GetArtifactFilesAsync(int buildId, BuildArtifact artifact)
@@ -459,6 +523,7 @@ internal sealed class ArtifactFileBlob
     ])]
 [JsonSerializable(typeof(AzDoCollection<ImprovedBuild>))]
 [JsonSerializable(typeof(AzDoCollection<BuildArtifact>))]
+[JsonSerializable(typeof(BuildArtifact))]
 [JsonSerializable(typeof(ArtifactFiles))]
 internal sealed partial class AzDoJsonContext : JsonSerializerContext;
 
