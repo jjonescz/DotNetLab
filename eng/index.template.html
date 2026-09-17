@@ -8,11 +8,28 @@
     <base href="/" />
     <script>
         (function () {
+            // Apply theme before CSS so the splash is not the wrong scheme.
+            // netlab-theme is the redesign key; "theme" is Fluent's old JSON blob.
             var preference = "dark";
             try {
                 var stored = localStorage.getItem("netlab-theme");
                 if (stored === "light" || stored === "dark" || stored === "system") {
                     preference = stored;
+                } else {
+                    var legacy = localStorage.getItem("theme");
+                    if (legacy) {
+                        var mode = null;
+                        try {
+                            var parsed = JSON.parse(legacy);
+                            mode = typeof parsed === "string" ? parsed : (parsed && parsed.mode);
+                        } catch (e2) {
+                            mode = legacy;
+                        }
+                        if (mode === "light" || mode === "dark" || mode === "system") {
+                            preference = mode;
+                            try { localStorage.setItem("netlab-theme", mode); } catch (e3) { }
+                        }
+                    }
                 }
             } catch (e) { }
             var dark = preference === "dark"
@@ -95,10 +112,10 @@
     <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
     <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
     <script src="_content/DotNetLab.App/js/jslib.js"></script>
-    <script src="_content/DotNetLab.App/js/lab-theme.js?v=lab-js-16"></script>
-    <script src="_content/DotNetLab.App/js/lab-layout.js?v=lab-js-16"></script>
-    <script src="_content/DotNetLab.App/js/lab-persist.js?v=lab-js-16"></script>
-    <script src="_content/DotNetLab.App/js/lab-editor.js?v=lab-js-16"></script>
+    <script src="_content/DotNetLab.App/js/lab-theme.js?v=lab-js-17"></script>
+    <script src="_content/DotNetLab.App/js/lab-layout.js?v=lab-js-17"></script>
+    <script src="_content/DotNetLab.App/js/lab-persist.js?v=lab-js-17"></script>
+    <script src="_content/DotNetLab.App/js/lab-editor.js?v=lab-js-17"></script>
     <script src="_content/DotNetLab.App/js/blazor-event-compat.js"></script>
     <script src="@@SCRIPT_PATH@@"></script>
     @@SCRIPTS@@

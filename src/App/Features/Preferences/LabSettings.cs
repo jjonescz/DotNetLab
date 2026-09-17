@@ -8,17 +8,25 @@ public sealed class LabSettings(IJSRuntime js)
 {
     public CompilationPreferences CompilationPreferences { get; private set; } = CompilationPreferences.Default;
 
+    /// <summary>
+    /// Loads <c>netlab-settings</c>, or migrates old per-key localStorage once
+    /// if that blob is missing. See <see cref="LegacyLabSettings"/>.
+    /// </summary>
     public async Task<LabSettingsSnapshot?> LoadAsync()
     {
         try
         {
             var json = await js.InvokeAsync<string>("netLabPrefs.readSettings");
-            if (string.IsNullOrWhiteSpace(json))
+            var snapshot = string.IsNullOrWhiteSpace(json)
+                ? await TryMigrateLegacyAsync()
+                : JsonSerializer.Deserialize(json, LabSettingsJsonContext.Default.LabSettingsSnapshot);
+
+            // Persist the mapped blob so later loads skip the per-key path.
+            if (snapshot is not null && string.IsNullOrWhiteSpace(json))
             {
-                return null;
+                await SaveAsync(snapshot);
             }
 
-            var snapshot = JsonSerializer.Deserialize(json, LabSettingsJsonContext.Default.LabSettingsSnapshot);
             if (snapshot?.CompilationPreferences is { } preferences)
             {
                 CompilationPreferences = preferences;
@@ -31,6 +39,22 @@ public sealed class LabSettings(IJSRuntime js)
             return null;
         }
         catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads the pre-redesign SettingsService keys via JS. Does not delete them.
+    /// </summary>
+    private async Task<LabSettingsSnapshot?> TryMigrateLegacyAsync()
+    {
+        try
+        {
+            var legacy = await js.InvokeAsync<Dictionary<string, string?>>("netLabPrefs.readLegacySettings");
+            return LegacyLabSettings.TryCreate(legacy);
+        }
+        catch (JSException)
         {
             return null;
         }
