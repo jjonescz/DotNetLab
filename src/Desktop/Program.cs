@@ -27,6 +27,7 @@ static class Program
         appBuilder.Services.AddScoped<IScreenInfo, DesktopScreenInfo>();
         appBuilder.Services.AddScoped<IWorkerConfigurer, DesktopWorkerConfigurer>();
         appBuilder.Services.AddScoped<ICompilerOutputPlugin, DesktopCompilerOutputPlugin>();
+        appBuilder.Services.AddScoped<IFilePicker, DefaultFilePicker>();
         appBuilder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
         appBuilder.Services.AddLogging(builder =>
         {
@@ -221,8 +222,8 @@ file sealed class DesktopWorkerConfigurer : IWorkerConfigurer
 {
     public void ConfigureWorkerServices(ServiceCollection services)
     {
+        services.AddScoped<IFileSystem, DesktopFileSystem>();
         services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
-        services.AddScoped<ICompilerDependencyResolver, LocalCompilerDependencyResolver>();
         services.Configure<CompilerProxyOptions>(static options =>
         {
             options.AssembliesAreAlwaysInDllFormat = true;

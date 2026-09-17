@@ -146,6 +146,12 @@ public sealed record CompilerInfo(
     public string CommitInfoSaveKey = $"{CompilerKind}CommitInfo";
 }
 
+internal static partial class CompilerVersionSpecifierPatterns
+{
+    [GeneratedRegex("""^local:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}) \((.*)\)$""")]
+    public static partial Regex LocalId { get; }
+}
+
 public closed record CompilerVersionSpecifier
 {
     /// <remarks>
@@ -187,6 +193,12 @@ public closed record CompilerVersionSpecifier
             yield break;
         }
 
+        if (CompilerVersionSpecifierPatterns.LocalId.Match(specifier) is { Success: true } match)
+        {
+            yield return new LocalId(Guid.Parse(match.Groups[1].ValueSpan), match.Groups[2].Value);
+            yield break;
+        }
+
         yield return new Branch(specifier);
     }
 
@@ -197,6 +209,15 @@ public closed record CompilerVersionSpecifier
     public sealed record PullRequest(int PullRequestNumber) : CompilerVersionSpecifier;
     public sealed record Branch(string BranchName) : CompilerVersionSpecifier;
     public sealed record Local(string Path) : CompilerVersionSpecifier;
+    public sealed record LocalId(Guid Id, string Name) : CompilerVersionSpecifier
+    {
+        public static string Stringify(Guid id, string name)
+        {
+            var result = $"local:{id} ({name})";
+            Debug.Assert(CompilerVersionSpecifierPatterns.LocalId.IsMatch(result));
+            return result;
+        }
+    }
 }
 
 internal sealed class NuGetVersionJsonConverter : JsonConverter<NuGetVersion>

@@ -83,6 +83,7 @@ public static class WorkerServices
         services.AddScoped<ICompilerDependencyResolver>(static sp => sp.GetRequiredService<NuGetDownloaderPlugin>());
         services.AddScoped<ICompilerDependencyResolver, AzDoDownloader>();
         services.AddScoped<ICompilerDependencyResolver, BuiltInCompilerProvider>(static sp => sp.GetRequiredService<BuiltInCompilerProvider>());
+        services.AddScoped<ICompilerDependencyResolver, LocalCompilerDependencyResolver>();
         services.AddScoped<IRefAssemblyDownloader, RefAssemblyDownloader>();
         services.AddScoped<INuGetDownloader>(static sp => sp.GetRequiredService<NuGetDownloaderPlugin>());
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();

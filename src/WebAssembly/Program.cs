@@ -17,6 +17,7 @@ builder.Services.AddScoped<IUpdateChecker, WebAssemblyUpdateChecker>();
 builder.Services.AddScoped<IScreenInfo, WebAssemblyScreenInfo>();
 builder.Services.AddScoped<IWorkerConfigurer, WebAssemblyWorkerConfigurer>();
 builder.Services.AddScoped<ICompilerOutputPlugin, WebAssemblyCompilerOutputPlugin>();
+builder.Services.AddScoped<IFilePicker, WebFilePicker>();
 builder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
 
 var host = builder.Build();
@@ -52,6 +53,7 @@ file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
 {
     public void ConfigureWorkerServices(ServiceCollection services)
     {
+        services.AddScoped<IFileSystem, WebFileSystem>();
     }
 }
 

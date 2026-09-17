@@ -5,6 +5,7 @@
 @inject WorkerController Worker
 @inject IUpdateChecker UpdateChecker
 @inject IAppHostEnvironment HostEnvironment
+@inject IFilePicker FilePicker
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
                    OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
@@ -329,6 +330,12 @@
                             }
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRoslynVersionAsync("main"))">main</a>
+                        }
+                        @if (FilePicker.SupportsDirectoryPicker)
+                        {
+                            @(" or ")
+                            <a href="javascript:void" @onclick:preventDefault
+                               @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Roslyn))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(roslynVersion))
                         {
@@ -822,6 +829,30 @@
         razorVersion = version;
         razorConfiguration = BuildConfiguration.Release;
         await LoadRazorInfoAsync();
+    }
+
+    private async Task PickLocalCompilerAsync(CompilerKind compilerKind)
+    {
+        var pickerId = compilerKind switch
+        {
+            CompilerKind.Roslyn => "roslyn-compiler",
+            CompilerKind.Razor => "razor-compiler",
+            _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
+        };
+
+        var dir = await FilePicker.PickDirectoryAsync(pickerId);
+        if (dir != null)
+        {
+            switch (compilerKind)
+            {
+                case CompilerKind.Roslyn:
+                    await UseRoslynVersionAsync(dir);
+                    break;
+                case CompilerKind.Razor:
+                    await UseRazorVersionAsync(dir);
+                    break;
+            }
+        }
     }
 
     private async Task SetLuminanceAsync(bool dark)

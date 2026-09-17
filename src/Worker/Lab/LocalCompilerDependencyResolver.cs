@@ -1,36 +1,33 @@
-
 using NuGet.Frameworks;
 
 namespace DotNetLab.Lab;
 
-internal sealed class LocalCompilerDependencyResolver : ICompilerDependencyResolver
+internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : ICompilerDependencyResolver
 {
     public async Task<PackageDependency?> TryResolveCompilerAsync(CompilerInfo info, CompilerVersionSpecifier specifier, BuildConfiguration configuration)
     {
-        if (specifier is not CompilerVersionSpecifier.Local { Path: var path })
+        if (fileSystem.TryGetDirectoryFromSpecifier(specifier) is not { } repoDir)
         {
             return null;
         }
-
-        var repoDir = new DirectoryInfo(path);
 
         if (!repoDir.Exists)
         {
             throw new InvalidOperationException($"Directory not found: {repoDir.FullName}");
         }
 
-        var assemblyPaths = new List<string>(capacity: info.AssemblyNames.Length);
+        var assemblyFiles = new List<IFileInfo>(capacity: info.AssemblyNames.Length);
 
         foreach (var assemblyName in info.AssemblyNames)
         {
-            var assemblyDir = new DirectoryInfo(Path.Join(path, "artifacts", "bin", assemblyName, configuration.ToString()));
+            var assemblyDir = await repoDir.GetSubdirectoryAsync(["artifacts", "bin", assemblyName, configuration.ToString()]);
 
             if (!assemblyDir.Exists)
             {
                 throw new InvalidOperationException($"Directory not found: {assemblyDir.FullName}");
             }
 
-            var targetFrameworkDirs = assemblyDir.GetDirectories();
+            var targetFrameworkDirs = await assemblyDir.GetDirectoriesAsync();
 
             if (targetFrameworkDirs.Length == 0)
             {
@@ -53,7 +50,7 @@ internal sealed class LocalCompilerDependencyResolver : ICompilerDependencyResol
                     return (dir, framework);
                 })
                 .Where(tuple => tuple.framework?.Framework == ".NETCoreApp")
-                .Select(tuple => (dir: tuple.dir, framework: tuple.framework!));
+                .Select(tuple => (tuple.dir, framework: tuple.framework!));
 
             if (!coreDirs.Any())
             {
@@ -62,14 +59,14 @@ internal sealed class LocalCompilerDependencyResolver : ICompilerDependencyResol
 
             var bestDir = coreDirs.MaxBy(tuple => tuple.framework.Version);
 
-            var assemblyPath = Path.Join(bestDir.dir.FullName, $"{assemblyName}.dll");
+            var assemblyFile = await bestDir.dir.GetFileAsync($"{assemblyName}.dll");
 
-            if (!File.Exists(assemblyPath))
+            if (!assemblyFile.Exists)
             {
-                throw new InvalidOperationException($"Assembly not found: {assemblyPath}");
+                throw new InvalidOperationException($"Assembly not found: {assemblyFile.FullName}");
             }
 
-            assemblyPaths.Add(assemblyPath);
+            assemblyFiles.Add(assemblyFile);
         }
 
         return new PackageDependency
@@ -78,13 +75,25 @@ internal sealed class LocalCompilerDependencyResolver : ICompilerDependencyResol
             {
                 Configuration = configuration,
             })),
-            Assemblies = new(Task.FromResult(assemblyPaths.SelectAsArray(path => new LoadedAssembly
+            Assemblies = new(assemblyFiles.SelectAsArrayAsync(async file =>
             {
-                Data = default,
-                Name = Path.GetFileNameWithoutExtension(path),
-                DiskPath = path,
-                Format = AssemblyDataFormat.Dll,
-            }))),
+                return await file.GetPathOrDataAsync() switch
+                {
+                    string path => new LoadedAssembly
+                    {
+                        Data = default,
+                        Name = Path.GetFileNameWithoutExtension(path),
+                        DiskPath = path,
+                        Format = AssemblyDataFormat.Dll,
+                    },
+                    ImmutableArray<byte> data => new LoadedAssembly
+                    {
+                        Data = data,
+                        Name = Path.GetFileNameWithoutExtension(file.FullName),
+                        Format = AssemblyDataFormat.Dll,
+                    },
+                };
+            })),
         };
     }
 }
