@@ -69,7 +69,7 @@ public sealed class LanguageServiceTests
         var input = getInput("v1");
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -179,7 +179,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "Input.razor",
         [
@@ -215,7 +215,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "A.cs",
         [
@@ -263,7 +263,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -291,7 +291,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -304,7 +304,7 @@ public sealed class LanguageServiceTests
         input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = true } };
 
         await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
@@ -338,7 +338,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         var compiled = await compiler.CompileAsync(input);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.IsNotNull(diagnosticsText);
@@ -408,7 +408,7 @@ public sealed class LanguageServiceTests
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         var compiled = await compiler.CompileAsync(input);
         compiled.NumErrors.Should().Be(0);
-        await languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
 
         var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
         var markers = await languageServices.GetDiagnosticsAsync(uri);

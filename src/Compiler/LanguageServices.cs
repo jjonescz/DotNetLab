@@ -538,7 +538,7 @@ internal sealed class LanguageServices : ILanguageServices
         _ = config;
     }
 
-    public async Task OnCompilationFinished()
+    public async Task OnCompilationFinishedAsync()
     {
         compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
         notFullyInitialized = false;

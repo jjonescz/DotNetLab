@@ -109,7 +109,7 @@ internal sealed class ConfigCollector : IConfig
         {
             return [];
         }
-        var builder = ImmutableArray.CreateBuilder<RefAssembly>();
+        var builder = ImmutableArray.CreateBuilder<RefAssembly>(additionalAnalyzers.Count);
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var configure in additionalAnalyzers)
         {

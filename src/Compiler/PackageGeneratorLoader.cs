@@ -1,7 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
@@ -79,15 +80,62 @@ internal static class PackageGeneratorLoader
 
     private static Assembly GetOrLoadAssembly(AssemblyLoadContext alc, RefAssembly analyzer)
     {
+        if (!TryReadAssemblyVersion(analyzer.Bytes, out var incomingVersion))
+        {
+            throw new InvalidOperationException($"Analyzer '{analyzer.Name}' does not contain valid assembly metadata.");
+        }
+
+        Assembly? sameName = null;
         foreach (var loaded in alc.Assemblies)
         {
-            if (string.Equals(loaded.GetName().Name, analyzer.Name, StringComparison.OrdinalIgnoreCase))
+            var loadedName = loaded.GetName();
+            if (!string.Equals(loadedName.Name, analyzer.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            sameName = loaded;
+            if (loadedName.Version == incomingVersion)
             {
                 return loaded;
             }
         }
+        
+        if (sameName is not null)
+        {
+            throw new InvalidOperationException(
+                $"Analyzer '{analyzer.Name}' has a different version ({incomingVersion}) than the already loaded assembly ({sameName.GetName().Version}).");
+        }
 
         return alc.LoadFromStream(new MemoryStream(ImmutableCollectionsMarshal.AsArray(analyzer.Bytes)!));
+    }
+
+    private static bool TryReadAssemblyVersion(ImmutableArray<byte> bytes, out Version? version)
+    {
+        version = null;
+        
+        if (bytes.IsDefaultOrEmpty)
+        {
+            return false;
+        }
+
+        var image = ImmutableCollectionsMarshal.AsArray(bytes)!;
+        using var stream = new MemoryStream(image, writable: false);
+        using var pe = new PEReader(stream);
+
+        if (!pe.HasMetadata)
+        {
+            return false;
+        }
+        
+        var reader = pe.GetMetadataReader();
+        if (!reader.IsAssembly)
+        {
+            return false;
+        }
+        
+        version = reader.GetAssemblyDefinition().Version;
+        return true;
     }
 
     private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
