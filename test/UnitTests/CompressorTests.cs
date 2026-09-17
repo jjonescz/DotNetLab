@@ -50,4 +50,24 @@ public sealed class CompressorTests
         };
         Assert.AreEqual(expected.Inputs.Single(), actual.Inputs.Single());
     }
+
+    [TestMethod]
+    public void UncompressDoesNotThrowOnGarbage()
+    {
+        var actual = Compressor.Uncompress("%%%not-a-slug%%%");
+        Assert.AreEqual("(error)", actual.Inputs.Single().FileName);
+        StringAssert.Contains(actual.Inputs.Single().Text, "Error when parsing");
+    }
+
+    [TestMethod]
+    [DataRow("csharp", "C#")]
+    [DataRow("razor", "Razor")]
+    [DataRow("cshtml", "CSHTML")]
+    public void WellKnownShorthandRoundTrips(string shorthand, string title)
+    {
+        Assert.IsTrue(WellKnownSlugs.ShorthandToState.TryGetValue(shorthand, out var state));
+        Assert.AreEqual(title, WellKnownSlugs.ShorthandToTitle[shorthand]);
+        var compressed = Compressor.Compress(state);
+        Assert.AreEqual(shorthand, WellKnownSlugs.FullSlugToShorthand[compressed]);
+    }
 }

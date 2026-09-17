@@ -38,6 +38,33 @@ export function setModelValueUndoable(editorId, modelUri, text) {
 }
 
 /**
+ * @param {string} modelUri
+ * @returns {number}
+ */
+export function getAlternativeVersionId(modelUri) {
+    const models = monaco.editor.getModels();
+    const model = monaco.editor.getModel(modelUri)
+        ?? models.find((candidate) => {
+            const uri = candidate.uri.toString();
+            return uri === modelUri || decodeURI(uri) === modelUri;
+        });
+    return model?.getAlternativeVersionId() ?? -1;
+}
+
+const maxCompletionItems = 200;
+
+function limitCompletionList(result) {
+    if (!result?.suggestions || result.suggestions.length <= maxCompletionItems) {
+        return result;
+    }
+
+    result.suggestions = result.suggestions.slice(0, maxCompletionItems);
+    result.incomplete = true;
+    result.isIncomplete = true;
+    return result;
+}
+
+/**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters
  */
@@ -46,18 +73,27 @@ export function registerCompletionProvider(language, triggerCharacters, completi
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
         provideCompletionItems: async (model, position, context, token) => {
+            // Invoke/space/Enter ask Roslyn for every type (~6700 items) and freeze the UI
+            // on JSON.parse. Keep the worker round-trip for cheap member/argument triggers.
+            const triggerCharacter = context?.triggerCharacter;
+            if (context?.triggerKind !== 1 /* TriggerCharacter */ ||
+                (triggerCharacter !== '.' && triggerCharacter !== '(' && triggerCharacter !== '<' &&
+                    triggerCharacter !== '#' && triggerCharacter !== '[')) {
+                return { suggestions: [] };
+            }
+
             const versionId = model.getAlternativeVersionId();
             const tokenRef = wrapToken(token);
             try {
                 /** @type {monaco.languages.CompletionList} */
-                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
-                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
+                const result = limitCompletionList(JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
+                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef)));
 
                 if (versionId != model.getAlternativeVersionId()) {
-                    throw new Error('busy');
+                    ignoredProviderRequest();
                 }
 
-                for (const item of result.suggestions) {
+                for (const item of result.suggestions ?? []) {
                     // `insertText` is missing if it's equal to `label` to save bandwidth
                     // but monaco editor expects it to be always present.
                     item.insertText ??= item.label;
@@ -69,8 +105,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
                 return result;
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -89,8 +124,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
                 return completionItem;
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -99,12 +133,19 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 }
 
 let debugSemanticTokens = false;
+let semanticHighlightingHooked = false;
 
-export function enableSemanticHighlighting() {
-    for (const editor of window.blazorMonaco.editors.map(x => x.editor)) {
-        editor.updateOptions({
-            'semanticHighlighting.enabled': true,
-        });
+function applySemanticHighlighting(editor) {
+    editor.updateOptions({
+        'semanticHighlighting.enabled': true,
+        quickSuggestions: false,
+        wordBasedSuggestions: 'off',
+    });
+    if (editor.getAction('debug-semantic-token')) {
+        return;
+    }
+
+    try {
         editor.addAction({
             id: 'debug-semantic-token',
             label: 'Debug Semantic Tokens (See Browser Console)',
@@ -113,6 +154,19 @@ export function enableSemanticHighlighting() {
                 console.log('Debugging semantic tokens ' + (debugSemanticTokens ? 'enabled' : 'disabled'));
             },
         });
+    } catch {
+        // Some Monaco instances (output / nested) have no KeybindingService.
+    }
+}
+
+export function enableSemanticHighlighting() {
+    if (!semanticHighlightingHooked) {
+        semanticHighlightingHooked = true;
+        monaco.editor.onDidCreateEditor(applySemanticHighlighting);
+    }
+
+    for (const editor of window.blazorMonaco.editors.map(x => x.editor)) {
+        applySemanticHighlighting(editor);
     }
 }
 
@@ -131,8 +185,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                     provider, decodeURI(model.uri.toString()), null, debugSemanticTokens, tokenRef);
                 return decodeResult(result, legendParsed);
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -153,8 +206,7 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
                         provider, decodeURI(model.uri.toString()), JSON.stringify(range), debugSemanticTokens, tokenRef);
                     return decodeResult(result, legendParsed);
                 } catch (e) {
-                    console.error(e);
-                    throw e;
+                    rethrowProviderError(e);
                 } finally {
                     DotNet.disposeJSObjectReference(tokenRef);
                 }
@@ -166,10 +218,9 @@ export function registerSemanticTokensProvider(language, legend, provider, regis
 
     function decodeResult(result, legend) {
         if (result === null) {
-            // If null result is returned, it means the request should be ignored, so we need to throw
-            // (otherwise current tokens would be cleared which we don't want).
-            // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-            throw new Error('busy');
+            // Null means ignore this request so current tokens stay.
+            // Monaco treats Error name/message "Canceled" as cancellation, not a failure.
+            ignoredProviderRequest();
         }
 
         // Result is Base64-encoded int32 array we want to convert to Uint32Array.
@@ -204,7 +255,7 @@ export function registerCodeActionProvider(language, codeActionProvider) {
                     // If null result is returned, it means the request should be ignored, so we need to throw
                     // (as opposed to returning no code actions).
                     // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                    throw new Error('busy');
+                    ignoredProviderRequest();
                 }
 
                 for (const action of result) {
@@ -218,8 +269,7 @@ export function registerCodeActionProvider(language, codeActionProvider) {
                     dispose: () => { }, // Currently not used.
                 };
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -273,13 +323,12 @@ export function registerHoverProvider(language, hoverProvider) {
                     // If null result is returned, it means the request should be ignored, so we need to throw
                     // (as opposed to returning no code actions).
                     // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                    throw new Error('busy');
+                    ignoredProviderRequest();
                 }
 
                 return { contents: [{ value: result }] };
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -307,7 +356,7 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
                     // If null result is returned, it means the request should be ignored, so we need to throw
                     // (as opposed to returning no code actions).
                     // The text 'busy' is recommended for this purpose (e.g., it avoids sending telemetry).
-                    throw new Error('busy');
+                    ignoredProviderRequest();
                 }
 
                 const parsed = JSON.parse(result);
@@ -321,8 +370,7 @@ export function registerSignatureHelpProvider(language, hoverProvider) {
                     dispose: () => { }, // Currently not used.
                 };
             } catch (e) {
-                console.error(e);
-                throw e;
+                rethrowProviderError(e);
             } finally {
                 DotNet.disposeJSObjectReference(tokenRef);
             }
@@ -339,7 +387,7 @@ export function underlineLinks(editorId, offsets) {
     const model = editor.getModel();
     if (model) {
         const ranges = [];
-        for (let i = 0; i <= offsets.length; i += 2) {
+        for (let i = 0; i < offsets.length; i += 2) {
             const startPosition = model.getPositionAt(offsets[i]);
             const endPosition = model.getPositionAt(offsets[i + 1]);
             const range = new monaco.Range(
@@ -393,6 +441,20 @@ function wrapToken(token) {
             });
         },
     });
+}
+
+function ignoredProviderRequest() {
+    const error = new Error('Canceled');
+    error.name = 'Canceled';
+    throw error;
+}
+
+function rethrowProviderError(e) {
+    if (e instanceof Error && (e.message === 'busy' || e.name === 'Canceled')) {
+        throw e;
+    }
+    console.error(e);
+    throw e;
 }
 
 class DisposableList {

@@ -1,0 +1,96 @@
+<div class="lab-compiler-card">
+    <div class="lab-compiler-card-head">
+        <span class="lab-setting-title">@Name</span>
+        <div class="lab-seg" role="radiogroup" aria-label="@($"{Name} configuration")">
+            @foreach (var item in _configs)
+            {
+                <button type="button"
+                        class="lab-seg-item @(Config == item ? "active" : null)"
+                        @onclick="@(() => ConfigChanged.InvokeAsync(item))">
+                    @item
+                </button>
+            }
+        </div>
+    </div>
+    <label class="lab-settings-field">
+        <input class="lab-settings-input"
+               type="text"
+               autocomplete="off"
+               spellcheck="false"
+               placeholder="version / PR / branch / build"
+               value="@DisplayedValue"
+               @oninput="OnInput"
+               @onchange="OnCommit"
+               @onkeydown="OnKeyDown" />
+    </label>
+    <div class="lab-compiler-presets" role="group" aria-label="@($"{Name} presets")">
+        @foreach (var item in _presets)
+        {
+            <button type="button"
+                    class="lab-seg-item @(DisplayedValue == item ? "active" : null)"
+                    @onclick="@(() => SelectPreset(item))">
+                @item
+            </button>
+        }
+    </div>
+    <div class="lab-compiler-lookups">
+        <span class="lab-compiler-lookups-label">Look up</span>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">versions</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">PRs</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">branches</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">builds</a>
+    </div>
+    <p class="lab-mono-hint">@Resolved</p>
+</div>
+
+@code {
+    private static readonly string[] _configs = ["Release", "Debug"];
+    private static readonly string[] _presets = ["built-in", "latest", "main"];
+
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Config { get; set; } = "Release";
+    [Parameter] public EventCallback<string> ConfigChanged { get; set; }
+    [Parameter] public string Resolved { get; set; } = "";
+
+    private string? _draft;
+    private string _lastValue = "";
+
+    private string DisplayedValue => _draft ?? Value;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.Equals(Value, _lastValue, StringComparison.Ordinal))
+        {
+            _lastValue = Value;
+            _draft = null;
+        }
+    }
+
+    private void OnInput(ChangeEventArgs args)
+    {
+        _draft = args.Value?.ToString() ?? "";
+    }
+
+    private Task OnCommit(ChangeEventArgs args)
+    {
+        return CommitAsync(args.Value?.ToString() ?? _draft ?? Value);
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs args)
+    {
+        return args.Key == "Enter"
+            ? CommitAsync(_draft ?? Value)
+            : Task.CompletedTask;
+    }
+
+    private Task SelectPreset(string item) => CommitAsync(item);
+
+    private Task CommitAsync(string value)
+    {
+        _draft = null;
+        _lastValue = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

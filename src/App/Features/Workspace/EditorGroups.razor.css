@@ -1,0 +1,252 @@
+.lab-groups {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+}
+
+.lab-groups.horizontal {
+    flex-direction: row;
+}
+
+.lab-groups.vertical {
+    flex-direction: column;
+}
+
+.lab-group {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.lab-group + .lab-group {
+    border-left: 1px solid var(--lab-hairline);
+}
+
+.lab-groups.vertical .lab-group + .lab-group {
+    border-left: 0;
+    border-top: 1px solid var(--lab-hairline);
+}
+
+.lab-tabbar {
+    display: flex;
+    align-items: center;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--lab-panel);
+    border-bottom: 1px solid var(--lab-hairline);
+    padding-right: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lab-hairline) transparent;
+}
+
+.lab-tabbar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.lab-tabbar::-webkit-scrollbar-thumb {
+    background: var(--lab-hairline);
+}
+
+.lab-tab-list {
+    display: flex;
+    flex: 1 0 auto;
+    min-width: min-content;
+    overflow: visible;
+    align-items: stretch;
+}
+
+.lab-tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--lab-muted);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0 0.85rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    cursor: grab;
+    position: relative;
+}
+
+.lab-tab:has(.lab-tab-close) {
+    padding-right: 0.45rem;
+}
+
+.lab-tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.1rem;
+    border-radius: 4px;
+    color: inherit;
+    opacity: 0;
+    flex-shrink: 0;
+}
+
+.lab-tab:hover .lab-tab-close,
+.lab-tab.selected .lab-tab-close,
+.lab-tab.focused .lab-tab-close {
+    opacity: 0.7;
+}
+
+.lab-tab.selected:not(.focused) .lab-tab-close {
+    opacity: 0.9;
+}
+
+.lab-tab-close:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--lab-foreground) 14%, transparent);
+    color: var(--lab-foreground);
+}
+
+.lab-tab:hover:not(.focused) {
+    color: var(--lab-foreground);
+    background: color-mix(in srgb, var(--lab-primary) 10%, transparent);
+}
+
+.lab-tab.selected:not(.focused) {
+    color: var(--lab-foreground);
+    background: color-mix(in srgb, var(--lab-foreground) 6%, transparent);
+}
+
+.lab-tab.focused {
+    color: var(--lab-foreground);
+    border-bottom-color: var(--lab-primary);
+    background: color-mix(in srgb, var(--lab-primary) 10%, transparent);
+}
+
+.lab-tab.lab-tab-editing {
+    cursor: text;
+}
+
+.lab-tab-rename {
+    font: inherit;
+    font-weight: 500;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--lab-primary);
+    outline: none;
+    padding: 0;
+    margin: 0;
+    min-width: 6ch;
+    field-sizing: content;
+}
+
+.lab-tab.lab-tab-dragging {
+    opacity: 0.4;
+}
+
+.lab-tab.drop-before::before,
+.lab-tab.drop-after::after {
+    content: "";
+    position: absolute;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--lab-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--lab-primary) 35%, transparent),
+                0 0 10px color-mix(in srgb, var(--lab-primary) 80%, transparent);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.lab-tab.drop-before::before {
+    left: 0;
+}
+
+.lab-tab.drop-after::after {
+    right: 0;
+}
+
+.lab-tab-pins {
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    border-left: 1px solid var(--lab-hairline);
+}
+
+.lab-tab-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 0.35rem;
+    padding-left: 0.35rem;
+    border-left: 1px solid var(--lab-hairline);
+}
+
+.lab-tab-pins + .lab-tab-actions {
+    border-left: 0;
+    padding-left: 0.15rem;
+}
+
+.lab-tab-actions ::deep fluent-button[icon-only],
+.lab-tab-actions ::deep fluent-menu-button[icon-only] {
+    min-width: 32px;
+    max-width: none;
+    height: 32px;
+}
+
+.lab-tab-actions ::deep fluent-menu-button[icon-only] {
+    width: auto;
+    padding-inline: 6px 8px;
+    gap: 2px;
+}
+
+.lab-group-body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    background: var(--lab-background);
+}
+
+.lab-drop-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.lab-group-body.lab-drop-ready .lab-drop-overlay {
+    pointer-events: auto;
+}
+
+.lab-drop-zone {
+    display: none;
+    position: absolute;
+    border: 2px solid var(--lab-primary);
+    background: color-mix(in srgb, var(--lab-primary) 16%, transparent);
+}
+
+.lab-group-body.lab-drop-ready .lab-drop-zone.left,
+.lab-group-body.lab-drop-ready .lab-drop-zone.right,
+.lab-group-body.lab-drop-ready .lab-drop-zone.top,
+.lab-group-body.lab-drop-ready .lab-drop-zone.bottom,
+.lab-group-body.lab-drop-ready .lab-drop-zone.center {
+    display: block;
+}
+
+.lab-drop-zone.center { inset: 0; }
+.lab-drop-zone.left { inset: 0 50% 0 0; }
+.lab-drop-zone.right { inset: 0 0 0 50%; }
+.lab-drop-zone.top { inset: 0 0 50% 0; }
+.lab-drop-zone.bottom { inset: 50% 0 0 0; }

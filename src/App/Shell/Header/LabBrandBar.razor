@@ -1,0 +1,109 @@
+@inherits FluxorComponent
+@inject LabDocuments Docs
+@inject LabThemeService Theme
+@inject LabShare Share
+@inject LabDialogs Dialogs
+@inject IState<UpdateState> Updates
+@inject IState<PreferencesState> Prefs
+@inject IState<DocumentMetadataState> DocumentsUi
+
+<div class="lab-brand-bar">
+    <span class="lab-brand-mark" aria-hidden="true">
+        <img src="_content/DotNetLab.App/favicon.png" alt="" width="20" height="20" />
+    </span>
+    <h1 class="lab-brand-title">.NET Lab</h1>
+    <span class="lab-vsep" aria-hidden="true"></span>
+
+    <FluentMenu>
+        <FluentMenuButton Appearance="ButtonAppearance.Transparent"
+                          Size="ButtonSize.Small"
+                          Color="@BrandForeground"
+                          IconStart="@(new Icons.Regular.Size20.Braces())">
+            Template: @DocumentsUi.Value.Template
+        </FluentMenuButton>
+        <FluentMenuList>
+            @foreach (var template in LabCatalog.Templates)
+            {
+                <FluentMenuItem Label="@template" OnClick="@(() => Docs.SetTemplate(template))" />
+            }
+        </FluentMenuList>
+    </FluentMenu>
+
+    <div class="lab-brand-share">
+        <FluentMenu>
+            <FluentMenuButton Appearance="ButtonAppearance.Transparent"
+                              Size="ButtonSize.Small"
+                              Color="@BrandForeground"
+                              IconStart="@(new Icons.Regular.Size20.Share())">
+                Share
+            </FluentMenuButton>
+            <FluentMenuList>
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.Link())" Label="Copy link" OnClick="Share.CopyLinkAsync" />
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.CloudArrowUp())" Label="Create gist" OnClick="Share.CreateGistAsync" />
+            </FluentMenuList>
+        </FluentMenu>
+        <FluentButton Appearance="ButtonAppearance.Transparent"
+                      Size="ButtonSize.Small"
+                      Color="@BrandForeground"
+                      AriaLabel="Paste"
+                      IconStart="@(new Icons.Regular.Size20.ClipboardPaste())"
+                      OnClick="Dialogs.ShowPasteUrlAsync">
+            Paste
+        </FluentButton>
+    </div>
+
+    <span class="lab-spacer"></span>
+
+    <FluentButton Id="lab-brand-issue"
+                  Appearance="ButtonAppearance.Transparent"
+                  Size="ButtonSize.Small"
+                  Color="@BrandForeground"
+                  IconOnly="true"
+                  Title="Report issue"
+                  AriaLabel="Report issue"
+                  IconStart="@(new Icons.Regular.Size20.Bug())"
+                  OnClick="Share.ReportIssueAsync" />
+    <FluentTooltip Anchor="lab-brand-issue"
+                   Class="lab-command-tooltip"
+                   Positioning="Positioning.Below"
+                   UseTooltipService="false">
+        Report issue
+    </FluentTooltip>
+    <FluentButton Id="lab-brand-theme"
+                  Appearance="ButtonAppearance.Transparent"
+                  Size="ButtonSize.Small"
+                  Color="@BrandForeground"
+                  IconOnly="true"
+                  Title="@(Prefs.Value.ResolvedDark ? "Switch to light theme" : "Switch to dark theme")"
+                  AriaLabel="@(Prefs.Value.ResolvedDark ? "Switch to light theme" : "Switch to dark theme")"
+                  IconStart="@(Prefs.Value.ResolvedDark ? new Icons.Regular.Size20.WeatherSunny() : new Icons.Regular.Size20.WeatherMoon())"
+                  OnClick="ToggleThemeAsync" />
+    <FluentTooltip Anchor="lab-brand-theme"
+                   Class="lab-command-tooltip"
+                   Positioning="Positioning.Below"
+                   UseTooltipService="false">
+        @(Prefs.Value.ResolvedDark ? "Switch to light theme" : "Switch to dark theme")
+    </FluentTooltip>
+    <FluentButton Appearance="ButtonAppearance.Transparent"
+                  Size="ButtonSize.Small"
+                  Color="@BrandForeground"
+                  IconStart="@(new Icons.Regular.Size20.Settings())"
+                  OnClick="Dialogs.ShowSettingsAsync">
+        Settings
+        @if (Updates.Value.Available)
+        {
+            <FluentBadge Appearance="BadgeAppearance.Filled"
+                         Color="BadgeColor.Success"
+                         Size="BadgeSize.Tiny"
+                         Content="1"
+                         title="Update is available" />
+        }
+    </FluentButton>
+</div>
+
+@code {
+    private const string BrandForeground = "#f7f1fc";
+
+    private Task ToggleThemeAsync()
+        => Theme.SetPreferenceAsync(Prefs.Value.ResolvedDark ? "light" : "dark");
+}

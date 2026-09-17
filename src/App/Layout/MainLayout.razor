@@ -1,5 +1,115 @@
 ﻿@inherits LayoutComponentBase
+@inject LabThemeService Theme
+@inject LabWorkspaceState Workspace
+@inject LabDialogs Dialogs
+@inject LabUrlSync Urls
+@inject LabPlatform Platform
+@inject ILabEnvironment Environment
+@inject IDispatcher Dispatcher
+@inject IJSRuntime JS
+@implements IDisposable
 
-@Body
+<div class="lab-shell">
+    <div class="lab-app">
+        @if (_ready)
+        {
+            <header aria-label="Application commands">
+                <LabBrandBar />
+                <LabCommandBar />
+            </header>
+            @if (_invalidShareUrl)
+            {
+                <div class="lab-share-url-error" role="status">
+                    <div>
+                        <div class="lab-share-url-error-title">Could not open this share link.</div>
+                        <div>The link was invalid. Loaded the C# template instead.</div>
+                    </div>
+                    <button type="button" class="lab-share-url-error-dismiss" @onclick="DismissInvalidShareUrl">Dismiss</button>
+                </div>
+            }
+            @Body
+            <SettingsDialog @ref="_settings" />
+            <CommandPalette @ref="_palette" />
+            <PasteUrlDialog @ref="_paste" />
+        }
+    </div>
+</div>
 
-<FluentMenuProvider />
+<FluentProviders />
+
+@code {
+    private SettingsDialog? _settings;
+    private CommandPalette? _palette;
+    private PasteUrlDialog? _paste;
+    private bool _ready;
+    private bool _splashHidden;
+    private bool _invalidShareUrl;
+
+    protected override void OnInitialized()
+    {
+        Dialogs.SettingsRequested += OpenSettingsAsync;
+        Dialogs.PaletteRequested += TogglePaletteAsync;
+        Dialogs.PasteUrlRequested += OpenPasteAsync;
+        Urls.InvalidShareUrl += OnInvalidShareUrl;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                Dispatcher.Dispatch(new SeedPreferencesAction(Environment.IsDevelopment));
+                await Theme.InitializeAsync();
+                await Platform.InitializeAsync();
+                Dispatcher.Dispatch(new InitializeUpdatesAction());
+                await Workspace.LoadSettingsAsync();
+                await Urls.LoadFromUriAsync();
+            }
+            finally
+            {
+                _ready = true;
+                StateHasChanged();
+            }
+
+            return;
+        }
+
+        if (_ready && !_splashHidden)
+        {
+            _splashHidden = true;
+            try
+            {
+                await JS.InvokeVoidAsync("netLabHideSplash");
+            }
+            catch (JSException)
+            {
+            }
+        }
+    }
+
+    private void OnInvalidShareUrl()
+    {
+        _invalidShareUrl = true;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissInvalidShareUrl()
+    {
+        _invalidShareUrl = false;
+    }
+
+    private Task OpenSettingsAsync() => _settings?.ShowAsync() ?? Task.CompletedTask;
+
+    private Task TogglePaletteAsync() => _palette?.ToggleAsync() ?? Task.CompletedTask;
+
+    private Task OpenPasteAsync() => _paste?.ShowAsync() ?? Task.CompletedTask;
+
+    public void Dispose()
+    {
+        Dialogs.SettingsRequested -= OpenSettingsAsync;
+        Dialogs.PaletteRequested -= TogglePaletteAsync;
+        Dialogs.PasteUrlRequested -= OpenPasteAsync;
+        Urls.InvalidShareUrl -= OnInvalidShareUrl;
+    }
+}

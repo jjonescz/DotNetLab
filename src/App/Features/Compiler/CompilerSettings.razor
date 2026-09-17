@@ -1,0 +1,186 @@
+@inherits FluxorComponent
+@inject IState<CompilerState> Compiler
+@inject IDispatcher Dispatcher
+
+<div class="lab-settings-compiler">
+    <h2 class="lab-setting-section">Compiler SDK &amp; packages</h2>
+    <p class="lab-setting-hint lab-settings-field-label">.NET SDK version</p>
+    <div class="lab-sdk-search" @onfocusin="OpenSdkSearch" @onfocusout="CloseSdkSearchAsync">
+        <label class="lab-settings-field">
+            <input class="lab-settings-input"
+                   type="text"
+                   role="combobox"
+                   aria-label=".NET SDK version"
+                   aria-autocomplete="list"
+                   aria-expanded="@(_sdkMenuOpen ? "true" : "false")"
+                   aria-controls="lab-sdk-listbox"
+                   autocomplete="off"
+                   spellcheck="false"
+                   placeholder="Filter SDK versions"
+                   value="@_sdkQuery"
+                   @oninput="OnSdkInput"
+                   @onfocus="OpenSdkSearch" />
+            <span class="lab-sdk-chevron @(_sdkMenuOpen ? "is-open" : null)" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" Width="16px" />
+            </span>
+        </label>
+        @if (_sdkMenuOpen)
+        {
+            <ul id="lab-sdk-listbox" class="lab-sdk-results" role="listbox" aria-label=".NET SDK versions">
+                @if (_sdkMatches.Count == 0)
+                {
+                    <li class="lab-sdk-empty">No matching SDK versions</li>
+                }
+                else
+                {
+                    @foreach (var sdk in _sdkMatches)
+                    {
+                        <li>
+                            <button type="button"
+                                    role="option"
+                                    class="lab-sdk-result @(Compiler.Value.Sdk == sdk.Value ? "is-selected" : null)"
+                                    aria-selected="@(Compiler.Value.Sdk == sdk.Value)"
+                                    @onmousedown:preventDefault
+                                    @onclick="@(() => SelectSdk(sdk))">
+                                <span class="lab-sdk-result-version">@sdk.Value</span>
+                                @if (!string.IsNullOrEmpty(sdk.Released))
+                                {
+                                    <span class="lab-sdk-result-date">@sdk.Released</span>
+                                }
+                            </button>
+                        </li>
+                    }
+                }
+            </ul>
+        }
+    </div>
+    <p class="lab-sdk-summary">
+        Uses
+        <span class="lab-sdk-summary-versions">Roslyn @Compiler.Value.Roslyn</span>
+        <span aria-hidden="true"> · </span>
+        <span class="lab-sdk-summary-versions">Razor @Compiler.Value.Razor</span>
+    </p>
+    @if (Compiler.Value.SdkLoading)
+    {
+        <p class="lab-setting-hint">Loading SDK…</p>
+    }
+    else if (!string.IsNullOrEmpty(Compiler.Value.SdkError))
+    {
+        <p class="lab-setting-hint">@Compiler.Value.SdkError</p>
+    }
+
+    <details class="lab-settings-fold">
+        <summary>Override compilers</summary>
+        <div class="lab-settings-fold-body">
+            <div class="lab-compiler-grid">
+                <CompilerSection Name="Roslyn"
+                                 Value="@Compiler.Value.Roslyn"
+                                 ValueChanged="OnRoslynChanged"
+                                 Config="@Compiler.Value.RoslynConfig"
+                                 ConfigChanged="OnRoslynConfigChanged"
+                                 Resolved="@Compiler.Value.RoslynResolved" />
+                <CompilerSection Name="Razor"
+                                 Value="@Compiler.Value.Razor"
+                                 ValueChanged="OnRazorChanged"
+                                 Config="@Compiler.Value.RazorConfig"
+                                 ConfigChanged="OnRazorConfigChanged"
+                                 Resolved="@Compiler.Value.RazorResolved" />
+            </div>
+        </div>
+    </details>
+</div>
+
+@code {
+    private bool _sdkMenuOpen;
+    private bool _sdkKeepOpen;
+    private string _sdkQuery = "";
+    private IReadOnlyList<SdkOption> _sdkMatches = LabCatalog.SdkVersions;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Dispatcher.Dispatch(new EnsureSdkVersionsAction());
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!_sdkMenuOpen)
+        {
+            _sdkQuery = Compiler.Value.Resolved.Value;
+        }
+    }
+
+    private void OpenSdkSearch()
+    {
+        _sdkKeepOpen = true;
+        _sdkMenuOpen = true;
+        FilterSdkMatches(_sdkQuery);
+    }
+
+    private async Task CloseSdkSearchAsync()
+    {
+        _sdkKeepOpen = false;
+        await Task.Delay(200);
+        if (_sdkKeepOpen)
+        {
+            return;
+        }
+
+        _sdkMenuOpen = false;
+        _sdkQuery = Compiler.Value.Resolved.Value;
+    }
+
+    private void OnSdkInput(ChangeEventArgs args) => OnSdkQueryChanged(args.Value?.ToString() ?? "");
+
+    private void OnSdkQueryChanged(string value)
+    {
+        _sdkQuery = value ?? "";
+        _sdkKeepOpen = true;
+        _sdkMenuOpen = true;
+        FilterSdkMatches(_sdkQuery);
+    }
+
+    private void SelectSdk(SdkOption sdk)
+    {
+        _sdkKeepOpen = false;
+        _sdkQuery = sdk.Value;
+        _sdkMenuOpen = false;
+        Dispatcher.Dispatch(new ApplySdkAction(sdk.Value));
+    }
+
+    private void FilterSdkMatches(string query)
+    {
+        var text = query?.Trim() ?? "";
+        if (IsUnfilteredSdkQuery(text))
+        {
+            _sdkMatches = Compiler.Value.AvailableSdks;
+            return;
+        }
+
+        _sdkMatches = Compiler.Value.AvailableSdks
+            .Where(sdk =>
+                sdk.Value.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+                (text.Length >= 4 && sdk.Released.Contains(text, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+    }
+
+    private bool IsUnfilteredSdkQuery(string text)
+    {
+        if (text.Length == 0)
+        {
+            return true;
+        }
+
+        var sdk = Compiler.Value.Resolved;
+        return string.Equals(text, sdk.Value, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(text, sdk.Label, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnRoslynChanged(string value) => Dispatcher.Dispatch(new SetRoslynAction(value));
+
+    private void OnRazorChanged(string value) => Dispatcher.Dispatch(new SetRazorAction(value));
+
+    private void OnRoslynConfigChanged(string value) => Dispatcher.Dispatch(new SetRoslynConfigAction(value));
+
+    private void OnRazorConfigChanged(string value) => Dispatcher.Dispatch(new SetRazorConfigAction(value));
+}

@@ -1,16 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" />
+    <PackageReference Include="Fluxor.Blazor.Web" />
+    <PackageReference Include="Fluxor.Blazor.Web.ReduxDevTools" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" VersionOverride="5.0.0-rc.5-26219.1" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" VersionOverride="5.0.0-rc.5-26219.1" />
     <PackageReference Include="PolyType" />
     <PackageReference Include="protobuf-net" />
     <PackageReference Include="System.IO.Hashing" />
@@ -55,6 +55,43 @@
       so this target does not re-run unnecessarily.
     -->
     <Touch Files="@(NpmOutput)" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="AddLabIdentity" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="PrepareForBuild">
+    <PropertyGroup>
+      <_LabRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))</_LabRepoRoot>
+    </PropertyGroup>
+    <Exec Command="git rev-parse --short HEAD"
+          WorkingDirectory="$(_LabRepoRoot)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_LabCommitRaw" />
+    </Exec>
+    <Exec Command="git log -1 --format=%25cI"
+          WorkingDirectory="$(_LabRepoRoot)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_LabDateRaw" />
+    </Exec>
+    <PropertyGroup>
+      <_LabCommit>$([System.Text.RegularExpressions.Regex]::Match('$(_LabCommitRaw)', '[0-9a-fA-F]{7,40}').Value)</_LabCommit>
+      <_LabDateIso>$([System.Text.RegularExpressions.Regex]::Match('$(_LabDateRaw)', '[0-9]{4}-[0-9]{2}-[0-9]{2}').Value)</_LabDateIso>
+      <_LabDate Condition="'$(_LabDateIso)' != ''">$([System.DateTime]::Parse('$(_LabDateIso)').ToString('yyyy.M.d'))</_LabDate>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>LabCommit</_Parameter1>
+        <_Parameter2>$(_LabCommit)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>LabDate</_Parameter1>
+        <_Parameter2>$(_LabDate)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
   </Target>
 
 </Project>
