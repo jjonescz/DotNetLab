@@ -512,8 +512,14 @@
     private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
     private PackageDependencyInfo? roslynInfo, razorInfo;
-    private string? sdkError, roslynError, razorError;
+    private Error? sdkError, roslynError, razorError;
     private bool checkedForUpdates;
+
+    public readonly record struct Error(string Short, string Long)
+    {
+        private Error((string Short, string Long) tuple) : this(tuple.Short, tuple.Long) { }
+        public Error(Exception ex) : this(ex is WorkerException w ? (w.Failure.Message, w.Failure.FullString) : (ex.Message, ex.ToString())) { }
+    }
 
     [CascadingParameter] public required Page Page { get; set; }
 
@@ -673,7 +679,7 @@
         await RefreshAsync();
 
         SdkInfo? info;
-        string? error;
+        Error? error;
         try
         {
             if (string.IsNullOrEmpty(versionToLoad))
@@ -697,7 +703,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load SDK info.");
-            error = ex is WorkerException w ? w.Failure.Message : ex.Message;
+            error = new(ex);
             info = null;
         }
 
@@ -717,7 +723,7 @@
         await LoadSdkInfoAsync();
     }
 
-    private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
+    private async Task<(PackageDependencyInfo? Info, Error? Error)> LoadCompilerInfoAsync(
         CompilerKind compilerKind,
         string? versionToLoad,
         BuildConfiguration configuration,
@@ -747,7 +753,7 @@
         {
             Logger.LogError(ex, $"Failed to load {compilerKind} info.");
 
-            return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
+            return (null, new(ex));
         }
     }
 

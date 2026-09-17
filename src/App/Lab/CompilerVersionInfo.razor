@@ -23,10 +23,10 @@
         <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.
     </FluentLabel>
 }
-@if (Error != null)
+@if (Error is { } error)
 {
-    <FluentLabel Color="Color.Error" Style="@($"{Style}; white-space: pre-wrap")">
-        @Error
+    <FluentLabel Color="Color.Error" Style="@($"{Style}; white-space: pre-wrap")" title="@(error.Long)">
+        @(error.Short)
     </FluentLabel>
 }
 
@@ -34,6 +34,6 @@
     [Parameter, EditorRequired] public Settings Settings { get; set; }
     [Parameter, EditorRequired] public CompilerInfo Compiler { get; set; }
     [Parameter] public PackageDependencyInfo? Info { get; set; }
-    [Parameter] public string? Error { get; set; }
+    [Parameter] public Settings.Error? Error { get; set; }
     [Parameter, EditorRequired] public string Style { get; set; }
 }
