@@ -18,7 +18,7 @@ public sealed partial class BlazorMonacoInterop : IAsyncDisposable
 
     public BlazorMonacoInterop(IJSRuntime jsRuntime)
     {
-        initialize = new(() => jsRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/BlazorMonacoInterop.js?v=ls-5").AsTask());
+        initialize = new(() => jsRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/BlazorMonacoInterop.js").AsTask());
     }
 
     public async ValueTask DisposeAsync()
