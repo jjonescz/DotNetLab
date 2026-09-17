@@ -27,7 +27,6 @@ public sealed class CompilationSession : IAsyncDisposable
     private GenerationCounter _applyGeneration;
     private bool _storeInCache;
     private CompilationInput? _liveCompiledInput;
-    private string? _compiledCompilerKey;
     private CompiledAssembly? _compiled;
 
     internal CompilationSession(
@@ -116,25 +115,6 @@ public sealed class CompilationSession : IAsyncDisposable
         var updateDisplayedOutput = request.UpdateDisplayedOutput;
         var appliedToDisplay = false;
         var input = _host.CreateCompilationInput();
-        if (CanReuseLastCompile(input))
-        {
-            _dispatcher.Dispatch(new SetStaleAction(false));
-            _host.Notify();
-            await _host.PersistUrlAsync(snapshot: true);
-            if (storeInCache && Compiled is { } reused)
-            {
-                StoreCompiledOutput(reused);
-            }
-
-            if (updateDisplayedOutput && _host.Outputs.IsEmpty)
-            {
-                _ = _host.Outputs.LoadDisplayedAsync();
-            }
-
-            _ = _host.RefreshLanguageServicesAfterCompileAsync();
-            return;
-        }
-
         var showBusy = storeInCache || (updateDisplayedOutput && Compiled is null);
         try
         {
@@ -169,7 +149,6 @@ public sealed class CompilationSession : IAsyncDisposable
 
             LastInput = input;
             _liveCompiledInput = input;
-            _compiledCompilerKey = Compiler.Key;
 
             var applyToDisplay = storeInCache || (updateDisplayedOutput && Compiled is null);
             if (applyToDisplay)
@@ -205,7 +184,6 @@ public sealed class CompilationSession : IAsyncDisposable
                 Compiled = CompiledAssembly.Fail(ex.ToString());
                 LastInput = input;
                 _liveCompiledInput = input;
-                _compiledCompilerKey = Compiler.Key;
                 BeginNewOutputGeneration();
                 appliedToDisplay = true;
             }
@@ -239,7 +217,6 @@ public sealed class CompilationSession : IAsyncDisposable
     {
         LastInput = null;
         _liveCompiledInput = null;
-        _compiledCompilerKey = null;
     }
 
     internal int InvalidateForNewState()
@@ -305,11 +282,6 @@ public sealed class CompilationSession : IAsyncDisposable
         _host.Notify();
     }
 
-    private bool CanReuseLastCompile(CompilationInput input)
-        => _liveCompiledInput is { } live
-           && live.Equals(input)
-           && string.Equals(_compiledCompilerKey, Compiler.Key, StringComparison.Ordinal);
-
     private void BeginNewOutputGeneration()
     {
         _compileGeneration.Begin();
@@ -354,7 +326,6 @@ public sealed class CompilationSession : IAsyncDisposable
 
         LastInput = input;
         Compiled = output;
-        _compiledCompilerKey = Compiler.Key;
         _dispatcher.Dispatch(new SetStaleAction(stale));
         BeginNewOutputGeneration();
         RefreshTemporaryErrorList();

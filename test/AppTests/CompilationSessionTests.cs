@@ -35,9 +35,6 @@ public sealed class CompilationSessionTests
         await transport.WaitStartedAsync(0).WaitAsync(TimeSpan.FromSeconds(2));
 
         var second = session.CompileAsync(storeInCache: false, updateDisplayedOutput: false);
-        second.IsCompleted.Should().BeFalse();
-        transport.CompileCount.Should().Be(1);
-
         transport.Release(0);
         await transport.WaitStartedAsync(1).WaitAsync(TimeSpan.FromSeconds(2));
         transport.CompileCount.Should().Be(2);
@@ -65,6 +62,32 @@ public sealed class CompilationSessionTests
 
         transport.Release(0);
         await compile.WaitAsync(TimeSpan.FromSeconds(2));
+        compilation.Value.Running.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public async Task Compile_SameInput_StillSendsAndShowsBusy()
+    {
+        using var context = ImmediateSynchronizationContext.Install();
+        var transport = new DelayedCompileTransport();
+        await using var worker = CreateWorker(transport);
+        var compilation = new Store<CompilationState>(new CompilationState());
+        var dispatcher = new RecordingDispatcher(compilation);
+        var created = CreateSession(worker, compilation, dispatcher);
+        await using var session = created.Session;
+
+        var first = session.CompileAsync(storeInCache: true, updateDisplayedOutput: true);
+        await transport.WaitStartedAsync(0).WaitAsync(TimeSpan.FromSeconds(2));
+        transport.Release(0);
+        await first.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var second = session.CompileAsync(storeInCache: true, updateDisplayedOutput: true);
+        await transport.WaitStartedAsync(1).WaitAsync(TimeSpan.FromSeconds(2));
+        compilation.Value.Running.Should().BeTrue();
+        transport.CompileCount.Should().Be(2);
+
+        transport.Release(1);
+        await second.WaitAsync(TimeSpan.FromSeconds(2));
         compilation.Value.Running.Should().BeFalse();
     }
 
