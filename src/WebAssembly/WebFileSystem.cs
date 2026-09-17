@@ -5,11 +5,11 @@ using DotNetLab.Lab;
 
 namespace DotNetLab;
 
+[SupportedOSPlatform("browser")] // mark the whole class so registering it in wrong DI warns
 public sealed class WebFilePicker : IFilePicker
 {
     public bool SupportsDirectoryPicker => true;
 
-    [SupportedOSPlatform("browser")]
     public async Task<string?> PickDirectoryAsync(string pickerId)
     {
         var picked = await WebFileSystemInterop.PickDirectoryAsync(pickerId);
@@ -25,6 +25,7 @@ public sealed class WebFilePicker : IFilePicker
     }
 }
 
+[SupportedOSPlatform("browser")] // mark the whole class so registering it in wrong DI warns
 public sealed class WebFileSystem : IFileSystem
 {
     public IDirectoryInfo? TryGetDirectoryFromSpecifier(CompilerVersionSpecifier specifier)
