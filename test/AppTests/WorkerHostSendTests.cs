@@ -70,7 +70,7 @@ public sealed class WorkerHostSendTests
         transport.CreateWorkerCalls.Should().Be(0);
         transport.InProcessCalls.Should().Be(1);
         host.LastPingResult.Should().BeNull();
-        logger.Messages.Should().Contain("LANGUAGE SERVICES EXECUTION: UI/foreground");
+        logger.Messages.Should().Contain("Compiler running on the UI thread.");
     }
 
     [TestMethod]
@@ -90,7 +90,7 @@ public sealed class WorkerHostSendTests
         ping.Should().NotBeNull();
         transport.CreateWorkerCalls.Should().Be(0);
         transport.InProcessCalls.Should().Be(1);
-        logger.Messages.Should().Contain("LANGUAGE SERVICES EXECUTION: background .NET thread");
+        logger.Messages.Should().Contain("Compiler running on a background .NET thread.");
     }
 
     [TestMethod]
