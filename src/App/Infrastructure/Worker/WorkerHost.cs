@@ -290,15 +290,15 @@ public sealed class WorkerHost : IAsyncDisposable
     {
         if (_useWorker == true)
         {
-            _logger.LogInformation("LANGUAGE SERVICES EXECUTION: browser worker");
+            _logger.LogDebug("Compiler running in a browser worker.");
             _worker = await CreateWorkerAsync();
             return;
         }
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             _supportsThreads
-                ? "LANGUAGE SERVICES EXECUTION: background .NET thread"
-                : "LANGUAGE SERVICES EXECUTION: UI/foreground");
+                ? "Compiler running on a background .NET thread."
+                : "Compiler running on the UI thread.");
         await _transport.EnsureInProcessInteropAsync();
         _services = WorkerServices.Create(
             _baseUrl,
