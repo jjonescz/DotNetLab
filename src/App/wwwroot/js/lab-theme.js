@@ -1,16 +1,54 @@
 window.netLabTheme = {
     storageKey: "netlab-theme",
+    // Fluent UI loading-theme / FluentDesignTheme storage-name from the previous UI.
+    legacyStorageKey: "theme",
     _media: null,
     _mediaHandler: null,
-    readPreference: function () {
+    parsePreference: function (value) {
+        return value === "light" || value === "dark" || value === "system" ? value : null;
+    },
+    // Current key is a bare "light"|"dark"|"system". Legacy key is JSON:
+    // {"mode":"light"} or a quoted string. Keep in sync with LabTheme.TryParseStoredValue.
+    parseStoredValue: function (stored) {
+        const direct = this.parsePreference(stored);
+        if (direct) {
+            return direct;
+        }
+
+        if (!stored) {
+            return null;
+        }
+
         try {
-            const value = localStorage.getItem(this.storageKey);
-            if (value === "light" || value === "dark" || value === "system") {
-                return value;
+            const parsed = JSON.parse(stored);
+            if (typeof parsed === "string") {
+                return this.parsePreference(parsed);
+            }
+
+            if (parsed && typeof parsed.mode === "string") {
+                return this.parsePreference(parsed.mode);
             }
         } catch {
         }
 
+        return null;
+    },
+    readPreference: function () {
+        try {
+            const stored = this.parsePreference(localStorage.getItem(this.storageKey));
+            if (stored) {
+                return stored;
+            }
+
+            const migrated = this.parseStoredValue(localStorage.getItem(this.legacyStorageKey));
+            if (migrated) {
+                this.persist(migrated);
+                return migrated;
+            }
+        } catch {
+        }
+
+        // Do not persist the fallback; that would lock new visitors to dark.
         return "dark";
     },
     persist: function (preference) {

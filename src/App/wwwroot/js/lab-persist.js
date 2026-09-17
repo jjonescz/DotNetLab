@@ -19,12 +19,44 @@ window.netLabPrefs = {
         } catch {
         }
     },
+    // Pre-redesign SettingsService keys (one JSON value each). Keep in sync with
+    // LegacyLabSettings.cs. C# maps these into netlab-settings; we do not delete them.
+    legacySettingsKeys: [
+        "WordWrap",
+        "UseVim",
+        "DebugLogs",
+        "TraceLogs",
+        "EnableMemoryUsageView",
+        "EnableLanguageServices2",
+        "EnableWorker",
+        "EnableCaching",
+        "AutoCompileOnStart",
+        "displayHintSquiggles",
+        "disableInputVirtualKeyboard",
+        "CompilationPreferences"
+    ],
     readSettings: function () {
         try {
             return localStorage.getItem(this.settingsKey) || "";
         } catch {
             return "";
         }
+    },
+    // Used only when netlab-settings is empty. Returns { key: json } for keys that exist.
+    readLegacySettings: function () {
+        const result = {};
+        try {
+            for (let i = 0; i < this.legacySettingsKeys.length; i++) {
+                const key = this.legacySettingsKeys[i];
+                const value = localStorage.getItem(key);
+                if (value !== null) {
+                    result[key] = value;
+                }
+            }
+        } catch {
+        }
+
+        return result;
     },
     persistSettings: function (json) {
         try {
