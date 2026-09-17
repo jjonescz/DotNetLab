@@ -12,6 +12,8 @@ public sealed class WebFilePicker : IFilePicker
 
     public async Task<string?> PickDirectoryAsync(string pickerId)
     {
+        await WebFileSystemInterop.InitializeAsync;
+
         var picked = await WebFileSystemInterop.PickDirectoryAsync(pickerId);
 
         if (picked is null)
@@ -46,6 +48,8 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     [SupportedOSPlatform("browser")]
     public async ValueTask<IDirectoryInfo> GetSubdirectoryAsync(string[] segments)
     {
+        await WebFileSystemInterop.InitializeAsync;
+
         var subdirectory = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id.ToString(), segments);
 
         return new WebDirectoryInfo
@@ -63,6 +67,8 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
         {
             throw new InvalidOperationException($"Cannot get subdirectories of a non-existent directory: {FullName}");
         }
+
+        await WebFileSystemInterop.InitializeAsync;
 
         var directories = WebFileSystemInterop.UnwrapObjectAsArray(await WebFileSystemInterop.GetDirectoriesAsync(id.ToString()));
 
@@ -85,6 +91,8 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     [SupportedOSPlatform("browser")]
     public async ValueTask<IFileInfo> GetFileAsync(string fileName)
     {
+        await WebFileSystemInterop.InitializeAsync;
+
         var fileId = Id is not { } id ? null : await WebFileSystemInterop.GetFileAsync(id.ToString(), fileName);
 
         return new WebFileInfo
@@ -123,6 +131,9 @@ public sealed class WebFileInfo : IFileInfo
 internal static partial class WebFileSystemInterop
 {
     private const string ModuleName = "FileSystem";
+
+    [SupportedOSPlatform("browser")]
+    public static Task InitializeAsync => field ??=  JSHost.ImportAsync(ModuleName, "../js/FileSystem.js");
 
     [JSImport("pickDirectory", ModuleName)]
     public static partial Task<JSObject?> PickDirectoryAsync(string pickerId);
