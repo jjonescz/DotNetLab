@@ -1,6 +1,7 @@
 using DotNetLab.Editor;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Editor.Monaco;
+using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Features.Sharing;
 using DotNetLab.Features.Theme;
@@ -66,6 +67,8 @@ public static class AppBuilder
         services.AddScoped<EditorDragState>();
         services.AddScoped<IUpdateChecker, DisabledUpdateChecker>();
         services.TryAddScoped<IWorkerTransport, UnsupportedWorkerTransport>();
+        services.TryAddScoped<IWorkerConfigurer, NoopWorkerConfigurer>();
+        services.TryAddScoped<ICompilerOutputPlugin, PassThroughCompilerOutputPlugin>();
         services.AddSingleton<LabLogging>();
         services.AddOptions<LoggerFilterOptions>().Configure<LabLogging>((options, logging) =>
         {

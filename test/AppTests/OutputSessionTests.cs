@@ -103,13 +103,54 @@ public sealed class OutputSessionTests
         host.StoredCount.Should().Be(0);
     }
 
-    private static (OutputSession Session, FakeOutputSessionHost Host) Create()
+    [TestMethod]
+    public void GetOutput_WasmPluginRewritesUnavailableJit()
     {
-        var host = new FakeOutputSessionHost();
-        return (new OutputSession(host), host);
+        var (session, host) = Create(new WebAssemblyCompilerOutputPlugin());
+        host.Compiled = AssemblyWithEager(
+            "asm",
+            "JIT disassembler is not available.",
+            language: null,
+            metadata: CompiledFileOutputMetadata.JitAsmUnavailableMessage);
+
+        var text = session.GetOutput("asm");
+        text.Should().Contain("native app");
+        session.OutputLanguage("asm").Should().Be("plaintext");
+        session.GetDisclaimer("asm").Should().Be(OutputDisclaimer.None);
     }
 
-    private static CompiledAssembly AssemblyWithEager(string type, string text, string language, int errors = 0)
+    [TestMethod]
+    public void GetOutput_WasmPluginReusesNativeAsmAfterClear()
+    {
+        var (session, host) = Create(new WebAssemblyCompilerOutputPlugin());
+        host.Compiled = AssemblyWithEager("asm", "mov eax, 1", "x86");
+        session.GetOutput("asm").Should().Be("mov eax, 1");
+        session.OutputLanguage("asm").Should().Be("x86");
+
+        session.Clear();
+        host.Compiled = AssemblyWithEager(
+            "asm",
+            "JIT disassembler is not available.",
+            language: null,
+            metadata: CompiledFileOutputMetadata.JitAsmUnavailableMessage);
+
+        session.GetOutput("asm").Should().Be("mov eax, 1");
+        session.OutputLanguage("asm").Should().Be("x86");
+        session.GetDisclaimer("asm").Should().Be(OutputDisclaimer.JitAsmUnavailableUsingCached);
+    }
+
+    private static (OutputSession Session, FakeOutputSessionHost Host) Create(ICompilerOutputPlugin? plugin = null)
+    {
+        var host = new FakeOutputSessionHost();
+        return (new OutputSession(host, plugin), host);
+    }
+
+    private static CompiledAssembly AssemblyWithEager(
+        string type,
+        string text,
+        string? language,
+        int errors = 0,
+        CompiledFileOutputMetadata? metadata = null)
         => new(
             Files: ImmutableSortedDictionary<string, CompiledFile>.Empty.Add(
                 "Program.cs",
@@ -118,9 +159,10 @@ public sealed class OutputSessionTests
                     new CompiledFileOutput
                     {
                         Type = type,
-                        Label = type == "cs" ? "C#" : "IL",
+                        Label = type == "cs" ? "C#" : type == "asm" ? "Asm" : "IL",
                         Language = language,
                         EagerText = text,
+                        Metadata = metadata,
                     },
                 ])),
             GlobalOutputs: [],

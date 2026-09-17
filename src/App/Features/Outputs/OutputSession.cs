@@ -6,14 +6,17 @@ namespace DotNetLab.Features.Outputs;
 public sealed class OutputSession
 {
     private readonly IOutputSessionHost _host;
+    private readonly ICompilerOutputPlugin _plugin;
     private readonly Dictionary<string, OutputSnapshot> _cache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
     private readonly HashSet<string> _loading = new(StringComparer.Ordinal);
+    private OutputSnapshot? _cachedNativeAsm;
     private bool _showErrorListIfOutputEmpty;
 
-    internal OutputSession(IOutputSessionHost host)
+    internal OutputSession(IOutputSessionHost host, ICompilerOutputPlugin? plugin = null)
     {
         _host = host;
+        _plugin = plugin ?? PassThroughCompilerOutputPlugin.Instance;
     }
 
     public bool IsEmpty => _cache.Count == 0;
@@ -25,6 +28,7 @@ public sealed class OutputSession
 
     public void Clear()
     {
+        RememberNativeAsm();
         _cache.Clear();
         _loading.Clear();
     }
@@ -43,6 +47,11 @@ public sealed class OutputSession
         => TryGetSnapshot(type, out var snapshot)
             ? snapshot.Language
             : "plaintext";
+
+    public OutputDisclaimer GetDisclaimer(string type)
+        => TryGetSnapshot(type, out var snapshot)
+            ? snapshot.Disclaimer
+            : OutputDisclaimer.None;
 
     public string OutputUriFor(string tab)
     {
@@ -94,8 +103,9 @@ public sealed class OutputSession
 
         if (output.Text is { } eager)
         {
-            _cache[key] = CreateSnapshot(tab, eager, output, output.Metadata);
-            return eager;
+            var snapshot = CreateSnapshot(tab, new CompiledFileLazyResult { Text = eager, Metadata = output.Metadata }, output);
+            _cache[key] = snapshot;
+            return snapshot.Text;
         }
 
         _ = EnsureOutputLoadedAsync(tab);
@@ -135,7 +145,7 @@ public sealed class OutputSession
 
             if (output.Text is { } eager)
             {
-                _cache[key] = CreateSnapshot(tab, eager, output, output.Metadata);
+                _cache[key] = CreateSnapshot(tab, new CompiledFileLazyResult { Text = eager, Metadata = output.Metadata }, output);
                 return;
             }
 
@@ -158,7 +168,7 @@ public sealed class OutputSession
                 return;
             }
 
-            _cache[key] = CreateSnapshot(tab, result.Text, output, result.Metadata ?? output.Metadata);
+            _cache[key] = CreateSnapshot(tab, result, output);
             if (_host.StoreInCache && _host.Compiled is { } compiled)
             {
                 _host.StoreCompiledOutput(compiled);
@@ -230,18 +240,63 @@ public sealed class OutputSession
     private string OutputCacheKey(string tab) => $"{_host.ActiveSource}\0{tab}";
 
     private OutputSnapshot Placeholder(string tab, string text)
-        => new(text, "plaintext", CompiledFileOutputMetadata.SpecialMessage, OutputUriFor(tab));
+        => new(text, "plaintext", CompiledFileOutputMetadata.SpecialMessage, OutputDisclaimer.None, OutputUriFor(tab));
 
     private OutputSnapshot CreateSnapshot(
         string tab,
-        string text,
-        CompiledFileOutput? output,
-        CompiledFileOutputMetadata? metadata)
+        CompiledFileLazyResult result,
+        CompiledFileOutput? output)
     {
-        var language = metadata is { MessageKind: not MessageKind.Normal }
+        var metadata = result.Metadata ?? output?.Metadata;
+        string? language = metadata is { MessageKind: not MessageKind.Normal }
             ? "plaintext"
             : output?.Language ?? LabCatalog.OutputLanguage(tab);
-        return new(text, language, metadata, OutputUriFor(tab));
+        _cache.TryGetValue(OutputCacheKey(tab), out var previous);
+        var info = output is null
+            ? (OutputInfo?)null
+            : new OutputInfo
+            {
+                Output = output,
+                File = OutputFileName(tab),
+                CachedOutput = CachedOutputFor(tab, previous),
+            };
+        var text = _plugin.GetText(info, result with { Metadata = metadata }, out var disclaimer, ref language);
+        if (string.IsNullOrEmpty(language))
+        {
+            language = "plaintext";
+        }
+
+        return new(text, language, metadata, disclaimer, OutputUriFor(tab));
+    }
+
+    private void RememberNativeAsm()
+    {
+        foreach (var snapshot in _cache.Values)
+        {
+            if (snapshot.Disclaimer == OutputDisclaimer.None &&
+                string.Equals(snapshot.Language, "x86", StringComparison.Ordinal))
+            {
+                _cachedNativeAsm = snapshot;
+                return;
+            }
+        }
+    }
+
+    private CompiledFileOutput? CachedOutputFor(string tab, OutputSnapshot? previous)
+    {
+        var cached = previous ?? (string.Equals(tab, "asm", StringComparison.Ordinal) ? _cachedNativeAsm : null);
+        if (cached is null)
+        {
+            return null;
+        }
+
+        return new CompiledFileOutput
+        {
+            Type = tab,
+            Label = _host.OutputLabel(tab),
+            Language = cached.Language,
+            EagerText = cached.Text,
+        };
     }
 }
 
@@ -249,6 +304,7 @@ internal sealed record OutputSnapshot(
     string Text,
     string Language,
     CompiledFileOutputMetadata? Metadata,
+    OutputDisclaimer Disclaimer,
     string ModelUri);
 
 internal interface IOutputSessionHost

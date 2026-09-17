@@ -26,6 +26,7 @@ public sealed class WorkerHost : IAsyncDisposable
     private readonly LabLogging _logging;
     private readonly LabSettings _settings;
     private readonly IWorkerTransport _transport;
+    private readonly IWorkerConfigurer? _workerConfigurer;
     private readonly ILogger<WorkerHost> _logger;
     private readonly Dispatcher _dispatcher = Dispatcher.CreateDefault();
     private readonly ConcurrentDictionary<int, TaskCompletionSource<WorkerOutputMessage>> _pending = new();
@@ -43,7 +44,8 @@ public sealed class WorkerHost : IAsyncDisposable
         LabLogging logging,
         LabSettings settings,
         IWorkerTransport transport,
-        ILogger<WorkerHost> logger)
+        ILogger<WorkerHost> logger,
+        IWorkerConfigurer? workerConfigurer = null)
     {
         _baseUrl = environment.BaseAddress;
         _supportsThreads = environment.SupportsThreads;
@@ -51,6 +53,7 @@ public sealed class WorkerHost : IAsyncDisposable
         _settings = settings;
         _transport = transport;
         _logger = logger;
+        _workerConfigurer = workerConfigurer;
     }
 
     public event Action<string>? Failed;
@@ -297,7 +300,10 @@ public sealed class WorkerHost : IAsyncDisposable
                 ? "LANGUAGE SERVICES EXECUTION: background .NET thread"
                 : "LANGUAGE SERVICES EXECUTION: UI/foreground");
         await _transport.EnsureInProcessInteropAsync();
-        _services = WorkerServices.Create(_baseUrl, _logging.LogLevel);
+        _services = WorkerServices.Create(
+            _baseUrl,
+            _logging.LogLevel,
+            configureServices: services => _workerConfigurer?.ConfigureWorkerServices(services));
     }
 
     private async Task DisposeCurrentNoLockAsync()

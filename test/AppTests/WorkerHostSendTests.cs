@@ -3,6 +3,7 @@ using DotNetLab.Features.Preferences;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Logging;
 using DotNetLab.Infrastructure.Worker;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.JSInterop;
@@ -90,6 +91,34 @@ public sealed class WorkerHostSendTests
         transport.CreateWorkerCalls.Should().Be(0);
         transport.InProcessCalls.Should().Be(1);
         logger.Messages.Should().Contain("LANGUAGE SERVICES EXECUTION: background .NET thread");
+    }
+
+    [TestMethod]
+    public async Task SendAsync_InProcess_InvokesWorkerConfigurer()
+    {
+        var configurer = new RecordingWorkerConfigurer();
+        await using var host = new WorkerHost(
+            new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
+            new LabLogging(),
+            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SpyInProcessTransport(),
+            NullLogger<WorkerHost>.Instance,
+            configurer);
+
+        await host.SendAsync(new WorkerInputMessage.Ping { Id = host.NextMessageId() });
+
+        configurer.Calls.Should().Be(1);
+    }
+
+    private sealed class RecordingWorkerConfigurer : IWorkerConfigurer
+    {
+        public int Calls { get; private set; }
+
+        public void ConfigureWorkerServices(ServiceCollection services)
+        {
+            Calls++;
+            _ = services;
+        }
     }
 
     private sealed class SpyInProcessTransport : IWorkerTransport

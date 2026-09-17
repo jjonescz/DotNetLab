@@ -228,8 +228,17 @@
                         }
                         else
                         {
+                            var outputText = State.Outputs.GetOutput(context);
+                            @if (State.Outputs.GetDisclaimer(context) == OutputDisclaimer.JitAsmUnavailableUsingCached)
+                            {
+                                <div class="lab-output-disclaimer" role="status">
+                                    JIT disassembler is not available on this platform
+                                    (it's only available in a <a href="@LabLinks.NativeApps" target="_blank" rel="noopener noreferrer">native app</a>).
+                                    Displaying cached output.
+                                </div>
+                            }
                             <LabCodeEditor @key="@($"output-{context}")"
-                                           Value="@State.Outputs.GetOutput(context)"
+                                           Value="@outputText"
                                            Language="@State.Outputs.OutputLanguage(context)"
                                            ModelUri="@State.Outputs.OutputUriFor(context)"
                                            ReadOnly="true"
