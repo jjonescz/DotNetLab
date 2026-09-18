@@ -1174,12 +1174,13 @@ internal sealed class FileLevelDirectiveCompletionProvider(
                 if (separatorIndex >= 0)
                 {
                     // We are in directive value territory.
-                    var directiveName = directiveText[..separatorIndex];
-                    var directiveValue = directiveText[(separatorIndex + 1)..];
+                    var directiveName = directiveText[..separatorIndex].Trim();
+                    var directiveValue = directiveText[(separatorIndex + 1)..].Trim();
 
                     if (descriptor.DirectiveKind == FileLevelDirective.Package.Descriptor.DirectiveKind)
                     {
-                        var replacementStart = context.Position - directiveValue.Length;
+                        var separatorPosition = context.Position - directiveText.Length + separatorIndex;
+                        var replacementStart = getDirectiveTokenStart(separatorPosition + 1);
                         context.CompletionListSpan = TextSpan.FromBounds(
                             replacementStart,
                             getDirectiveTokenEnd(replacementStart));
@@ -1262,6 +1263,16 @@ internal sealed class FileLevelDirectiveCompletionProvider(
             }
 
             return text.Length;
+        }
+
+        int getDirectiveTokenStart(int start)
+        {
+            while (start < context.Position && char.IsWhiteSpace(sourceText[start]))
+            {
+                start++;
+            }
+
+            return start;
         }
 
         int getDirectiveTokenEnd(int start, char? separator = null)

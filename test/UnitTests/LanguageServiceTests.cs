@@ -469,6 +469,21 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Completion_PackageVersions_WhitespaceAroundSeparator()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis @ 4.1";
+
+        var completion = await GetCompletionsAsync(code, downloader);
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", "4.1"));
+        getReplacedText(code, completion).Should().Be("4.1");
+    }
+
+    [TestMethod]
     public async Task Diagnostics_PackageSourceGenerator()
     {
         var input = new CompilationInput(new(

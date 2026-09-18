@@ -42,7 +42,7 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    const packagePrefixPattern = /^\s*#:\s*package\s+([^@\s]*)(?:@([^\s]*))?$/;
+    const packagePrefixPattern = /^\s*#:\s*package\s+([^@\s]*)\s*(?:@\s*([^\s]*))?$/;
     const packageCompletionResults = new WeakMap();
 
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
