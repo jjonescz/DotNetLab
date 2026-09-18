@@ -859,6 +859,9 @@
             _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
         };
 
+        SetLoadingVersion(compilerKind, "local");
+        await RefreshAsync();
+
         try
         {
             if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
@@ -886,8 +889,15 @@
             {
                 razorError = new(ex);
             }
+            SetLoadingVersion(compilerKind, null);
             await RefreshAsync();
         }
+    }
+
+    private void SetLoadingVersion(CompilerKind compilerKind, string? version)
+    {
+        Debug.Assert(compilerKind is CompilerKind.Roslyn or CompilerKind.Razor);
+        (compilerKind == CompilerKind.Roslyn ? ref loadingRoslynVersion : ref loadingRazorVersion) = version;
     }
 
     private async Task SetLuminanceAsync(bool dark)
