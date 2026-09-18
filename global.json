@@ -1,7 +1,7 @@
 {
   "sdk": {
     "version": "11.0.100-rc.1.26425.128",
-    "workloadVersion": "11.0.100-rc.1.26460.1",
+    "workloadVersion": "11.0.100-rc.1.26458.5",
     "allowPrerelease": true
   },
   "msbuild-sdks": {
