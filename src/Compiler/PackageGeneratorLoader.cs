@@ -10,6 +10,7 @@ namespace DotNetLab;
 
 internal static class PackageGeneratorLoader
 {
+#pragma warning disable RS2008 // Compiler is not a shipped analyzer package
     private static readonly DiagnosticDescriptor AnalyzerLoadFailed = new(
         id: "LAB",
         title: "Analyzer load",
@@ -17,15 +18,15 @@ internal static class PackageGeneratorLoader
         category: "Analyzer",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-    
+
     private static readonly DiagnosticDescriptor GeneratorTypeInvalid = new(
         id: "LAB",
         title: "Source generator load",
-        messageFormat: "Type '{0}' in '{1}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator.",
+        messageFormat: "Type '{0}' in '{1}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator",
         category: "SourceGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-    
+
     private static readonly DiagnosticDescriptor GeneratorInstantiateFailed = new(
         id: "LAB",
         title: "Source generator load",
@@ -33,7 +34,8 @@ internal static class PackageGeneratorLoader
         category: "SourceGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-    
+#pragma warning restore RS2008
+
     public static ImmutableArray<ISourceGenerator> Load(
         AssemblyLoadContext alc,
         ImmutableArray<RefAssembly> analyzerAssemblies,
@@ -48,9 +50,9 @@ internal static class PackageGeneratorLoader
 
         var generators = ImmutableArray.CreateBuilder<ISourceGenerator>();
         var diagnosticBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
-        
+
         var loaded = new List<Assembly>();
-        
+
         foreach (var analyzer in analyzerAssemblies)
         {
             try
@@ -126,7 +128,7 @@ internal static class PackageGeneratorLoader
                 return loaded;
             }
         }
-        
+
         if (sameName is not null)
         {
             throw new InvalidOperationException(
@@ -139,7 +141,7 @@ internal static class PackageGeneratorLoader
     private static bool TryReadAssemblyVersion(ImmutableArray<byte> bytes, out Version? version)
     {
         version = null;
-        
+
         if (bytes.IsDefaultOrEmpty)
         {
             return false;
@@ -153,13 +155,13 @@ internal static class PackageGeneratorLoader
         {
             return false;
         }
-        
+
         var reader = pe.GetMetadataReader();
         if (!reader.IsAssembly)
         {
             return false;
         }
-        
+
         version = reader.GetAssemblyDefinition().Version;
         return true;
     }
