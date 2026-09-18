@@ -42,8 +42,8 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    const packageIdPrefixPattern = /^\s*#:\s*package\s+[^@\s]*$/;
-    const lastCompletionResults = new WeakMap();
+    const packageIdPrefixPattern = /^\s*#:\s*package\s+([^@\s]*)$/;
+    const packageCompletionResults = new WeakMap();
 
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
@@ -54,29 +54,39 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             try {
                 const modelUri = decodeURI(model.uri.toString());
                 const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+                const packageIdPrefix = packageIdPrefixPattern.exec(linePrefix)?.[1];
+                const cachedPackageCompletion = packageCompletionResults.get(model);
 
                 // Monaco requests `.` completions before Blazor forwards the corresponding model change.
                 // Reuse the visible package results so the stale worker response does not close the suggestion widget.
                 const reusePackageCompletions =
                     context.triggerCharacter === "." &&
-                    packageIdPrefixPattern.test(linePrefix);
+                    packageIdPrefix?.endsWith(".") &&
+                    cachedPackageCompletion?.prefix === packageIdPrefix.slice(0, -1);
 
                 /** @type {monaco.languages.CompletionList | undefined} */
                 let result;
                 if (reusePackageCompletions) {
-                    result = structuredClone(lastCompletionResults.get(model));
+                    result = structuredClone(cachedPackageCompletion.result);
                     if (result?.range) {
                         // The cached range was computed before the period was inserted.
                         result.range.endLineNumber = position.lineNumber;
                         result.range.endColumn = position.column;
                     }
+                } else if (cachedPackageCompletion?.prefix !== packageIdPrefix) {
+                    packageCompletionResults.delete(model);
                 }
 
                 if (result === undefined) {
                     result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
                         completionItemProvider, modelUri, JSON.stringify(position), JSON.stringify(context), tokenRef));
-                    if (result.suggestions.length > 0) {
-                        lastCompletionResults.set(model, structuredClone(result));
+                    if (packageIdPrefix !== undefined && result.incomplete && result.suggestions.length > 0) {
+                        packageCompletionResults.set(model, {
+                            prefix: packageIdPrefix,
+                            result: structuredClone(result),
+                        });
+                    } else {
+                        packageCompletionResults.delete(model);
                     }
                 }
 
