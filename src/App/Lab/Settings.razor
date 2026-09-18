@@ -335,6 +335,7 @@
                         {
                             @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
+                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
                                @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Roslyn))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(roslynVersion))
@@ -388,6 +389,7 @@
                         {
                             @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
+                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
                                @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Razor))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(razorVersion))
@@ -857,18 +859,34 @@
             _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
         };
 
-        if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
+        try
         {
-            await Worker.TransferDirectoryHandleAsync(dir.HandleId);
-            switch (compilerKind)
+            if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
             {
-                case CompilerKind.Roslyn:
-                    await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug);
-                    break;
-                case CompilerKind.Razor:
-                    await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug);
-                    break;
+                await Worker.TransferDirectoryAsync(dir.DirectoryId);
+                switch (compilerKind)
+                {
+                    case CompilerKind.Roslyn:
+                        await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        break;
+                    case CompilerKind.Razor:
+                        await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        break;
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to select a local {CompilerKind} compiler.", compilerKind);
+            if (compilerKind == CompilerKind.Roslyn)
+            {
+                roslynError = new(ex);
+            }
+            else
+            {
+                razorError = new(ex);
+            }
+            await RefreshAsync();
         }
     }
 

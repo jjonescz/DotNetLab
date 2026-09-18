@@ -326,20 +326,20 @@ internal sealed class WorkerController : IAsyncDisposable
     }
 
     [SupportedOSPlatform("browser")]
-    public async Task TransferDirectoryHandleAsync(string handleId)
+    public async Task TransferDirectoryAsync(string directoryId)
     {
         if (!await GetIsEnabledAsync())
         {
             return;
         }
-        
+
         JSObject? worker = (await GetWorkerAsync())?.Handle;
         if (worker == null)
         {
             return;
         }
 
-        await WorkerControllerInterop.TransferDirectoryHandleAsync(worker, handleId);
+        await WorkerControllerInterop.TransferDirectoryAsync(worker, directoryId);
     }
 
     private void LogOutgoingMessage(IWorkerInputMessage message, string details)
@@ -612,8 +612,8 @@ internal static partial class WorkerControllerInterop
     [JSImport("postSideMessage", nameof(WorkerController))]
     public static partial void PostSideMessage(JSObject workerSetup, string type);
 
-    [JSImport("transferDirectoryHandle", nameof(WorkerController))]
-    public static partial Task TransferDirectoryHandleAsync(JSObject workerSetup, string handleId);
+    [JSImport("transferDirectory", nameof(WorkerController))]
+    public static partial Task TransferDirectoryAsync(JSObject workerSetup, string directoryId);
 
     [JSImport("disposeWorker", nameof(WorkerController))]
     public static partial void DisposeWorker(JSObject workerSetup);

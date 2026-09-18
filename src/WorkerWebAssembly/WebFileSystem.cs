@@ -14,7 +14,7 @@ public sealed class WebFilePicker : IFilePicker
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var picked = await WebFileSystemInterop.PickDirectoryAsync(pickerId);
+        using var picked = await WebFileSystemInterop.PickDirectoryAsync(pickerId);
 
         if (picked is null)
         {
@@ -24,7 +24,7 @@ public sealed class WebFilePicker : IFilePicker
         var id = picked.GetPropertyAsString("id")!;
         var name = picked.GetPropertyAsString("name")!;
         var specifier = CompilerVersionSpecifier.LocalId.Stringify(id, name);
-        return new(Specifier: specifier, HandleId: id);
+        return new(Specifier: specifier, DirectoryId: id);
     }
 }
 
@@ -147,12 +147,10 @@ public sealed class WebFileInfo : IFileInfo
 
         try
         {
-            var blob = await WebFileSystemInterop.GetFileDataAsync(id);
-            var segment = WebFileSystemInterop.UnwrapBlobAsArraySegment(blob);
-            Debug.Assert(segment.Array != null);
-            return segment.Offset == 0 && segment.Count == segment.Array.Length
-                ? ImmutableCollectionsMarshal.AsImmutableArray(segment.Array)
-                : segment.ToImmutableArray();
+            using var buffer = await WebFileSystemInterop.GetFileDataAsync(id);
+            var bytes = new byte[buffer.GetPropertyAsInt32("byteLength")];
+            WebFileSystemInterop.CopyFileData(buffer, bytes);
+            return ImmutableCollectionsMarshal.AsImmutableArray(bytes);
         }
         catch (Exception ex)
         {
@@ -186,7 +184,8 @@ internal static partial class WebFileSystemInterop
     [JSImport("getFileDataAsync", ModuleName)]
     public static partial Task<JSObject> GetFileDataAsync(string fileId);
 
-    [JSImport("unwrapObject", ModuleName)]
-    [return: JSMarshalAs<JSType.MemoryView>]
-    public static partial ArraySegment<byte> UnwrapBlobAsArraySegment(JSObject obj);
+    [JSImport("copyFileData", ModuleName)]
+    public static partial void CopyFileData(
+        JSObject buffer,
+        [JSMarshalAs<JSType.MemoryView>] Span<byte> destination);
 }
