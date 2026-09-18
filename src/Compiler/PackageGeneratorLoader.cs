@@ -24,21 +24,24 @@ internal static class PackageGeneratorLoader
 
         var generators = ImmutableArray.CreateBuilder<ISourceGenerator>();
         var diagnosticBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
-
+        
+        var loaded = new List<Assembly>();
+        
         foreach (var analyzer in analyzerAssemblies)
         {
-            Assembly assembly;
             try
             {
-                assembly = GetOrLoadAssembly(alc, analyzer);
+                loaded.Add(GetOrLoadAssembly(alc, analyzer));
             }
             catch (Exception ex)
             {
                 diagnosticBuilder.Add(CreateLoadDiagnostic($"Failed to load analyzer '{analyzer.Name}': {ex.Message}"));
                 logger.LogWarning(ex, "Failed to load analyzer '{Name}'.", analyzer.Name);
-                continue;
             }
+        }
 
+        foreach (var assembly in loaded)
+        {
             foreach (var type in GetLoadableTypes(assembly))
             {
                 if (type is not { IsClass: true, IsAbstract: false } ||
@@ -62,14 +65,14 @@ internal static class PackageGeneratorLoader
                     else
                     {
                         diagnosticBuilder.Add(CreateLoadDiagnostic(
-                            $"Type '{type.FullName}' in '{analyzer.Name}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator."));
+                            $"Type '{type.FullName}' in '{assembly.GetName().Name}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator."));
                     }
                 }
                 catch (Exception ex)
                 {
                     diagnosticBuilder.Add(CreateLoadDiagnostic(
-                        $"Failed to instantiate source generator '{type.FullName}' from '{analyzer.Name}': {ex.Message}"));
-                    logger.LogWarning(ex, "Failed to instantiate source generator '{Type}' from '{Name}'.", type.FullName, analyzer.Name);
+                        $"Failed to instantiate source generator '{type.FullName}' from '{assembly.GetName().Name}': {ex.Message}"));
+                    logger.LogWarning(ex, "Failed to instantiate source generator '{Type}' from '{Name}'.", type.FullName, assembly.GetName().Name);
                 }
             }
         }

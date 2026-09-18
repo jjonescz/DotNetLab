@@ -877,6 +877,13 @@ internal sealed class AnalyzerNuGetDllFilter(Version compilerRoslynVersion) : Nu
 {
     public Version CompilerRoslynVersion { get; } = compilerRoslynVersion;
 
+    /// <summary>
+    /// Selects analyzer DLLs for the loaded compiler.
+    /// Keeps language-neutral <c>analyzers/dotnet</c> helpers, C# DLLs, and at most one compatible
+    /// <c>roslynN.N</c> tree. Skips Visual Basic and roslyn folders newer than
+    /// <see cref="CompilerRoslynVersion"/>.
+    /// See https://learn.microsoft.com/en-us/nuget/guides/analyzers-conventions.
+    /// </summary>
     public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
     {
         var analyzerDlls = allFiles
@@ -888,25 +895,54 @@ internal sealed class AnalyzerNuGetDllFilter(Version compilerRoslynVersion) : Nu
             return static _ => false;
         }
 
-        // Prefer analyzers/dotnet/roslyn4.4/cs, then analyzers/dotnet/cs, then analyzers/dotnet.
-        // Skip vb/ and roslyn folders newer than the compiler we actually loaded.
-        var selectedFolder = analyzerDlls
+        // Analyzer layout: https://learn.microsoft.com/en-us/nuget/guides/analyzers-conventions
+        // analyzers/dotnet/*.dll is language-neutral; analyzers/dotnet/cs/*.dll is C#-specific
+        // and commonly depends on the parent folder. Skip vb/ and roslyn folders newer than
+        // the loaded compiler. If roslynN.N folders exist, keep only the newest compatible
+        // tree (do not load roslyn3.11 together with roslyn4.4).
+        var usableFolders = analyzerDlls
             .Select(GetAnalyzerFolder)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(folder => IsUsableAnalyzerFolder(folder, CompilerRoslynVersion))
-            .OrderByDescending(GetRoslynFolderVersion)
-            .ThenByDescending(static folder => folder.Contains("/cs/", StringComparison.OrdinalIgnoreCase))
-            .FirstOrDefault();
+            .ToList();
 
-        if (selectedFolder is null)
+        if (usableFolders.Count == 0)
         {
             return static _ => false;
         }
 
+        var selectedRoslynVersion = usableFolders.Max(GetRoslynFolderVersion);
+        var hasRoslynFolder = selectedRoslynVersion > new Version(0, 0);
+        
+        var allowedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in usableFolders)
+        {
+            if (TryGetRoslynFolderVersion(folder, out var version))
+            {
+                if (version == selectedRoslynVersion)
+                {
+                    allowedFolders.Add(folder);
+                }
+                continue;
+            }
+            
+            // Language-neutral helpers (analyzers/dotnet/*.dll). Needed even when a roslynN.N/cs DLL is selected.
+            if (folder.Equals("analyzers/dotnet/", StringComparison.OrdinalIgnoreCase))
+            {
+                allowedFolders.Add(folder);
+                continue;
+            }
+            // Unversioned C# generators. Skip when a roslynN.N tree exists so the same
+            // [Generator] is not loaded from both analyzers/dotnet/cs and roslyn4.4/cs.
+            if (!hasRoslynFolder &&
+                folder.Equals("analyzers/dotnet/cs/", StringComparison.OrdinalIgnoreCase))
+            {
+                allowedFolders.Add(folder);
+            }
+        }
         return filePath =>
             IsDll(filePath) &&
-            filePath.StartsWith(selectedFolder, StringComparison.OrdinalIgnoreCase) &&
-            filePath.Count('/') == selectedFolder.Count('/');
+            allowedFolders.Contains(GetAnalyzerFolder(filePath));
     }
 
     public override bool Equals(NuGetDllFilter? other) =>
