@@ -665,7 +665,15 @@
 
     private async Task LoadSdkVersionsAsync()
     {
-        sdkVersions = await Worker.GetSdkVersionsAsync();
+        try
+        {
+            sdkVersions = await Worker.GetSdkVersionsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load SDK versions.");
+        }
+
         await RefreshAsync();
     }
 
