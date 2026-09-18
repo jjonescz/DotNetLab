@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -31,6 +32,7 @@ internal sealed class LanguageServices : ILanguageServices
     private readonly ProjectId configurationProjectId;
 
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
+    private readonly ImmutableArray<AnalyzerReference> builtInAnalyzerReferences;
     private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
     private CompiledAssembly? compilerDiagnostics;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
@@ -59,7 +61,7 @@ internal sealed class LanguageServices : ILanguageServices
                 typeof(RoslynWorkspaceAccessors).Assembly,
             ]));
 
-        IEnumerable<AnalyzerReference> analyzerReferences =
+        builtInAnalyzerReferences =
         [
             // CompilerDiagnosticAnalyzer for CodeFixService (which only works on analyzer diagnostics).
             new AnalyzerImageReference([RoslynAccessors.GetCSharpCompilerDiagnosticAnalyzer()]).RegisterAnalyzer(),
@@ -78,7 +80,7 @@ internal sealed class LanguageServices : ILanguageServices
             var project = workspace
                 .AddProject(name, LanguageNames.CSharp)
                 .AddMetadataReferences(RefAssemblyMetadata.All)
-                .WithAnalyzerReferences(analyzerReferences)
+                .WithAnalyzerReferences(builtInAnalyzerReferences)
                 .WithParseOptions(Compiler.CreateDefaultParseOptions())
                 .WithCompilationOptions(compilationOptions);
 
@@ -529,10 +531,12 @@ internal sealed class LanguageServices : ILanguageServices
     public void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output)
     {
         compilerDiagnostics = output;
+        // Configuration / custom compiler refs are only applied in OnCompilationFinished.
+        // Skip IDE diagnostics until then so a cached load does not show false errors.
         notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
     }
 
-    public async void OnCompilationFinished()
+    public async Task OnCompilationFinishedAsync()
     {
         compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
         notFullyInitialized = false;
@@ -598,6 +602,24 @@ internal sealed class LanguageServices : ILanguageServices
                 {
                     project = project.WithMetadataReferences(RefAssemblyMetadata.All);
                 }
+
+                var analyzerReferences = builtInAnalyzerReferences;
+                if (compiler.LastResult?.Output.AnalyzerAssemblies is { IsDefaultOrEmpty: false } analyzerAssemblies)
+                {
+                    var alc = AssemblyLoadContext.GetLoadContext(typeof(LanguageServices).Assembly)
+                        ?? AssemblyLoadContext.Default;
+                    var generators = PackageGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+                    if (generatorLoadDiagnostics.Length > 0)
+                    {
+                        logger.LogWarning("Failed to load {Count} package source generator(s).", generatorLoadDiagnostics.Length);
+                    }
+                    if (generators.Length > 0)
+                    {
+                        analyzerReferences = analyzerReferences.Add(new PackageGeneratorAnalyzerReference(generators));
+                    }
+                }
+
+                project = project.WithAnalyzerReferences(analyzerReferences);
 
                 ApplyChanges(project.Solution);
             }

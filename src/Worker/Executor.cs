@@ -62,7 +62,7 @@ public sealed class WorkerExecutor(
             try
             {
                 var languageServices = await compiler.GetLanguageServicesAsync();
-                languageServices.OnCompilationFinished();
+                await languageServices.OnCompilationFinishedAsync();
             }
             catch (Exception ex)
             {
