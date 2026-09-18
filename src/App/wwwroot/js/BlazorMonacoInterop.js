@@ -42,7 +42,7 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    const packageIdPrefixPattern = /^\s*#:\s*package\s+([^@\s]*)$/;
+    const packagePrefixPattern = /^\s*#:\s*package\s+([^@\s]*)(?:@([^\s]*))?$/;
     const packageCompletionResults = new WeakMap();
 
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
@@ -54,15 +54,20 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             try {
                 const modelUri = decodeURI(model.uri.toString());
                 const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
-                const packageIdPrefix = packageIdPrefixPattern.exec(linePrefix)?.[1];
+                const packageMatch = packagePrefixPattern.exec(linePrefix);
+                const packagePrefix = packageMatch
+                    ? packageMatch[2] === undefined
+                        ? packageMatch[1]
+                        : `${packageMatch[1]}@${packageMatch[2]}`
+                    : undefined;
                 const cachedPackageCompletion = packageCompletionResults.get(model);
 
                 // Monaco requests `.` completions before Blazor forwards the corresponding model change.
                 // Reuse the visible package results so the stale worker response does not close the suggestion widget.
                 const reusePackageCompletions =
                     context.triggerCharacter === "." &&
-                    packageIdPrefix?.endsWith(".") &&
-                    cachedPackageCompletion?.prefix === packageIdPrefix.slice(0, -1);
+                    packagePrefix?.endsWith(".") &&
+                    cachedPackageCompletion?.prefix === packagePrefix.slice(0, -1);
 
                 /** @type {monaco.languages.CompletionList | undefined} */
                 let result;
@@ -73,16 +78,16 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                         result.range.endLineNumber = position.lineNumber;
                         result.range.endColumn = position.column;
                     }
-                } else if (cachedPackageCompletion?.prefix !== packageIdPrefix) {
+                } else if (cachedPackageCompletion?.prefix !== packagePrefix) {
                     packageCompletionResults.delete(model);
                 }
 
                 if (result === undefined) {
                     result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
                         completionItemProvider, modelUri, JSON.stringify(position), JSON.stringify(context), tokenRef));
-                    if (packageIdPrefix !== undefined && result.incomplete && result.suggestions.length > 0) {
+                    if (packagePrefix !== undefined && result.suggestions.length > 0) {
                         packageCompletionResults.set(model, {
-                            prefix: packageIdPrefix,
+                            prefix: packagePrefix,
                             result: structuredClone(result),
                         });
                     } else {
@@ -91,7 +96,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 }
 
                 if (versionId != model.getAlternativeVersionId()) {
-                    // Package completion results are incomplete and can become stale while the request is in flight.
+                    // Package completion results can become stale while the request is in flight.
                     // Once model updates catch up, retrigger completion for the current prefix instead of discarding it.
                     const editor = window.blazorMonaco.editors
                         .map(item => item.editor)
@@ -101,7 +106,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                         ? model.getLineContent(currentPosition.lineNumber).slice(0, currentPosition.column - 1)
                         : "";
 
-                    if (result.incomplete && packageIdPrefixPattern.test(currentLinePrefix)) {
+                    if (packagePrefixPattern.test(currentLinePrefix)) {
                         setTimeout(() => editor.trigger("package-completion-refresh", "editor.action.triggerSuggest", {}));
                     } else {
                         throw new Error('busy');
