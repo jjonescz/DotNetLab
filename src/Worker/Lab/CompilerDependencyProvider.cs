@@ -103,7 +103,7 @@ internal sealed class CompilerDependencyProvider(
 
                 if (found is null)
                 {
-                    throw new InvalidOperationException($"Specified version could not be resolved.\nTried:\n- {specifiers.JoinToString("\n- ")}\n{errors?.JoinToString("\n")}");
+                    throw new InvalidOperationException($"Specified version could not be resolved.\n{errors?.JoinToString("\n")}\nTried:\n- {specifiers.JoinToString("\n- ")}");
                 }
 
                 loaded[compilerKind] = (userInput, found);
