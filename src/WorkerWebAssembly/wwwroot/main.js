@@ -8,6 +8,7 @@ globalThis.window = globalThis;
 /** @type {import('./dotnet').ModuleAPI} */
 import { dotnet as dn } from '../../_framework/dotnet.js';
 import * as interop from './interop.js';
+import * as FileSystem from '../../js/FileSystem.js';
 
 // Extract arguments from URL of the script.
 const args = [...new URLSearchParams(self.location.search).entries()].filter(([k, _]) => k === 'arg').map(([_, v]) => v);
@@ -35,13 +36,15 @@ instance.setModuleImports('worker-imports.js', {
             /** @type {Record<string, MessagePort>} */
             const { side } = ev.data.ports;
             side.onmessage = (ev) => {
-                if (ev.data === 'collect-gc-dump') {
+                if (ev.data?.type === 'collect-gc-dump') {
                     handleCollectGcDump(side);
                 } else {
                     console.error('Unrecognized side message', ev);
                 }
             };
             side.start();
+        } else if (ev.data?.type === 'transfer-directory') {
+            FileSystem.setDirectory(ev.data.directoryId, ev.data.directory);
         } else {
             handler(ev.data ?? '');
         }

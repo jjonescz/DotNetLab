@@ -49,6 +49,30 @@
                 "kind": "build",
                 "isDefault": true
             }
-        }
+        },
+        {
+            "label": "desktop: watch",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "watch",
+                "--project",
+                "src/Desktop",
+                "--artifacts-path",
+                "artifacts/watch-desktop",
+                "/p:RunAnalyzers=false",
+                "/p:DotNetLabWatchBuild=true"
+            ],
+            "options": {
+                "env": {
+                    "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "1"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build"
+            }
+        },
     ]
 }
