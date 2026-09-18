@@ -51,11 +51,11 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var subdirectory = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id, segments);
+        var subdirectoryId = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id, segments);
 
         return new WebDirectoryInfo
         {
-            Id = subdirectory is null ? null : subdirectory.GetPropertyAsString("id")!,
+            Id = subdirectoryId is null ? null : subdirectoryId!,
             FullName = Path.Join([FullName, ..segments]),
             Name = segments[^1],
         };
@@ -140,7 +140,7 @@ internal static partial class WebFileSystemInterop
     public static partial Task<JSObject?> PickDirectoryAsync(string pickerId);
 
     [JSImport("getSubdirectory", ModuleName)]
-    public static partial Task<JSObject?> GetSubdirectoryAsync(string directoryId, string[] segments);
+    public static partial Task<string?> GetSubdirectoryAsync(string directoryId, string[] segments);
 
     [JSImport("getDirectories", ModuleName)]
     public static partial Task<JSObject> GetDirectoriesAsync(string directoryId);
