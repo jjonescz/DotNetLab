@@ -49,6 +49,7 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
     public ValueTask<bool> HasHardwareKeyboardAsync() => new(true);
 }
 
+[SupportedOSPlatform("browser")]
 file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
 {
     public void ConfigureWorkerServices(ServiceCollection services)
