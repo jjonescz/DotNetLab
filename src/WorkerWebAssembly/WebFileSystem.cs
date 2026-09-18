@@ -21,11 +21,10 @@ public sealed class WebFilePicker : IFilePicker
             return null;
         }
 
-        var idStr = picked.GetPropertyAsString("id")!;
-        var id = Guid.Parse(idStr);
+        var id = picked.GetPropertyAsString("id")!;
         var name = picked.GetPropertyAsString("name")!;
         var specifier = CompilerVersionSpecifier.LocalId.Stringify(id, name);
-        return new(Specifier: specifier, HandleId: idStr);
+        return new(Specifier: specifier, HandleId: id);
     }
 }
 
@@ -42,7 +41,7 @@ public sealed class WebFileSystem : IFileSystem
 
 public sealed class WebDirectoryInfo : IDirectoryInfo
 {
-    public required Guid? Id { get; init; }
+    public required string? Id { get; init; }
     public bool Exists => Id is not null;
     public required string FullName { get; init; }
     public required string Name { get; init; }
@@ -52,11 +51,11 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var subdirectory = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id.ToString(), segments);
+        var subdirectory = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id, segments);
 
         return new WebDirectoryInfo
         {
-            Id = subdirectory is null ? null : Guid.Parse(subdirectory.GetPropertyAsString("id")!),
+            Id = subdirectory is null ? null : subdirectory.GetPropertyAsString("id")!,
             FullName = Path.Join([FullName, ..segments]),
             Name = segments[^1],
         };
@@ -72,7 +71,7 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
 
         await WebFileSystemInterop.InitializeAsync;
 
-        var directories = WebFileSystemInterop.UnwrapObjectAsArray(await WebFileSystemInterop.GetDirectoriesAsync(id.ToString()));
+        var directories = WebFileSystemInterop.UnwrapObjectAsArray(await WebFileSystemInterop.GetDirectoriesAsync(id));
 
         var result = ImmutableArray.CreateBuilder<IDirectoryInfo>();
         foreach (var dir in directories)
@@ -81,7 +80,7 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
             var dirName = dir.GetPropertyAsString("name")!;
             result.Add(new WebDirectoryInfo
             {
-                Id = Guid.Parse(dirId),
+                Id = dirId,
                 FullName = Path.Join(FullName, dirName),
                 Name = dirName,
             });
@@ -95,11 +94,11 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var fileId = Id is not { } id ? null : await WebFileSystemInterop.GetFileAsync(id.ToString(), fileName);
+        var fileId = Id is not { } id ? null : await WebFileSystemInterop.GetFileAsync(id, fileName);
 
         return new WebFileInfo
         {
-            Id = fileId is null ? null : Guid.Parse(fileId),
+            Id = fileId is null ? null : fileId,
             FullName = Path.Join(FullName, fileName),
             Name = fileName,
         };
@@ -108,7 +107,7 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
 
 public sealed class WebFileInfo : IFileInfo
 {
-    public required Guid? Id { get; init; }
+    public required string? Id { get; init; }
     public bool Exists => Id is not null;
     public required string FullName { get; init; }
     public required string Name { get; init; }
@@ -121,7 +120,7 @@ public sealed class WebFileInfo : IFileInfo
             throw new InvalidOperationException($"Cannot get data of a non-existent file: {FullName}");
         }
 
-        var blob = await WebFileSystemInterop.GetFileDataAsync(id.ToString());
+        var blob = await WebFileSystemInterop.GetFileDataAsync(id);
         var segment = WebFileSystemInterop.UnwrapBlobAsArraySegment(blob);
         Debug.Assert(segment.Array != null);
         return segment.Offset == 0 && segment.Count == segment.Array.Length

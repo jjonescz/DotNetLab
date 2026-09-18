@@ -195,7 +195,7 @@ public closed record CompilerVersionSpecifier
 
         if (CompilerVersionSpecifierPatterns.LocalId.Match(specifier) is { Success: true } match)
         {
-            yield return new LocalId(Guid.Parse(match.Groups[1].ValueSpan), match.Groups[2].Value);
+            yield return new LocalId(match.Groups[1].Value, match.Groups[2].Value);
             yield break;
         }
 
@@ -209,9 +209,9 @@ public closed record CompilerVersionSpecifier
     public sealed record PullRequest(int PullRequestNumber) : CompilerVersionSpecifier;
     public sealed record Branch(string BranchName) : CompilerVersionSpecifier;
     public sealed record Local(string Path) : CompilerVersionSpecifier;
-    public sealed record LocalId(Guid Id, string Name) : CompilerVersionSpecifier
+    public sealed record LocalId(string Id, string Name) : CompilerVersionSpecifier
     {
-        public static string Stringify(Guid id, string name)
+        public static string Stringify(string id, string name)
         {
             var result = $"local:{id} ({name})";
             Debug.Assert(CompilerVersionSpecifierPatterns.LocalId.IsMatch(result));
