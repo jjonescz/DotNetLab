@@ -1,5 +1,6 @@
 ﻿using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -89,6 +90,7 @@ public static class WorkerServices
         services.AddScoped<WorkerInputMessage.IExecutor, WorkerExecutor>();
         services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () => null);
         configureServices?.Invoke(services);
+        services.TryAddScoped<IFileSystem, DefaultFileSystem>();
         return services.BuildServiceProvider();
     }
 }
