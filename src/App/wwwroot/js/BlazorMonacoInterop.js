@@ -42,6 +42,8 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
+    const lastCompletionResults = new Map();
+
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
@@ -49,12 +51,50 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             const versionId = model.getAlternativeVersionId();
             const tokenRef = wrapToken(token);
             try {
-                /** @type {monaco.languages.CompletionList} */
-                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
-                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
+                const modelUri = decodeURI(model.uri.toString());
+                const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+
+                // Monaco requests `.` completions before Blazor forwards the corresponding model change.
+                // Reuse the visible package results so the stale worker response does not close the suggestion widget.
+                const reusePackageCompletions =
+                    context.triggerCharacter === "." &&
+                    /^\s*#:\s*package\s+[^@\s]*\.$/.test(linePrefix);
+
+                /** @type {monaco.languages.CompletionList | undefined} */
+                let result;
+                if (reusePackageCompletions) {
+                    result = structuredClone(lastCompletionResults.get(modelUri));
+                    if (result?.range) {
+                        // The cached range was computed before the period was inserted.
+                        result.range.endLineNumber = position.lineNumber;
+                        result.range.endColumn = position.column;
+                    }
+                }
+
+                if (result === undefined) {
+                    result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
+                        completionItemProvider, modelUri, JSON.stringify(position), JSON.stringify(context), tokenRef));
+                    if (result.suggestions.length > 0) {
+                        lastCompletionResults.set(modelUri, structuredClone(result));
+                    }
+                }
 
                 if (versionId != model.getAlternativeVersionId()) {
-                    throw new Error('busy');
+                    // Package completion results are incomplete and can become stale while the request is in flight.
+                    // Once model updates catch up, retrigger completion for the current prefix instead of discarding it.
+                    const editor = window.blazorMonaco.editors
+                        .map(item => item.editor)
+                        .find(item => item.getModel() === model);
+                    const currentPosition = editor?.getPosition();
+                    const currentLinePrefix = currentPosition
+                        ? model.getLineContent(currentPosition.lineNumber).slice(0, currentPosition.column - 1)
+                        : "";
+
+                    if (result.incomplete && /^\s*#:\s*package\s+[^@\s]*$/.test(currentLinePrefix)) {
+                        setTimeout(() => editor.trigger("package-completion-refresh", "editor.action.triggerSuggest", {}));
+                    } else {
+                        throw new Error('busy');
+                    }
                 }
 
                 for (const item of result.suggestions) {
