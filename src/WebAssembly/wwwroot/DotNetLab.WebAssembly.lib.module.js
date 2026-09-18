@@ -63,18 +63,4 @@ export async function afterStarted(blazor) {
             });
         }
     })();
-
-    // Notify the app when the screen is narrow or wide.
-    (async () => {
-        const mediaQuery = window.matchMedia("(max-width: 600px)");
-        mediaQuery.addEventListener('change', reportMediaQuery);
-        reportMediaQuery(mediaQuery);
-
-        /**
-         * @param {MediaQueryList | MediaQueryListEvent} e
-         */
-        function reportMediaQuery(e) {
-            dotNetExports.DotNetLab.ScreenInfoInterop.SetNarrowScreen(e.matches);
-        }
-    })();
 }

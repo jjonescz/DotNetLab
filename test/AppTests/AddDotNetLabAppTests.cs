@@ -57,6 +57,7 @@ public sealed class AddDotNetLabAppTests
         client.BaseAddress.Should().Be(new Uri("https://example.test/"));
         client.DefaultRequestHeaders.UserAgent.ToString().Should().Contain("DotNetLab");
         provider.GetRequiredService<IWorkerTransport>().Should().BeOfType<UnsupportedWorkerTransport>();
+        provider.GetService<IStoreLink>().Should().BeNull();
     }
 
     [TestMethod]

@@ -4,7 +4,6 @@ using DotNetLab.Features.Updates;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Worker;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.Versioning;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
