@@ -3,6 +3,7 @@
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
+    <NoWarn>$(NoWarn);PBN9001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

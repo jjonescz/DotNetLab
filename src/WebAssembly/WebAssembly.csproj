@@ -32,6 +32,8 @@
       </div>
     </IndexHtmlLoadingInfoFooter>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -104,7 +106,6 @@
     <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
   </ItemGroup>
 
-  <Import Project="..\..\eng\PatchCoreLib.targets" />
   <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 
 </Project>

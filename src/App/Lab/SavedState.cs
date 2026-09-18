@@ -226,7 +226,7 @@ partial class Page
 /// </para>
 /// </remarks>
 [ProtoContract]
-internal sealed record SavedState
+public sealed record SavedState
 {
     private static readonly SavedState defaults = new SavedState()
     {
@@ -264,11 +264,18 @@ internal sealed record SavedState
     public string? SelectedOutputType { get; init; }
 
     [ProtoMember(10)]
-    [Obsolete($"Use {nameof(RazorStrategy)} instead", error: true)]
-    public string? GenerationStrategy
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public string? SerializedGenerationStrategy
     {
         get => RazorStrategy == RazorStrategy.DesignTime ? "designTime" : null;
         init => RazorStrategy = value == "designTime" ? RazorStrategy.DesignTime : RazorStrategy.Runtime;
+    }
+
+    [Obsolete($"Use {nameof(RazorStrategy)} instead", error: true)]
+    public string? GenerationStrategy
+    {
+        get => SerializedGenerationStrategy;
+        init => SerializedGenerationStrategy = value;
     }
 
     [ProtoMember(5)]
@@ -283,8 +290,8 @@ internal sealed record SavedState
     public SymbolDisplayKinds ShowSymbols { get; init; }
 
     [ProtoMember(17)]
-    [Obsolete($"Use {nameof(ShowSymbols)} instead", error: true)]
-    public bool LegacyShowSymbols
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public bool SerializedLegacyShowSymbols
     {
         get => ShowSymbols.HasFlag(SymbolDisplayKinds.Public);
         init
@@ -294,6 +301,13 @@ internal sealed record SavedState
                 ShowSymbols = SymbolDisplayKinds.Public;
             }
         }
+    }
+
+    [Obsolete($"Use {nameof(ShowSymbols)} instead", error: true)]
+    public bool LegacyShowSymbols
+    {
+        get => SerializedLegacyShowSymbols;
+        init => SerializedLegacyShowSymbols = value;
     }
 
     [ProtoMember(18)]
