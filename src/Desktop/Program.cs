@@ -1,7 +1,13 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Updates;
+using DotNetLab.Infrastructure.Browser;
+using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Photino.Blazor;
 using Photino.NET;
 
@@ -13,21 +19,34 @@ static class Program
     static void Main(string[] args)
     {
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(createFileProvider(), args);
-        App.RegisterRootComponents(appBuilder.RootComponents.Add);
+        AppBuilder.RegisterRootComponents(appBuilder.RootComponents.Add);
 
-        App.RegisterServices(appBuilder.Services);
+        var environment = new LabEnvironment(
+            DesktopAppHostEnvironment.IsDevelopment,
+            PhotinoWebViewManager.AppBaseUri,
+            SupportsThreads: true);
+        appBuilder.Services.AddDotNetLabApp(environment);
+
         appBuilder.Services.AddScoped(static (sp) => new HttpClient(sp.GetRequiredService<PhotinoHttpHandler>())
         {
             BaseAddress = new Uri(PhotinoWebViewManager.AppBaseUri),
             DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
         });
-        appBuilder.Services.AddScoped<NativeMethods>();
-        appBuilder.Services.AddScoped<IAppHostEnvironment, DesktopAppHostEnvironment>();
         appBuilder.Services.AddScoped<IUpdateChecker, DesktopUpdateChecker>();
-        appBuilder.Services.AddScoped<IScreenInfo, DesktopScreenInfo>();
         appBuilder.Services.AddScoped<IWorkerConfigurer, DesktopWorkerConfigurer>();
         appBuilder.Services.AddScoped<ICompilerOutputPlugin, DesktopCompilerOutputPlugin>();
-        appBuilder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
+        if (OperatingSystem.IsWindows())
+        {
+            const string storeUrl = "ms-windows-store://pdp/?productid=9PCPMM329DZT";
+            appBuilder.Services.AddSingleton<IStoreLink>(new StoreLink(
+                storeUrl,
+                "Microsoft Store",
+                "Check for updates or leave a review.",
+                static () =>
+                {
+                    Process.Start(new ProcessStartInfo(storeUrl) { UseShellExecute = true });
+                }));
+        }
         appBuilder.Services.AddLogging(builder =>
         {
             builder.AddConsole();
@@ -36,6 +55,7 @@ static class Program
         // WebKit (on Linux and macOS) does not support intercepting HTTP/HTTPS requests.
         bool interceptHttp = OperatingSystem.IsWindows();
 
+        const string domain = "lab.razor.fyi";
         const string localhost = nameof(localhost);
         const string http = nameof(http);
         const string https = nameof(https);
@@ -63,7 +83,7 @@ static class Program
         {
             window.RegisterCustomSchemeHandler(http, Stream? (object sender, string scheme, string url, out string? contentType) =>
             {
-                const string prefix = $"{http}://{App.Domain}";
+                const string prefix = $"{http}://{domain}";
                 if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     var newUrl = $"{http}://{localhost}" + url[prefix.Length..];
@@ -75,7 +95,7 @@ static class Program
 
             window.RegisterCustomSchemeHandler(https, Stream (object sender, string scheme, string url, out string contentType) =>
             {
-                const string prefix = $"{https}://{App.Domain}";
+                const string prefix = $"{https}://{domain}";
                 if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     var newUrl = $"{http}://{localhost}" + url[prefix.Length..];
@@ -89,7 +109,7 @@ static class Program
         {
             window.RegisterCustomSchemeHandler(appScheme, Stream? (object sender, string scheme, string url, out string? contentType) =>
             {
-                const string prefix = $"{appScheme}://{App.Domain}";
+                const string prefix = $"{appScheme}://{domain}";
                 if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     var newUrl = $"{http}://{localhost}" + url[prefix.Length..];
@@ -101,8 +121,6 @@ static class Program
         }
 
         initializeBlazorApp(app, services, appBuilder.RootComponents);
-
-        App.Initialize(services);
 
         app.MainWindow.SetTitle("dnlab");
 
@@ -118,8 +136,8 @@ static class Program
         }
 
         app.MainWindow.StartUrl = interceptHttp
-            ? $"{https}://{App.Domain}/"
-            : $"{appScheme}://{App.Domain}/";
+            ? $"{https}://{domain}/"
+            : $"{appScheme}://{domain}/";
 
         app.Run();
 
@@ -142,7 +160,7 @@ static class Program
     }
 }
 
-file sealed class DesktopAppHostEnvironment(NativeMethods nativeMethods) : IAppHostEnvironment
+file static class DesktopAppHostEnvironment
 {
     public static readonly string Environment = IsDevelopment
         ? Environments.Development
@@ -154,33 +172,6 @@ file sealed class DesktopAppHostEnvironment(NativeMethods nativeMethods) : IAppH
 #else
         false;
 #endif
-
-    string IAppHostEnvironment.Environment => Environment;
-    public string BaseAddress => PhotinoWebViewManager.AppBaseUri;
-
-    public string LabUrlPrefix => $"https://{App.Domain}/";
-
-    public const string StoreUrl = "ms-windows-store://pdp/?productid=9PCPMM329DZT";
-
-    public DesktopAppLink? DesktopAppLink { get; } =
-        OperatingSystem.IsWindows()
-        ? new()
-        {
-            Url = StoreUrl,
-            Title = "Microsoft Store",
-            Description = "Check for updates or leave a review.",
-            OnClick = static () =>
-            {
-                Process.Start(new ProcessStartInfo(DesktopAppHostEnvironment.StoreUrl) { UseShellExecute = true });
-            },
-        }
-        : null;
-
-    public bool SupportsWebWorkers => false;
-    public bool SupportsThreads => true;
-
-    private bool? _hasHardwareKeyboard;
-    public ValueTask<bool> HasHardwareKeyboardAsync() => new(_hasHardwareKeyboard ??= nativeMethods.HasHardwareKeyboard());
 }
 
 file sealed class WebHostEnvironment : IWebHostEnvironment
@@ -208,13 +199,6 @@ file sealed class DesktopUpdateChecker : IUpdateChecker
     public Task CheckForUpdatesAsync() => Task.CompletedTask;
 
     public Task InitializeAsync() => Task.CompletedTask;
-}
-
-file sealed class DesktopScreenInfo : IScreenInfo
-{
-    public bool IsNarrowScreen => false;
-
-    public event Action? Updated { add { } remove { } }
 }
 
 file sealed class DesktopWorkerConfigurer : IWorkerConfigurer

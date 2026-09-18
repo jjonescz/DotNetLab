@@ -1,49 +1,46 @@
 using Android.Content;
+using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Updates;
+using DotNetLab.Infrastructure.Browser;
+using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
 
-internal sealed class AndroidAppHostEnvironment(ILogger<AndroidAppHostEnvironment> logger) : IAppHostEnvironment
+internal static class AndroidAppHostEnvironment
 {
     public const string AppBaseAddress = "https://0.0.0.0/";
 
-    public string Environment =>
+    public static bool IsDevelopment =>
 #if DEBUG
-        Environments.Development;
+        true;
 #else
-        Environments.Production;
+        false;
 #endif
+}
 
-    public string BaseAddress => AppBaseAddress;
-
-    public string LabUrlPrefix => $"https://{App.Domain}/";
-
+internal sealed class AndroidStoreLink(ILogger<AndroidStoreLink> logger) : IStoreLink
+{
     private const string PackageName = "me.janjones.dotnetlab";
     private const string PlayStorePackageName = "com.android.vending";
     private const string PlayStoreUrl = $"market://details?id={PackageName}";
 
-    public const string StoreUrl = $"https://play.google.com/store/apps/details?id={PackageName}";
+    public string Url { get; } = $"https://play.google.com/store/apps/details?id={PackageName}";
+    public string Title => "Google Play Store";
+    public string Description => "Check for updates or leave a review.";
+    public Action? OnClick => Open;
 
-    public DesktopAppLink DesktopAppLink => field ??= 
-        new()
-        {
-            Url = StoreUrl,
-            Title = "Google Play Store",
-            Description = "Check for updates or leave a review.",
-            OnClick = DesktopAppLinkOnClick,
-        };
-
-    private void DesktopAppLinkOnClick()
+    private void Open()
     {
-        if (!TryOpenStore(PlayStoreUrl, PlayStorePackageName))
+        if (!TryOpen(PlayStoreUrl, PlayStorePackageName))
         {
-            TryOpenStore(StoreUrl);
+            TryOpen(Url);
         }
     }
 
-    private bool TryOpenStore(string url, string? packageName = null)
+    private bool TryOpen(string url, string? packageName = null)
     {
         using var intent = new Intent(Intent.ActionView, Android.Net.Uri.Parse(url));
         intent.AddFlags(ActivityFlags.NewTask);
@@ -64,18 +61,6 @@ internal sealed class AndroidAppHostEnvironment(ILogger<AndroidAppHostEnvironmen
             return false;
         }
     }
-
-    public bool SupportsWebWorkers => false;
-
-    public bool SupportsThreads => true;
-
-    private bool? _hasHardwareKeyboard;
-    public ValueTask<bool> HasHardwareKeyboardAsync()
-    {
-        return new(_hasHardwareKeyboard ??= Android.App.Application.Context.Resources?.Configuration is { } config &&
-            config.Keyboard != Android.Content.Res.KeyboardType.Nokeys &&
-            config.KeyboardHidden == Android.Content.Res.KeyboardHidden.No);
-    }
 }
 
 internal sealed class AndroidUpdateChecker : IUpdateChecker
@@ -91,30 +76,6 @@ internal sealed class AndroidUpdateChecker : IUpdateChecker
     public Task CheckForUpdatesAsync() => Task.CompletedTask;
 
     public Task InitializeAsync() => Task.CompletedTask;
-}
-
-internal sealed class AndroidScreenInfo : IScreenInfo
-{
-    public AndroidScreenInfo()
-    {
-        DeviceDisplay.Current.MainDisplayInfoChanged += OnMainDisplayInfoChanged;
-    }
-
-    public event Action? Updated;
-
-    public bool IsNarrowScreen
-    {
-        get
-        {
-            var displayInfo = DeviceDisplay.Current.MainDisplayInfo;
-            return displayInfo.Width / displayInfo.Density < 768;
-        }
-    }
-
-    private void OnMainDisplayInfoChanged(object? sender, DisplayInfoChangedEventArgs args)
-    {
-        Updated?.Invoke();
-    }
 }
 
 internal sealed class AndroidWorkerConfigurer : IWorkerConfigurer

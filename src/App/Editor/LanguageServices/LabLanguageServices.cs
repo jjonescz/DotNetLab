@@ -3,7 +3,6 @@ using BlazorMonaco.Languages;
 using DotNetLab.Editor.Monaco;
 using DotNetLab.Features.Documents;
 using DotNetLab.Infrastructure.Worker;
-using DotNetLab.Lab;
 using Microsoft.JSInterop;
 using System.IO.Compression;
 
@@ -259,6 +258,7 @@ public sealed class LabLanguageServices(
         try
         {
             await blazorMonacoInterop.RegisterLanguageAsync(CompiledAssembly.OutputLanguageId);
+            await blazorMonacoInterop.RegisterDiagnosticsLanguageAsync(CompiledAssembly.DiagnosticsLanguageId);
             try
             {
                 var asm = await jsRuntime.InvokeAsync<IJSObjectReference>(

@@ -186,7 +186,11 @@ window.netLabMonaco = {
                 { token: "jsonArray", foreground: "ede8f5" },
                 { token: "jsonObject", foreground: "ede8f5" },
                 { token: "jsonPropertyName", foreground: "c5e8ff" },
-                { token: "jsonConstructorName", foreground: "f0c987" }
+                { token: "jsonConstructorName", foreground: "f0c987" },
+                { token: "diagnostic-error", foreground: "f14c4c" },
+                { token: "diagnostic-warning", foreground: "f0c987" },
+                { token: "diagnostic-info", foreground: "9fd7ff" },
+                { token: "diagnostic-hidden", foreground: "8b8099" }
             ],
             colors: {
                 "editor.background": "#150F1D",
@@ -300,7 +304,11 @@ window.netLabMonaco = {
                 { token: "jsonArray", foreground: "1d1526" },
                 { token: "jsonObject", foreground: "1d1526" },
                 { token: "jsonPropertyName", foreground: "1e5f8a" },
-                { token: "jsonConstructorName", foreground: "b07a20" }
+                { token: "jsonConstructorName", foreground: "b07a20" },
+                { token: "diagnostic-error", foreground: "c45c5c" },
+                { token: "diagnostic-warning", foreground: "b07a20" },
+                { token: "diagnostic-info", foreground: "2a6f9c" },
+                { token: "diagnostic-hidden", foreground: "6b5f78" }
             ],
             colors: {
                 "editor.background": "#F4EEF8",

@@ -6,6 +6,7 @@
 @inject IState<PreferencesState> Prefs
 @inject IState<CompilationOptionsState> Options
 @inject IDispatcher Dispatcher
+@inject IServiceProvider Services
 
 <FluentDialog @ref="_dialog" Class="lab-settings-dialog" Modal="false" OnStateChange="OnDialogStateChange">
     <FluentDialogBody>
@@ -164,10 +165,15 @@
                 </div>
             }
 
-            <a class="lab-native-apps" href="@LabLinks.NativeApps" target="_blank" rel="noopener noreferrer">
+            <a class="lab-native-apps"
+               href="@(Store?.Url ?? LabLinks.NativeApps)"
+               target="_blank"
+               rel="noopener noreferrer"
+               @onclick="OnStoreClick"
+               @onclick:preventDefault="Store?.OnClick is not null">
                 <span>
-                    <span class="lab-setting-title">Native apps</span>
-                    <p class="lab-setting-hint">Faster .NET Lab running on full .NET.</p>
+                    <span class="lab-setting-title">@(Store?.Title ?? "Native apps")</span>
+                    <p class="lab-setting-hint">@(Store?.Description ?? "Faster .NET Lab running on full .NET.")</p>
                 </span>
                 <span class="lab-native-apps-chevron" aria-hidden="true">›</span>
             </a>
@@ -195,6 +201,7 @@
     private FluentDialog? _dialog;
     private bool _hiding;
     private OutputFileKind _outputKind = OutputFileKind.Cs;
+    private IStoreLink? Store => Services.GetService<IStoreLink>();
 
     protected override void OnInitialized()
     {
@@ -290,6 +297,8 @@
     }
 
     private void CheckForUpdates() => Dispatcher.Dispatch(new CheckUpdatesAction());
+
+    private void OnStoreClick() => Store?.OnClick?.Invoke();
 
     private async Task LoadUpdateAsync(Action loadUpdate)
     {
