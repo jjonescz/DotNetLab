@@ -419,6 +419,22 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Completion_PackageIds_MidToken()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageIds = ["Microsoft.CodeAnalysis.CSharp"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis";
+        int position = code.IndexOf("odeAnalysis", StringComparison.Ordinal);
+
+        var completion = await GetCompletionsAsync(code, downloader, position);
+
+        downloader.PackageIdPrefix.Should().Be("Microsoft.C");
+        getReplacedText(code, completion).Should().Be("Microsoft.CodeAnalysis");
+    }
+
+    [TestMethod]
     public async Task Completion_PackageVersions()
     {
         var downloader = new TestNuGetDownloader
@@ -434,6 +450,22 @@ public sealed class LanguageServiceTests
         completion.Suggestions.Select(static item => item.Label).Should().Equal("4.14.0", "4.13.0");
         getReplacedText(code, completion).Should().Be("4.1");
         completion.Suggestions.SelectMany(static item => item.CommitCharacters!).Should().NotContain(".");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageVersions_MidToken()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis@4.14.0";
+        int position = code.IndexOf("4.1", StringComparison.Ordinal) + "4.1".Length;
+
+        var completion = await GetCompletionsAsync(code, downloader, position);
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", "4.1"));
+        getReplacedText(code, completion).Should().Be("4.14.0");
     }
 
     [TestMethod]
@@ -496,7 +528,8 @@ public sealed class LanguageServiceTests
 
     private async Task<MonacoCompletionList> GetCompletionsAsync(
         string code,
-        TestNuGetDownloader downloader)
+        TestNuGetDownloader downloader,
+        int? position = null)
     {
         const string file = "test.cs";
         var services = WorkerServices.CreateTest(
@@ -508,7 +541,7 @@ public sealed class LanguageServiceTests
 
         var json = await languageServices.ProvideCompletionItemsAsync(
             file,
-            new Position { LineNumber = 1, Column = code.Length + 1 },
+            new Position { LineNumber = 1, Column = (position ?? code.Length) + 1 },
             new BlazorMonaco.Languages.CompletionContext
             {
                 TriggerKind = BlazorMonaco.Languages.CompletionTriggerKind.Invoke,

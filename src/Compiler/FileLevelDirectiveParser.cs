@@ -1179,9 +1179,10 @@ internal sealed class FileLevelDirectiveCompletionProvider(
 
                     if (descriptor.DirectiveKind == FileLevelDirective.Package.Descriptor.DirectiveKind)
                     {
+                        var replacementStart = context.Position - directiveValue.Length;
                         context.CompletionListSpan = TextSpan.FromBounds(
-                            context.Position - directiveValue.Length,
-                            context.Position);
+                            replacementStart,
+                            getDirectiveTokenEnd(replacementStart));
                         var versions = await nuGetDownloader.GetPackageVersionsAsync(
                             directiveName.ToString(),
                             directiveValue.ToString(),
@@ -1217,9 +1218,10 @@ internal sealed class FileLevelDirectiveCompletionProvider(
 
             if (descriptor.DirectiveKind == FileLevelDirective.Package.Descriptor.DirectiveKind)
             {
+                var replacementStart = context.Position - directiveText.Length;
                 context.CompletionListSpan = TextSpan.FromBounds(
-                    context.Position - directiveText.Length,
-                    context.Position);
+                    replacementStart,
+                    getDirectiveTokenEnd(replacementStart, FileLevelDirective.Package.Descriptor.Separator));
                 var packageIds = await nuGetDownloader.SearchPackageIdsAsync(
                     directiveText.ToString(),
                     context.CancellationToken);
@@ -1260,6 +1262,21 @@ internal sealed class FileLevelDirectiveCompletionProvider(
             }
 
             return text.Length;
+        }
+
+        int getDirectiveTokenEnd(int start, char? separator = null)
+        {
+            int end = syntax.EndOfDirectiveToken.SpanStart;
+            for (int position = start; position < end; position++)
+            {
+                char c = sourceText[position];
+                if (char.IsWhiteSpace(c) || c == separator)
+                {
+                    return position;
+                }
+            }
+
+            return end;
         }
 
         void suggestKinds()
