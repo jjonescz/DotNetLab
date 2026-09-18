@@ -796,10 +796,10 @@
         await RefreshAsync();
     }
 
-    private async Task UseRoslynVersionAsync(string? version)
+    private async Task UseRoslynVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
     {
         roslynVersion = version;
-        roslynConfiguration = BuildConfiguration.Release;
+        roslynConfiguration = configuration;
         await LoadRoslynInfoAsync();
     }
 
@@ -836,10 +836,10 @@
         await RefreshAsync();
     }
 
-    private async Task UseRazorVersionAsync(string? version)
+    private async Task UseRazorVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
     {
         razorVersion = version;
-        razorConfiguration = BuildConfiguration.Release;
+        razorConfiguration = configuration;
         await LoadRazorInfoAsync();
     }
 
@@ -858,10 +858,10 @@
             switch (compilerKind)
             {
                 case CompilerKind.Roslyn:
-                    await UseRoslynVersionAsync(dir.Specifier);
+                    await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug);
                     break;
                 case CompilerKind.Razor:
-                    await UseRazorVersionAsync(dir.Specifier);
+                    await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug);
                     break;
             }
         }
