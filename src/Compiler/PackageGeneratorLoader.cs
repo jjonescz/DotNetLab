@@ -10,6 +10,30 @@ namespace DotNetLab;
 
 internal static class PackageGeneratorLoader
 {
+    private static readonly DiagnosticDescriptor AnalyzerLoadFailed = new(
+        id: "LAB",
+        title: "Analyzer load",
+        messageFormat: "Failed to load analyzer '{0}': {1}",
+        category: "Analyzer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+    
+    private static readonly DiagnosticDescriptor GeneratorTypeInvalid = new(
+        id: "LAB",
+        title: "Source generator load",
+        messageFormat: "Type '{0}' in '{1}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator.",
+        category: "SourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+    
+    private static readonly DiagnosticDescriptor GeneratorInstantiateFailed = new(
+        id: "LAB",
+        title: "Source generator load",
+        messageFormat: "Failed to instantiate source generator '{0}' from '{1}': {2}",
+        category: "SourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+    
     public static ImmutableArray<ISourceGenerator> Load(
         AssemblyLoadContext alc,
         ImmutableArray<RefAssembly> analyzerAssemblies,
@@ -35,7 +59,7 @@ internal static class PackageGeneratorLoader
             }
             catch (Exception ex)
             {
-                diagnosticBuilder.Add(CreateLoadDiagnostic($"Failed to load analyzer '{analyzer.Name}': {ex.Message}"));
+                diagnosticBuilder.Add(Diagnostic.Create(AnalyzerLoadFailed, Location.None, analyzer.Name, ex.Message));
                 logger.LogWarning(ex, "Failed to load analyzer '{Name}'.", analyzer.Name);
             }
         }
@@ -64,14 +88,13 @@ internal static class PackageGeneratorLoader
                     }
                     else
                     {
-                        diagnosticBuilder.Add(CreateLoadDiagnostic(
-                            $"Type '{type.FullName}' in '{assembly.GetName().Name}' has [Generator] but does not implement IIncrementalGenerator or ISourceGenerator."));
+                        diagnosticBuilder.Add(Diagnostic.Create(GeneratorTypeInvalid, Location.None, type.FullName, assembly.GetName().Name));
                     }
                 }
                 catch (Exception ex)
                 {
-                    diagnosticBuilder.Add(CreateLoadDiagnostic(
-                        $"Failed to instantiate source generator '{type.FullName}' from '{assembly.GetName().Name}': {ex.Message}"));
+                    diagnosticBuilder.Add(Diagnostic.Create(GeneratorInstantiateFailed, Location.None, type.FullName,
+                        assembly.GetName().Name, ex.Message));
                     logger.LogWarning(ex, "Failed to instantiate source generator '{Type}' from '{Name}'.", type.FullName, assembly.GetName().Name);
                 }
             }
@@ -156,16 +179,6 @@ internal static class PackageGeneratorLoader
     private static bool HasGeneratorAttribute(Type type) =>
         type.GetCustomAttributesData().Any(static a =>
             a.AttributeType.FullName == "Microsoft.CodeAnalysis.GeneratorAttribute");
-
-    private static Diagnostic CreateLoadDiagnostic(string message) => Diagnostic.Create(
-        id: "LAB",
-        category: "SourceGenerator",
-        message: message,
-        DiagnosticSeverity.Warning,
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        warningLevel: 1,
-        location: Location.None);
 }
 
 internal sealed class PackageGeneratorAnalyzerReference(ImmutableArray<ISourceGenerator> generators) : AnalyzerReference
