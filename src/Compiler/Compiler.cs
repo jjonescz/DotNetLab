@@ -51,6 +51,7 @@ public sealed class Compiler(
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
+    private int lastPackageGeneratorCount;
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
 
@@ -141,6 +142,7 @@ public sealed class Compiler(
             Metadata = RefAssemblyMetadata.All,
             Assemblies = RefAssemblies.All,
         };
+        var analyzerAssemblies = ImmutableArray<RefAssembly>.Empty;
 
         Config.Instance.Reset();
 
@@ -195,6 +197,9 @@ public sealed class Compiler(
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
+
+        analyzerAssemblies = Config.Instance.ConfigureAnalyzers();
+        var packageGenerators = PackageGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
 
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
@@ -275,7 +280,8 @@ public sealed class Compiler(
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
-            .Concat(additionalDiagnostics);
+            .Concat(additionalDiagnostics)
+            .Concat(generatorLoadDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
@@ -504,6 +510,7 @@ public sealed class Compiler(
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
                 AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
+                AnalyzerAssemblies = analyzerAssemblies,
             };
         }
 
@@ -625,10 +632,16 @@ public sealed class Compiler(
                 references: references.Metadata,
                 options: options);
 
-            if (generatorDriver is null)
+            ISourceGenerator[] generators =
+            [
+                new RazorSourceGenerator().AsSourceGenerator(),
+                .. packageGenerators,
+            ];
+
+            if (generatorDriver is null || packageGenerators.Length > 0 || lastPackageGeneratorCount > 0)
             {
                 generatorDriver = CSharpGeneratorDriver.Create(
-                    generators: [new RazorSourceGenerator().AsSourceGenerator()],
+                    generators: generators,
                     additionalTexts: additionalTextsBuilder.ToImmutable(),
                     parseOptions: parseOptions,
                     optionsProvider: optionsProvider);
@@ -640,6 +653,8 @@ public sealed class Compiler(
                     .WithUpdatedParseOptions(parseOptions)
                     .WithUpdatedAnalyzerConfigOptions(optionsProvider);
             }
+
+            lastPackageGeneratorCount = packageGenerators.Length;
 
             generatorDriver = (CSharpGeneratorDriver)generatorDriver.RunGeneratorsAndUpdateCompilation(
                 initialCompilation,
@@ -1633,6 +1648,12 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     /// Set to <see langword="default"/> if the default reference assemblies were used.
     /// </summary>
     public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
+
+    /// <summary>
+    /// Analyzer / source-generator assemblies from <c>#:package</c>.
+    /// This is never <see langword="default"/>.
+    /// </summary>
+    public required ImmutableArray<RefAssembly> AnalyzerAssemblies { get; init; }
 
     public void Dispose() => dispose();
 }
