@@ -22,7 +22,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAppHostEnvironment, AndroidAppHostEnvironment>();
         builder.Services.AddScoped<IUpdateChecker, AndroidUpdateChecker>();
         builder.Services.AddScoped<IScreenInfo, AndroidScreenInfo>();
-        builder.Services.AddScoped<IWorkerConfigurer, AndroidWorkerConfigurer>();
+        builder.Services.AddDotNetLabInProcessWorker(static services =>
+        {
+            services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
+            services.Configure<CompilerProxyOptions>(static options =>
+            {
+                options.AssembliesAreAlwaysInDllFormat = true;
+                options.LoadAssembliesFromDisk = true;
+            });
+        });
         builder.Services.AddScoped<ICompilerOutputPlugin, AndroidCompilerOutputPlugin>();
         builder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
 

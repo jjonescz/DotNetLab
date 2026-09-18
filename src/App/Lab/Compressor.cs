@@ -11,7 +11,7 @@ internal static class Compressor
         using var ms = new MemoryStream();
         using (var compressor = new DeflateStream(ms, CompressionLevel.Optimal))
         {
-            Serializer.Serialize(compressor, input);
+            SavedStateProtoModel.Instance.Serialize(compressor, input);
         }
         return Base64Url.EncodeToString(ms.ToArray());
     }
@@ -42,7 +42,7 @@ internal static class Compressor
             var bytes = Base64Url.DecodeFromChars(slug);
             using var ms = new MemoryStream(bytes);
             using var compressor = new DeflateStream(ms, CompressionMode.Decompress);
-            state = Serializer.Deserialize<SavedState>(compressor);
+            state = SavedStateProtoModel.Instance.Deserialize<SavedState>(compressor);
             exception = null;
             return true;
         }

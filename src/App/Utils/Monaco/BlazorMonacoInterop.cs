@@ -275,7 +275,7 @@ public sealed class CancellationTokenWrapper
     : IDisposable
 {
     private readonly CancellationTokenSource cts;
-    private readonly DotNetObjectReference<CancellationTokenWrapper> objectRef;
+    private readonly object objectRef;
 
     public CancellationTokenWrapper()
     {
@@ -284,7 +284,9 @@ public sealed class CancellationTokenWrapper
     }
 
     public CancellationToken Token => cts.Token;
-    public DotNetObjectReference<CancellationTokenWrapper> ObjectReference => objectRef;
+
+    // This is object instead of DotNetObjectReference<CancellationTokenWrapper> because of a bug in ILLink: https://github.com/dotnet/runtime/issues/134189
+    public object ObjectReference => objectRef;
 
     [JSInvokable]
     public void Cancel() => cts.Cancel();
@@ -292,6 +294,6 @@ public sealed class CancellationTokenWrapper
     public void Dispose()
     {
         cts.Dispose();
-        objectRef.Dispose();
+        ((IDisposable)objectRef).Dispose();
     }
 }

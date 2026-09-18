@@ -5,8 +5,24 @@ using Microsoft.Extensions.Options;
 
 namespace DotNetLab;
 
+public sealed class InProcessWorkerFactory(Action<ServiceCollection>? configureServices = null) : IInProcessWorkerFactory
+{
+    public IServiceProvider Create(string baseUrl, LogLevel logLevel)
+    {
+        return WorkerServices.Create(baseUrl, logLevel, configureServices: configureServices);
+    }
+}
+
 public static class WorkerServices
 {
+    public static IServiceCollection AddDotNetLabInProcessWorker(
+        this IServiceCollection services,
+        Action<ServiceCollection>? configureServices = null)
+    {
+        services.AddSingleton<IInProcessWorkerFactory>(new InProcessWorkerFactory(configureServices));
+        return services;
+    }
+
     [Obsolete("Use the overload from TestUtil which takes TestContext if possible.")]
     public static IServiceProvider CreateTest(
         HttpMessageHandler? httpMessageHandler = null,

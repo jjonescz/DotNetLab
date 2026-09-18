@@ -1,9 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputType>Exe</OutputType>
-    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <StaticWebAssetBasePath>worker</StaticWebAssetBasePath>
+    <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+    <WasmMainJSPath>wwwroot\main.js</WasmMainJSPath>
+    <!-- Forwarded worker assets must not register a second Hot Reload agent in the UI runtime. -->
+    <WasmEnableHotReload>false</WasmEnableHotReload>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
   </PropertyGroup>
 

@@ -25,7 +25,15 @@ static class Program
         appBuilder.Services.AddScoped<IAppHostEnvironment, DesktopAppHostEnvironment>();
         appBuilder.Services.AddScoped<IUpdateChecker, DesktopUpdateChecker>();
         appBuilder.Services.AddScoped<IScreenInfo, DesktopScreenInfo>();
-        appBuilder.Services.AddScoped<IWorkerConfigurer, DesktopWorkerConfigurer>();
+        appBuilder.Services.AddDotNetLabInProcessWorker(static services =>
+        {
+            services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
+            services.Configure<CompilerProxyOptions>(static options =>
+            {
+                options.AssembliesAreAlwaysInDllFormat = true;
+                options.LoadAssembliesFromDisk = true;
+            });
+        });
         appBuilder.Services.AddScoped<ICompilerOutputPlugin, DesktopCompilerOutputPlugin>();
         appBuilder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
         appBuilder.Services.AddLogging(builder =>
@@ -215,19 +223,6 @@ file sealed class DesktopScreenInfo : IScreenInfo
     public bool IsNarrowScreen => false;
 
     public event Action? Updated { add { } remove { } }
-}
-
-file sealed class DesktopWorkerConfigurer : IWorkerConfigurer
-{
-    public void ConfigureWorkerServices(ServiceCollection services)
-    {
-        services.AddScoped<IJitAsmDisassembler, JitAsmDisassembler>();
-        services.Configure<CompilerProxyOptions>(static options =>
-        {
-            options.AssembliesAreAlwaysInDllFormat = true;
-            options.LoadAssembliesFromDisk = true;
-        });
-    }
 }
 
 file sealed class DesktopCompilerOutputPlugin : ICompilerOutputPlugin

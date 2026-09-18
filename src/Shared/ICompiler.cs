@@ -99,6 +99,13 @@ public enum RazorStrategy
 [ProtoContract]
 public sealed record InputCode
 {
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public InputCode()
+    {
+        FileName = "";
+        Text = "";
+    }
+
     [ProtoMember(1)]
     public required string FileName { get; init; }
     [ProtoMember(2)]

@@ -149,23 +149,8 @@
                                 </SettingsCard>
                             }
 
-                            @* Use a worker check box *@
                             @if (HostEnvironment.SupportsWebWorkers)
                             {
-                                <SettingsCard Class="default-setting-expander-item settings-nowarp">
-                                    <Header>
-                                        <h5 class="unset">Compile in a background worker thread (requires restart)</h5>
-                                    </Header>
-                                    <Description>
-                                        Moves compilation (and language services if enabled) to a separate worker thread (it is recommended to keep this enabled).
-                                    </Description>
-                                    <ActionContent>
-                                        <FluentSwitch @bind-Value="SettingsService.EnableWorker" @bind-Value:after="SettingsService.SaveAsync">
-                                            @(SettingsService.EnableWorker ? "On" : "Off")
-                                        </FluentSwitch>
-                                    </ActionContent>
-                                </SettingsCard>
-
                                 <SettingsCard Class="default-setting-expander-item settings-nowarp">
                                     <Header>
                                         <h5 class="unset">Worker stuck?</h5>

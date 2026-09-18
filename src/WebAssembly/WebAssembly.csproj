@@ -7,6 +7,8 @@
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
     <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
+    <StaticWebAssetsGetBuildAssetsTargets>GetWebAssemblyBuildStaticWebAssetItems</StaticWebAssetsGetBuildAssetsTargets>
+    <WorkerPublishDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsPath)', 'publish', 'WorkerWebAssembly', '$(Configuration.ToLowerInvariant())'))</WorkerPublishDirectory>
     <!-- Microsoft Store SVG source: https://upload.wikimedia.org/wikipedia/commons/a/a7/Microsoft_Store.svg -->
     <!-- Google Play SVG source: https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_Play_2022_icon.svg -->
     <IndexHtmlLoadingInfoFooter>
@@ -30,6 +32,8 @@
       </div>
     </IndexHtmlLoadingInfoFooter>
     <WasmEmitTypeScriptDefinitions>true</WasmEmitTypeScriptDefinitions>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,15 +43,69 @@
 
   <ItemGroup>
     <ProjectReference Include="..\App\App.csproj" />
-    <ProjectReference Include="..\WorkerWebAssembly\WorkerWebAssembly.csproj" />
+    <ProjectReference Include="..\WorkerWebAssembly\WorkerWebAssembly.csproj"
+                      Condition="'$(_IsPublishing)' != 'true'"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="IncludeWorkerWebAssemblyInPublishRestore"
+          BeforeTargets="_GenerateRestoreProjectPathItemsPerFramework"
+          Condition="'$(_IsPublishing)' == 'true'">
+    <ItemGroup>
+      <ProjectReference Include="..\WorkerWebAssembly\WorkerWebAssembly.csproj"
+                        ReferenceOutputAssembly="false" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="GetWebAssemblyBuildStaticWebAssetItems"
+          DependsOnTargets="GetCurrentProjectBuildStaticWebAssetItems"
+          Returns="@(_WebAssemblyBuildStaticWebAssetItem)">
+    <!-- Root static-web-asset projects do not normally forward referenced-project assets to their server host. -->
+    <ItemGroup>
+      <_WebAssemblyBuildStaticWebAssetItem Include="@(_CachedBuildStaticWebassetItems)" />
+      <_WebAssemblyBuildStaticWebAssetItem Include="@(_CachedBuildStaticWebAssets)"
+                                           Condition="'%(_CachedBuildStaticWebAssets.SourceId)' == 'DotNetLab.WorkerWebAssembly'">
+        <ResultType>StaticWebAsset</ResultType>
+      </_WebAssemblyBuildStaticWebAssetItem>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PublishWorkerWebAssembly" BeforeTargets="Publish">
+    <!-- Keep worker dependencies out of the app's WebAssembly publish pipeline and output directories. -->
+    <MSBuild Projects="..\WorkerWebAssembly\WorkerWebAssembly.csproj"
+             Targets="Publish"
+             BuildInParallel="false"
+             RemoveProperties="OutputPath;PublishDir"
+             Properties="Configuration=$(Configuration);ArtifactsBinOutputName=worker-bin" />
+  </Target>
+
+  <Target Name="CopyWorkerWebAssemblyToPublishOutput"
+          AfterTargets="Publish"
+          DependsOnTargets="PublishWorkerWebAssembly">
+    <ItemGroup>
+      <_WorkerPublishRootFile Include="$(WorkerPublishDirectory)wwwroot\worker\main.js;$(WorkerPublishDirectory)wwwroot\worker\interop.js" />
+      <_WorkerPublishFrameworkFile Include="$(WorkerPublishDirectory)wwwroot\worker\_framework\**\*" />
+      <_WorkerPublishOutputFile Include="@(_WorkerPublishRootFile->'$(PublishDir)wwwroot\worker\%(Filename)%(Extension)')" />
+      <_WorkerPublishOutputFile Include="@(_WorkerPublishFrameworkFile->'$(PublishDir)wwwroot\worker\_framework\%(RecursiveDir)%(Filename)%(Extension)')" />
+      <FileWrites Include="@(_WorkerPublishOutputFile)" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_WorkerPublishRootFile)"
+          DestinationFolder="$(PublishDir)wwwroot\worker"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_WorkerPublishFrameworkFile)"
+          DestinationFiles="@(_WorkerPublishFrameworkFile->'$(PublishDir)wwwroot\worker\_framework\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CleanWorkerWebAssemblyPublish" AfterTargets="Clean">
+    <RemoveDir Directories="$(WorkerPublishDirectory)" />
+  </Target>
 
   <ItemGroup>
     <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
   </ItemGroup>
 
-  <Import Project="..\..\eng\AppEntryPoint.targets" />
-  <Import Project="..\..\eng\PatchCoreLib.targets" />
   <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 
 </Project>

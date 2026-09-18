@@ -15,7 +15,6 @@ App.RegisterServices(builder.Services);
 builder.Services.AddScoped<IAppHostEnvironment, WebAssemblyAppHostEnvironment>();
 builder.Services.AddScoped<IUpdateChecker, WebAssemblyUpdateChecker>();
 builder.Services.AddScoped<IScreenInfo, WebAssemblyScreenInfo>();
-builder.Services.AddScoped<IWorkerConfigurer, WebAssemblyWorkerConfigurer>();
 builder.Services.AddScoped<ICompilerOutputPlugin, WebAssemblyCompilerOutputPlugin>();
 builder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
 
@@ -46,13 +45,6 @@ file sealed class WebAssemblyAppHostEnvironment(IWebAssemblyHostEnvironment webA
     public bool SupportsThreads => false;
 
     public ValueTask<bool> HasHardwareKeyboardAsync() => new(true);
-}
-
-file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
-{
-    public void ConfigureWorkerServices(ServiceCollection services)
-    {
-    }
 }
 
 file sealed class WebAssemblyCompilerOutputPlugin : ICompilerOutputPlugin

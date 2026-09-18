@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\App\App.csproj" />
+    <ProjectReference Include="..\Worker\Worker.csproj" />
   </ItemGroup>
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />
