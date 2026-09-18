@@ -42,7 +42,8 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    const lastCompletionResults = new Map();
+    const packageIdPrefixPattern = /^\s*#:\s*package\s+[^@\s]*$/;
+    const lastCompletionResults = new WeakMap();
 
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
@@ -58,12 +59,12 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 // Reuse the visible package results so the stale worker response does not close the suggestion widget.
                 const reusePackageCompletions =
                     context.triggerCharacter === "." &&
-                    /^\s*#:\s*package\s+[^@\s]*\.$/.test(linePrefix);
+                    packageIdPrefixPattern.test(linePrefix);
 
                 /** @type {monaco.languages.CompletionList | undefined} */
                 let result;
                 if (reusePackageCompletions) {
-                    result = structuredClone(lastCompletionResults.get(modelUri));
+                    result = structuredClone(lastCompletionResults.get(model));
                     if (result?.range) {
                         // The cached range was computed before the period was inserted.
                         result.range.endLineNumber = position.lineNumber;
@@ -75,7 +76,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                     result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
                         completionItemProvider, modelUri, JSON.stringify(position), JSON.stringify(context), tokenRef));
                     if (result.suggestions.length > 0) {
-                        lastCompletionResults.set(modelUri, structuredClone(result));
+                        lastCompletionResults.set(model, structuredClone(result));
                     }
                 }
 
@@ -90,7 +91,7 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                         ? model.getLineContent(currentPosition.lineNumber).slice(0, currentPosition.column - 1)
                         : "";
 
-                    if (result.incomplete && /^\s*#:\s*package\s+[^@\s]*$/.test(currentLinePrefix)) {
+                    if (result.incomplete && packageIdPrefixPattern.test(currentLinePrefix)) {
                         setTimeout(() => editor.trigger("package-completion-refresh", "editor.action.triggerSuggest", {}));
                     } else {
                         throw new Error('busy');
