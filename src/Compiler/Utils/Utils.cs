@@ -17,6 +17,8 @@ public static class CodeAnalysisUtil
     extension(RoslynCompletionItem item)
     {
         public static string InsertionTextPropertyName => "InsertionText";
+        public static string IncompletePropertyName => "DotNetLab.IsIncomplete";
+        public static string UseCompletionListSpanPropertyName => "DotNetLab.UseCompletionListSpan";
 
         public RoslynCompletionItem WithProperty(string name, string value)
         {
@@ -26,6 +28,16 @@ public static class CodeAnalysisUtil
         public RoslynCompletionItem WithInsertionText(string value)
         {
             return item.WithProperty(RoslynCompletionItem.InsertionTextPropertyName, value);
+        }
+
+        public RoslynCompletionItem WithIncompleteResult()
+        {
+            return item.WithProperty(RoslynCompletionItem.IncompletePropertyName, "");
+        }
+
+        public RoslynCompletionItem WithCompletionListSpan()
+        {
+            return item.WithProperty(RoslynCompletionItem.UseCompletionListSpanPropertyName, "");
         }
     }
 
