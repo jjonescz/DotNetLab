@@ -889,6 +889,10 @@
                         break;
                 }
             }
+            else
+            {
+                SetLoadingVersion(compilerKind, null);
+            }
         }
         catch (Exception ex)
         {
@@ -902,7 +906,6 @@
                 razorError = new(ex);
             }
             SetLoadingVersion(compilerKind, null);
-            await RefreshAsync();
         }
     }
 
