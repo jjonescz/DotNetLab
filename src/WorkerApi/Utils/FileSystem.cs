@@ -9,7 +9,7 @@ public interface IFilePicker
     Task<PickedDirectory?> PickDirectoryAsync(string pickerId);
 }
 
-public readonly record struct PickedDirectory(string Specifier, string DirectoryId);
+public readonly record struct PickedDirectory(string Specifier, string? DirectoryId);
 
 public sealed class DefaultFilePicker : IFilePicker
 {

@@ -27,7 +27,7 @@ static class Program
         appBuilder.Services.AddScoped<IScreenInfo, DesktopScreenInfo>();
         appBuilder.Services.AddScoped<IWorkerConfigurer, DesktopWorkerConfigurer>();
         appBuilder.Services.AddScoped<ICompilerOutputPlugin, DesktopCompilerOutputPlugin>();
-        appBuilder.Services.AddScoped<IFilePicker, DefaultFilePicker>();
+        appBuilder.Services.AddScoped<IFilePicker, DesktopFilePicker>();
         appBuilder.Services.AddSingleton<IScopedServiceProviderAccessor, SimpleScopedServiceProviderAccessor>();
         appBuilder.Services.AddLogging(builder =>
         {

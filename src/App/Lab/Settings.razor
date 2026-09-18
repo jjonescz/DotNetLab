@@ -866,7 +866,11 @@
         {
             if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
             {
-                await Worker.TransferDirectoryAsync(dir.DirectoryId);
+                if (dir.DirectoryId is { } dirId)
+                {
+                    await Worker.TransferDirectoryAsync(dirId);
+                }
+
                 switch (compilerKind)
                 {
                     case CompilerKind.Roslyn:

@@ -1,6 +1,25 @@
 using DotNetLab.Lab;
+using Photino.NET;
 
 namespace DotNetLab;
+
+public sealed class DesktopFilePicker(PhotinoWindow window) : IFilePicker
+{
+    public bool SupportsDirectoryPicker => true;
+
+    public async Task<PickedDirectory?> PickDirectoryAsync(string pickerId)
+    {
+        var result = await window.ShowOpenFolderAsync(
+            title: "Choose roslyn repo");
+
+        if (result is not [{ } path])
+        {
+            return null;
+        }
+
+        return new(Specifier: path, DirectoryId: null);
+    }
+}
 
 public sealed class DesktopFileSystem : IFileSystem
 {
