@@ -51,14 +51,23 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var subdirectoryId = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id, segments);
+        var fullName = Path.Join([FullName, .. segments]);
 
-        return new WebDirectoryInfo
+        try
         {
-            Id = subdirectoryId is null ? null : subdirectoryId!,
-            FullName = Path.Join([FullName, ..segments]),
-            Name = segments[^1],
-        };
+            var subdirectoryId = Id is not { } id ? null : await WebFileSystemInterop.GetSubdirectoryAsync(id, segments);
+
+            return new WebDirectoryInfo
+            {
+                Id = subdirectoryId is null ? null : subdirectoryId!,
+                FullName = fullName,
+                Name = segments[^1],
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to get subdirectory: {fullName}: {ex.Message}", ex);
+        }
     }
 
     [SupportedOSPlatform("browser")]
@@ -71,22 +80,29 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
 
         await WebFileSystemInterop.InitializeAsync;
 
-        var directories = WebFileSystemInterop.UnwrapObjectAsArray(await WebFileSystemInterop.GetDirectoriesAsync(id));
-
-        var result = ImmutableArray.CreateBuilder<IDirectoryInfo>();
-        foreach (var dir in directories)
+        try
         {
-            var dirId = dir.GetPropertyAsString("id")!;
-            var dirName = dir.GetPropertyAsString("name")!;
-            result.Add(new WebDirectoryInfo
-            {
-                Id = dirId,
-                FullName = Path.Join(FullName, dirName),
-                Name = dirName,
-            });
-        }
+            var directories = WebFileSystemInterop.UnwrapObjectAsArray(await WebFileSystemInterop.GetDirectoriesAsync(id));
 
-        return result.ToImmutableArray();
+            var result = ImmutableArray.CreateBuilder<IDirectoryInfo>();
+            foreach (var dir in directories)
+            {
+                var dirId = dir.GetPropertyAsString("id")!;
+                var dirName = dir.GetPropertyAsString("name")!;
+                result.Add(new WebDirectoryInfo
+                {
+                    Id = dirId,
+                    FullName = Path.Join(FullName, dirName),
+                    Name = dirName,
+                });
+            }
+
+            return result.ToImmutableArray();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to get subdirectories of directory: {FullName}: {ex.Message}", ex);
+        }
     }
 
     [SupportedOSPlatform("browser")]
@@ -94,14 +110,23 @@ public sealed class WebDirectoryInfo : IDirectoryInfo
     {
         await WebFileSystemInterop.InitializeAsync;
 
-        var fileId = Id is not { } id ? null : await WebFileSystemInterop.GetFileAsync(id, fileName);
+        var fullName = Path.Join(FullName, fileName);
 
-        return new WebFileInfo
+        try
         {
-            Id = fileId is null ? null : fileId,
-            FullName = Path.Join(FullName, fileName),
-            Name = fileName,
-        };
+            var fileId = Id is not { } id ? null : await WebFileSystemInterop.GetFileAsync(id, fileName);
+
+            return new WebFileInfo
+            {
+                Id = fileId is null ? null : fileId,
+                FullName = fullName,
+                Name = fileName,
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to get file: {fullName}: {ex.Message}", ex);
+        }
     }
 }
 
@@ -120,12 +145,19 @@ public sealed class WebFileInfo : IFileInfo
             throw new InvalidOperationException($"Cannot get data of a non-existent file: {FullName}");
         }
 
-        var blob = await WebFileSystemInterop.GetFileDataAsync(id);
-        var segment = WebFileSystemInterop.UnwrapBlobAsArraySegment(blob);
-        Debug.Assert(segment.Array != null);
-        return segment.Offset == 0 && segment.Count == segment.Array.Length
-            ? ImmutableCollectionsMarshal.AsImmutableArray(segment.Array)
-            : segment.ToImmutableArray();
+        try
+        {
+            var blob = await WebFileSystemInterop.GetFileDataAsync(id);
+            var segment = WebFileSystemInterop.UnwrapBlobAsArraySegment(blob);
+            Debug.Assert(segment.Array != null);
+            return segment.Offset == 0 && segment.Count == segment.Array.Length
+                ? ImmutableCollectionsMarshal.AsImmutableArray(segment.Array)
+                : segment.ToImmutableArray();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to get data of file: {FullName}: {ex.Message}", ex);
+        }
     }
 }
 
@@ -134,7 +166,7 @@ internal static partial class WebFileSystemInterop
     private const string ModuleName = "FileSystem";
 
     [SupportedOSPlatform("browser")]
-    public static Task InitializeAsync => field ??=  JSHost.ImportAsync(ModuleName, "../js/FileSystem.js");
+    public static Task InitializeAsync => field ??= JSHost.ImportAsync(ModuleName, "../js/FileSystem.js");
 
     [JSImport("pickDirectory", ModuleName)]
     public static partial Task<JSObject?> PickDirectoryAsync(string pickerId);

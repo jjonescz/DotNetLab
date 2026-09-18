@@ -1,4 +1,6 @@
-﻿namespace DotNetLab.Lab;
+﻿using Microsoft.Extensions.Logging;
+
+namespace DotNetLab.Lab;
 
 /// <summary>
 /// Provides compiler dependencies into the <see cref="DependencyRegistry"/>.
@@ -8,6 +10,7 @@
 /// Each plugin can handle one or more <see cref="CompilerVersionSpecifier"/>s.
 /// </remarks>
 internal sealed class CompilerDependencyProvider(
+    ILogger<CompilerDependencyProvider> logger,
     DependencyRegistry dependencyRegistry,
     BuiltInCompilerProvider builtInProvider,
     IEnumerable<ICompilerDependencyResolver> resolvers)
@@ -90,8 +93,12 @@ internal sealed class CompilerDependencyProvider(
                         }
                         catch (Exception ex)
                         {
+                            var pluginName = plugin.GetType().Name;
+
                             errors ??= new();
-                            errors.Add($"{plugin.GetType().Name}: {ex.Message}");
+                            errors.Add($"{pluginName}: {ex.Message}");
+
+                            logger.LogError(ex, "Plugin {Name} produced error.", pluginName);
                         }
                     }
                 }
@@ -103,7 +110,7 @@ internal sealed class CompilerDependencyProvider(
 
                 if (found is null)
                 {
-                    throw new InvalidOperationException($"Specified version could not be resolved.\n{errors?.JoinToString("\n")}\nTried:\n- {specifiers.JoinToString("\n- ")}");
+                    throw new InvalidOperationException($"Specified version could not be resolved.\n{errors?.JoinToString("\n") ?? $"Tried:\n- {specifiers.JoinToString("\n- ")}"}");
                 }
 
                 loaded[compilerKind] = (userInput, found);
