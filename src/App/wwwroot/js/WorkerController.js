@@ -49,10 +49,20 @@ export function postMessage(setup, message) {
 
 /**
  * @param {WorkerSetup} setup
- * @param {string} message
+ * @param {string} type
  */
-export function postSideMessage(setup, message) {
-    setup.sideChannel.port2.postMessage(message);
+export function postSideMessage(setup, type) {
+    setup.sideChannel.port2.postMessage({ type });
+}
+
+/**
+ * @param {WorkerSetup} setup
+ * @param {string} handleId
+ */
+export async function transferDirectoryHandle(setup, handleId) {
+    const FileSystem = await import('../../../js/FileSystem.js');
+    const handle = FileSystem.getDirectoryHandle(handleId);
+    setup.sideChannel.port2.postMessage({ type: 'transfer-directory-handle', handleId, handle });
 }
 
 /**

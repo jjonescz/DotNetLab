@@ -6,14 +6,16 @@ public interface IFilePicker
 {
     bool SupportsDirectoryPicker { get; }
 
-    Task<string?> PickDirectoryAsync(string pickerId);
+    Task<PickedDirectory?> PickDirectoryAsync(string pickerId);
 }
+
+public readonly record struct PickedDirectory(string Specifier, string HandleId);
 
 public sealed class DefaultFilePicker : IFilePicker
 {
     public bool SupportsDirectoryPicker => false;
 
-    public Task<string?> PickDirectoryAsync(string pickerId)
+    public Task<PickedDirectory?> PickDirectoryAsync(string pickerId)
     {
         throw new NotSupportedException();
     }

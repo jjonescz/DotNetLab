@@ -7,6 +7,14 @@ function trackDirectory(handle) {
     return id;
 }
 
+export function getDirectoryHandle(id) {
+    return directories.get(id);
+}
+
+export function setDirectoryHandle(id, handle) {
+    directories.set(id, handle);
+}
+
 /** @type {Map<string, FileSystemFileHandle>} */
 const files = new Map();
 
@@ -33,6 +41,11 @@ export async function pickDirectory(pickerId) {
 
 export async function getSubdirectory(directoryId, segments) {
     let handle = directories.get(directoryId);
+
+    if (handle === undefined) {
+        throw new Error(`The directory access has been lost, please pick it again (${directoryId}).`);
+    }
+
     for (const segment of segments) {
         try {
             handle = await handle.getDirectoryHandle(segment);

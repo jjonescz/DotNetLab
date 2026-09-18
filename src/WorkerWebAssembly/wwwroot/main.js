@@ -35,8 +35,12 @@ instance.setModuleImports('worker-imports.js', {
             /** @type {Record<string, MessagePort>} */
             const { side } = ev.data.ports;
             side.onmessage = (ev) => {
-                if (ev.data === 'collect-gc-dump') {
+                if (ev.data?.type === 'collect-gc-dump') {
                     handleCollectGcDump(side);
+                } else if (ev.data?.type === 'transfer-directory-handle') {
+                    import('../../js/FileSystem.js').then(FileSystem => {
+                        FileSystem.setDirectoryHandle(ev.data.handleId, ev.data.handle);
+                    });
                 } else {
                     console.error('Unrecognized side message', ev);
                 }

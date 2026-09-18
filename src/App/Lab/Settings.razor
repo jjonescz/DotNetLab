@@ -384,6 +384,12 @@
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRazorVersionAsync("main"))">main</a>
                         }
+                        @if (FilePicker.SupportsDirectoryPicker)
+                        {
+                            @(" or ")
+                            <a href="javascript:void" @onclick:preventDefault
+                               @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Razor))">local</a>
+                        }
                         @if (!string.IsNullOrWhiteSpace(razorVersion))
                         {
                             @(" or ")
@@ -846,16 +852,16 @@
             _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
         };
 
-        var dir = await FilePicker.PickDirectoryAsync(pickerId);
-        if (dir != null)
+        if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
         {
+            await Worker.TransferDirectoryHandleAsync(dir.HandleId);
             switch (compilerKind)
             {
                 case CompilerKind.Roslyn:
-                    await UseRoslynVersionAsync(dir);
+                    await UseRoslynVersionAsync(dir.Specifier);
                     break;
                 case CompilerKind.Razor:
-                    await UseRazorVersionAsync(dir);
+                    await UseRazorVersionAsync(dir.Specifier);
                     break;
             }
         }

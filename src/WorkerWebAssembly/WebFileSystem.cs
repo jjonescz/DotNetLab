@@ -10,7 +10,7 @@ public sealed class WebFilePicker : IFilePicker
 {
     public bool SupportsDirectoryPicker => true;
 
-    public async Task<string?> PickDirectoryAsync(string pickerId)
+    public async Task<PickedDirectory?> PickDirectoryAsync(string pickerId)
     {
         await WebFileSystemInterop.InitializeAsync;
 
@@ -21,9 +21,11 @@ public sealed class WebFilePicker : IFilePicker
             return null;
         }
 
-        var id = Guid.Parse(picked.GetPropertyAsString("id")!);
+        var idStr = picked.GetPropertyAsString("id")!;
+        var id = Guid.Parse(idStr);
         var name = picked.GetPropertyAsString("name")!;
-        return CompilerVersionSpecifier.LocalId.Stringify(id, name);
+        var specifier = CompilerVersionSpecifier.LocalId.Stringify(id, name);
+        return new(Specifier: specifier, HandleId: idStr);
     }
 }
 
