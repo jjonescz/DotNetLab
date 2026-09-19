@@ -51,19 +51,6 @@ export function getAlternativeVersionId(modelUri) {
     return model?.getAlternativeVersionId() ?? -1;
 }
 
-const maxCompletionItems = 200;
-
-function limitCompletionList(result) {
-    if (!result?.suggestions || result.suggestions.length <= maxCompletionItems) {
-        return result;
-    }
-
-    result.suggestions = result.suggestions.slice(0, maxCompletionItems);
-    result.incomplete = true;
-    result.isIncomplete = true;
-    return result;
-}
-
 /**
  * @param {string} language
  * @param {string[] | undefined} triggerCharacters
@@ -86,8 +73,8 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             const tokenRef = wrapToken(token);
             try {
                 /** @type {monaco.languages.CompletionList} */
-                const result = limitCompletionList(JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
-                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef)));
+                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
+                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
 
                 if (versionId != model.getAlternativeVersionId()) {
                     ignoredProviderRequest();
