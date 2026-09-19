@@ -431,19 +431,7 @@
             return Task.CompletedTask;
         }
 
-        if (!TryApplyContentChanges(args, out var next))
-        {
-            _ = SyncFromEditorAsync(args);
-            return Task.CompletedTask;
-        }
-
-        PushSource(next);
-        if (!string.IsNullOrEmpty(ModelUri))
-        {
-            _ = State.OnSourceModelContentChangedAsync(ModelUri, args);
-        }
-
-        return Task.CompletedTask;
+        return SyncFromEditorAsync(args);
     }
 
     private async Task SyncFromEditorAsync(ModelContentChangedEvent args)
@@ -478,30 +466,6 @@
         {
             _ = OnValueChanged.InvokeAsync(next);
         }
-    }
-
-    private bool TryApplyContentChanges(ModelContentChangedEvent args, out string next)
-    {
-        if (args.Changes is not { Count: > 0 } changes)
-        {
-            next = _lastValue;
-            return false;
-        }
-
-        if (changes.Count == 1)
-        {
-            var change = changes[0];
-            return MonacoTextPatch.TryApply(_lastValue, change.RangeOffset, change.RangeLength, change.Text, out next);
-        }
-
-        var edits = new MonacoTextPatch.Edit[changes.Count];
-        for (var i = 0; i < changes.Count; i++)
-        {
-            var change = changes[i];
-            edits[i] = new MonacoTextPatch.Edit(change.RangeOffset, change.RangeLength, change.Text);
-        }
-
-        return MonacoTextPatch.TryApply(_lastValue, edits, out next);
     }
 
     private async Task FlushAsync()
