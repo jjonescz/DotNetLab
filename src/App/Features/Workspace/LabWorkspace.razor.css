@@ -157,7 +157,7 @@
 }
 
 .lab-output-disclaimer a {
-    color: var(--lab-primary);
+    color: var(--lab-accent-text);
 }
 
 @media (max-width: 767px) {

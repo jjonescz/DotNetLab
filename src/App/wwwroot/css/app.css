@@ -3,14 +3,20 @@
     --lab-foreground: #ede8f5;
     --lab-panel: #1d1526;
     --lab-panel-raised: #251c31;
-    --lab-hairline: #3b2c52;
+    --lab-hairline: #786099;
     --lab-brand: #6e4a9e;
     --lab-brand-foreground: #f7f1fc;
     --lab-primary: #845db8;
+    --lab-primary-hover: color-mix(in srgb, var(--lab-primary) 82%, black);
+    --lab-on-primary: #ffffff;
+    --lab-accent-text: #c8a4f7;
     --lab-success: #6ecf97;
     --lab-danger: #e36b6b;
     --lab-warning: #f0c987;
-    --lab-muted: #8b8099;
+    --lab-muted: #8e839c;
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-foreground);
+    --colorNeutralForeground3: var(--lab-muted);
     --lab-shadow: 0 12px 32px rgba(21, 15, 29, 0.55);
     --lab-error-bar: #3a2030;
     --font-display: "Sora", sans-serif;
@@ -24,11 +30,12 @@ html[data-theme="light"] {
     --lab-foreground: #1d1526;
     --lab-panel: #fbf8fd;
     --lab-panel-raised: #ffffff;
-    --lab-hairline: #d4c4e8;
+    --lab-hairline: #9a7ebe;
     --lab-primary: #6e4a9e;
-    --lab-success: #2f9e64;
+    --lab-accent-text: #6e4a9e;
+    --lab-success: #258253;
     --lab-danger: #c44d4d;
-    --lab-warning: #b07a20;
+    --lab-warning: #926418;
     --lab-muted: #6b5f78;
     --lab-shadow: 0 12px 32px rgba(29, 21, 38, 0.16);
     --lab-error-bar: #f3d6d6;
@@ -213,10 +220,10 @@ fluent-dialog {
     --colorNeutralStroke1: var(--lab-hairline);
     --colorNeutralStroke2: var(--lab-hairline);
     --colorBrandBackground: var(--lab-primary);
-    --colorBrandBackgroundHover: color-mix(in srgb, var(--lab-primary) 82%, white);
-    --colorBrandForeground1: var(--lab-primary);
+    --colorBrandBackgroundHover: var(--lab-primary-hover);
+    --colorBrandForeground1: var(--lab-accent-text);
     --colorCompoundBrandBackground: var(--lab-primary);
-    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--lab-primary) 82%, white);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
     --colorCompoundBrandBackgroundPressed: var(--lab-brand);
     --colorCompoundBrandStroke: var(--lab-primary);
     --colorStrokeFocus2: var(--lab-primary);
@@ -368,9 +375,9 @@ fluent-dialog fluent-link {
     --colorNeutralForeground2: var(--lab-muted);
     --colorNeutralStroke1: var(--lab-hairline);
     --colorNeutralStroke2: var(--lab-hairline);
-    --colorBrandForeground1: var(--lab-primary);
+    --colorBrandForeground1: var(--lab-accent-text);
     --colorCompoundBrandBackground: var(--lab-primary);
-    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--lab-primary) 82%, white);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
     --colorCompoundBrandStroke: var(--lab-primary);
     --borderRadiusMedium: 0;
 }
@@ -388,15 +395,21 @@ fluent-dialog fluent-divider::after {
 .lab-brand-bar fluent-button,
 .lab-brand-bar fluent-menu-button {
     color: var(--lab-brand-foreground);
+    --colorNeutralForeground1: var(--lab-brand-foreground);
+    --colorNeutralForeground2: var(--lab-brand-foreground);
+    --colorNeutralForeground3: var(--lab-brand-foreground);
+    --colorNeutralForeground1Hover: var(--lab-brand-foreground);
+    --colorNeutralForeground2Hover: var(--lab-brand-foreground);
+    --colorNeutralForeground2BrandHover: var(--lab-brand-foreground);
 }
 
 fluent-checkbox,
 fluent-switch {
     --colorCompoundBrandBackground: var(--lab-primary);
-    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--lab-primary) 82%, white);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
     --colorCompoundBrandBackgroundPressed: var(--lab-brand);
     --colorCompoundBrandStroke: var(--lab-primary);
-    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--lab-primary) 82%, white);
+    --colorCompoundBrandStrokeHover: var(--lab-primary-hover);
     --colorBrandBackground: var(--lab-primary);
 }
 
@@ -407,18 +420,35 @@ html:not([data-theme="light"]) fluent-switch {
 
 fluent-button,
 fluent-menu-button,
-fluent-anchor-button {
+fluent-anchor-button,
+fluent-dropdown,
+fluent-select {
     --colorSubtleBackgroundHover: var(--lab-hairline);
     --colorSubtleBackgroundPressed: color-mix(in srgb, var(--lab-primary) 28%, var(--lab-panel-raised));
     --colorTransparentBackgroundHover: color-mix(in srgb, var(--lab-brand-foreground) 16%, transparent);
     --colorTransparentBackgroundPressed: color-mix(in srgb, var(--lab-brand-foreground) 24%, transparent);
     --colorNeutralBackground1Hover: var(--lab-hairline);
     --colorNeutralBackground1Pressed: color-mix(in srgb, var(--lab-primary) 28%, var(--lab-panel-raised));
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-foreground);
+    --colorNeutralForeground3: var(--lab-foreground);
     --colorNeutralForeground1Hover: var(--lab-foreground);
     --colorNeutralForeground2Hover: var(--lab-foreground);
+    --colorNeutralForeground2BrandHover: var(--lab-foreground);
     --colorBrandBackground: var(--lab-primary);
-    --colorBrandBackgroundHover: color-mix(in srgb, var(--lab-primary) 82%, white);
+    --colorBrandBackgroundHover: var(--lab-primary-hover);
     --colorBrandBackgroundPressed: var(--lab-brand);
+    --colorNeutralForegroundOnBrand: var(--lab-on-primary);
+    color: var(--lab-foreground);
+}
+
+.lab-command-bar fluent-button svg,
+.lab-command-bar fluent-menu-button svg,
+.lab-tab-actions fluent-button svg,
+.lab-tab-actions fluent-menu-button svg,
+.lab-toolbar fluent-button svg,
+.lab-toolbar fluent-dropdown svg {
+    fill: currentColor;
 }
 
 fluent-button:hover:not(:disabled):not([disabled-focusable]),
@@ -443,13 +473,22 @@ fluent-anchor-button[appearance="transparent"]:hover:not(:disabled):not([disable
 
 .lab-brand-bar fluent-button:hover:not(:disabled):not([disabled-focusable]),
 .lab-brand-bar fluent-menu-button:hover:not(:disabled):not([disabled-focusable]) {
+    background-color: color-mix(in srgb, var(--lab-brand-foreground) 16%, transparent) !important;
     color: var(--lab-brand-foreground) !important;
 }
 
 fluent-button[appearance="primary"]:hover:not(:disabled):not([disabled-focusable]),
 fluent-anchor-button[appearance="primary"]:hover:not(:disabled):not([disabled-focusable]) {
-    background-color: color-mix(in srgb, var(--lab-primary) 82%, white) !important;
-    color: var(--lab-brand-foreground) !important;
+    background-color: var(--lab-primary-hover) !important;
+    color: var(--lab-on-primary) !important;
+}
+
+.lab-compile,
+.lab-compile:hover:not(:disabled):not([disabled-focusable]),
+.lab-compile:hover:active:not(:disabled):not([disabled-focusable]) {
+    --colorNeutralForeground1: var(--lab-success);
+    --colorNeutralForeground2: var(--lab-success);
+    --colorNeutralForeground3: var(--lab-success);
 }
 
 .lab-compile:hover:not(:disabled):not([disabled-focusable]),
@@ -649,7 +688,7 @@ h2.lab-setting-section {
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--lab-primary);
+    color: var(--lab-accent-text);
 }
 
 .lab-setting-hint {
@@ -739,7 +778,7 @@ h2.lab-setting-section {
 
 .lab-seg-item.active {
     background: var(--lab-primary);
-    color: var(--lab-brand-foreground);
+    color: var(--lab-on-primary);
 }
 
 #blazor-error-ui {
@@ -853,7 +892,7 @@ html.app-ready body {
 }
 
 html[data-theme="light"] .loading-info a {
-    color: var(--lab-primary);
+    color: var(--lab-accent-text);
 }
 
 .loading-info a:hover {
