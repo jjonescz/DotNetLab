@@ -47,9 +47,9 @@
 
     protected override void OnInitialized()
     {
-        Dialogs.SettingsRequested += OpenSettingsAsync;
-        Dialogs.PaletteRequested += TogglePaletteAsync;
-        Dialogs.PasteUrlRequested += OpenPasteAsync;
+        Dialogs.SettingsRequested = OpenSettingsAsync;
+        Dialogs.PaletteRequested = TogglePaletteAsync;
+        Dialogs.PasteUrlRequested = OpenPasteAsync;
         Urls.InvalidShareUrl += OnInvalidShareUrl;
     }
 
@@ -107,9 +107,9 @@
 
     public void Dispose()
     {
-        Dialogs.SettingsRequested -= OpenSettingsAsync;
-        Dialogs.PaletteRequested -= TogglePaletteAsync;
-        Dialogs.PasteUrlRequested -= OpenPasteAsync;
+        Dialogs.SettingsRequested = null;
+        Dialogs.PaletteRequested = null;
+        Dialogs.PasteUrlRequested = null;
         Urls.InvalidShareUrl -= OnInvalidShareUrl;
     }
 }

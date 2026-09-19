@@ -94,7 +94,7 @@ public sealed class OutputTabTests
             var compilation = new Store<CompilationState>(new CompilationState());
             Output = new Store<OutputState>(new OutputState());
             var dispatcher = new RecordingDispatcher(Output);
-            var documents = new LabDocuments(dispatcher, compilation, Output);
+            var documents = new LabDocuments(dispatcher, compilation);
             Tabs = new OutputTabLayout(documents, Output, dispatcher);
         }
 

@@ -13,8 +13,7 @@ public sealed class OutputSession
     private readonly IState<OutputState> _output;
     private readonly IState<CompilationState> _compilation;
     private readonly ICompilerOutputPlugin _plugin;
-    private readonly Lazy<CompilationSession>? _compilationSession;
-    private readonly Lazy<OutputTabLayout>? _tabs;
+    private readonly CompilationSession? _compilationSession;
     private readonly WorkerHost? _worker;
     private readonly OutputCompileState? _compile;
     private readonly Dictionary<string, OutputSnapshot> _cache = new(StringComparer.Ordinal);
@@ -23,13 +22,23 @@ public sealed class OutputSession
     private OutputSnapshot? _cachedNativeAsm;
     private bool _showErrorListIfOutputEmpty;
 
+    public OutputSession(
+        LabDocuments documents,
+        IState<OutputState> output,
+        IState<CompilationState> compilation,
+        ICompilerOutputPlugin plugin,
+        CompilationSession compilationSession,
+        WorkerHost worker)
+        : this(documents, output, compilation, plugin, compilationSession, worker, compile: null)
+    {
+    }
+
     internal OutputSession(
         LabDocuments documents,
         IState<OutputState> output,
         IState<CompilationState> compilation,
         ICompilerOutputPlugin? plugin = null,
-        Lazy<CompilationSession>? compilationSession = null,
-        Lazy<OutputTabLayout>? tabs = null,
+        CompilationSession? compilationSession = null,
         WorkerHost? worker = null,
         OutputCompileState? compile = null)
     {
@@ -38,9 +47,14 @@ public sealed class OutputSession
         _compilation = compilation;
         _plugin = plugin ?? PassThroughCompilerOutputPlugin.Instance;
         _compilationSession = compilationSession;
-        _tabs = tabs;
         _worker = worker;
         _compile = compile;
+        documents.ActiveSourceChanged.Add(RefreshDisplayAsync);
+        if (compilationSession is not null)
+        {
+            compilationSession.NewOutputGeneration += Clear;
+            compilationSession.DisplayReady += OnDisplayReady;
+        }
     }
 
     public event Action? Changed;
@@ -58,20 +72,19 @@ public sealed class OutputSession
 
     private bool Running => _compilation.Value.Running;
 
-    private CompiledAssembly? Compiled => _compilationSession?.Value.Compiled ?? _compile?.Compiled;
+    private CompiledAssembly? Compiled => _compilationSession?.Compiled ?? _compile?.Compiled;
 
-    private CompilationInput? LastInput => _compilationSession?.Value.LastInput ?? _compile?.LastInput;
+    private CompilationInput? LastInput => _compilationSession?.LastInput ?? _compile?.LastInput;
 
-    private bool StoreInCache => _compilationSession?.Value.StoreInCache ?? _compile?.StoreInCache ?? false;
+    private bool StoreInCache => _compilationSession?.StoreInCache ?? _compile?.StoreInCache ?? false;
 
-    private int CompileGeneration => _compilationSession?.Value.CompileGeneration ?? _compile?.CompileGeneration ?? 0;
+    private int CompileGeneration => _compilationSession?.CompileGeneration ?? _compile?.CompileGeneration ?? 0;
 
     private bool IsCurrentCompile(int generation)
-        => _compilationSession?.Value.IsCurrentCompile(generation)
+        => _compilationSession?.IsCurrentCompile(generation)
             ?? generation == (_compile?.CompileGeneration ?? 0);
 
-    private string OutputLabel(string tab)
-        => _tabs?.Value.OutputLabel(tab) ?? LabCatalog.OutputTypeLabel(tab);
+    private static string OutputLabel(string tab) => LabCatalog.OutputTypeLabel(tab);
 
     private void Notify() => Changed?.Invoke();
 
@@ -86,6 +99,11 @@ public sealed class OutputSession
     {
         var wasShowing = _showErrorListIfOutputEmpty;
         _showErrorListIfOutputEmpty = false;
+        if (wasShowing)
+        {
+            Notify();
+        }
+
         return wasShowing;
     }
 
@@ -239,6 +257,15 @@ public sealed class OutputSession
         }
     }
 
+    private void OnDisplayReady() => _ = RefreshDisplayAsync();
+
+    private Task RefreshDisplayAsync()
+    {
+        SetTemporaryErrorList(Compiled is { NumErrors: > 0 });
+        Notify();
+        return LoadDisplayedAsync();
+    }
+
     internal bool TryGetSnapshot(string tab, out OutputSnapshot snapshot)
         => _cache.TryGetValue(OutputCacheKey(tab), out snapshot!);
 
@@ -246,7 +273,7 @@ public sealed class OutputSession
     {
         if (_compilationSession is not null)
         {
-            _compilationSession.Value.StoreCompiledOutput(compiled);
+            _compilationSession.StoreCompiledOutput(compiled);
             return;
         }
 

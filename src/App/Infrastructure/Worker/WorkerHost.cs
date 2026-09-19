@@ -69,7 +69,7 @@ public sealed class WorkerHost : IAsyncDisposable
     /// Raised after the replacement worker is running. Language services drain
     /// the cancelled queue and start a new reader.
     /// </summary>
-    internal event Func<Task>? Recreated;
+    internal Func<Task>? Recreated { get; set; }
 
     public PingResult? LastPingResult { get; private set; }
 
@@ -109,7 +109,10 @@ public sealed class WorkerHost : IAsyncDisposable
             await DisposeCurrentNoLockAsync();
             _useWorker ??= await LoadUseWorkerAsync();
             await StartNoLockAsync();
-            await InvokeRecreatedAsync();
+            if (Recreated is { } recreated)
+            {
+                await recreated();
+            }
         }
         finally
         {
@@ -476,20 +479,6 @@ public sealed class WorkerHost : IAsyncDisposable
             WorkerOutputMessage.Empty => default!,
             _ => throw new InvalidOperationException($"Unexpected message type: {incoming}"),
         };
-
-    private async Task InvokeRecreatedAsync()
-    {
-        var handlers = Recreated;
-        if (handlers is null)
-        {
-            return;
-        }
-
-        foreach (var handler in handlers.GetInvocationList())
-        {
-            await ((Func<Task>)handler)();
-        }
-    }
 
     private static WorkerOutputMessage DisposedFailure(IWorkerInputMessage message)
         => new WorkerOutputMessage.Failure("Worker disposed")

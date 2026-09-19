@@ -11,22 +11,20 @@ public sealed class OutputTabLayout
     private readonly LabDocuments _documents;
     private readonly IState<OutputState> _output;
     private readonly IDispatcher _dispatcher;
-    private readonly Lazy<OutputSession>? _outputs;
     private readonly Dictionary<OutputFileKind, List<string>> _outputTabOrder = CreateDefaultOutputTabOrder();
     private readonly Dictionary<OutputFileKind, HashSet<string>> _hiddenOutputTabs = CreateDefaultHiddenOutputTabs();
     private readonly Dictionary<OutputFileKind, List<string>> _openOutputTabs = new();
     private OutputFileKind? _syncedOutputKind;
 
-    internal OutputTabLayout(
+    public OutputTabLayout(
         LabDocuments documents,
         IState<OutputState> output,
-        IDispatcher dispatcher,
-        Lazy<OutputSession>? outputs = null)
+        IDispatcher dispatcher)
     {
         _documents = documents;
         _output = output;
         _dispatcher = dispatcher;
-        _outputs = outputs;
+        documents.Changed += EnsureActiveOutput;
     }
 
     public event Action? Changed;
@@ -641,26 +639,6 @@ public sealed class OutputTabLayout
         Changed?.Invoke();
     }
 
-    private void SetActiveOutput(string type)
-    {
-        if (_outputs is not null)
-        {
-            var dismiss = _outputs.Value.DismissTemporaryErrorList();
-            if (string.Equals(ActiveOutput, type, StringComparison.Ordinal))
-            {
-                if (dismiss)
-                {
-                    Notify();
-                }
-
-                return;
-            }
-
-            _dispatcher.Dispatch(new SetActiveOutputAction(type));
-            _ = _outputs.Value.EnsureOutputLoadedAsync(type);
-            return;
-        }
-
+    private void SetActiveOutput(string type) =>
         _dispatcher.Dispatch(new SetActiveOutputAction(type));
-    }
 }

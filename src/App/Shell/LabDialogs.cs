@@ -2,9 +2,9 @@ namespace DotNetLab.Shell;
 
 public sealed class LabDialogs
 {
-    public event Func<Task>? SettingsRequested;
-    public event Func<Task>? PaletteRequested;
-    public event Func<Task>? PasteUrlRequested;
+    public Func<Task>? SettingsRequested { get; set; }
+    public Func<Task>? PaletteRequested { get; set; }
+    public Func<Task>? PasteUrlRequested { get; set; }
 
     public Task ShowSettingsAsync() => SettingsRequested?.Invoke() ?? Task.CompletedTask;
 

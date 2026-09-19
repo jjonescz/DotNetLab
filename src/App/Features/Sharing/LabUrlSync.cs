@@ -24,7 +24,7 @@ public sealed class LabUrlSync : IDisposable
         _state = state;
         _settings = settings;
         _js = js;
-        _state.UrlPersistRequested += SaveAsync;
+        _state.UrlPersistRequested = SaveAsync;
         _navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -192,7 +192,7 @@ public sealed class LabUrlSync : IDisposable
 
     public void Dispose()
     {
-        _state.UrlPersistRequested -= SaveAsync;
+        _state.UrlPersistRequested = null;
         _navigation.LocationChanged -= OnLocationChanged;
     }
 }

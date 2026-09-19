@@ -52,46 +52,10 @@ public static class AppBuilder
         });
         services.AddScoped<LabWorkspaceState>();
         services.AddScoped<LabDialogs>();
-        services.AddScoped(sp => new LabDocuments(
-            sp.GetRequiredService<IDispatcher>(),
-            sp.GetRequiredService<IState<CompilationState>>(),
-            sp.GetRequiredService<IState<OutputState>>(),
-            sp.GetRequiredService<Lazy<LabLanguageSession>>(),
-            sp.GetRequiredService<Lazy<OutputTabLayout>>(),
-            sp.GetRequiredService<Lazy<OutputSession>>(),
-            sp.GetRequiredService<Lazy<CompilationSession>>()));
-        services.AddScoped(sp => new CompilationSession(
-            sp.GetRequiredService<WorkerHost>(),
-            sp.GetRequiredService<TemplateCache>(),
-            sp.GetRequiredService<ICompilationCache>(),
-            sp.GetRequiredService<IState<CompilerState>>(),
-            sp.GetRequiredService<IState<PreferencesState>>(),
-            sp.GetRequiredService<IState<CompilationState>>(),
-            sp.GetRequiredService<IState<CompilationOptionsState>>(),
-            sp.GetRequiredService<IState<OutputState>>(),
-            sp.GetRequiredService<IDispatcher>(),
-            sp.GetRequiredService<ILogger<CompilationSession>>(),
-            sp.GetRequiredService<LabDocuments>(),
-            sp.GetRequiredService<LabLanguageSession>(),
-            sp.GetRequiredService<Lazy<OutputSession>>(),
-            sp.GetRequiredService<Lazy<OutputTabLayout>>()));
-        services.AddScoped(sp => new OutputSession(
-            sp.GetRequiredService<LabDocuments>(),
-            sp.GetRequiredService<IState<OutputState>>(),
-            sp.GetRequiredService<IState<CompilationState>>(),
-            sp.GetRequiredService<ICompilerOutputPlugin>(),
-            sp.GetRequiredService<Lazy<CompilationSession>>(),
-            sp.GetRequiredService<Lazy<OutputTabLayout>>(),
-            sp.GetRequiredService<WorkerHost>()));
-        services.AddScoped(sp => new OutputTabLayout(
-            sp.GetRequiredService<LabDocuments>(),
-            sp.GetRequiredService<IState<OutputState>>(),
-            sp.GetRequiredService<IDispatcher>(),
-            sp.GetRequiredService<Lazy<OutputSession>>()));
-        services.AddScoped(sp => new Lazy<LabLanguageSession>(sp.GetRequiredService<LabLanguageSession>));
-        services.AddScoped(sp => new Lazy<CompilationSession>(sp.GetRequiredService<CompilationSession>));
-        services.AddScoped(sp => new Lazy<OutputSession>(sp.GetRequiredService<OutputSession>));
-        services.AddScoped(sp => new Lazy<OutputTabLayout>(sp.GetRequiredService<OutputTabLayout>));
+        services.AddScoped<LabDocuments>();
+        services.AddScoped<CompilationSession>();
+        services.AddScoped<OutputSession>();
+        services.AddScoped<OutputTabLayout>();
         services.AddScoped<LabUrlSync>();
         services.AddScoped<LabThemeService>();
         services.AddScoped<LabPlatform>();

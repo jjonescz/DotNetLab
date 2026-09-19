@@ -182,7 +182,7 @@ public sealed class OutputSessionTests
 
         public Harness(ICompilerOutputPlugin? plugin = null)
         {
-            var documents = new LabDocuments(new NoopDispatcher(), _compilation, _output);
+            var documents = new LabDocuments(new NoopDispatcher(), _compilation);
             Session = new OutputSession(
                 documents,
                 _output,

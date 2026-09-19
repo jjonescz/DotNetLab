@@ -1,4 +1,3 @@
-using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Lab;
@@ -10,35 +9,24 @@ public sealed class LabDocuments
 {
     private readonly IDispatcher _dispatcher;
     private readonly IState<CompilationState> _compilation;
-    private readonly IState<OutputState> _output;
-    private readonly Lazy<LabLanguageSession>? _language;
-    private readonly Lazy<OutputTabLayout>? _tabs;
-    private readonly Lazy<OutputSession>? _outputs;
-    private readonly Lazy<CompilationSession>? _compilationSession;
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
 
-    internal LabDocuments(
+    public LabDocuments(
         IDispatcher dispatcher,
-        IState<CompilationState> compilation,
-        IState<OutputState> output,
-        Lazy<LabLanguageSession>? language = null,
-        Lazy<OutputTabLayout>? tabs = null,
-        Lazy<OutputSession>? outputs = null,
-        Lazy<CompilationSession>? compilationSession = null)
+        IState<CompilationState> compilation)
     {
         _dispatcher = dispatcher;
         _compilation = compilation;
-        _output = output;
-        _language = language;
-        _tabs = tabs;
-        _outputs = outputs;
-        _compilationSession = compilationSession;
         EnsureUri(InitialCode.CSharp.SuggestedFileName);
     }
 
     public event Action? Changed;
 
-    public event Func<Task>? PersistUrlRequested;
+    public Func<Task>? PersistUrlRequested { get; set; }
+
+    public Func<IReadOnlyList<string>, Task>? FilesChanged { get; set; }
+
+    public List<Func<Task>> ActiveSourceChanged { get; } = [];
 
     public string Template { get; private set; } = "C#";
     public string ActiveSource { get; set; } = "Program.cs";
@@ -135,15 +123,21 @@ public sealed class LabDocuments
 
         SetActiveOutput(template is "Razor" or "CSHTML" ? "gcs" : "cs");
         Stale = true;
-        EnsureActiveOutput();
         Notify();
         AfterChanged(before);
     }
 
     private void AfterChanged(IReadOnlyList<string> before)
     {
-        _ = _language?.Value.AfterDocumentsChangedAsync(before) ?? Task.CompletedTask;
-        _ = RequestPersistUrlAsync();
+        if (FilesChanged is { } filesChanged)
+        {
+            _ = filesChanged(before);
+        }
+
+        if (PersistUrlRequested is { } persist)
+        {
+            _ = persist();
+        }
     }
 
     private static (string Name, string Contents)[] FilesFor(string template)
@@ -201,7 +195,6 @@ public sealed class LabDocuments
         if (string.Equals(ActiveSource, oldName, StringComparison.Ordinal))
         {
             ActiveSource = normalized;
-            EnsureActiveOutput();
         }
 
         Stale = true;
@@ -242,7 +235,6 @@ public sealed class LabDocuments
         if (ActiveSource == file)
         {
             ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
-            EnsureActiveOutput();
         }
 
         Stale = true;
@@ -277,7 +269,6 @@ public sealed class LabDocuments
         _sources[name] = contents;
         EnsureUri(name);
         ActiveSource = name;
-        EnsureActiveOutput();
         Stale = true;
         Notify();
         AfterChanged(before);
@@ -302,7 +293,6 @@ public sealed class LabDocuments
         }
 
         ActiveSource = fileName;
-        EnsureActiveOutput();
         Notify();
         AfterChanged(before);
     }
@@ -385,7 +375,6 @@ public sealed class LabDocuments
         }
 
         ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
-        EnsureActiveOutput();
         Stale = true;
         Notify();
         AfterChanged(before);
@@ -399,16 +388,17 @@ public sealed class LabDocuments
         }
 
         ActiveSource = file;
-        EnsureActiveOutput();
         Notify();
-        _ = _language?.Value.SyncAsync() ?? Task.CompletedTask;
-        _compilationSession?.Value.RefreshTemporaryErrorList();
-        _ = _outputs?.Value.LoadDisplayedAsync() ?? Task.CompletedTask;
-        _ = RequestPersistUrlAsync();
+        _ = NotifyActiveSourceChangedAsync();
+        if (PersistUrlRequested is { } persist)
+        {
+            _ = persist();
+        }
     }
 
     public void LoadFromSavedState(SavedState state)
     {
+        var before = ModelUris;
         var userFiles = new List<(string Name, string Contents)>();
         var specialFiles = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -484,8 +474,11 @@ public sealed class LabDocuments
                 ? "CSHTML"
                 : "C#";
 
-        EnsureActiveOutput();
         Notify();
+        if (FilesChanged is { } filesChanged)
+        {
+            _ = filesChanged(before);
+        }
     }
 
     private void Notify()
@@ -503,47 +496,14 @@ public sealed class LabDocuments
         set => _dispatcher.Dispatch(new SetStaleAction(value));
     }
 
-    private void SetActiveOutput(string type)
+    private async Task NotifyActiveSourceChangedAsync()
     {
-        if (_outputs is not null)
+        foreach (var handler in ActiveSourceChanged.ToArray())
         {
-            var dismiss = _outputs.Value.DismissTemporaryErrorList();
-            if (string.Equals(_output.Value.ActiveOutput, type, StringComparison.Ordinal))
-            {
-                if (dismiss)
-                {
-                    Notify();
-                }
-
-                return;
-            }
-
-            _dispatcher.Dispatch(new SetActiveOutputAction(type));
-            _ = _outputs.Value.EnsureOutputLoadedAsync(type);
-            return;
+            await handler();
         }
+    }
 
+    private void SetActiveOutput(string type) =>
         _dispatcher.Dispatch(new SetActiveOutputAction(type));
-    }
-
-    private void EnsureActiveOutput() => _tabs?.Value.EnsureActiveOutput();
-
-    private Task RequestPersistUrlAsync()
-    {
-        var handlers = PersistUrlRequested;
-        if (handlers is null)
-        {
-            return Task.CompletedTask;
-        }
-
-        return InvokeHandlersAsync(handlers);
-    }
-
-    private static async Task InvokeHandlersAsync(Func<Task> handlers)
-    {
-        foreach (var handler in handlers.GetInvocationList())
-        {
-            await ((Func<Task>)handler)();
-        }
-    }
 }

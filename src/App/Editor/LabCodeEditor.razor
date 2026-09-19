@@ -53,7 +53,7 @@
     protected override void OnInitialized()
     {
         Prefs.StateChanged += OnPreferencesChanged;
-        State.SnapshotRequested += FlushAsync;
+        State.SnapshotRequested.Add(FlushAsync);
     }
 
     public async ValueTask DisposeAsync()
@@ -65,7 +65,7 @@
 
         _disposed = true;
         Prefs.StateChanged -= OnPreferencesChanged;
-        State.SnapshotRequested -= FlushAsync;
+        State.SnapshotRequested.Remove(FlushAsync);
         try
         {
             await _init;

@@ -181,10 +181,7 @@ public sealed class CompilationSessionTests
         IDispatcher dispatcher,
         IState<CompilerState>? compiler = null)
     {
-        var documents = new LabDocuments(
-            dispatcher,
-            compilation,
-            new Store<OutputState>(new OutputState()));
+        var documents = new LabDocuments(dispatcher, compilation);
         documents.SetSource("Program.cs", "class C;");
         var session = new CompilationSession(
             worker,
@@ -196,7 +193,7 @@ public sealed class CompilationSessionTests
             new Store<CompilationOptionsState>(new CompilationOptionsState()),
             new Store<OutputState>(new OutputState()),
             dispatcher,
-            NullLogger.Instance,
+            NullLogger<CompilationSession>.Instance,
             documents);
         return (session, documents);
     }

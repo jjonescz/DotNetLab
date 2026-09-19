@@ -53,9 +53,9 @@ public sealed class LabWorkspaceState : IAsyncDisposable
         Outputs = outputs;
         Tabs = tabs;
         Documents.Changed += Notify;
-        Documents.PersistUrlRequested += PersistDocumentsUrlAsync;
+        Documents.PersistUrlRequested = PersistDocumentsUrlAsync;
         Compilation.Changed += Notify;
-        Compilation.PersistUrlRequested += PersistUrlAsync;
+        Compilation.PersistUrlRequested = PersistUrlAsync;
         Outputs.Changed += Notify;
         Tabs.Changed += Notify;
         _compiler.StateChanged += OnCompilerStoreChanged;
@@ -71,30 +71,15 @@ public sealed class LabWorkspaceState : IAsyncDisposable
     public CompilationSession Compilation { get; }
 
     public event Action? Changed;
-    public event Func<Task>? SnapshotRequested;
-    public event Func<Task>? UrlPersistRequested;
+    public List<Func<Task>> SnapshotRequested { get; } = [];
+    public Func<Task>? UrlPersistRequested { get; set; }
 
     public string ActiveSource => Documents.ActiveSource;
 
     public string ActiveOutput
     {
         get => _output.Value.ActiveOutput;
-        set
-        {
-            var dismiss = Outputs.DismissTemporaryErrorList();
-            if (string.Equals(ActiveOutput, value, StringComparison.Ordinal))
-            {
-                if (dismiss)
-                {
-                    Notify();
-                }
-
-                return;
-            }
-
-            _dispatcher.Dispatch(new SetActiveOutputAction(value));
-            _ = Outputs.EnsureOutputLoadedAsync(value);
-        }
+        set => _dispatcher.Dispatch(new SetActiveOutputAction(value));
     }
 
     public string? WorkerError { get; private set; }
@@ -106,9 +91,9 @@ public sealed class LabWorkspaceState : IAsyncDisposable
     {
         Unsubscribe();
         Documents.Changed -= Notify;
-        Documents.PersistUrlRequested -= PersistDocumentsUrlAsync;
+        Documents.PersistUrlRequested = null;
         Compilation.Changed -= Notify;
-        Compilation.PersistUrlRequested -= PersistUrlAsync;
+        Compilation.PersistUrlRequested = null;
         Outputs.Changed -= Notify;
         Tabs.Changed -= Notify;
         await _persistence.DisposeAsync();
@@ -245,7 +230,10 @@ public sealed class LabWorkspaceState : IAsyncDisposable
     {
         if ((kind & PersistKind.Url) != 0 && !_suppressUrlPersist)
         {
-            await InvokeHandlersAsync(UrlPersistRequested);
+            if (UrlPersistRequested is { } persist)
+            {
+                await persist();
+            }
         }
 
         if ((kind & PersistKind.Settings) != 0 && _settingsReady)
@@ -263,7 +251,13 @@ public sealed class LabWorkspaceState : IAsyncDisposable
 
     private Task PersistDocumentsUrlAsync() => PersistUrlAsync();
 
-    public Task SnapshotEditorsAsync() => InvokeHandlersAsync(SnapshotRequested);
+    public async Task SnapshotEditorsAsync()
+    {
+        foreach (var flush in SnapshotRequested.ToArray())
+        {
+            await flush();
+        }
+    }
 
     public async Task PersistUrlAsync(bool snapshot = false)
     {
@@ -302,9 +296,7 @@ public sealed class LabWorkspaceState : IAsyncDisposable
             state = state with { Inputs = [] };
         }
 
-        var before = Documents.ModelUris;
         Documents.LoadFromSavedState(state);
-        _ = _language.AfterDocumentsChangedAsync(before);
 
         if (!string.IsNullOrEmpty(state.SelectedOutputType))
         {
@@ -379,17 +371,4 @@ public sealed class LabWorkspaceState : IAsyncDisposable
     private PreferencesState Preferences => _preferences.Value;
 
     public CompilationPreferences GetPreferences() => _options.Value.ToPreferences();
-
-    private static async Task InvokeHandlersAsync(Func<Task>? handlers)
-    {
-        if (handlers is null)
-        {
-            return;
-        }
-
-        foreach (var handler in handlers.GetInvocationList())
-        {
-            await ((Func<Task>)handler)();
-        }
-    }
 }

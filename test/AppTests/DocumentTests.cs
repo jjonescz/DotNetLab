@@ -152,8 +152,8 @@ public sealed class DocumentTests
             Compilation = new Store<CompilationState>(new CompilationState());
             Output = new Store<OutputState>(new OutputState());
             var dispatcher = new RecordingDispatcher(Compilation, Output);
-            Documents = new LabDocuments(dispatcher, Compilation, Output);
-            Documents.PersistUrlRequested += () =>
+            Documents = new LabDocuments(dispatcher, Compilation);
+            Documents.PersistUrlRequested = () =>
             {
                 PersistCount++;
                 return Task.CompletedTask;
