@@ -1,6 +1,7 @@
 using DotNetLab.Editor;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Editor.Monaco;
+using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
@@ -59,7 +60,21 @@ public static class AppBuilder
             sp.GetRequiredService<Lazy<OutputTabLayout>>(),
             sp.GetRequiredService<Lazy<OutputSession>>(),
             sp.GetRequiredService<Lazy<CompilationSession>>()));
-        services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Compilation);
+        services.AddScoped(sp => new CompilationSession(
+            sp.GetRequiredService<WorkerHost>(),
+            sp.GetRequiredService<TemplateCache>(),
+            sp.GetRequiredService<ICompilationCache>(),
+            sp.GetRequiredService<IState<CompilerState>>(),
+            sp.GetRequiredService<IState<PreferencesState>>(),
+            sp.GetRequiredService<IState<CompilationState>>(),
+            sp.GetRequiredService<IState<CompilationOptionsState>>(),
+            sp.GetRequiredService<IState<OutputState>>(),
+            sp.GetRequiredService<IDispatcher>(),
+            sp.GetRequiredService<ILogger<CompilationSession>>(),
+            sp.GetRequiredService<LabDocuments>(),
+            sp.GetRequiredService<LabLanguageSession>(),
+            sp.GetRequiredService<Lazy<OutputSession>>(),
+            sp.GetRequiredService<Lazy<OutputTabLayout>>()));
         services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Outputs);
         services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Tabs);
         services.AddScoped(sp => new Lazy<LabLanguageSession>(sp.GetRequiredService<LabLanguageSession>));

@@ -2,9 +2,9 @@ using System.Text.Json;
 using AwesomeAssertions;
 using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
-using DotNetLab.Features.Workspace;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Logging;
 using DotNetLab.Infrastructure.Caching.Compilation;
@@ -101,15 +101,15 @@ public sealed class CompilationSessionTests
         var dispatcher = new RecordingDispatcher(compilation);
         var created = CreateSession(worker, compilation, dispatcher);
         await using var session = created.Session;
-        var host = created.Host;
+        var documents = created.Documents;
 
-        host.SourceText = "A";
+        documents.SetSource("Program.cs", "A");
         var first = session.CompileAsync(storeInCache: true, updateDisplayedOutput: true);
         await transport.WaitStartedAsync(0).WaitAsync(TimeSpan.FromSeconds(2));
 
-        host.SourceText = "B";
+        documents.SetSource("Program.cs", "B");
         var middle = session.CompileAsync(storeInCache: true, updateDisplayedOutput: true);
-        host.SourceText = "C";
+        documents.SetSource("Program.cs", "C");
         var latest = session.CompileAsync(storeInCache: true, updateDisplayedOutput: true);
 
         transport.CompileCount.Should().Be(1);
@@ -175,24 +175,30 @@ public sealed class CompilationSessionTests
             transport,
             NullLogger<WorkerHost>.Instance);
 
-    private static (CompilationSession Session, FakeWorkspace Host) CreateSession(
+    private static (CompilationSession Session, LabDocuments Documents) CreateSession(
         WorkerHost worker,
         IState<CompilationState> compilation,
         IDispatcher dispatcher,
         IState<CompilerState>? compiler = null)
     {
-        var host = new FakeWorkspace();
+        var documents = new LabDocuments(
+            dispatcher,
+            compilation,
+            new Store<OutputState>(new OutputState()));
+        documents.SetSource("Program.cs", "class C;");
         var session = new CompilationSession(
-            host,
             worker,
             new TemplateCache(),
             new NullCompilationCache(),
             compiler ?? new Store<CompilerState>(new CompilerState()),
             new Store<PreferencesState>(new PreferencesState { EnableCaching = false, LanguageServices = false }),
             compilation,
+            new Store<CompilationOptionsState>(new CompilationOptionsState()),
+            new Store<OutputState>(new OutputState()),
             dispatcher,
-            NullLogger.Instance);
-        return (session, host);
+            NullLogger.Instance,
+            documents);
+        return (session, documents);
     }
 
     private static string FailText(CompiledAssembly? compiled)
@@ -306,57 +312,6 @@ public sealed class CompilationSessionTests
             public void Dispose()
             {
             }
-        }
-    }
-
-    private sealed class FakeWorkspace : ICompilationWorkspace, IOutputSessionHost, IOutputWorkspace
-    {
-        public FakeWorkspace()
-        {
-            Outputs = new OutputSession(this);
-            Tabs = new OutputTabLayout(this);
-        }
-
-        public string SourceText { get; set; } = "class C;";
-
-        public OutputSession Outputs { get; }
-
-        public OutputTabLayout Tabs { get; }
-
-        public CompilationInput CreateCompilationInput()
-            => new(new([new() { FileName = "Program.cs", Text = SourceText }]));
-
-        public SavedState CaptureSavedState() => SavedState.CSharp;
-
-        public void Notify()
-        {
-        }
-
-        public Task PersistUrlAsync(bool snapshot = false) => Task.CompletedTask;
-
-        public string ActiveSource => "Program.cs";
-
-        public string ActiveOutput { get; set; } = "cs";
-
-        public bool Running => false;
-
-        public CompiledAssembly? Compiled => null;
-
-        public CompilationInput? LastInput => null;
-
-        public bool StoreInCache => false;
-
-        public int CompileGeneration => 0;
-
-        public bool IsCurrentCompile(int generation) => true;
-
-        public string OutputLabel(string tab) => tab;
-
-        public ValueTask<CompiledFileLazyResult> LoadFromWorkerAsync(string? file, string tab)
-            => ValueTask.FromResult(new CompiledFileLazyResult { Text = "" });
-
-        public void StoreCompiledOutput(CompiledAssembly compiled)
-        {
         }
     }
 

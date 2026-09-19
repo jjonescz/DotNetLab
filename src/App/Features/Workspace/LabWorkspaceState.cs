@@ -1,19 +1,16 @@
-using System.Collections.Immutable;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
-using DotNetLab.Infrastructure.Caching.Compilation;
-using DotNetLab.Infrastructure.Caching.Template;
 using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
 using Fluxor;
 
 namespace DotNetLab.Features.Workspace;
 
-public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, ICompilationWorkspace, IAsyncDisposable
+public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IAsyncDisposable
 {
     private readonly WorkerHost _worker;
     private readonly LabLanguageSession _language;
@@ -33,8 +30,6 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
         WorkerHost worker,
         LabLanguageSession language,
         LabSettings settings,
-        TemplateCache templates,
-        ICompilationCache cache,
         IState<CompilerState> compiler,
         IState<PreferencesState> preferences,
         IState<CompilationState> compilation,
@@ -43,7 +38,8 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
         IDispatcher dispatcher,
         ILogger<LabWorkspaceState> logger,
         ICompilerOutputPlugin outputPlugin,
-        LabDocuments documents)
+        LabDocuments documents,
+        CompilationSession compilationSession)
     {
         _worker = worker;
         _language = language;
@@ -55,21 +51,13 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
         _output = output;
         _dispatcher = dispatcher;
         Documents = documents;
+        Compilation = compilationSession;
         Tabs = new OutputTabLayout(this);
         Outputs = new OutputSession(this, outputPlugin);
-        Compilation = new CompilationSession(
-            this,
-            worker,
-            templates,
-            cache,
-            compiler,
-            preferences,
-            compilation,
-            dispatcher,
-            logger,
-            language);
         Documents.Changed += Notify;
         Documents.PersistUrlRequested += PersistDocumentsUrlAsync;
+        Compilation.Changed += Notify;
+        Compilation.PersistUrlRequested += PersistUrlAsync;
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -119,8 +107,9 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
         Unsubscribe();
         Documents.Changed -= Notify;
         Documents.PersistUrlRequested -= PersistDocumentsUrlAsync;
+        Compilation.Changed -= Notify;
+        Compilation.PersistUrlRequested -= PersistUrlAsync;
         await _persistence.DisposeAsync();
-        await Compilation.DisposeAsync();
     }
 
     private void Unsubscribe()
@@ -289,41 +278,7 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
         await _persistence.EnqueueAsync(PersistKind.Url);
     }
 
-    public SavedState CaptureSavedState()
-    {
-        var userFiles = Documents.SourceFiles
-            .Where(file => file != LabFixtures.ConfigurationFileName)
-            .ToList();
-
-        var inputs = userFiles
-            .Select(file => new InputCode
-            {
-                FileName = file,
-                Text = Documents.Sources.GetValueOrDefault(file) ?? "",
-            })
-            .ToImmutableArray();
-
-        Documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
-
-        var activeIndex = userFiles.IndexOf(ActiveSource);
-        if (activeIndex < 0)
-        {
-            activeIndex = 0;
-        }
-
-        return _options.Value.WriteTo(new SavedState
-        {
-            Inputs = inputs,
-            SelectedInputIndex = activeIndex,
-            SelectedOutputType = ActiveOutput,
-            Configuration = configuration,
-            SdkVersion = CompilerSpec.ToSpecifier(Compiler.Sdk),
-            RoslynVersion = CompilerSpec.ToSpecifier(Compiler.Roslyn),
-            RoslynConfiguration = CompilerSpec.ToBuildConfiguration(Compiler.RoslynConfig),
-            RazorVersion = CompilerSpec.ToSpecifier(Compiler.Razor),
-            RazorConfiguration = CompilerSpec.ToBuildConfiguration(Compiler.RazorConfig),
-        });
-    }
+    public SavedState CaptureSavedState() => Compilation.CaptureSavedState();
 
     public async Task ApplySavedStateAsync(SavedState state)
     {
@@ -422,29 +377,6 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IC
     private PreferencesState Preferences => _preferences.Value;
 
     bool IOutputSessionHost.Running => _compilation.Value.Running;
-
-    public CompilationInput CreateCompilationInput()
-    {
-        var inputs = Documents.SourceFiles
-            .Where(file => file != LabFixtures.ConfigurationFileName)
-            .Select(file => new InputCode
-            {
-                FileName = file,
-                Text = Documents.Sources.GetValueOrDefault(file) ?? "",
-            })
-            .ToImmutableArray();
-
-        Documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
-
-        var options = _options.Value;
-        return new CompilationInput(inputs)
-        {
-            Configuration = configuration,
-            RazorToolchain = options.RazorToolchain,
-            RazorStrategy = options.RazorStrategy,
-            Preferences = options.ToPreferences(),
-        };
-    }
 
     public CompilationPreferences GetPreferences() => _options.Value.ToPreferences();
 

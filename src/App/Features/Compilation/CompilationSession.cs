@@ -1,6 +1,8 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Features.Workspace;
@@ -14,16 +16,20 @@ namespace DotNetLab.Features.Compilation;
 
 public sealed class CompilationSession : IAsyncDisposable
 {
-    private readonly ICompilationWorkspace _host;
     private readonly WorkerHost _worker;
     private readonly TemplateCache _templates;
     private readonly ICompilationCache _cache;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _preferences;
     private readonly IState<CompilationState> _compilation;
+    private readonly IState<CompilationOptionsState> _options;
+    private readonly IState<OutputState> _output;
     private readonly IDispatcher _dispatcher;
     private readonly ILogger _logger;
+    private readonly LabDocuments _documents;
     private readonly LabLanguageSession? _language;
+    private readonly Lazy<OutputSession>? _outputs;
+    private readonly Lazy<OutputTabLayout>? _tabs;
     private readonly CompilationScheduler _scheduler;
     private GenerationCounter _compileGeneration;
     private GenerationCounter _applyGeneration;
@@ -32,29 +38,41 @@ public sealed class CompilationSession : IAsyncDisposable
     private CompiledAssembly? _compiled;
 
     internal CompilationSession(
-        ICompilationWorkspace host,
         WorkerHost worker,
         TemplateCache templates,
         ICompilationCache cache,
         IState<CompilerState> compiler,
         IState<PreferencesState> preferences,
         IState<CompilationState> compilation,
+        IState<CompilationOptionsState> options,
+        IState<OutputState> output,
         IDispatcher dispatcher,
         ILogger logger,
-        LabLanguageSession? language = null)
+        LabDocuments documents,
+        LabLanguageSession? language = null,
+        Lazy<OutputSession>? outputs = null,
+        Lazy<OutputTabLayout>? tabs = null)
     {
-        _host = host;
         _worker = worker;
         _templates = templates;
         _cache = cache;
         _compiler = compiler;
         _preferences = preferences;
         _compilation = compilation;
+        _options = options;
+        _output = output;
         _dispatcher = dispatcher;
         _logger = logger;
+        _documents = documents;
         _language = language;
+        _outputs = outputs;
+        _tabs = tabs;
         _scheduler = new CompilationScheduler(CompileCoreAsync, logger);
     }
+
+    public event Action? Changed;
+
+    public event Func<bool, Task>? PersistUrlRequested;
 
     public ValueTask DisposeAsync() => _scheduler.DisposeAsync();
 
@@ -88,9 +106,15 @@ public sealed class CompilationSession : IAsyncDisposable
 
     private void SetRunning(bool value) => _dispatcher.Dispatch(new SetRunningAction(value));
 
+    private void Notify() => Changed?.Invoke();
+
     private CompilerState Compiler => _compiler.Value;
 
     private PreferencesState Preferences => _preferences.Value;
+
+    private OutputSession? Outputs => _outputs?.Value;
+
+    private OutputTabLayout? Tabs => _tabs?.Value;
 
     public Task CompileAsync() => CompileAsync(storeInCache: true);
 
@@ -118,14 +142,14 @@ public sealed class CompilationSession : IAsyncDisposable
         var storeInCache = request.StoreInCache;
         var updateDisplayedOutput = request.UpdateDisplayedOutput;
         var appliedToDisplay = false;
-        var input = _host.CreateCompilationInput();
+        var input = CreateCompilationInput();
         var showBusy = storeInCache || (updateDisplayedOutput && Compiled is null);
         try
         {
             if (showBusy)
             {
                 SetRunning(true);
-                _host.Notify();
+                Notify();
                 await Task.Yield();
             }
 
@@ -137,7 +161,7 @@ public sealed class CompilationSession : IAsyncDisposable
 
             if (showBusy)
             {
-                await _host.PersistUrlAsync(snapshot: true);
+                await RequestPersistUrlAsync(snapshot: true);
             }
 
             var compiled = await _worker.SendAsync(
@@ -201,14 +225,14 @@ public sealed class CompilationSession : IAsyncDisposable
             if (showBusy)
             {
                 SetRunning(false);
-                _host.Notify();
+                Notify();
             }
         }
 
         if (appliedToDisplay)
         {
             RefreshTemporaryErrorList();
-            _ = _host.Outputs.LoadDisplayedAsync();
+            _ = Outputs?.LoadDisplayedAsync() ?? Task.CompletedTask;
         }
 
         if (_scheduler.IsCurrent(request.Generation))
@@ -273,7 +297,7 @@ public sealed class CompilationSession : IAsyncDisposable
 
     internal void StoreCompiledOutput(CompiledAssembly compiled)
     {
-        var state = _host.CaptureSavedState();
+        var state = CaptureSavedState();
         if (!Preferences.EnableCaching || _templates.HasInput(state))
         {
             return;
@@ -284,15 +308,75 @@ public sealed class CompilationSession : IAsyncDisposable
 
     internal void RefreshTemporaryErrorList()
     {
-        _host.Tabs.EnsureActiveOutput();
-        _host.Outputs.SetTemporaryErrorList(Compiled is { NumErrors: > 0 });
-        _host.Notify();
+        Tabs?.EnsureActiveOutput();
+        Outputs?.SetTemporaryErrorList(Compiled is { NumErrors: > 0 });
+        Notify();
+    }
+
+    public SavedState CaptureSavedState()
+    {
+        var userFiles = _documents.SourceFiles
+            .Where(file => file != LabFixtures.ConfigurationFileName)
+            .ToList();
+
+        var inputs = userFiles
+            .Select(file => new InputCode
+            {
+                FileName = file,
+                Text = _documents.Sources.GetValueOrDefault(file) ?? "",
+            })
+            .ToImmutableArray();
+
+        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+
+        var activeIndex = userFiles.IndexOf(_documents.ActiveSource);
+        if (activeIndex < 0)
+        {
+            activeIndex = 0;
+        }
+
+        var compiler = Compiler;
+        return _options.Value.WriteTo(new SavedState
+        {
+            Inputs = inputs,
+            SelectedInputIndex = activeIndex,
+            SelectedOutputType = _output.Value.ActiveOutput,
+            Configuration = configuration,
+            SdkVersion = CompilerSpec.ToSpecifier(compiler.Sdk),
+            RoslynVersion = CompilerSpec.ToSpecifier(compiler.Roslyn),
+            RoslynConfiguration = CompilerSpec.ToBuildConfiguration(compiler.RoslynConfig),
+            RazorVersion = CompilerSpec.ToSpecifier(compiler.Razor),
+            RazorConfiguration = CompilerSpec.ToBuildConfiguration(compiler.RazorConfig),
+        });
+    }
+
+    internal CompilationInput CreateCompilationInput()
+    {
+        var inputs = _documents.SourceFiles
+            .Where(file => file != LabFixtures.ConfigurationFileName)
+            .Select(file => new InputCode
+            {
+                FileName = file,
+                Text = _documents.Sources.GetValueOrDefault(file) ?? "",
+            })
+            .ToImmutableArray();
+
+        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+
+        var options = _options.Value;
+        return new CompilationInput(inputs)
+        {
+            Configuration = configuration,
+            RazorToolchain = options.RazorToolchain,
+            RazorStrategy = options.RazorStrategy,
+            Preferences = options.ToPreferences(),
+        };
     }
 
     private void BeginNewOutputGeneration()
     {
         _compileGeneration.Begin();
-        _host.Outputs.Clear();
+        Outputs?.Clear();
     }
 
     private bool TryGetTemplateOutput(
@@ -336,11 +420,30 @@ public sealed class CompilationSession : IAsyncDisposable
         _dispatcher.Dispatch(new SetStaleAction(stale));
         BeginNewOutputGeneration();
         RefreshTemporaryErrorList();
-        _host.Notify();
-        _ = _host.Outputs.LoadDisplayedAsync();
+        Notify();
+        _ = Outputs?.LoadDisplayedAsync() ?? Task.CompletedTask;
         if (_language is not null)
         {
             _ = _language.RefreshAfterCachedCompileAsync(output);
+        }
+    }
+
+    private Task RequestPersistUrlAsync(bool snapshot)
+    {
+        var handlers = PersistUrlRequested;
+        if (handlers is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return InvokeHandlersAsync(handlers, snapshot);
+    }
+
+    private static async Task InvokeHandlersAsync(Func<bool, Task> handlers, bool snapshot)
+    {
+        foreach (var handler in handlers.GetInvocationList())
+        {
+            await ((Func<bool, Task>)handler)(snapshot);
         }
     }
 
@@ -362,19 +465,4 @@ public sealed class CompilationSession : IAsyncDisposable
 
         return true;
     }
-}
-
-internal interface ICompilationWorkspace
-{
-    CompilationInput CreateCompilationInput();
-
-    SavedState CaptureSavedState();
-
-    OutputSession Outputs { get; }
-
-    OutputTabLayout Tabs { get; }
-
-    void Notify();
-
-    Task PersistUrlAsync(bool snapshot = false);
 }
