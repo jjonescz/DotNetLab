@@ -196,6 +196,14 @@
     padding-left: 0.15rem;
 }
 
+.lab-tab-actions ::deep fluent-button,
+.lab-tab-actions ::deep fluent-menu-button {
+    color: var(--lab-foreground);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-foreground);
+    --colorNeutralForeground3: var(--lab-foreground);
+}
+
 .lab-tab-actions ::deep fluent-button[icon-only],
 .lab-tab-actions ::deep fluent-menu-button[icon-only] {
     min-width: 32px;

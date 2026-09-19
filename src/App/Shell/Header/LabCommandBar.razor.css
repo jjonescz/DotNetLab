@@ -44,6 +44,9 @@
 
 ::deep .lab-compile {
     color: var(--lab-success) !important;
+    --colorNeutralForeground1: var(--lab-success);
+    --colorNeutralForeground2: var(--lab-success);
+    --colorNeutralForeground3: var(--lab-success);
 }
 
 ::deep fluent-button.lab-toolbar-toggle-on {

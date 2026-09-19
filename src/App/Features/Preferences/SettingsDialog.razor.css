@@ -92,7 +92,11 @@
 }
 
 .lab-output-tab-row.is-hidden {
-    opacity: 0.62;
+    color: var(--lab-muted);
+}
+
+.lab-output-tab-row.is-hidden .lab-setting-title {
+    color: var(--lab-muted);
 }
 
 .lab-output-tab-actions {

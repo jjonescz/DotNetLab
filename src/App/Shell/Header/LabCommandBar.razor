@@ -131,7 +131,7 @@
 </div>
 
 @code {
-    private const string Success = "#6ecf97";
+    private const string Success = "var(--lab-success)";
 
     private static readonly CompilerPickerOption[] CompilerRefOptions =
         [.. LabCatalog.CompilerRefs.Select(item => new CompilerPickerOption(item, item))];
