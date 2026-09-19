@@ -1,6 +1,8 @@
 using DotNetLab.Editor;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Editor.Monaco;
+using DotNetLab.Features.Compilation;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Features.Sharing;
@@ -51,6 +53,10 @@ public static class AppBuilder
         services.AddScoped<LabDialogs>();
         services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Documents);
         services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Compilation);
+        services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Outputs);
+        services.AddScoped(sp => new Lazy<LabDocuments>(sp.GetRequiredService<LabDocuments>));
+        services.AddScoped(sp => new Lazy<CompilationSession>(sp.GetRequiredService<CompilationSession>));
+        services.AddScoped(sp => new Lazy<OutputSession>(sp.GetRequiredService<OutputSession>));
         services.AddScoped<LabUrlSync>();
         services.AddScoped<LabThemeService>();
         services.AddScoped<LabPlatform>();

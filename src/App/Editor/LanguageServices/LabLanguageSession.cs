@@ -14,27 +14,20 @@ public sealed class LabLanguageSession(
     LabCursorSync cursors,
     IDispatcher dispatcher,
     IState<PreferencesState> preferences,
-    IState<CompilerState> compiler)
+    IState<CompilerState> compiler,
+    Lazy<LabDocuments> documents,
+    Lazy<CompilationSession> compilation,
+    Lazy<OutputSession> outputs)
 {
-    private LabDocuments _documents = null!;
-    private CompilationSession _compilation = null!;
-    private OutputSession _outputs = null!;
-    private Action _notify = static () => { };
     private Task? _languageInit;
 
-    public bool Started => _languageInit is not null;
+    private LabDocuments Documents => documents.Value;
 
-    public void Bind(
-        LabDocuments documents,
-        CompilationSession compilation,
-        OutputSession outputs,
-        Action notify)
-    {
-        _documents = documents;
-        _compilation = compilation;
-        _outputs = outputs;
-        _notify = notify;
-    }
+    private CompilationSession Compilation => compilation.Value;
+
+    private OutputSession Outputs => outputs.Value;
+
+    public bool Started => _languageInit is not null;
 
     public void Reset() => _languageInit = null;
 
@@ -61,7 +54,7 @@ public sealed class LabLanguageSession(
             if (readOnly)
             {
                 await cursors.AttachOutputAsync(editorId);
-                if (_outputs.TryGetSnapshot(_outputs.DisplayType, out var snapshot) &&
+                if (Outputs.TryGetSnapshot(Outputs.DisplayType, out var snapshot) &&
                     string.Equals(snapshot.ModelUri, modelUri, StringComparison.Ordinal))
                 {
                     await language.ApplyOutputEditorAsync(
@@ -85,7 +78,7 @@ public sealed class LabLanguageSession(
 
     public async Task AfterDocumentsChangedAsync(IReadOnlyList<string> before)
     {
-        var removed = before.Except(_documents.ModelUris).ToArray();
+        var removed = before.Except(Documents.ModelUris).ToArray();
         await SyncAsync(refresh: true, removed);
     }
 
@@ -94,12 +87,12 @@ public sealed class LabLanguageSession(
 
     public async Task RefreshAfterCompileAsync()
     {
-        var uri = _documents.UriFor(_documents.ActiveSource);
+        var uri = Documents.UriFor(Documents.ActiveSource);
         if (!language.Enabled || !await language.UpdateDiagnosticsAfterCompilationAsync(uri))
         {
             await language.ApplyCompileDiagnosticsAsync(
-                _compilation.Compiled,
-                _documents.SourceFiles.Select(file => (file, _documents.UriFor(file))));
+                Compilation.Compiled,
+                Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
         }
 
         if (language.Enabled)
@@ -110,12 +103,12 @@ public sealed class LabLanguageSession(
 
     public async Task RefreshAfterCachedCompileAsync(CompiledAssembly output)
     {
-        var uri = _documents.UriFor(_documents.ActiveSource);
+        var uri = Documents.UriFor(Documents.ActiveSource);
         if (!language.Enabled || !await language.OnCachedCompilationLoadedAsync(CurrentCompilerConfiguration(), output, uri))
         {
             await language.ApplyCompileDiagnosticsAsync(
-                _compilation.Compiled,
-                _documents.SourceFiles.Select(file => (file, _documents.UriFor(file))));
+                Compilation.Compiled,
+                Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
         }
 
         if (language.Enabled)
@@ -139,30 +132,29 @@ public sealed class LabLanguageSession(
             if (enabled)
             {
                 await SyncAsync(refresh: true);
-                if (_compilation.HasLiveInput)
+                if (Compilation.HasLiveInput)
                 {
-                    await language.UpdateDiagnosticsAfterCompilationAsync(_documents.UriFor(_documents.ActiveSource));
+                    await language.UpdateDiagnosticsAfterCompilationAsync(Documents.UriFor(Documents.ActiveSource));
                 }
-                else if (_compilation.Compiled is { } compiled)
+                else if (Compilation.Compiled is { } compiled)
                 {
                     await language.OnCachedCompilationLoadedAsync(
                         CurrentCompilerConfiguration(),
                         compiled,
-                        _documents.UriFor(_documents.ActiveSource));
+                        Documents.UriFor(Documents.ActiveSource));
                 }
             }
             else
             {
                 await language.ApplyCompileDiagnosticsAsync(
-                    _compilation.Compiled,
-                    _documents.SourceFiles.Select(file => (file, _documents.UriFor(file))));
+                    Compilation.Compiled,
+                    Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
             }
         }
         catch (JSException)
         {
         }
 
-        _notify();
         if (persist)
         {
             dispatcher.Dispatch(new PersistPreferencesAction());
@@ -182,8 +174,8 @@ public sealed class LabLanguageSession(
         try
         {
             await language.OnDidChangeWorkspaceAsync(
-                _documents.CreateModelInfos(),
-                _documents.UriFor(_documents.ActiveSource),
+                Documents.CreateModelInfos(),
+                Documents.UriFor(Documents.ActiveSource),
                 refresh);
         }
         catch (JSException)
@@ -193,7 +185,7 @@ public sealed class LabLanguageSession(
 
     private CompilerConfiguration CurrentCompilerConfiguration()
     {
-        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+        Documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
         var current = compiler.Value;
         return new CompilerConfiguration
         {

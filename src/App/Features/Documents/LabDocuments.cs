@@ -1,3 +1,4 @@
+using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Lab;
 
 namespace DotNetLab.Features.Documents;
@@ -5,11 +6,13 @@ namespace DotNetLab.Features.Documents;
 public sealed class LabDocuments
 {
     private readonly IDocumentWorkspace _state;
+    private readonly LabLanguageSession? _language;
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
 
-    internal LabDocuments(IDocumentWorkspace state)
+    internal LabDocuments(IDocumentWorkspace state, LabLanguageSession? language = null)
     {
         _state = state;
+        _language = language;
         EnsureUri(InitialCode.CSharp.SuggestedFileName);
     }
 
@@ -117,7 +120,9 @@ public sealed class LabDocuments
 
     private void AfterChanged(IReadOnlyList<string> before)
     {
-        _ = _state.AfterDocumentsChangedAsync(before);
+        _ = _language is not null
+            ? _language.AfterDocumentsChangedAsync(before)
+            : _state.AfterDocumentsChangedAsync(before);
         _ = _state.PersistUrlAsync();
     }
 
@@ -376,6 +381,11 @@ public sealed class LabDocuments
         ActiveSource = file;
         _state.EnsureActiveOutput();
         Notify();
+        if (_language is not null)
+        {
+            _ = _language.SyncAsync();
+        }
+
         _state.AfterActiveSourceChanged();
     }
 

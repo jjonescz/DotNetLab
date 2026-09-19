@@ -53,7 +53,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         _options = options;
         _output = output;
         _dispatcher = dispatcher;
-        Documents = new LabDocuments(this);
+        Documents = new LabDocuments(this, language);
         Tabs = new OutputTabLayout(this);
         Outputs = new OutputSession(this, outputPlugin);
         Compilation = new CompilationSession(
@@ -67,7 +67,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             dispatcher,
             logger,
             language);
-        language.Bind(Documents, Compilation, Outputs, Notify);
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -343,7 +342,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
 
         var before = Documents.ModelUris;
         Documents.LoadFromSavedState(state);
-        _ = AfterDocumentsChangedAsync(before);
+        _ = _language.AfterDocumentsChangedAsync(before);
 
         if (!string.IsNullOrEmpty(state.SelectedOutputType))
         {
@@ -477,12 +476,11 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             });
     }
 
-    public Task AfterDocumentsChangedAsync(IReadOnlyList<string> before)
+    Task IDocumentWorkspace.AfterDocumentsChangedAsync(IReadOnlyList<string> before)
         => _language.AfterDocumentsChangedAsync(before);
 
     void IDocumentWorkspace.AfterActiveSourceChanged()
     {
-        _ = _language.SyncAsync();
         Compilation.RefreshTemporaryErrorList();
         _ = Outputs.LoadDisplayedAsync();
         _ = PersistUrlAsync();
