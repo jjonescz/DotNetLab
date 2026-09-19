@@ -75,7 +75,14 @@ public static class AppBuilder
             sp.GetRequiredService<LabLanguageSession>(),
             sp.GetRequiredService<Lazy<OutputSession>>(),
             sp.GetRequiredService<Lazy<OutputTabLayout>>()));
-        services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Outputs);
+        services.AddScoped(sp => new OutputSession(
+            sp.GetRequiredService<LabDocuments>(),
+            sp.GetRequiredService<IState<OutputState>>(),
+            sp.GetRequiredService<IState<CompilationState>>(),
+            sp.GetRequiredService<ICompilerOutputPlugin>(),
+            sp.GetRequiredService<Lazy<CompilationSession>>(),
+            sp.GetRequiredService<Lazy<OutputTabLayout>>(),
+            sp.GetRequiredService<WorkerHost>()));
         services.AddScoped(sp => sp.GetRequiredService<LabWorkspaceState>().Tabs);
         services.AddScoped(sp => new Lazy<LabLanguageSession>(sp.GetRequiredService<LabLanguageSession>));
         services.AddScoped(sp => new Lazy<CompilationSession>(sp.GetRequiredService<CompilationSession>));

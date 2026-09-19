@@ -1,30 +1,79 @@
+using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
+using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
+using Fluxor;
 
 namespace DotNetLab.Features.Outputs;
 
 public sealed class OutputSession
 {
-    private readonly IOutputSessionHost _host;
+    private readonly LabDocuments _documents;
+    private readonly IState<OutputState> _output;
+    private readonly IState<CompilationState> _compilation;
     private readonly ICompilerOutputPlugin _plugin;
+    private readonly Lazy<CompilationSession>? _compilationSession;
+    private readonly Lazy<OutputTabLayout>? _tabs;
+    private readonly WorkerHost? _worker;
+    private readonly OutputCompileState? _compile;
     private readonly Dictionary<string, OutputSnapshot> _cache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
     private readonly HashSet<string> _loading = new(StringComparer.Ordinal);
     private OutputSnapshot? _cachedNativeAsm;
     private bool _showErrorListIfOutputEmpty;
 
-    internal OutputSession(IOutputSessionHost host, ICompilerOutputPlugin? plugin = null)
+    internal OutputSession(
+        LabDocuments documents,
+        IState<OutputState> output,
+        IState<CompilationState> compilation,
+        ICompilerOutputPlugin? plugin = null,
+        Lazy<CompilationSession>? compilationSession = null,
+        Lazy<OutputTabLayout>? tabs = null,
+        WorkerHost? worker = null,
+        OutputCompileState? compile = null)
     {
-        _host = host;
+        _documents = documents;
+        _output = output;
+        _compilation = compilation;
         _plugin = plugin ?? PassThroughCompilerOutputPlugin.Instance;
+        _compilationSession = compilationSession;
+        _tabs = tabs;
+        _worker = worker;
+        _compile = compile;
     }
+
+    public event Action? Changed;
 
     public bool IsEmpty => _cache.Count == 0;
 
     public string DisplayType
-        => _showErrorListIfOutputEmpty && HasEmptyOutputText(_host.ActiveOutput) == true
+        => _showErrorListIfOutputEmpty && HasEmptyOutputText(ActiveOutput) == true
             ? LabCatalog.ErrorsOutputType
-            : _host.ActiveOutput;
+            : ActiveOutput;
+
+    private string ActiveSource => _documents.ActiveSource;
+
+    private string ActiveOutput => _output.Value.ActiveOutput;
+
+    private bool Running => _compilation.Value.Running;
+
+    private CompiledAssembly? Compiled => _compilationSession?.Value.Compiled ?? _compile?.Compiled;
+
+    private CompilationInput? LastInput => _compilationSession?.Value.LastInput ?? _compile?.LastInput;
+
+    private bool StoreInCache => _compilationSession?.Value.StoreInCache ?? _compile?.StoreInCache ?? false;
+
+    private int CompileGeneration => _compilationSession?.Value.CompileGeneration ?? _compile?.CompileGeneration ?? 0;
+
+    private bool IsCurrentCompile(int generation)
+        => _compilationSession?.Value.IsCurrentCompile(generation)
+            ?? generation == (_compile?.CompileGeneration ?? 0);
+
+    private string OutputLabel(string tab)
+        => _tabs?.Value.OutputLabel(tab) ?? LabCatalog.OutputTypeLabel(tab);
+
+    private void Notify() => Changed?.Invoke();
 
     public void Clear()
     {
@@ -72,7 +121,7 @@ public sealed class OutputSession
             return cached.Text;
         }
 
-        if (_host.Running)
+        if (Running)
         {
             // Keep the previous output in Monaco. Replacing it with "Compiling…" races
             // with a cached recompile and can leave that placeholder stuck until a tab switch.
@@ -85,7 +134,7 @@ public sealed class OutputSession
             return "Compiling…";
         }
 
-        if (_host.Compiled is not { } compiled)
+        if (Compiled is not { } compiled)
         {
             return "(press Compile to load this)";
         }
@@ -98,7 +147,7 @@ public sealed class OutputSession
         var output = FindOutput(tab);
         if (output is null)
         {
-            return $"(no {_host.OutputLabel(tab)} output for this file)";
+            return $"(no {OutputLabel(tab)} output for this file)";
         }
 
         if (output.Text is { } eager)
@@ -114,7 +163,7 @@ public sealed class OutputSession
 
     public async Task EnsureOutputLoadedAsync(string tab)
     {
-        if (_host.Compiled is null || _host.LastInput is null || _host.Running)
+        if (Compiled is null || LastInput is null || Running)
         {
             return;
         }
@@ -125,13 +174,13 @@ public sealed class OutputSession
             return;
         }
 
-        var generation = _host.CompileGeneration;
+        var generation = CompileGeneration;
         try
         {
             // LoadAsync is often already completed for a cached assembly. Yield so Notify
             // does not run in the middle of a Blazor render (GetOutput is called from one).
             await Task.Yield();
-            if (!_host.IsCurrentCompile(generation) || _host.Running || _host.Compiled is null)
+            if (!IsCurrentCompile(generation) || Running || Compiled is null)
             {
                 return;
             }
@@ -139,7 +188,7 @@ public sealed class OutputSession
             var output = FindOutput(tab);
             if (output is null)
             {
-                _cache[key] = Placeholder(tab, $"(no {_host.OutputLabel(tab)} output for this file)");
+                _cache[key] = Placeholder(tab, $"(no {OutputLabel(tab)} output for this file)");
                 return;
             }
 
@@ -155,7 +204,7 @@ public sealed class OutputSession
             {
                 result = await output.LoadAsync(new()
                 {
-                    OutputFactory = () => _host.LoadFromWorkerAsync(file, tab),
+                    OutputFactory = () => LoadFromWorkerAsync(file, tab),
                 });
             }
             catch (Exception ex)
@@ -163,28 +212,28 @@ public sealed class OutputSession
                 result = new() { Text = ex.ToString(), Metadata = CompiledFileOutputMetadata.SpecialMessage };
             }
 
-            if (!_host.IsCurrentCompile(generation))
+            if (!IsCurrentCompile(generation))
             {
                 return;
             }
 
             _cache[key] = CreateSnapshot(tab, result, output);
-            if (_host.StoreInCache && _host.Compiled is { } compiled)
+            if (StoreInCache && Compiled is { } compiled)
             {
-                _host.StoreCompiledOutput(compiled);
+                StoreCompiledOutput(compiled);
             }
         }
         finally
         {
             _loading.Remove(key);
-            _host.Notify();
+            Notify();
         }
     }
 
     public async Task LoadDisplayedAsync()
     {
-        await EnsureOutputLoadedAsync(_host.ActiveOutput);
-        if (!string.Equals(DisplayType, _host.ActiveOutput, StringComparison.Ordinal))
+        await EnsureOutputLoadedAsync(ActiveOutput);
+        if (!string.Equals(DisplayType, ActiveOutput, StringComparison.Ordinal))
         {
             await EnsureOutputLoadedAsync(DisplayType);
         }
@@ -192,6 +241,31 @@ public sealed class OutputSession
 
     internal bool TryGetSnapshot(string tab, out OutputSnapshot snapshot)
         => _cache.TryGetValue(OutputCacheKey(tab), out snapshot!);
+
+    private void StoreCompiledOutput(CompiledAssembly compiled)
+    {
+        if (_compilationSession is not null)
+        {
+            _compilationSession.Value.StoreCompiledOutput(compiled);
+            return;
+        }
+
+        _compile?.Store(compiled);
+    }
+
+    private async ValueTask<CompiledFileLazyResult> LoadFromWorkerAsync(string? file, string tab)
+    {
+        if (_worker is null || LastInput is null)
+        {
+            return new CompiledFileLazyResult { Text = "" };
+        }
+
+        return await _worker.SendAsync(
+            new WorkerInputMessage.GetOutput(LastInput, file, tab)
+            {
+                Id = _worker.NextMessageId(),
+            });
+    }
 
     private bool? HasEmptyOutputText(string tab)
     {
@@ -216,12 +290,12 @@ public sealed class OutputSession
 
     private CompiledFileOutput? FindOutput(string tab)
     {
-        if (_host.Compiled is not { } compiled)
+        if (Compiled is not { } compiled)
         {
             return null;
         }
 
-        if (compiled.Files.TryGetValue(_host.ActiveSource, out var file) &&
+        if (compiled.Files.TryGetValue(ActiveSource, out var file) &&
             file.GetOutput(tab) is { } perFile)
         {
             return perFile;
@@ -232,12 +306,12 @@ public sealed class OutputSession
 
     private string? OutputFileName(string tab)
         => FindOutput(tab) is not null &&
-           _host.Compiled?.Files.TryGetValue(_host.ActiveSource, out var file) == true &&
+           Compiled?.Files.TryGetValue(ActiveSource, out var file) == true &&
            file.GetOutput(tab) is not null
-            ? _host.ActiveSource
+            ? ActiveSource
             : null;
 
-    private string OutputCacheKey(string tab) => $"{_host.ActiveSource}\0{tab}";
+    private string OutputCacheKey(string tab) => $"{ActiveSource}\0{tab}";
 
     private OutputSnapshot Placeholder(string tab, string text)
         => new(text, "plaintext", CompiledFileOutputMetadata.SpecialMessage, OutputDisclaimer.None, OutputUriFor(tab));
@@ -293,7 +367,7 @@ public sealed class OutputSession
         return new CompiledFileOutput
         {
             Type = tab,
-            Label = _host.OutputLabel(tab),
+            Label = OutputLabel(tab),
             Language = cached.Language,
             EagerText = cached.Text,
         };
@@ -307,29 +381,21 @@ internal sealed record OutputSnapshot(
     OutputDisclaimer Disclaimer,
     string ModelUri);
 
-internal interface IOutputSessionHost
+internal sealed class OutputCompileState
 {
-    string ActiveSource { get; }
+    public CompiledAssembly? Compiled { get; set; }
 
-    string ActiveOutput { get; }
+    public CompilationInput? LastInput { get; set; }
 
-    bool Running { get; }
+    public int CompileGeneration { get; set; }
 
-    CompiledAssembly? Compiled { get; }
+    public bool StoreInCache { get; set; }
 
-    CompilationInput? LastInput { get; }
+    public int StoredCount { get; private set; }
 
-    bool StoreInCache { get; }
-
-    int CompileGeneration { get; }
-
-    bool IsCurrentCompile(int generation);
-
-    string OutputLabel(string tab);
-
-    void Notify();
-
-    ValueTask<CompiledFileLazyResult> LoadFromWorkerAsync(string? file, string tab);
-
-    void StoreCompiledOutput(CompiledAssembly compiled);
+    public void Store(CompiledAssembly compiled)
+    {
+        StoredCount++;
+        _ = compiled;
+    }
 }

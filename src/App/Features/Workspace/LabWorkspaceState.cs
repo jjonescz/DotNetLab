@@ -10,14 +10,13 @@ using Fluxor;
 
 namespace DotNetLab.Features.Workspace;
 
-public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IAsyncDisposable
+public sealed class LabWorkspaceState : IOutputWorkspace, IAsyncDisposable
 {
     private readonly WorkerHost _worker;
     private readonly LabLanguageSession _language;
     private readonly LabSettings _settings;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _preferences;
-    private readonly IState<CompilationState> _compilation;
     private readonly IState<CompilationOptionsState> _options;
     private readonly IState<OutputState> _output;
     private readonly IDispatcher _dispatcher;
@@ -32,32 +31,31 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IA
         LabSettings settings,
         IState<CompilerState> compiler,
         IState<PreferencesState> preferences,
-        IState<CompilationState> compilation,
         IState<CompilationOptionsState> options,
         IState<OutputState> output,
         IDispatcher dispatcher,
         ILogger<LabWorkspaceState> logger,
-        ICompilerOutputPlugin outputPlugin,
         LabDocuments documents,
-        CompilationSession compilationSession)
+        CompilationSession compilationSession,
+        OutputSession outputs)
     {
         _worker = worker;
         _language = language;
         _settings = settings;
         _compiler = compiler;
         _preferences = preferences;
-        _compilation = compilation;
         _options = options;
         _output = output;
         _dispatcher = dispatcher;
         Documents = documents;
         Compilation = compilationSession;
+        Outputs = outputs;
         Tabs = new OutputTabLayout(this);
-        Outputs = new OutputSession(this, outputPlugin);
         Documents.Changed += Notify;
         Documents.PersistUrlRequested += PersistDocumentsUrlAsync;
         Compilation.Changed += Notify;
         Compilation.PersistUrlRequested += PersistUrlAsync;
+        Outputs.Changed += Notify;
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -109,6 +107,7 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IA
         Documents.PersistUrlRequested -= PersistDocumentsUrlAsync;
         Compilation.Changed -= Notify;
         Compilation.PersistUrlRequested -= PersistUrlAsync;
+        Outputs.Changed -= Notify;
         await _persistence.DisposeAsync();
     }
 
@@ -376,36 +375,7 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, IA
 
     private PreferencesState Preferences => _preferences.Value;
 
-    bool IOutputSessionHost.Running => _compilation.Value.Running;
-
     public CompilationPreferences GetPreferences() => _options.Value.ToPreferences();
-
-    CompiledAssembly? IOutputSessionHost.Compiled => Compilation.Compiled;
-
-    CompilationInput? IOutputSessionHost.LastInput => Compilation.LastInput;
-
-    int IOutputSessionHost.CompileGeneration => Compilation.CompileGeneration;
-
-    bool IOutputSessionHost.IsCurrentCompile(int generation) => Compilation.IsCurrentCompile(generation);
-
-    bool IOutputSessionHost.StoreInCache => Compilation.StoreInCache;
-
-    string IOutputSessionHost.OutputLabel(string tab) => Tabs.OutputLabel(tab);
-
-    ValueTask<CompiledFileLazyResult> IOutputSessionHost.LoadFromWorkerAsync(string? file, string tab)
-        => LoadOutputFromWorkerAsync(file, tab);
-
-    void IOutputSessionHost.StoreCompiledOutput(CompiledAssembly compiled)
-        => Compilation.StoreCompiledOutput(compiled);
-
-    private async ValueTask<CompiledFileLazyResult> LoadOutputFromWorkerAsync(string? file, string tab)
-    {
-        return await _worker.SendAsync(
-            new WorkerInputMessage.GetOutput(Compilation.LastInput!, file, tab)
-            {
-                Id = _worker.NextMessageId(),
-            });
-    }
 
     private static async Task InvokeHandlersAsync(Func<Task>? handlers)
     {

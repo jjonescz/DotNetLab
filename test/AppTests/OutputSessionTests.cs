@@ -1,7 +1,10 @@
 using AwesomeAssertions;
+using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Lab;
+using Fluxor;
 
 namespace DotNetLab;
 
@@ -139,10 +142,10 @@ public sealed class OutputSessionTests
         session.GetDisclaimer("asm").Should().Be(OutputDisclaimer.JitAsmUnavailableUsingCached);
     }
 
-    private static (OutputSession Session, FakeOutputSessionHost Host) Create(ICompilerOutputPlugin? plugin = null)
+    private static (OutputSession Session, Harness Host) Create(ICompilerOutputPlugin? plugin = null)
     {
-        var host = new FakeOutputSessionHost();
-        return (new OutputSession(host, plugin), host);
+        var host = new Harness(plugin);
+        return (host.Session, host);
     }
 
     private static CompiledAssembly AssemblyWithEager(
@@ -171,32 +174,77 @@ public sealed class OutputSessionTests
             Diagnostics: [],
             BaseDirectory: "/");
 
-    private sealed class FakeOutputSessionHost : IOutputSessionHost
+    private sealed class Harness
     {
-        public string ActiveSource { get; set; } = "Program.cs";
-        public string ActiveOutput { get; set; } = "cs";
-        public bool Running { get; set; }
-        public CompiledAssembly? Compiled { get; set; }
-        public CompilationInput? LastInput { get; set; }
-        public bool StoreInCache { get; set; }
-        public int CompileGeneration { get; set; }
-        public int StoredCount { get; private set; }
+        private readonly OutputCompileState _compile = new();
+        private readonly Store<CompilationState> _compilation = new(new CompilationState());
+        private readonly Store<OutputState> _output = new(new OutputState());
 
-        public bool IsCurrentCompile(int generation) => generation == CompileGeneration;
-
-        public string OutputLabel(string tab) => tab == "tree" ? "Tree" : tab;
-
-        public void Notify()
+        public Harness(ICompilerOutputPlugin? plugin = null)
         {
+            var documents = new LabDocuments(new NoopDispatcher(), _compilation, _output);
+            Session = new OutputSession(
+                documents,
+                _output,
+                _compilation,
+                plugin,
+                compile: _compile);
         }
 
-        public ValueTask<CompiledFileLazyResult> LoadFromWorkerAsync(string? file, string tab)
-            => ValueTask.FromResult(new CompiledFileLazyResult { Text = "" });
+        public OutputSession Session { get; }
 
-        public void StoreCompiledOutput(CompiledAssembly compiled)
+        public bool Running
         {
-            StoredCount++;
-            _ = compiled;
+            set => _compilation.Value = _compilation.Value with { Running = value };
+        }
+
+        public string ActiveOutput
+        {
+            set => _output.Value = _output.Value with { ActiveOutput = value };
+        }
+
+        public CompiledAssembly? Compiled
+        {
+            get => _compile.Compiled;
+            set => _compile.Compiled = value;
+        }
+
+        public CompilationInput? LastInput
+        {
+            get => _compile.LastInput;
+            set => _compile.LastInput = value;
+        }
+
+        public int CompileGeneration
+        {
+            get => _compile.CompileGeneration;
+            set => _compile.CompileGeneration = value;
+        }
+
+        public int StoredCount => _compile.StoredCount;
+    }
+
+    private sealed class Store<T>(T value) : IState<T>
+    {
+        public T Value { get; set; } = value;
+
+        public event EventHandler StateChanged
+        {
+            add { }
+            remove { }
+        }
+    }
+
+    private sealed class NoopDispatcher : IDispatcher
+    {
+        public event EventHandler<ActionDispatchedEventArgs> ActionDispatched
+        {
+            add { }
+            remove { }
+        }
+
+        public void Dispatch(object action)
+        {
         }
     }
 }
