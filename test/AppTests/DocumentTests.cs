@@ -1,6 +1,9 @@
 using AwesomeAssertions;
+using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Documents;
+using DotNetLab.Features.Outputs;
 using DotNetLab.Lab;
+using Fluxor;
 
 namespace DotNetLab;
 
@@ -21,167 +24,180 @@ public sealed class DocumentTests
     [TestMethod]
     public void StartsWithCSharpProgram()
     {
-        var (documents, host) = Create();
-        documents.Template.Should().Be("C#");
-        documents.ActiveSource.Should().Be("Program.cs");
-        documents.SourceFiles.Should().Equal("Program.cs");
-        documents.Sources["Program.cs"].Should().Be(InitialCode.CSharp.TextTemplate);
-        host.ActiveOutput.Should().Be("cs");
+        var harness = Create();
+        harness.Documents.Template.Should().Be("C#");
+        harness.Documents.ActiveSource.Should().Be("Program.cs");
+        harness.Documents.SourceFiles.Should().Equal("Program.cs");
+        harness.Documents.Sources["Program.cs"].Should().Be(InitialCode.CSharp.TextTemplate);
+        harness.Output.Value.ActiveOutput.Should().Be("cs");
     }
 
     [TestMethod]
-    public async Task SetTemplate_RazorReplacesUserFiles()
+    public void SetTemplate_RazorReplacesUserFiles()
     {
-        var (documents, host) = Create();
-        documents.SetTemplate("Razor");
-        await host.LastAfterDocumentsChanged!;
+        var harness = Create();
+        harness.Documents.SetTemplate("Razor");
 
-        documents.Template.Should().Be("Razor");
-        documents.ActiveSource.Should().Be("TestComponent.razor");
-        documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
-        host.ActiveOutput.Should().Be("gcs");
-        host.Stale.Should().BeTrue();
-        host.PersistCount.Should().Be(1);
+        harness.Documents.Template.Should().Be("Razor");
+        harness.Documents.ActiveSource.Should().Be("TestComponent.razor");
+        harness.Documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
+        harness.Output.Value.ActiveOutput.Should().Be("gcs");
+        harness.Compilation.Value.Stale.Should().BeTrue();
+        harness.PersistCount.Should().Be(1);
     }
 
     [TestMethod]
     public void SetTemplate_Cshtml()
     {
-        var (documents, host) = Create();
-        documents.SetTemplate("CSHTML");
-        documents.ActiveSource.Should().Be("TestPage.cshtml");
-        documents.SourceFiles.Should().Equal("TestPage.cshtml");
-        host.ActiveOutput.Should().Be("gcs");
+        var harness = Create();
+        harness.Documents.SetTemplate("CSHTML");
+        harness.Documents.ActiveSource.Should().Be("TestPage.cshtml");
+        harness.Documents.SourceFiles.Should().Equal("TestPage.cshtml");
+        harness.Output.Value.ActiveOutput.Should().Be("gcs");
     }
 
     [TestMethod]
     public void AddAndCloseFile()
     {
-        var (documents, host) = Create();
-        documents.AddFile(".cs");
-        documents.ActiveSource.Should().Be("File1.cs");
-        documents.SourceFiles.Should().Equal("Program.cs", "File1.cs");
-        host.PersistCount.Should().Be(1);
+        var harness = Create();
+        harness.Documents.AddFile(".cs");
+        harness.Documents.ActiveSource.Should().Be("File1.cs");
+        harness.Documents.SourceFiles.Should().Equal("Program.cs", "File1.cs");
+        harness.PersistCount.Should().Be(1);
 
-        documents.CloseFile("Program.cs");
-        documents.ActiveSource.Should().Be("File1.cs");
-        documents.SourceFiles.Should().Equal("File1.cs");
+        harness.Documents.CloseFile("Program.cs");
+        harness.Documents.ActiveSource.Should().Be("File1.cs");
+        harness.Documents.SourceFiles.Should().Equal("File1.cs");
 
-        documents.CloseFile("File1.cs");
-        documents.SourceFiles.Should().Equal("File1.cs");
+        harness.Documents.CloseFile("File1.cs");
+        harness.Documents.SourceFiles.Should().Equal("File1.cs");
     }
 
     [TestMethod]
     public void RenameFile_AcceptsAndRejects()
     {
-        var (documents, host) = Create();
-        documents.RenameFile("Program.cs", "Hello.cs");
-        documents.ActiveSource.Should().Be("Hello.cs");
-        documents.SourceFiles.Should().Equal("Hello.cs");
-        host.PersistCount.Should().Be(1);
+        var harness = Create();
+        harness.Documents.RenameFile("Program.cs", "Hello.cs");
+        harness.Documents.ActiveSource.Should().Be("Hello.cs");
+        harness.Documents.SourceFiles.Should().Equal("Hello.cs");
+        harness.PersistCount.Should().Be(1);
 
-        documents.RenameFile("Hello.cs", "..");
-        documents.SourceFiles.Should().Equal("Hello.cs");
+        harness.Documents.RenameFile("Hello.cs", "..");
+        harness.Documents.SourceFiles.Should().Equal("Hello.cs");
 
-        documents.OpenDirectives();
-        documents.SourceFiles.Should().Equal("Hello.cs", "Directives.cs");
-        documents.RenameFile("Directives.cs", "Other.cs");
-        documents.SourceFiles.Should().Equal("Hello.cs", "Directives.cs");
+        harness.Documents.OpenDirectives();
+        harness.Documents.SourceFiles.Should().Equal("Hello.cs", "Directives.cs");
+        harness.Documents.RenameFile("Directives.cs", "Other.cs");
+        harness.Documents.SourceFiles.Should().Equal("Hello.cs", "Directives.cs");
     }
 
     [TestMethod]
     public void SetSource_MarksStaleOnce()
     {
-        var (documents, host) = Create();
-        host.Stale = false;
-        documents.SetSource("Program.cs", "class C;");
-        host.Stale.Should().BeTrue();
+        var harness = Create();
+        harness.Compilation.Value = harness.Compilation.Value with { Stale = false };
+        harness.Documents.SetSource("Program.cs", "class C;");
+        harness.Compilation.Value.Stale.Should().BeTrue();
 
-        documents.SetSource("Program.cs", "class D;");
-        documents.Sources["Program.cs"].Should().Be("class D;");
+        harness.Documents.SetSource("Program.cs", "class D;");
+        harness.Documents.Sources["Program.cs"].Should().Be("class D;");
     }
 
     [TestMethod]
     public void SetTemplate_RaisesChanged_SetSourceDoesNot()
     {
-        var (documents, _) = Create();
+        var harness = Create();
         var count = 0;
-        documents.Changed += () => count++;
+        harness.Documents.Changed += () => count++;
 
-        documents.SetSource("Program.cs", "class C;");
+        harness.Documents.SetSource("Program.cs", "class C;");
         count.Should().Be(0);
 
-        documents.SetTemplate("Razor");
+        harness.Documents.SetTemplate("Razor");
         count.Should().Be(1);
     }
 
     [TestMethod]
     public void LoadFromSavedState_InfersRazorTemplate()
     {
-        var (documents, _) = Create();
-        documents.LoadFromSavedState(SavedState.Razor);
-        documents.Template.Should().Be("Razor");
-        documents.ActiveSource.Should().Be("TestComponent.razor");
-        documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
+        var harness = Create();
+        harness.Documents.LoadFromSavedState(SavedState.Razor);
+        harness.Documents.Template.Should().Be("Razor");
+        harness.Documents.ActiveSource.Should().Be("TestComponent.razor");
+        harness.Documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
     }
 
     [TestMethod]
     public void LoadImportedFiles_ReplacesUserFiles()
     {
-        var (documents, host) = Create();
-        documents.LoadImportedFiles(new Dictionary<string, string>
+        var harness = Create();
+        harness.Documents.LoadImportedFiles(new Dictionary<string, string>
         {
             ["sub/App.cs"] = "class App;",
             [".."] = "ignored",
         });
-        documents.SourceFiles.Should().Equal("App.cs");
-        documents.Sources["App.cs"].Should().Be("class App;");
-        documents.ActiveSource.Should().Be("App.cs");
-        host.Stale.Should().BeTrue();
-        host.PersistCount.Should().Be(1);
+        harness.Documents.SourceFiles.Should().Equal("App.cs");
+        harness.Documents.Sources["App.cs"].Should().Be("class App;");
+        harness.Documents.ActiveSource.Should().Be("App.cs");
+        harness.Compilation.Value.Stale.Should().BeTrue();
+        harness.PersistCount.Should().Be(1);
     }
 
-    private static (LabDocuments Documents, FakeDocumentWorkspace Host) Create()
-    {
-        var host = new FakeDocumentWorkspace();
-        return (new LabDocuments(host), host);
-    }
+    private static Harness Create() => new();
 
-    private sealed class FakeDocumentWorkspace : IDocumentWorkspace
+    private sealed class Harness
     {
-        public string ActiveOutput { get; set; } = "cs";
-        public bool Stale { get; set; }
+        public Harness()
+        {
+            Compilation = new Store<CompilationState>(new CompilationState());
+            Output = new Store<OutputState>(new OutputState());
+            var dispatcher = new RecordingDispatcher(Compilation, Output);
+            Documents = new LabDocuments(dispatcher, Compilation, Output);
+            Documents.PersistUrlRequested += () =>
+            {
+                PersistCount++;
+                return Task.CompletedTask;
+            };
+        }
+
+        public LabDocuments Documents { get; }
+
+        public Store<CompilationState> Compilation { get; }
+
+        public Store<OutputState> Output { get; }
+
         public int PersistCount { get; private set; }
-        public Task? LastAfterDocumentsChanged { get; private set; }
+    }
 
-        public void EnsureActiveOutput()
+    private sealed class Store<T>(T value) : IState<T>
+    {
+        public T Value { get; set; } = value;
+
+        public event EventHandler StateChanged
         {
+            add { }
+            remove { }
+        }
+    }
+
+    private sealed class RecordingDispatcher(Store<CompilationState> compilation, Store<OutputState> output) : IDispatcher
+    {
+        public event EventHandler<ActionDispatchedEventArgs> ActionDispatched
+        {
+            add { }
+            remove { }
         }
 
-        public void Notify()
+        public void Dispatch(object action)
         {
-        }
-
-        public Task AfterDocumentsChangedAsync(IReadOnlyList<string> before)
-        {
-            LastAfterDocumentsChanged = Task.CompletedTask;
-            _ = before;
-            return LastAfterDocumentsChanged;
-        }
-
-        public Task PersistUrlAsync(bool snapshot = false)
-        {
-            PersistCount++;
-            return Task.CompletedTask;
-        }
-
-        public void AfterActiveSourceChanged()
-        {
-            PersistCount++;
-        }
-
-        public void PublishDocumentMetadata()
-        {
+            if (action is SetStaleAction stale)
+            {
+                compilation.Value = compilation.Value with { Stale = stale.Value };
+            }
+            else if (action is SetActiveOutputAction active)
+            {
+                output.Value = OutputReducers.Reduce(output.Value, active);
+            }
         }
     }
 }

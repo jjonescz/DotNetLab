@@ -1,22 +1,44 @@
 using DotNetLab.Editor.LanguageServices;
+using DotNetLab.Features.Compilation;
+using DotNetLab.Features.Outputs;
 using DotNetLab.Lab;
+using Fluxor;
 
 namespace DotNetLab.Features.Documents;
 
 public sealed class LabDocuments
 {
-    private readonly IDocumentWorkspace _state;
-    private readonly LabLanguageSession? _language;
+    private readonly IDispatcher _dispatcher;
+    private readonly IState<CompilationState> _compilation;
+    private readonly IState<OutputState> _output;
+    private readonly Lazy<LabLanguageSession>? _language;
+    private readonly Lazy<OutputTabLayout>? _tabs;
+    private readonly Lazy<OutputSession>? _outputs;
+    private readonly Lazy<CompilationSession>? _compilationSession;
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
 
-    internal LabDocuments(IDocumentWorkspace state, LabLanguageSession? language = null)
+    internal LabDocuments(
+        IDispatcher dispatcher,
+        IState<CompilationState> compilation,
+        IState<OutputState> output,
+        Lazy<LabLanguageSession>? language = null,
+        Lazy<OutputTabLayout>? tabs = null,
+        Lazy<OutputSession>? outputs = null,
+        Lazy<CompilationSession>? compilationSession = null)
     {
-        _state = state;
+        _dispatcher = dispatcher;
+        _compilation = compilation;
+        _output = output;
         _language = language;
+        _tabs = tabs;
+        _outputs = outputs;
+        _compilationSession = compilationSession;
         EnsureUri(InitialCode.CSharp.SuggestedFileName);
     }
 
     public event Action? Changed;
+
+    public event Func<Task>? PersistUrlRequested;
 
     public string Template { get; private set; } = "C#";
     public string ActiveSource { get; set; } = "Program.cs";
@@ -111,19 +133,17 @@ public sealed class LabDocuments
             ActiveSource = "Program.cs";
         }
 
-        _state.ActiveOutput = template is "Razor" or "CSHTML" ? "gcs" : "cs";
-        _state.Stale = true;
-        _state.EnsureActiveOutput();
+        SetActiveOutput(template is "Razor" or "CSHTML" ? "gcs" : "cs");
+        Stale = true;
+        EnsureActiveOutput();
         Notify();
         AfterChanged(before);
     }
 
     private void AfterChanged(IReadOnlyList<string> before)
     {
-        _ = _language is not null
-            ? _language.AfterDocumentsChangedAsync(before)
-            : _state.AfterDocumentsChangedAsync(before);
-        _ = _state.PersistUrlAsync();
+        _ = _language?.Value.AfterDocumentsChangedAsync(before) ?? Task.CompletedTask;
+        _ = RequestPersistUrlAsync();
     }
 
     private static (string Name, string Contents)[] FilesFor(string template)
@@ -147,12 +167,12 @@ public sealed class LabDocuments
     public void SetSource(string file, string contents)
     {
         _sources[file] = contents;
-        if (_state.Stale)
+        if (Stale)
         {
             return;
         }
 
-        _state.Stale = true;
+        Stale = true;
     }
 
     public void RenameFile(string oldName, string newName)
@@ -181,10 +201,10 @@ public sealed class LabDocuments
         if (string.Equals(ActiveSource, oldName, StringComparison.Ordinal))
         {
             ActiveSource = normalized;
-            _state.EnsureActiveOutput();
+            EnsureActiveOutput();
         }
 
-        _state.Stale = true;
+        Stale = true;
         Notify();
         AfterChanged(before);
     }
@@ -222,10 +242,10 @@ public sealed class LabDocuments
         if (ActiveSource == file)
         {
             ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
-            _state.EnsureActiveOutput();
+            EnsureActiveOutput();
         }
 
-        _state.Stale = true;
+        Stale = true;
         Notify();
         AfterChanged(before);
     }
@@ -257,8 +277,8 @@ public sealed class LabDocuments
         _sources[name] = contents;
         EnsureUri(name);
         ActiveSource = name;
-        _state.EnsureActiveOutput();
-        _state.Stale = true;
+        EnsureActiveOutput();
+        Stale = true;
         Notify();
         AfterChanged(before);
     }
@@ -278,11 +298,11 @@ public sealed class LabDocuments
             InsertSpecialFile(fileName);
             _sources[fileName] = contents;
             EnsureUri(fileName);
-            _state.Stale = true;
+            Stale = true;
         }
 
         ActiveSource = fileName;
-        _state.EnsureActiveOutput();
+        EnsureActiveOutput();
         Notify();
         AfterChanged(before);
     }
@@ -365,8 +385,8 @@ public sealed class LabDocuments
         }
 
         ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
-        _state.EnsureActiveOutput();
-        _state.Stale = true;
+        EnsureActiveOutput();
+        Stale = true;
         Notify();
         AfterChanged(before);
     }
@@ -379,14 +399,12 @@ public sealed class LabDocuments
         }
 
         ActiveSource = file;
-        _state.EnsureActiveOutput();
+        EnsureActiveOutput();
         Notify();
-        if (_language is not null)
-        {
-            _ = _language.SyncAsync();
-        }
-
-        _state.AfterActiveSourceChanged();
+        _ = _language?.Value.SyncAsync() ?? Task.CompletedTask;
+        _compilationSession?.Value.RefreshTemporaryErrorList();
+        _ = _outputs?.Value.LoadDisplayedAsync() ?? Task.CompletedTask;
+        _ = RequestPersistUrlAsync();
     }
 
     public void LoadFromSavedState(SavedState state)
@@ -466,33 +484,66 @@ public sealed class LabDocuments
                 ? "CSHTML"
                 : "C#";
 
-        _state.EnsureActiveOutput();
+        EnsureActiveOutput();
         Notify();
     }
 
     private void Notify()
     {
-        _state.PublishDocumentMetadata();
+        _dispatcher.Dispatch(new SetDocumentMetadataAction(
+            Template,
+            ActiveSource,
+            [.. SourceFiles]));
         Changed?.Invoke();
-        _state.Notify();
     }
-}
 
-internal interface IDocumentWorkspace
-{
-    string ActiveOutput { get; set; }
+    private bool Stale
+    {
+        get => _compilation.Value.Stale;
+        set => _dispatcher.Dispatch(new SetStaleAction(value));
+    }
 
-    bool Stale { get; set; }
+    private void SetActiveOutput(string type)
+    {
+        if (_outputs is not null)
+        {
+            var dismiss = _outputs.Value.DismissTemporaryErrorList();
+            if (string.Equals(_output.Value.ActiveOutput, type, StringComparison.Ordinal))
+            {
+                if (dismiss)
+                {
+                    Notify();
+                }
 
-    void EnsureActiveOutput();
+                return;
+            }
 
-    void Notify();
+            _dispatcher.Dispatch(new SetActiveOutputAction(type));
+            _ = _outputs.Value.EnsureOutputLoadedAsync(type);
+            return;
+        }
 
-    Task AfterDocumentsChangedAsync(IReadOnlyList<string> before);
+        _dispatcher.Dispatch(new SetActiveOutputAction(type));
+    }
 
-    Task PersistUrlAsync(bool snapshot = false);
+    private void EnsureActiveOutput() => _tabs?.Value.EnsureActiveOutput();
 
-    void AfterActiveSourceChanged();
+    private Task RequestPersistUrlAsync()
+    {
+        var handlers = PersistUrlRequested;
+        if (handlers is null)
+        {
+            return Task.CompletedTask;
+        }
 
-    void PublishDocumentMetadata();
+        return InvokeHandlersAsync(handlers);
+    }
+
+    private static async Task InvokeHandlersAsync(Func<Task> handlers)
+    {
+        foreach (var handler in handlers.GetInvocationList())
+        {
+            await ((Func<Task>)handler)();
+        }
+    }
 }

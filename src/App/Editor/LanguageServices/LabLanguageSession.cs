@@ -15,13 +15,13 @@ public sealed class LabLanguageSession(
     IDispatcher dispatcher,
     IState<PreferencesState> preferences,
     IState<CompilerState> compiler,
-    Lazy<LabDocuments> documents,
+    LabDocuments documents,
     Lazy<CompilationSession> compilation,
     Lazy<OutputSession> outputs)
 {
     private Task? _languageInit;
 
-    private LabDocuments Documents => documents.Value;
+    private LabDocuments Documents => documents;
 
     private CompilationSession Compilation => compilation.Value;
 

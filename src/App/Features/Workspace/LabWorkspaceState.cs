@@ -13,7 +13,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Workspace;
 
-public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IOutputSessionHost, ICompilationWorkspace, IAsyncDisposable
+public sealed class LabWorkspaceState : IOutputWorkspace, IOutputSessionHost, ICompilationWorkspace, IAsyncDisposable
 {
     private readonly WorkerHost _worker;
     private readonly LabLanguageSession _language;
@@ -42,7 +42,8 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         IState<OutputState> output,
         IDispatcher dispatcher,
         ILogger<LabWorkspaceState> logger,
-        ICompilerOutputPlugin outputPlugin)
+        ICompilerOutputPlugin outputPlugin,
+        LabDocuments documents)
     {
         _worker = worker;
         _language = language;
@@ -53,7 +54,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         _options = options;
         _output = output;
         _dispatcher = dispatcher;
-        Documents = new LabDocuments(this, language);
+        Documents = documents;
         Tabs = new OutputTabLayout(this);
         Outputs = new OutputSession(this, outputPlugin);
         Compilation = new CompilationSession(
@@ -67,6 +68,8 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             dispatcher,
             logger,
             language);
+        Documents.Changed += Notify;
+        Documents.PersistUrlRequested += PersistDocumentsUrlAsync;
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -114,6 +117,8 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
     public async ValueTask DisposeAsync()
     {
         Unsubscribe();
+        Documents.Changed -= Notify;
+        Documents.PersistUrlRequested -= PersistDocumentsUrlAsync;
         await _persistence.DisposeAsync();
         await Compilation.DisposeAsync();
     }
@@ -265,7 +270,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
 
     public Task PersistOutputTabsAsync() => _persistence.EnqueueAsync(PersistKind.OutputTabs);
 
-    void IDocumentWorkspace.EnsureActiveOutput() => Tabs.EnsureActiveOutput();
+    private Task PersistDocumentsUrlAsync() => PersistUrlAsync();
 
     public Task SnapshotEditorsAsync() => InvokeHandlersAsync(SnapshotRequested);
 
@@ -416,12 +421,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
 
     private PreferencesState Preferences => _preferences.Value;
 
-    bool IDocumentWorkspace.Stale
-    {
-        get => _compilation.Value.Stale;
-        set => _dispatcher.Dispatch(new SetStaleAction(value));
-    }
-
     bool IOutputSessionHost.Running => _compilation.Value.Running;
 
     public CompilationInput CreateCompilationInput()
@@ -474,24 +473,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             {
                 Id = _worker.NextMessageId(),
             });
-    }
-
-    Task IDocumentWorkspace.AfterDocumentsChangedAsync(IReadOnlyList<string> before)
-        => _language.AfterDocumentsChangedAsync(before);
-
-    void IDocumentWorkspace.AfterActiveSourceChanged()
-    {
-        Compilation.RefreshTemporaryErrorList();
-        _ = Outputs.LoadDisplayedAsync();
-        _ = PersistUrlAsync();
-    }
-
-    void IDocumentWorkspace.PublishDocumentMetadata()
-    {
-        _dispatcher.Dispatch(new SetDocumentMetadataAction(
-            Documents.Template,
-            Documents.ActiveSource,
-            [.. Documents.SourceFiles]));
     }
 
     private static async Task InvokeHandlersAsync(Func<Task>? handlers)
