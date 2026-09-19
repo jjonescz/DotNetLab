@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @returns {WorkerSetup}
  */
 export function createWorker(scriptUrl, messageHandler, errorHandler) {

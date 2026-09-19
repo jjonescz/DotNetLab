@@ -1,0 +1,82 @@
+@inject LabUrlSync Urls
+
+<FluentDialog @ref="_dialog" Class="lab-paste-dialog" Modal="true" OnStateChange="OnDialogStateChange">
+    <FluentDialogBody>
+        <TitleTemplate>Load from URL</TitleTemplate>
+        <TitleActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          Size="ButtonSize.Small"
+                          IconOnly="true"
+                          Title="Close"
+                          IconStart="@(new Icons.Regular.Size20.Dismiss())"
+                          OnClick="HideAsync" />
+        </TitleActionTemplate>
+        <ActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HideAsync">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" Disabled="@string.IsNullOrWhiteSpace(_text)" OnClick="LoadAsync">Load</FluentButton>
+        </ActionTemplate>
+        <ChildContent>
+            <div class="lab-paste-body">
+                <p class="lab-setting-hint">Paste a .NET Lab link.</p>
+                <FluentTextArea @bind-Value="_text"
+                                Rows="3"
+                                AriaLabel="URL"
+                                Placeholder="https://…#…" />
+            </div>
+        </ChildContent>
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private FluentDialog? _dialog;
+    private string _text = "";
+    private bool _hiding;
+
+    public async Task ShowAsync()
+    {
+        if (_dialog is null)
+        {
+            return;
+        }
+
+        _text = "";
+        try
+        {
+            await _dialog.ShowAsync();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    public async Task HideAsync()
+    {
+        if (_dialog is null || _hiding)
+        {
+            return;
+        }
+
+        _hiding = true;
+        try
+        {
+            await _dialog.HideAsync();
+        }
+        catch (JSException)
+        {
+        }
+        finally
+        {
+            _hiding = false;
+        }
+    }
+
+    private Task OnDialogStateChange(DialogEventArgs args)
+        => args.State == DialogState.Closed ? HideAsync() : Task.CompletedTask;
+
+    private async Task LoadAsync()
+    {
+        var text = _text;
+        await HideAsync();
+        await Urls.ApplySlugOrUrlAsync(text);
+    }
+}

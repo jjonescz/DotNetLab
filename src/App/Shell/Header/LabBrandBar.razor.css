@@ -1,0 +1,64 @@
+.lab-brand-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    min-width: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    background: var(--lab-brand);
+    color: var(--lab-brand-foreground);
+    border-bottom: 1px solid color-mix(in srgb, var(--lab-brand-foreground) 18%, transparent);
+    scrollbar-color: color-mix(in srgb, var(--lab-brand-foreground) 42%, transparent) transparent;
+}
+
+.lab-brand-bar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.lab-brand-bar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--lab-brand-foreground) 42%, transparent);
+}
+
+.lab-brand-bar ::deep > * {
+    flex-shrink: 0;
+}
+
+.lab-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.lab-brand-mark {
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.lab-brand-mark img {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: block;
+    object-fit: contain;
+}
+
+.lab-vsep {
+    width: 1px;
+    height: 1rem;
+    background: color-mix(in srgb, var(--lab-brand-foreground) 25%, transparent);
+    flex-shrink: 0;
+}
+
+.lab-brand-share {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}

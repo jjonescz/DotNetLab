@@ -1,0 +1,308 @@
+@inherits FluxorComponent
+@inject LabWorkspaceState Workspace
+@inject LabThemeService Theme
+@inject IUpdateChecker Updates
+@inject IState<UpdateState> UpdateStore
+@inject IState<PreferencesState> Prefs
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+@inject IServiceProvider Services
+
+<FluentDialog @ref="_dialog" Class="lab-settings-dialog" Modal="false" OnStateChange="OnDialogStateChange">
+    <FluentDialogBody>
+        <TitleTemplate>Settings</TitleTemplate>
+        <TitleActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          Size="ButtonSize.Small"
+                          IconOnly="true"
+                          Title="Close"
+                          IconStart="@(new Icons.Regular.Size20.Dismiss())"
+                          OnClick="HideAsync" />
+        </TitleActionTemplate>
+        <ActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="HideAsync">Done</FluentButton>
+        </ActionTemplate>
+        <ChildContent>
+        <div class="lab-settings-stack">
+        <div class="lab-settings-top">
+            <PreferenceSettings>
+                    <SettingRow Title="Razor Toolchain">
+                        <FluentSelect TOption="RazorToolchain"
+                                      TValue="RazorToolchain"
+                                      Items="LabCatalog.RazorToolchainOptions"
+                                      OptionText="@(static (RazorToolchain value) => LabCatalog.RazorToolchainLabel(value))"
+                                      Value="Options.Value.RazorToolchain"
+                                      ValueChanged="SetRazorToolchain" />
+                    </SettingRow>
+                    <SettingRow Title="Razor Strategy">
+                        <FluentSelect TOption="RazorStrategy"
+                                      TValue="RazorStrategy"
+                                      Items="LabCatalog.RazorStrategyOptions"
+                                      OptionText="@(static (RazorStrategy value) => LabCatalog.RazorStrategyLabel(value))"
+                                      Value="Options.Value.RazorStrategy"
+                                      ValueChanged="SetRazorStrategy" />
+                    </SettingRow>
+            </PreferenceSettings>
+
+            <details class="lab-settings-fold lab-settings-output-tabs">
+                <summary>Output tabs</summary>
+                <div class="lab-settings-fold-body">
+                    <div class="lab-settings-output-head">
+                        <p class="lab-setting-hint">Show, hide, and reorder tabs for each file format. Error List stays on.</p>
+                        <button type="button" class="lab-settings-reset" @onclick="ResetOutputTabsAsync">Reset to default</button>
+                    </div>
+                    <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="Output tab file format">
+                        @foreach (var kind in _outputKinds)
+                        {
+                            <button type="button"
+                                    class="lab-seg-item @(_outputKind == kind.Value ? "active" : null)"
+                                    @onclick="@(() => _outputKind = kind.Value)">
+                                @kind.Label
+                            </button>
+                        }
+                    </div>
+                    <div class="lab-output-tab-list">
+                        @foreach (var tab in Workspace.Tabs.SettingsRowsFor(_outputKind))
+                        {
+                            var visible = Workspace.Tabs.IsOutputTabVisible(_outputKind, tab.Type);
+                            var locked = LabCatalog.IsOutputTabLocked(tab.Type);
+                            <div @key="@($"{tab.Type}:{visible}")" class="lab-output-tab-row @(visible ? null : "is-hidden")">
+                                <div>
+                                    <div class="lab-setting-title">@tab.Label</div>
+                                    <p class="lab-setting-hint">@tab.Type</p>
+                                </div>
+                                <div class="lab-output-tab-actions">
+                                    <FluentButton Appearance="ButtonAppearance.Subtle"
+                                                  Size="ButtonSize.Small"
+                                                  IconOnly="true"
+                                                  Title="Move up"
+                                                  AriaLabel="@($"Move {tab.Label} up")"
+                                                  Disabled="@(!Workspace.Tabs.CanMoveOutputTab(_outputKind, tab.Type, -1))"
+                                                  IconStart="@(new Icons.Regular.Size16.ChevronUp())"
+                                                  OnClick="@(() => MoveOutputTabAsync(tab.Type, -1))" />
+                                    <FluentButton Appearance="ButtonAppearance.Subtle"
+                                                  Size="ButtonSize.Small"
+                                                  IconOnly="true"
+                                                  Title="Move down"
+                                                  AriaLabel="@($"Move {tab.Label} down")"
+                                                  Disabled="@(!Workspace.Tabs.CanMoveOutputTab(_outputKind, tab.Type, 1))"
+                                                  IconStart="@(new Icons.Regular.Size16.ChevronDown())"
+                                                  OnClick="@(() => MoveOutputTabAsync(tab.Type, 1))" />
+                                    <FluentSwitch Value="@visible"
+                                                  ValueChanged="@(value => SetOutputTabVisibleAsync(tab.Type, value))"
+                                                  Disabled="@locked"
+                                                  AriaLabel="@($"Show {tab.Label}")" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <CompilerSettings />
+
+        <div class="lab-settings-about">
+            <div>
+                <p class="lab-settings-kicker">App theme</p>
+                <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="App theme">
+                    @foreach (var theme in _themes)
+                    {
+                        <button type="button"
+                                class="lab-seg-item @(Prefs.Value.AppTheme == theme.Value ? "active" : null)"
+                                @onclick="@(() => OnThemeChangedAsync(theme.Value))">
+                            @theme.Label
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <p class="lab-settings-identity">
+                @if (!string.IsNullOrEmpty(LabIdentity.Commit))
+                {
+                    <a class="lab-sdk-summary-versions"
+                       href="@($"{LabLinks.Repository}/commit/{LabIdentity.Commit}")"
+                       target="_blank"
+                       rel="noopener noreferrer">@LabIdentity.Commit</a>
+                    <span aria-hidden="true"> · </span>
+                }
+                @if (!string.IsNullOrEmpty(LabIdentity.Date))
+                {
+                    <span>@LabIdentity.Date</span>
+                    <span aria-hidden="true"> · </span>
+                }
+                <a href="@LabLinks.Repository" target="_blank" rel="noopener noreferrer">GitHub</a>
+                @if (UpdateStore.Value.Enabled && !UpdateStore.Value.Checking)
+                {
+                    <span aria-hidden="true"> · </span>
+                    <button type="button" @onclick="CheckForUpdates">Check for updates</button>
+                }
+                else if (UpdateStore.Value.Checking)
+                {
+                    <span aria-hidden="true"> · </span>
+                    <span>Checking…</span>
+                }
+            </p>
+
+            @if (Updates.LoadUpdate is { } loadUpdate)
+            {
+                <div class="lab-update">
+                    <span>Update available</span>
+                    <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" OnClick="() => LoadUpdateAsync(loadUpdate)">Reload</FluentButton>
+                    <a href="@LabLinks.Releases" target="_blank" rel="noopener noreferrer">Release notes</a>
+                </div>
+            }
+            else if (UpdateStore.Value.Downloading)
+            {
+                <div class="lab-update">
+                    <span>An update is being downloaded in the background.</span>
+                </div>
+            }
+            else if (UpdateStore.Value.CheckCompleted)
+            {
+                <div class="lab-update">
+                    <span>No update found.</span>
+                </div>
+            }
+
+            <a class="lab-native-apps"
+               href="@(Store?.Url ?? LabLinks.NativeApps)"
+               target="_blank"
+               rel="noopener noreferrer"
+               @onclick="OnStoreClick"
+               @onclick:preventDefault="Store?.OnClick is not null">
+                <span>
+                    <span class="lab-setting-title">@(Store?.Title ?? "Native apps")</span>
+                    <p class="lab-setting-hint">@(Store?.Description ?? "Faster .NET Lab running on full .NET.")</p>
+                </span>
+                <span class="lab-native-apps-chevron" aria-hidden="true">›</span>
+            </a>
+        </div>
+        </div>
+        </ChildContent>
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private static readonly (string Value, string Label)[] _themes =
+    [
+        ("system", "System"),
+        ("light", "Light"),
+        ("dark", "Dark")
+    ];
+
+    private static readonly (OutputFileKind Value, string Label)[] _outputKinds =
+    [
+        (OutputFileKind.Cs, "C#"),
+        (OutputFileKind.Razor, "Razor"),
+        (OutputFileKind.Cshtml, "CSHTML")
+    ];
+
+    private FluentDialog? _dialog;
+    private bool _hiding;
+    private OutputFileKind _outputKind = OutputFileKind.Cs;
+    private IStoreLink? Store => Services.GetService<IStoreLink>();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Workspace.Tabs.Changed += OnTabsChanged;
+    }
+
+    private void OnTabsChanged() => InvokeAsync(StateHasChanged);
+
+    private void SetRazorToolchain(RazorToolchain value)
+        => Dispatcher.Dispatch(new SetRazorToolchainAction(value));
+
+    private void SetRazorStrategy(RazorStrategy value)
+        => Dispatcher.Dispatch(new SetRazorStrategyAction(value));
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Workspace.Tabs.Changed -= OnTabsChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+
+    public async Task ShowAsync()
+    {
+        if (_dialog is null)
+        {
+            return;
+        }
+
+        _outputKind = LabCatalog.OutputKindFor(Workspace.Documents.ActiveSource);
+        Dispatcher.Dispatch(new EnsureSdkVersionsAction());
+        try
+        {
+            await _dialog.ShowAsync();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    public async Task HideAsync()
+    {
+        if (_dialog is null || _hiding)
+        {
+            return;
+        }
+
+        _hiding = true;
+        try
+        {
+            await _dialog.HideAsync();
+        }
+        catch (JSException)
+        {
+        }
+        finally
+        {
+            _hiding = false;
+        }
+    }
+
+    private Task OnDialogStateChange(DialogEventArgs args)
+    {
+        return args.State == DialogState.Closed ? HideAsync() : Task.CompletedTask;
+    }
+
+    private Task OnThemeChangedAsync(string theme) => Theme.SetPreferenceAsync(theme);
+
+    private async Task SetOutputTabVisibleAsync(string type, bool visible)
+    {
+        Workspace.Tabs.SetOutputTabVisible(_outputKind, type, visible);
+        await PersistOutputTabsAsync();
+    }
+
+    private async Task MoveOutputTabAsync(string type, int delta)
+    {
+        Workspace.Tabs.MoveOutputTab(_outputKind, type, delta);
+        await PersistOutputTabsAsync();
+    }
+
+    private async Task ResetOutputTabsAsync()
+    {
+        Workspace.Tabs.ResetOutputTabs(_outputKind);
+        await PersistOutputTabsAsync();
+    }
+
+    private async Task PersistOutputTabsAsync()
+    {
+        await Workspace.PersistOutputTabsAsync();
+    }
+
+    private void CheckForUpdates() => Dispatcher.Dispatch(new CheckUpdatesAction());
+
+    private void OnStoreClick() => Store?.OnClick?.Invoke();
+
+    private async Task LoadUpdateAsync(Action loadUpdate)
+    {
+        await Workspace.PersistUrlAsync();
+        loadUpdate();
+    }
+}

@@ -1,0 +1,15 @@
+.lab-editor {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.lab-editor ::deep .monaco-editor-container {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: auto !important;
+}

@@ -1,57 +1,790 @@
 :root {
-    /* Keep in sync with `AppColors` in `Constants.cs`. */
-    --custom-light: #B399C8;
-    --custom-dark: #8967AA;
+    --lab-background: #150f1d;
+    --lab-foreground: #ede8f5;
+    --lab-panel: #1d1526;
+    --lab-panel-raised: #251c31;
+    --lab-hairline: #786099;
+    --lab-brand: #6e4a9e;
+    --lab-brand-foreground: #f7f1fc;
+    --lab-primary: #845db8;
+    --lab-primary-hover: color-mix(in srgb, var(--lab-primary) 82%, black);
+    --lab-on-primary: #ffffff;
+    --lab-accent-text: #c8a4f7;
+    --lab-success: #6ecf97;
+    --lab-danger: #e36b6b;
+    --lab-warning: #f0c987;
+    --lab-muted: #8e839c;
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-foreground);
+    --colorNeutralForeground3: var(--lab-muted);
+    --lab-shadow: 0 12px 32px rgba(21, 15, 29, 0.55);
+    --lab-error-bar: #3a2030;
+    --font-display: "Sora", sans-serif;
+    --font-body: "Manrope", sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+    color-scheme: dark;
 }
 
-/*
-    FluentUI sets `data-theme` attribute on `body` when it's loaded from preferences.
-    But at the beginning when there are no preferences, we need to set this default.
-*/
-body:not([data-theme]) {
-    color-scheme: dark light;
+html[data-theme="light"] {
+    --lab-background: #f4eef8;
+    --lab-foreground: #1d1526;
+    --lab-panel: #fbf8fd;
+    --lab-panel-raised: #ffffff;
+    --lab-hairline: #9a7ebe;
+    --lab-primary: #6e4a9e;
+    --lab-accent-text: #6e4a9e;
+    --lab-success: #258253;
+    --lab-danger: #c44d4d;
+    --lab-warning: #926418;
+    --lab-muted: #6b5f78;
+    --lab-shadow: 0 12px 32px rgba(29, 21, 38, 0.16);
+    --lab-error-bar: #f3d6d6;
+    color-scheme: light;
 }
 
-.lab-header {
-    background-color: light-dark(var(--custom-light), var(--custom-dark)) !important;
-}
-
-    .lab-header > .header-gutters {
-        display: flex !important;
-        flex-flow: row wrap;
-        justify-content: space-between;
-        column-gap: 0.5rem;
-        row-gap: 0.5rem;
-    }
-
-        .lab-header > .header-gutters > div {
-            display: flex;
-            flex-flow: row wrap;
-            justify-content: center;
-            align-items: center;
-            column-gap: 0.5rem;
-            row-gap: 0.5rem;
-        }
-
-html, body {
-    --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
-    font-family: var(--body-font);
-    font-size: var(--type-ramp-base-font-size);
-    line-height: var(--type-ramp-base-line-height);
+html, body, #app {
     height: 100%;
-    /* Prevent scrollbar flashes during Monaco Editor resizes. */
+    margin: 0;
     overflow: hidden;
 }
 
-body {
+html, body {
+    background-color: var(--lab-background);
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+}
+
+fluent-menu {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Fluent menus and listboxes share the Monaco context-menu chrome. */
+fluent-menu-list[popover] {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralBackground1Hover: var(--lab-hairline);
+    --colorNeutralForeground1Hover: var(--lab-foreground);
+    --colorSubtleBackgroundHover: var(--lab-hairline);
+    --colorNeutralBackground1Pressed: var(--lab-hairline);
+    --colorNeutralForeground2: var(--lab-muted);
+    --colorNeutralStroke2: var(--lab-hairline);
+    --shadow16: var(--lab-shadow);
+    --borderRadiusMedium: 0;
+    background: var(--lab-panel-raised) !important;
+    color: var(--lab-foreground) !important;
+    border: 1px solid var(--lab-hairline) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--lab-shadow) !important;
+    padding: 4px !important;
+    font-family: var(--font-body) !important;
+    overflow: visible;
+    align-items: stretch;
+    width: max-content !important;
+    min-width: max-content !important;
+    max-width: min(32rem, calc(100vw - 1.5rem)) !important;
+}
+
+fluent-listbox[popover] {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralBackground1Hover: var(--lab-hairline);
+    --colorNeutralForeground1Hover: var(--lab-foreground);
+    --colorSubtleBackgroundHover: var(--lab-hairline);
+    --colorNeutralBackground1Pressed: var(--lab-hairline);
+    --colorNeutralForeground2: var(--lab-muted);
+    --colorNeutralStroke2: var(--lab-hairline);
+    --shadow16: var(--lab-shadow);
+    --borderRadiusMedium: 0;
+    background: var(--lab-panel-raised) !important;
+    color: var(--lab-foreground) !important;
+    border: 1px solid var(--lab-hairline) !important;
+    border-radius: 0 !important;
+    box-shadow: var(--lab-shadow) !important;
+    padding: 4px !important;
+    font-family: var(--font-body) !important;
+    overflow: auto;
+    box-sizing: border-box;
+    align-items: stretch;
+    /* Match Fluent's anchor, then grow to the trigger so options fill the select. */
+    min-inline-size: max(max-content, anchor-size(inline)) !important;
+    inline-size: max(max-content, anchor-size(inline)) !important;
+    max-inline-size: min(46rem, calc(100vw - 1.5rem)) !important;
+}
+
+fluent-listbox[popover] fluent-option {
+    align-self: stretch !important;
+    inline-size: 100% !important;
+    min-inline-size: 100% !important;
+    width: 100% !important;
+}
+
+fluent-menu-item,
+fluent-option {
+    background: transparent !important;
+    color: var(--lab-foreground) !important;
+    font-family: var(--font-body) !important;
+    font-size: 12px !important;
+    border-radius: 0 !important;
+    box-sizing: border-box;
+    align-self: stretch;
+    width: 100% !important;
+    min-width: 0;
+    overflow: visible !important;
+    text-align: start;
+    justify-items: start;
+}
+
+fluent-menu-item {
+    height: 2em !important;
+    /* Icon | label | leftover | end. max-content on the label so the popover
+       shrink-wraps to the longest item instead of clipping it in a 1fr column. */
+    grid-template-columns: 24px max-content 1fr 8px !important;
+    justify-items: start !important;
+    width: max-content !important;
+    min-width: 100%;
+}
+
+fluent-menu-item:hover,
+fluent-menu-item:focus-visible,
+fluent-menu-item:state(checked):hover,
+fluent-option:hover,
+fluent-option:focus-visible {
+    background: var(--lab-hairline) !important;
+    color: var(--lab-foreground) !important;
+}
+
+fluent-menu-item:state(checked),
+fluent-option:state(selected),
+fluent-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--lab-primary) 22%, transparent) !important;
+    color: var(--lab-foreground) !important;
+}
+
+fluent-menu-item:focus-visible,
+fluent-option:focus-visible {
+    outline: 2px solid var(--lab-primary) !important;
+    outline-offset: -2px;
+}
+
+fluent-menu-item::part(content) {
+    grid-column: 2 !important;
+    min-width: max-content;
+    width: auto;
+    justify-self: start;
+    text-align: start;
+    overflow: visible;
+    white-space: nowrap;
+    font-family: var(--font-body);
+}
+
+fluent-menu-list fluent-divider {
+    display: block;
+    align-self: stretch;
+    width: auto;
+    min-width: 100%;
+    margin: 4px 0;
+    padding: 0;
+}
+
+fluent-menu-list fluent-divider::before,
+fluent-menu-list fluent-divider::after {
+    background: var(--lab-hairline) !important;
+}
+
+fluent-dropdown {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralStroke1Hover: var(--lab-primary);
+    --borderRadiusMedium: 0;
+    --borderRadiusLarge: 0;
+}
+
+fluent-dialog:not(:defined) {
+    display: none;
+}
+
+fluent-dialog {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel);
+    --colorNeutralBackground2: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-muted);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralStroke2: var(--lab-hairline);
+    --colorBrandBackground: var(--lab-primary);
+    --colorBrandBackgroundHover: var(--lab-primary-hover);
+    --colorBrandForeground1: var(--lab-accent-text);
+    --colorCompoundBrandBackground: var(--lab-primary);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
+    --colorCompoundBrandBackgroundPressed: var(--lab-brand);
+    --colorCompoundBrandStroke: var(--lab-primary);
+    --colorStrokeFocus2: var(--lab-primary);
+    --colorNeutralBackground1Hover: var(--lab-hairline);
+    --colorSubtleBackgroundHover: var(--lab-hairline);
+    --borderRadiusMedium: 0;
+    --borderRadiusLarge: 0;
+    --shadow16: var(--lab-shadow);
+    --dialog-backdrop: rgb(0 0 0 / 28%);
+    font-family: var(--font-body);
+    color: var(--lab-foreground);
+}
+
+fluent-dialog::part(dialog) {
+    background: var(--lab-panel);
+    color: var(--lab-foreground);
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    box-shadow: var(--lab-shadow);
+    font-family: var(--font-body);
+}
+
+fluent-dialog.lab-settings-dialog::part(dialog),
+fluent-dialog.lab-paste-dialog::part(dialog) {
     display: flex;
     flex-direction: column;
+    border-radius: 0;
+    overflow: hidden;
+}
+
+fluent-dialog.lab-settings-dialog::part(dialog) {
+    width: min(46rem, calc(100vw - 1.5rem)) !important;
+    max-width: min(46rem, calc(100vw - 1.5rem)) !important;
+    height: min(52rem, calc(100vh - 2.5rem));
+    max-height: min(52rem, calc(100vh - 2.5rem));
+}
+
+fluent-dialog.lab-paste-dialog::part(dialog) {
+    width: min(28rem, calc(100vw - 1.5rem)) !important;
+    max-width: min(28rem, calc(100vw - 1.5rem)) !important;
+    height: fit-content !important;
+    max-height: min(80vh, calc(100vh - 2.5rem));
+    min-height: 0 !important;
+}
+
+fluent-dialog.lab-settings-dialog fluent-dialog-body {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+}
+
+fluent-dialog.lab-paste-dialog fluent-dialog-body {
+    display: grid !important;
+    grid-template-rows: auto auto auto !important;
+    height: auto;
+    flex: none;
+}
+
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(title),
+fluent-dialog.lab-paste-dialog fluent-dialog-body::part(title) {
+    border-bottom: 0;
+    padding: 1.15rem 1.25rem 0.15rem;
+    font-size: 18px;
+    font-weight: 700;
+    position: static;
+}
+
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(content),
+fluent-dialog.lab-paste-dialog fluent-dialog-body::part(content) {
+    padding: 1.15rem 1.25rem 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.85rem;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lab-hairline) transparent;
+}
+
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(actions),
+fluent-dialog.lab-paste-dialog fluent-dialog-body::part(actions) {
+    border-top: 1px solid var(--lab-hairline);
+    padding: 0.75rem 1.1rem 1rem;
+    justify-content: flex-end;
+    position: static;
+    margin: 0;
+}
+
+.lab-settings-dialog fluent-button,
+.lab-settings-dialog fluent-anchor-button,
+.lab-settings-dialog fluent-select,
+.lab-settings-dialog fluent-dropdown,
+.lab-settings-dialog fluent-text-input,
+.lab-settings-dialog fluent-textarea,
+.lab-paste-dialog fluent-button,
+.lab-paste-dialog fluent-anchor-button,
+.lab-paste-dialog fluent-select,
+.lab-paste-dialog fluent-dropdown,
+.lab-paste-dialog fluent-text-input,
+.lab-paste-dialog fluent-textarea {
+    --borderRadiusSmall: 0;
+    --borderRadiusMedium: 0;
+    --borderRadiusLarge: 0;
+    border-radius: 0;
+}
+
+fluent-dialog-body {
+    background: var(--lab-panel);
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+}
+
+fluent-dialog-body::part(title) {
+    background: var(--lab-panel);
+    color: var(--lab-foreground);
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--lab-hairline);
+}
+
+fluent-dialog-body::part(content) {
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+}
+
+fluent-dialog-body::part(actions) {
+    background: var(--lab-panel);
+    border-top: 1px solid var(--lab-hairline);
+}
+
+fluent-dialog fluent-accordion,
+fluent-dialog fluent-accordion-item,
+fluent-dialog fluent-radio,
+fluent-dialog fluent-radio-group,
+fluent-dialog fluent-text-input,
+fluent-dialog fluent-select,
+fluent-dialog fluent-dropdown,
+fluent-dialog fluent-divider,
+fluent-dialog fluent-badge,
+fluent-dialog fluent-link {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralBackground3: var(--lab-panel);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-muted);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralStroke2: var(--lab-hairline);
+    --colorBrandForeground1: var(--lab-accent-text);
+    --colorCompoundBrandBackground: var(--lab-primary);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
+    --colorCompoundBrandStroke: var(--lab-primary);
+    --borderRadiusMedium: 0;
+}
+
+fluent-dialog fluent-accordion-item {
+    background: transparent;
+    border: 1px solid var(--lab-hairline);
+}
+
+fluent-dialog fluent-divider::before,
+fluent-dialog fluent-divider::after {
+    background: var(--lab-hairline) !important;
+}
+
+.lab-brand-bar fluent-button,
+.lab-brand-bar fluent-menu-button {
+    color: var(--lab-brand-foreground);
+    --colorNeutralForeground1: var(--lab-brand-foreground);
+    --colorNeutralForeground2: var(--lab-brand-foreground);
+    --colorNeutralForeground3: var(--lab-brand-foreground);
+    --colorNeutralForeground1Hover: var(--lab-brand-foreground);
+    --colorNeutralForeground2Hover: var(--lab-brand-foreground);
+    --colorNeutralForeground2BrandHover: var(--lab-brand-foreground);
+}
+
+fluent-checkbox,
+fluent-switch {
+    --colorCompoundBrandBackground: var(--lab-primary);
+    --colorCompoundBrandBackgroundHover: var(--lab-primary-hover);
+    --colorCompoundBrandBackgroundPressed: var(--lab-brand);
+    --colorCompoundBrandStroke: var(--lab-primary);
+    --colorCompoundBrandStrokeHover: var(--lab-primary-hover);
+    --colorBrandBackground: var(--lab-primary);
+}
+
+html:not([data-theme="light"]) fluent-checkbox,
+html:not([data-theme="light"]) fluent-switch {
+    --colorNeutralForegroundInverted: var(--lab-brand-foreground);
+}
+
+fluent-button,
+fluent-menu-button,
+fluent-anchor-button,
+fluent-dropdown,
+fluent-select {
+    --colorSubtleBackgroundHover: var(--lab-hairline);
+    --colorSubtleBackgroundPressed: color-mix(in srgb, var(--lab-primary) 28%, var(--lab-panel-raised));
+    --colorTransparentBackgroundHover: color-mix(in srgb, var(--lab-brand-foreground) 16%, transparent);
+    --colorTransparentBackgroundPressed: color-mix(in srgb, var(--lab-brand-foreground) 24%, transparent);
+    --colorNeutralBackground1Hover: var(--lab-hairline);
+    --colorNeutralBackground1Pressed: color-mix(in srgb, var(--lab-primary) 28%, var(--lab-panel-raised));
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-foreground);
+    --colorNeutralForeground3: var(--lab-foreground);
+    --colorNeutralForeground1Hover: var(--lab-foreground);
+    --colorNeutralForeground2Hover: var(--lab-foreground);
+    --colorNeutralForeground2BrandHover: var(--lab-foreground);
+    --colorBrandBackground: var(--lab-primary);
+    --colorBrandBackgroundHover: var(--lab-primary-hover);
+    --colorBrandBackgroundPressed: var(--lab-brand);
+    --colorNeutralForegroundOnBrand: var(--lab-on-primary);
+    color: var(--lab-foreground);
+}
+
+.lab-command-bar fluent-button svg,
+.lab-command-bar fluent-menu-button svg,
+.lab-tab-actions fluent-button svg,
+.lab-tab-actions fluent-menu-button svg,
+.lab-toolbar fluent-button svg,
+.lab-toolbar fluent-dropdown svg {
+    fill: currentColor;
+}
+
+fluent-button:hover:not(:disabled):not([disabled-focusable]),
+fluent-menu-button:hover:not(:disabled):not([disabled-focusable]),
+fluent-anchor-button:hover:not(:disabled):not([disabled-focusable]) {
+    background-color: var(--lab-hairline) !important;
+    color: var(--lab-foreground) !important;
+    border-color: transparent !important;
+}
+
+fluent-button:hover:active:not(:disabled):not([disabled-focusable]),
+fluent-menu-button:hover:active:not(:disabled):not([disabled-focusable]),
+fluent-anchor-button:hover:active:not(:disabled):not([disabled-focusable]) {
+    background-color: color-mix(in srgb, var(--lab-primary) 28%, var(--lab-panel-raised)) !important;
+}
+
+fluent-button[appearance="transparent"]:hover:not(:disabled):not([disabled-focusable]),
+fluent-menu-button[appearance="transparent"]:hover:not(:disabled):not([disabled-focusable]),
+fluent-anchor-button[appearance="transparent"]:hover:not(:disabled):not([disabled-focusable]) {
+    background-color: color-mix(in srgb, var(--lab-brand-foreground) 16%, transparent) !important;
+}
+
+.lab-brand-bar fluent-button:hover:not(:disabled):not([disabled-focusable]),
+.lab-brand-bar fluent-menu-button:hover:not(:disabled):not([disabled-focusable]) {
+    background-color: color-mix(in srgb, var(--lab-brand-foreground) 16%, transparent) !important;
+    color: var(--lab-brand-foreground) !important;
+}
+
+fluent-button[appearance="primary"]:hover:not(:disabled):not([disabled-focusable]),
+fluent-anchor-button[appearance="primary"]:hover:not(:disabled):not([disabled-focusable]) {
+    background-color: var(--lab-primary-hover) !important;
+    color: var(--lab-on-primary) !important;
+}
+
+.lab-compile,
+.lab-compile:hover:not(:disabled):not([disabled-focusable]),
+.lab-compile:hover:active:not(:disabled):not([disabled-focusable]) {
+    --colorNeutralForeground1: var(--lab-success);
+    --colorNeutralForeground2: var(--lab-success);
+    --colorNeutralForeground3: var(--lab-success);
+}
+
+.lab-compile:hover:not(:disabled):not([disabled-focusable]),
+.lab-compile:hover:active:not(:disabled):not([disabled-focusable]) {
+    background-color: color-mix(in srgb, var(--lab-success) 18%, transparent) !important;
+    color: var(--lab-success) !important;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.lab-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+    background: var(--lab-background);
+    color: var(--lab-foreground);
+}
+
+.lab-app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.lab-app > header {
+    min-width: 0;
+}
+
+.lab-share-url-error {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    margin: 0.5rem 0.75rem 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 8px;
+    background: var(--lab-error-bar);
+    color: var(--lab-foreground);
+    font-size: 12px;
+}
+
+.lab-share-url-error-title {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+}
+
+.lab-share-url-error-dismiss {
+    flex-shrink: 0;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 6px;
+    background: var(--lab-panel-raised);
+    color: var(--lab-foreground);
+    font: inherit;
+    padding: 0.25rem 0.55rem;
+    cursor: pointer;
+}
+
+.lab-brand-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+}
+
+fluent-tooltip.lab-command-tooltip {
+    --fontFamilyBase: var(--font-body);
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --borderRadiusMedium: 0;
+    font-family: var(--font-body);
+    font-size: 12px;
+    line-height: 1.3;
+    background: var(--lab-panel-raised);
+    color: var(--lab-foreground);
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    box-shadow: var(--lab-shadow);
+    padding: 4px 8px;
+}
+
+.no-squiggly-hint .monaco-editor .squiggly-hint {
+    background: none;
+}
+
+.lab-editor .underline {
+    text-decoration: underline;
+}
+
+.lab-vim-status {
+    display: none;
+    box-sizing: border-box;
+    flex: 0 0 1.75rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+    padding: 0 0.75rem;
+    overflow: hidden;
+    background: var(--lab-panel);
+    border-top: 1px solid var(--lab-hairline);
+    color: var(--lab-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.75rem;
+    white-space: nowrap;
+}
+
+.lab-vim-status[style*="display: block"] {
+    display: flex !important;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.lab-vim-status > span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    font-family: var(--font-mono) !important;
+}
+
+.lab-vim-status > span:nth-child(2) {
+    flex: 1;
+}
+
+.lab-vim-status > span:nth-child(2) > span {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    font-family: var(--font-mono) !important;
+    color: var(--lab-muted) !important;
+    white-space: pre !important;
+}
+
+.lab-vim-status > span:last-child {
+    float: none !important;
+    margin-left: auto;
+}
+
+.lab-vim-status .vim-notification {
+    color: var(--lab-warning);
+}
+
+.lab-vim-status input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 1;
+    min-width: 6ch;
+    width: auto;
+    height: 1.25rem;
+    margin: 0 0 0 0.2rem;
+    padding: 0 0.4rem;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    background: var(--lab-background);
+    color: var(--lab-foreground);
+    font: inherit;
+    font-family: var(--font-mono);
+    line-height: 1.25rem;
+    outline: none;
+    box-shadow: none;
+    caret-color: var(--lab-primary);
+}
+
+.lab-vim-status input:focus,
+.lab-vim-status input:focus-visible {
+    border-color: var(--lab-primary);
+    outline: none;
+    box-shadow: none;
+}
+
+.monaco-menu {
+    font-family: var(--font-body);
+    border-radius: 0;
+}
+
+.lab-setting-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--lab-foreground);
+}
+
+h2.lab-setting-section {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--lab-accent-text);
+}
+
+.lab-setting-hint {
+    margin: 0.15rem 0 0;
+    font-size: 12px;
+    color: var(--lab-muted);
+}
+
+.lab-settings-dialog .lab-settings-select,
+.lab-settings-dialog fluent-select.lab-settings-select,
+.lab-settings-dialog .lab-sdk-search,
+.lab-settings-dialog .lab-sdk-search fluent-text-input,
+.lab-settings-dialog .lab-sdk-search fluent-field {
+    width: 100%;
+}
+
+.lab-toolbar fluent-field,
+.lab-toolbar fluent-select,
+.lab-toolbar fluent-dropdown {
+    --borderRadiusSmall: 0;
+    --borderRadiusMedium: 0;
+    --borderRadiusLarge: 0;
+    width: max-content;
+    min-width: 10rem;
+    border-radius: 0;
+}
+
+.lab-settings-dialog .lab-setting-row fluent-dropdown,
+.lab-toolbar fluent-dropdown {
+    --fontSizeBase300: 13px;
+    --lineHeightBase300: 2.35rem;
+    --spacingVerticalSNudge: 0px;
+    --spacingHorizontalMNudge: 0.7rem;
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralStroke1: var(--lab-hairline);
+    --colorNeutralStroke1Hover: var(--lab-primary);
+    --colorNeutralStroke1Pressed: var(--lab-primary);
+    --colorNeutralStrokeAccessible: transparent;
+    --colorNeutralStrokeAccessibleHover: transparent;
+    --colorNeutralStrokeAccessiblePressed: transparent;
+    --colorCompoundBrandStroke: transparent;
+    --colorCompoundBrandBackgroundHover: transparent;
+    --colorCompoundBrandBackgroundPressed: transparent;
+    --colorStrokeFocus1: transparent;
+    --colorStrokeFocus2: transparent;
+    --strokeWidthThick: 0px;
+    min-height: 2.35rem;
+    font-family: var(--font-body);
+    font-size: 13px;
+}
+
+.lab-settings-dialog .lab-setting-row fluent-dropdown:focus-within,
+.lab-toolbar fluent-dropdown:focus-within {
+    --colorNeutralStroke1: var(--lab-primary);
+}
+
+.lab-seg {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 0;
+    background: var(--lab-background);
+    border: 1px solid var(--lab-hairline);
+}
+
+.lab-seg-wide {
+    display: flex;
+    width: min(22rem, 100%);
+}
+
+.lab-seg-wide .lab-seg-item {
+    flex: 1;
+}
+
+.lab-seg-item {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--lab-muted);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.lab-seg-item.active {
+    background: var(--lab-primary);
+    color: var(--lab-on-primary);
 }
 
 #blazor-error-ui {
-    background: light-dark(var(--custom-light), var(--custom-dark));
+    background: var(--lab-error-bar);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.4);
     box-sizing: border-box;
     display: none;
     left: 0;
@@ -59,24 +792,49 @@ body {
     position: fixed;
     width: 100%;
     z-index: 1000;
+    color: var(--lab-foreground);
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-.blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
-    color: white;
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.loading-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    overflow: auto;
+    background: var(--lab-brand);
+    color: var(--lab-brand-foreground);
+}
+
+html[data-theme="light"] .loading-splash {
+    background: #fff;
+    color: var(--lab-foreground);
+}
+
+html:not(.app-ready),
+html:not(.app-ready) body {
+    background-color: var(--lab-brand);
+}
+
+html[data-theme="light"]:not(.app-ready),
+html[data-theme="light"]:not(.app-ready) body {
+    background-color: #fff;
+}
+
+html.app-ready .loading-splash {
+    display: none;
+    pointer-events: none;
+}
+
+html.app-ready,
+html.app-ready body {
+    background-color: var(--lab-background);
+}
 
 .loading-progress {
     position: relative;
@@ -84,83 +842,76 @@ body {
     width: 8rem;
     height: 8rem;
     margin: 20vh auto 1rem auto;
+    color: inherit;
 }
 
-    .loading-progress .filling {
-        transform: scaleY(var(--blazor-load-percentage, 0%));
-        transform-box: fill-box;
-        transform-origin: bottom;
-    }
+.loading-progress .filling {
+    transform: scaleY(var(--blazor-load-percentage, 0%));
+    transform-box: fill-box;
+    transform-origin: bottom;
+}
+
+.loading-progress .filling-deep {
+    fill: var(--lab-brand);
+}
+
+.loading-progress .filling-mid {
+    fill: var(--lab-primary);
+}
 
 .loading-progress-text {
     text-align: center;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 1.5em;
+    font-family: var(--font-display);
+    color: color-mix(in srgb, currentColor 78%, transparent);
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "0%");
-    }
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "0%");
+}
 
 .loading-info {
     margin-top: 1em;
     text-align: center;
+    color: color-mix(in srgb, currentColor 78%, transparent);
+    font-family: var(--font-body);
 }
 
-code {
-    color: #c02d76;
+.loading-info h1 {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: inherit;
 }
 
-.option-badge::after {
-    content: attr(data-text);
-    font-size: small;
-    color: var(--input-placeholder-rest);
-    margin-left: 0.5em;
+.loading-info a {
+    color: inherit;
+    text-decoration: none;
 }
 
-/*
-    Causes Monaco Editor to resize properly.
-    See https://github.com/microsoft/monaco-editor/issues/3512.
-*/
-.monaco-editor-container {
-    width: 99%;
-    height: 99%;
+html[data-theme="light"] .loading-info a {
+    color: var(--lab-accent-text);
 }
 
-.no-squiggly-hint .monaco-editor .squiggly-hint {
-    background: none;
-}
-
-/* Workaround for https://github.com/microsoft/monaco-editor/issues/4984. */
-.quick-input-widget {
-    margin-left: initial !important;
-}
-
-.underline {
+.loading-info a:hover {
     text-decoration: underline;
 }
 
-h6.unset,
-h5.unset,
-h4.unset,
-h3.unset,
-h2.unset,
-h1.unset {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-weight: inherit;
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
+.loading-info img {
+    display: block;
+    margin: 0.75rem auto 0;
 }
 
-.fluent-dialog-header {
-    padding-bottom: 0 !important;
+html[data-theme="light"] .loading-info svg path[fill="#e8e8e8"] {
+    fill: var(--lab-foreground);
 }
 
-fluent-select::part(listbox),
-fluent-select .listbox,
-fluent-combobox::part(listbox),
-fluent-combobox .listbox {
-    max-height: calc(var(--base-height-multiplier) * 30px);
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

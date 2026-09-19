@@ -2,10 +2,18 @@
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Fluent UI 5 RC5 (net10 assets on net11 WASM) loses enum/interface typedefs
+      when converted to WebCIL. Serve the original DLLs so Mono can resolve them.
+    -->
+    <WasmEnableWebcil>false</WasmEnableWebcil>
+    <!-- Separate .pdb files are listed in blazor.boot.json with SRI; a 404 is empty and fails integrity, which aborts boot. -->
+    <DebugType>embedded</DebugType>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
+    <IndexHtmlTemplatePath>$(MSBuildProjectDirectory)\..\..\eng\index.template.html</IndexHtmlTemplatePath>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
-    <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
+    <IndexHtmlHead><link href="manifest.webmanifest" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
     <!-- Microsoft Store SVG source: https://upload.wikimedia.org/wikipedia/commons/a/a7/Microsoft_Store.svg -->
     <!-- Google Play SVG source: https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_Play_2022_icon.svg -->

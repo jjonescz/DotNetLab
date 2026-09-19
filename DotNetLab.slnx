@@ -37,6 +37,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/UnitTests/UnitTests.csproj" />
+    <Project Path="test/AppTests/AppTests.csproj" />
   </Folder>
   <Folder Name="/_/">
     <File Path=".editorconfig" />
