@@ -9,8 +9,8 @@
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Fluxor.Blazor.Web.ReduxDevTools" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" VersionOverride="5.0.0-rc.5-26219.1" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" VersionOverride="5.0.0-rc.5-26219.1" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="PolyType" />
     <PackageReference Include="protobuf-net" />
     <PackageReference Include="System.IO.Hashing" />
