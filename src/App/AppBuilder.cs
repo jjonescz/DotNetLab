@@ -62,6 +62,7 @@ public static class AppBuilder
         services.AddScoped<ICompilationCache, CompilationCache>();
         services.AddScoped<BlazorMonacoInterop>();
         services.AddScoped<LabLanguageServices>();
+        services.AddScoped<LabLanguageSession>();
         services.AddScoped<LabCursorSync>();
         services.AddScoped<EditorCursor>();
         services.AddScoped<EditorDragState>();

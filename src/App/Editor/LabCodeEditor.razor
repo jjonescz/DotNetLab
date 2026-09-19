@@ -46,6 +46,7 @@
     [Parameter] public EventCallback OnFocused { get; set; }
 
     [Inject] private LabWorkspaceState State { get; set; } = default!;
+    [Inject] private LabLanguageSession LanguageSession { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
     [Inject] private IState<PreferencesState> Prefs { get; set; } = default!;
 
@@ -82,7 +83,7 @@
         }
 
         await DisposeEditorChromeAsync();
-        await State.DetachEditorAsync(_editorId);
+        await LanguageSession.DetachEditorAsync(_editorId);
     }
 
     private async Task DisposeEditorChromeAsync()
@@ -226,7 +227,7 @@
 
             if (!_disposed && (modelUriChanged || valueChanged || languageChanged))
             {
-                await State.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: languageChanged);
+                await LanguageSession.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: languageChanged);
             }
         }
         catch (JSException)
@@ -268,13 +269,13 @@
             return;
         }
 
-        await State.InitializeLanguageServicesAsync();
+        await LanguageSession.InitializeAsync();
         if (_disposed)
         {
             return;
         }
 
-        await State.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: true);
+        await LanguageSession.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: true);
     }
 
     private async Task ApplyWrapAndReadOnlyAsync()
@@ -447,7 +448,7 @@
             PushSource(next);
             if (!string.IsNullOrEmpty(ModelUri))
             {
-                await State.OnSourceModelContentChangedAsync(ModelUri, args);
+                await LanguageSession.OnSourceModelContentChangedAsync(ModelUri, args);
             }
         }
         catch (JSException)

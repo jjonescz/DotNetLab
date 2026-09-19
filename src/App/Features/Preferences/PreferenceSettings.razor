@@ -1,6 +1,7 @@
 @inherits FluxorComponent
 @inject IState<PreferencesState> Prefs
 @inject LabWorkspaceState Workspace
+@inject LabLanguageSession Language
 @inject IDispatcher Dispatcher
 @inject IWorkerTransport Transport
 
@@ -25,7 +26,7 @@
         <div class="lab-settings-fold-body">
             <SettingRow Title="Language Services" Hint="Completions and live diagnostics">
                 <FluentSwitch Value="Prefs.Value.LanguageServices"
-                              ValueChanged="Workspace.SetLanguageServicesAsync"
+                              ValueChanged="Language.SetEnabledAsync"
                               AriaLabel="Language services" />
             </SettingRow>
             <SettingRow Title="Debug Logs" Hint="Debug logs in the browser console">

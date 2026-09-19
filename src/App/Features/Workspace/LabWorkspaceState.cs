@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using BlazorMonaco.Editor;
 using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Compilation;
@@ -11,15 +10,13 @@ using DotNetLab.Infrastructure.Caching.Template;
 using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
 using Fluxor;
-using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Workspace;
 
 public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IOutputSessionHost, ICompilationWorkspace, IAsyncDisposable
 {
     private readonly WorkerHost _worker;
-    private readonly LabLanguageServices _language;
-    private readonly LabCursorSync _cursors;
+    private readonly LabLanguageSession _language;
     private readonly LabSettings _settings;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _preferences;
@@ -31,12 +28,10 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
     private bool _suppressUrlPersist;
     private bool _settingsReady;
     private bool _compilerWasLoading;
-    private Task? _languageInit;
 
     public LabWorkspaceState(
         WorkerHost worker,
-        LabLanguageServices language,
-        LabCursorSync cursors,
+        LabLanguageSession language,
         LabSettings settings,
         TemplateCache templates,
         ICompilationCache cache,
@@ -51,7 +46,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
     {
         _worker = worker;
         _language = language;
-        _cursors = cursors;
         _settings = settings;
         _compiler = compiler;
         _preferences = preferences;
@@ -71,7 +65,9 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             preferences,
             compilation,
             dispatcher,
-            logger);
+            logger,
+            language);
+        language.Bind(Documents, Compilation, Outputs, Notify);
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -189,9 +185,9 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             _dispatcher.Dispatch(new PreferencesReadyAction());
         }
 
-        if (_languageInit is not null)
+        if (_language.Started)
         {
-            await SetLanguageServicesAsync(Preferences.LanguageServices, persist: false);
+            await _language.SetEnabledAsync(Preferences.LanguageServices, persist: false);
         }
 
         Tabs.ApplySavedOutputTabs(await _settings.ReadOutputTabsAsync());
@@ -205,7 +201,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         Notify();
         await _worker.RecreateAsync();
         _dispatcher.Dispatch(new ResetSdkListAction());
-        _languageInit = null;
+        _language.Reset();
 
         if (CompilerSpec.ToSpecifier(Compiler.Sdk) is null)
         {
@@ -222,7 +218,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
         }
 
         await WaitUntilCompilerIdleAsync();
-        await InitializeLanguageServicesAsync();
+        await _language.InitializeAsync();
     }
 
     private void OnWorkerFailed(string error)
@@ -267,96 +263,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             await _settings.PersistOutputTabsAsync(Tabs.SerializeOutputTabs());
         }
     }
-
-    public Task InitializeLanguageServicesAsync()
-        => _languageInit ??= EnableLanguageServicesOnceAsync();
-
-    private async Task EnableLanguageServicesOnceAsync()
-    {
-        await _language.EnableSemanticHighlightingAsync();
-        await SetLanguageServicesAsync(Preferences.LanguageServices, persist: false);
-    }
-
-    public Task SetLanguageServicesAsync(bool enabled)
-        => SetLanguageServicesAsync(enabled, persist: true);
-
-    private async Task SetLanguageServicesAsync(bool enabled, bool persist)
-    {
-        _dispatcher.Dispatch(new SetLanguageServicesAction(enabled));
-        try
-        {
-            await _language.EnableAsync(enabled);
-            if (enabled)
-            {
-                await SyncLanguageWorkspaceAsync(refresh: true);
-                if (Compilation.HasLiveInput)
-                {
-                    await _language.UpdateDiagnosticsAfterCompilationAsync(Documents.UriFor(ActiveSource));
-                }
-                else if (Compilation.Compiled is { } compiled)
-                {
-                    await _language.OnCachedCompilationLoadedAsync(
-                        CaptureSavedState().GetCompilerConfiguration(),
-                        compiled,
-                        Documents.UriFor(ActiveSource));
-                }
-            }
-            else
-            {
-                await _language.ApplyCompileDiagnosticsAsync(
-                    Compilation.Compiled,
-                    Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
-            }
-        }
-        catch (JSException)
-        {
-        }
-
-        Notify();
-        if (persist)
-        {
-            _dispatcher.Dispatch(new PersistPreferencesAction());
-        }
-    }
-
-    public Task OnSourceModelContentChangedAsync(string modelUri, ModelContentChangedEvent args)
-        => _language.OnDidChangeModelContentAsync(modelUri, args);
-
-    public async Task OnEditorReadyAsync(string editorId, string? modelUri, bool readOnly, bool fold)
-    {
-        if (string.IsNullOrEmpty(modelUri))
-        {
-            return;
-        }
-
-        try
-        {
-            if (readOnly)
-            {
-                await _cursors.AttachOutputAsync(editorId);
-                if (Outputs.TryGetSnapshot(Outputs.DisplayType, out var snapshot) &&
-                    string.Equals(snapshot.ModelUri, modelUri, StringComparison.Ordinal))
-                {
-                    await _language.ApplyOutputEditorAsync(
-                        editorId,
-                        snapshot.ModelUri,
-                        snapshot.Language,
-                        snapshot.Metadata,
-                        fold);
-                    _cursors.Enable(snapshot.Metadata);
-                }
-            }
-            else
-            {
-                await _cursors.AttachSourceAsync(editorId);
-            }
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    public Task DetachEditorAsync(string editorId) => _cursors.DetachAsync(editorId);
 
     public Task PersistOutputTabsAsync() => _persistence.EnqueueAsync(PersistKind.OutputTabs);
 
@@ -498,7 +404,7 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             }
 
             Documents.SetSource(fileName, formatted);
-            await SyncLanguageWorkspaceAsync();
+            await _language.SyncAsync();
             await PersistUrlAsync();
         }
         catch
@@ -571,15 +477,12 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             });
     }
 
-    public async Task AfterDocumentsChangedAsync(IReadOnlyList<string> before)
-    {
-        var removed = before.Except(Documents.ModelUris).ToArray();
-        await SyncLanguageWorkspaceAsync(refresh: true, removed);
-    }
+    public Task AfterDocumentsChangedAsync(IReadOnlyList<string> before)
+        => _language.AfterDocumentsChangedAsync(before);
 
     void IDocumentWorkspace.AfterActiveSourceChanged()
     {
-        _ = SyncLanguageWorkspaceAsync();
+        _ = _language.SyncAsync();
         Compilation.RefreshTemporaryErrorList();
         _ = Outputs.LoadDisplayedAsync();
         _ = PersistUrlAsync();
@@ -591,61 +494,6 @@ public sealed class LabWorkspaceState : IDocumentWorkspace, IOutputWorkspace, IO
             Documents.Template,
             Documents.ActiveSource,
             [.. Documents.SourceFiles]));
-    }
-
-    private async Task SyncLanguageWorkspaceAsync(bool refresh = false, IReadOnlyList<string>? disposeUris = null)
-    {
-        if (disposeUris is { Count: > 0 })
-        {
-            foreach (var uri in disposeUris)
-            {
-                await _language.DisposeModelAsync(uri);
-            }
-        }
-
-        try
-        {
-            await _language.OnDidChangeWorkspaceAsync(
-                Documents.CreateModelInfos(),
-                Documents.UriFor(ActiveSource),
-                refresh);
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    public async Task RefreshLanguageServicesAfterCompileAsync()
-    {
-        var uri = Documents.UriFor(ActiveSource);
-        if (!_language.Enabled || !await _language.UpdateDiagnosticsAfterCompilationAsync(uri))
-        {
-            await _language.ApplyCompileDiagnosticsAsync(
-                Compilation.Compiled,
-                Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
-        }
-
-        if (_language.Enabled)
-        {
-            await SyncLanguageWorkspaceAsync(refresh: true);
-        }
-    }
-
-    public async Task RefreshLanguageServicesAfterCachedCompileAsync(CompiledAssembly output)
-    {
-        var uri = Documents.UriFor(ActiveSource);
-        var config = CaptureSavedState().GetCompilerConfiguration();
-        if (!_language.Enabled || !await _language.OnCachedCompilationLoadedAsync(config, output, uri))
-        {
-            await _language.ApplyCompileDiagnosticsAsync(
-                Compilation.Compiled,
-                Documents.SourceFiles.Select(file => (file, Documents.UriFor(file))));
-        }
-
-        if (_language.Enabled)
-        {
-            await SyncLanguageWorkspaceAsync(refresh: true);
-        }
     }
 
     private static async Task InvokeHandlersAsync(Func<Task>? handlers)

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using DotNetLab.Editor.LanguageServices;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
@@ -22,6 +23,7 @@ public sealed class CompilationSession : IAsyncDisposable
     private readonly IState<CompilationState> _compilation;
     private readonly IDispatcher _dispatcher;
     private readonly ILogger _logger;
+    private readonly LabLanguageSession? _language;
     private readonly CompilationScheduler _scheduler;
     private GenerationCounter _compileGeneration;
     private GenerationCounter _applyGeneration;
@@ -38,7 +40,8 @@ public sealed class CompilationSession : IAsyncDisposable
         IState<PreferencesState> preferences,
         IState<CompilationState> compilation,
         IDispatcher dispatcher,
-        ILogger logger)
+        ILogger logger,
+        LabLanguageSession? language = null)
     {
         _host = host;
         _worker = worker;
@@ -49,6 +52,7 @@ public sealed class CompilationSession : IAsyncDisposable
         _compilation = compilation;
         _dispatcher = dispatcher;
         _logger = logger;
+        _language = language;
         _scheduler = new CompilationScheduler(CompileCoreAsync, logger);
     }
 
@@ -209,7 +213,10 @@ public sealed class CompilationSession : IAsyncDisposable
 
         if (_scheduler.IsCurrent(request.Generation))
         {
-            await _host.RefreshLanguageServicesAfterCompileAsync();
+            if (_language is not null)
+            {
+                await _language.RefreshAfterCompileAsync();
+            }
         }
     }
 
@@ -331,7 +338,10 @@ public sealed class CompilationSession : IAsyncDisposable
         RefreshTemporaryErrorList();
         _host.Notify();
         _ = _host.Outputs.LoadDisplayedAsync();
-        _ = _host.RefreshLanguageServicesAfterCachedCompileAsync(output);
+        if (_language is not null)
+        {
+            _ = _language.RefreshAfterCachedCompileAsync(output);
+        }
     }
 
     private static bool SourcesEqual(SavedState left, SavedState right)
@@ -367,8 +377,4 @@ internal interface ICompilationWorkspace
     void Notify();
 
     Task PersistUrlAsync(bool snapshot = false);
-
-    Task RefreshLanguageServicesAfterCompileAsync();
-
-    Task RefreshLanguageServicesAfterCachedCompileAsync(CompiledAssembly output);
 }

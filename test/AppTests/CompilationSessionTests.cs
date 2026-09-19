@@ -334,11 +334,6 @@ public sealed class CompilationSessionTests
 
         public Task PersistUrlAsync(bool snapshot = false) => Task.CompletedTask;
 
-        public Task RefreshLanguageServicesAfterCompileAsync() => Task.CompletedTask;
-
-        public Task RefreshLanguageServicesAfterCachedCompileAsync(CompiledAssembly output)
-            => Task.CompletedTask;
-
         public string ActiveSource => "Program.cs";
 
         public string ActiveOutput { get; set; } = "cs";
