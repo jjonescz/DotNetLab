@@ -10,7 +10,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Workspace;
 
-public sealed class LabWorkspaceState : IOutputWorkspace, IAsyncDisposable
+public sealed class LabWorkspaceState : IAsyncDisposable
 {
     private readonly WorkerHost _worker;
     private readonly LabLanguageSession _language;
@@ -37,7 +37,8 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IAsyncDisposable
         ILogger<LabWorkspaceState> logger,
         LabDocuments documents,
         CompilationSession compilationSession,
-        OutputSession outputs)
+        OutputSession outputs,
+        OutputTabLayout tabs)
     {
         _worker = worker;
         _language = language;
@@ -50,12 +51,13 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IAsyncDisposable
         Documents = documents;
         Compilation = compilationSession;
         Outputs = outputs;
-        Tabs = new OutputTabLayout(this);
+        Tabs = tabs;
         Documents.Changed += Notify;
         Documents.PersistUrlRequested += PersistDocumentsUrlAsync;
         Compilation.Changed += Notify;
         Compilation.PersistUrlRequested += PersistUrlAsync;
         Outputs.Changed += Notify;
+        Tabs.Changed += Notify;
         _compiler.StateChanged += OnCompilerStoreChanged;
         _options.StateChanged += OnCompilationOptionsChanged;
         _output.StateChanged += OnOutputChanged;
@@ -108,6 +110,7 @@ public sealed class LabWorkspaceState : IOutputWorkspace, IAsyncDisposable
         Compilation.Changed -= Notify;
         Compilation.PersistUrlRequested -= PersistUrlAsync;
         Outputs.Changed -= Notify;
+        Tabs.Changed -= Notify;
         await _persistence.DisposeAsync();
     }
 

@@ -1,32 +1,48 @@
 using System.Text;
 using System.Text.Json;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
+using Fluxor;
 
 namespace DotNetLab.Features.Outputs;
 
 public sealed class OutputTabLayout
 {
-    private readonly IOutputWorkspace _state;
+    private readonly LabDocuments _documents;
+    private readonly IState<OutputState> _output;
+    private readonly IDispatcher _dispatcher;
+    private readonly Lazy<OutputSession>? _outputs;
     private readonly Dictionary<OutputFileKind, List<string>> _outputTabOrder = CreateDefaultOutputTabOrder();
     private readonly Dictionary<OutputFileKind, HashSet<string>> _hiddenOutputTabs = CreateDefaultHiddenOutputTabs();
     private readonly Dictionary<OutputFileKind, List<string>> _openOutputTabs = new();
     private OutputFileKind? _syncedOutputKind;
 
-    internal OutputTabLayout(IOutputWorkspace state)
+    internal OutputTabLayout(
+        LabDocuments documents,
+        IState<OutputState> output,
+        IDispatcher dispatcher,
+        Lazy<OutputSession>? outputs = null)
     {
-        _state = state;
+        _documents = documents;
+        _output = output;
+        _dispatcher = dispatcher;
+        _outputs = outputs;
     }
 
     public event Action? Changed;
 
     public int Revision { get; private set; }
 
+    private string ActiveSource => _documents.ActiveSource;
+
+    private string ActiveOutput => _output.Value.ActiveOutput;
+
     public IReadOnlyList<string> CurrentOutputTabIds
     {
         get
         {
-            var produced = LabCatalog.ProducedOutputTypes(_state.ActiveSource);
-            return OpenTabs(LabCatalog.OutputKindFor(_state.ActiveSource))
+            var produced = LabCatalog.ProducedOutputTypes(ActiveSource);
+            return OpenTabs(LabCatalog.OutputKindFor(ActiveSource))
                 .Where(produced.Contains)
                 .ToArray();
         }
@@ -137,7 +153,7 @@ public sealed class OutputTabLayout
         _outputTabOrder[kind] = LabCatalog.DefaultTabOrder(kind);
         _hiddenOutputTabs[kind] = new HashSet<string>(StringComparer.Ordinal);
         _openOutputTabs.Remove(kind);
-        if (kind == LabCatalog.OutputKindFor(_state.ActiveSource))
+        if (kind == LabCatalog.OutputKindFor(ActiveSource))
         {
             Revision++;
         }
@@ -193,8 +209,8 @@ public sealed class OutputTabLayout
 
     public void CaptureOpenOutputTabs(IReadOnlyList<string> ids)
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
-        var produced = LabCatalog.ProducedOutputTypes(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
+        var produced = LabCatalog.ProducedOutputTypes(ActiveSource);
         var catalog = LabCatalog.CatalogFor(kind).Select(tab => tab.Type).ToHashSet(StringComparer.Ordinal);
         var next = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -217,8 +233,8 @@ public sealed class OutputTabLayout
     public IReadOnlyList<OutputTab> AddableOutputTabsFor(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        var produced = LabCatalog.ProducedOutputTypes(_state.ActiveSource);
-        return LabCatalog.CatalogFor(LabCatalog.OutputKindFor(_state.ActiveSource))
+        var produced = LabCatalog.ProducedOutputTypes(ActiveSource);
+        return LabCatalog.CatalogFor(LabCatalog.OutputKindFor(ActiveSource))
             .Where(tab => produced.Contains(tab.Type) && !openSet.Contains(tab.Type))
             .ToArray();
     }
@@ -226,12 +242,12 @@ public sealed class OutputTabLayout
     public bool HasClosedOutputTabs(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        return OutputTabsFor(_state.ActiveSource).Any(tab => !openSet.Contains(tab.Type));
+        return OutputTabsFor(ActiveSource).Any(tab => !openSet.Contains(tab.Type));
     }
 
     public bool OutputTabOrderDiffers(IReadOnlyList<string> open)
     {
-        var order = OutputTabOrder(LabCatalog.OutputKindFor(_state.ActiveSource));
+        var order = OutputTabOrder(LabCatalog.OutputKindFor(ActiveSource));
         var expected = order.Where(open.Contains).ToList();
         var current = open.Where(order.Contains).ToList();
         return !expected.SequenceEqual(current, StringComparer.Ordinal);
@@ -239,8 +255,8 @@ public sealed class OutputTabLayout
 
     public void AddOutputTab(string type)
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
-        var produced = LabCatalog.ProducedOutputTypes(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
+        var produced = LabCatalog.ProducedOutputTypes(ActiveSource);
         if (!produced.Contains(type))
         {
             return;
@@ -253,13 +269,13 @@ public sealed class OutputTabLayout
         }
 
         tabs.Add(type);
-        _state.ActiveOutput = type;
+        SetActiveOutput(type);
         Notify();
     }
 
     public void RestoreOutputTabOrder()
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
         var tabs = OpenTabs(kind);
         var rank = new Dictionary<string, int>(StringComparer.Ordinal);
         var order = OutputTabOrder(kind);
@@ -278,10 +294,10 @@ public sealed class OutputTabLayout
 
     public void RestoreClosedOutputTabs()
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
         var tabs = OpenTabs(kind);
         var settingsOrder = OutputTabOrder(kind);
-        foreach (var tab in OutputTabsFor(_state.ActiveSource))
+        foreach (var tab in OutputTabsFor(ActiveSource))
         {
             if (tabs.Contains(tab.Type))
             {
@@ -310,7 +326,7 @@ public sealed class OutputTabLayout
 
     public void SaveOpenOutputTabsAsSettings()
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
         var catalog = LabCatalog.CatalogFor(kind);
         var catalogIds = catalog.Select(tab => tab.Type).ToHashSet(StringComparer.Ordinal);
         var open = OpenTabs(kind)
@@ -359,14 +375,14 @@ public sealed class OutputTabLayout
     {
         SyncOpenOutputKind();
         var tabs = CurrentOutputTabIds;
-        if (tabs.Contains(_state.ActiveOutput))
+        if (tabs.Contains(ActiveOutput))
         {
             return;
         }
 
-        _state.ActiveOutput = tabs.FirstOrDefault(id => id is "cs" or "gcs")
+        SetActiveOutput(tabs.FirstOrDefault(id => id is "cs" or "gcs")
             ?? tabs.FirstOrDefault()
-            ?? LabCatalog.ErrorsOutputType;
+            ?? LabCatalog.ErrorsOutputType);
     }
 
     public IReadOnlyList<OutputTab> OutputTabsFor(string fileName)
@@ -420,7 +436,7 @@ public sealed class OutputTabLayout
     {
         if (!_openOutputTabs.TryGetValue(kind, out var tabs))
         {
-            var fileName = kind == LabCatalog.OutputKindFor(_state.ActiveSource) ? _state.ActiveSource : LabCatalog.RepresentativeFile(kind);
+            var fileName = kind == LabCatalog.OutputKindFor(ActiveSource) ? ActiveSource : LabCatalog.RepresentativeFile(kind);
             tabs = OutputTabsFor(fileName).Select(tab => tab.Type).ToList();
             _openOutputTabs[kind] = tabs;
         }
@@ -429,9 +445,9 @@ public sealed class OutputTabLayout
     }
     private void SyncOpenOutputKind()
     {
-        var kind = LabCatalog.OutputKindFor(_state.ActiveSource);
+        var kind = LabCatalog.OutputKindFor(ActiveSource);
         var tabs = OpenTabs(kind);
-        var produced = LabCatalog.ProducedOutputTypes(_state.ActiveSource);
+        var produced = LabCatalog.ProducedOutputTypes(ActiveSource);
         tabs.RemoveAll(id => !produced.Contains(id));
         if (produced.Contains(LabCatalog.ErrorsOutputType) && !tabs.Contains(LabCatalog.ErrorsOutputType))
         {
@@ -623,15 +639,28 @@ public sealed class OutputTabLayout
     private void Notify()
     {
         Changed?.Invoke();
-        _state.Notify();
     }
-}
 
-internal interface IOutputWorkspace
-{
-    string ActiveSource { get; }
+    private void SetActiveOutput(string type)
+    {
+        if (_outputs is not null)
+        {
+            var dismiss = _outputs.Value.DismissTemporaryErrorList();
+            if (string.Equals(ActiveOutput, type, StringComparison.Ordinal))
+            {
+                if (dismiss)
+                {
+                    Notify();
+                }
 
-    string ActiveOutput { get; set; }
+                return;
+            }
 
-    void Notify();
+            _dispatcher.Dispatch(new SetActiveOutputAction(type));
+            _ = _outputs.Value.EnsureOutputLoadedAsync(type);
+            return;
+        }
+
+        _dispatcher.Dispatch(new SetActiveOutputAction(type));
+    }
 }

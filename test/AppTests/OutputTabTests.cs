@@ -1,6 +1,9 @@
 using AwesomeAssertions;
+using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
+using Fluxor;
 
 namespace DotNetLab;
 
@@ -78,19 +81,55 @@ public sealed class OutputTabTests
         tabs.IsOutputTabVisible(OutputFileKind.Cs, "tree").Should().BeTrue();
     }
 
-    private static (OutputTabLayout Tabs, FakeOutputWorkspace Host) Create()
+    private static (OutputTabLayout Tabs, Harness Host) Create()
     {
-        var host = new FakeOutputWorkspace();
-        return (new OutputTabLayout(host), host);
+        var host = new Harness();
+        return (host.Tabs, host);
     }
 
-    private sealed class FakeOutputWorkspace : IOutputWorkspace
+    private sealed class Harness
     {
-        public string ActiveSource { get; set; } = "Program.cs";
-        public string ActiveOutput { get; set; } = "cs";
-
-        public void Notify()
+        public Harness()
         {
+            var compilation = new Store<CompilationState>(new CompilationState());
+            Output = new Store<OutputState>(new OutputState());
+            var dispatcher = new RecordingDispatcher(Output);
+            var documents = new LabDocuments(dispatcher, compilation, Output);
+            Tabs = new OutputTabLayout(documents, Output, dispatcher);
+        }
+
+        public OutputTabLayout Tabs { get; }
+
+        public Store<OutputState> Output { get; }
+
+        public string ActiveOutput => Output.Value.ActiveOutput;
+    }
+
+    private sealed class Store<T>(T value) : IState<T>
+    {
+        public T Value { get; set; } = value;
+
+        public event EventHandler StateChanged
+        {
+            add { }
+            remove { }
+        }
+    }
+
+    private sealed class RecordingDispatcher(Store<OutputState> output) : IDispatcher
+    {
+        public event EventHandler<ActionDispatchedEventArgs> ActionDispatched
+        {
+            add { }
+            remove { }
+        }
+
+        public void Dispatch(object action)
+        {
+            if (action is SetActiveOutputAction active)
+            {
+                output.Value = OutputReducers.Reduce(output.Value, active);
+            }
         }
     }
 }
