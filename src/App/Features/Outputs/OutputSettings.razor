@@ -11,12 +11,12 @@
             <button type="button" class="lab-settings-reset" @onclick="ResetOutputTabsAsync">Reset to default</button>
         </div>
         <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="Output tab file format">
-            @foreach (var kind in _outputKinds)
+            @foreach (var kind in Enum.GetValues<DocumentKind>())
             {
                 <button type="button"
-                        class="lab-seg-item @(_outputKind == kind.Value ? "active" : null)"
-                        @onclick="@(() => _outputKind = kind.Value)">
-                    @kind.Label
+                        class="lab-seg-item @(_outputKind == kind ? "active" : null)"
+                        @onclick="@(() => _outputKind = kind)">
+                    @DocumentTypes.KindLabel(kind)
                 </button>
             }
         </div>
@@ -59,13 +59,6 @@
 </details>
 
 @code {
-    private static readonly (DocumentKind Value, string Label)[] _outputKinds =
-    [
-        (DocumentKind.Cs, "C#"),
-        (DocumentKind.Razor, "Razor"),
-        (DocumentKind.Cshtml, "CSHTML")
-    ];
-
     private DocumentKind _outputKind = DocumentKind.Cs;
 
     protected override void OnInitialized()

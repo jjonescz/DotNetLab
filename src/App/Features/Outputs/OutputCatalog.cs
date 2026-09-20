@@ -36,6 +36,7 @@ public static class OutputCatalog
         Locked: true,
         Toolbar: typeof(ErrorListToolbar),
         Tab: typeof(ErrorListTab));
+    public static readonly OutputDefinition Fail = new(FailId, "Failure", "plaintext");
 
     public static readonly OutputDefinition[] CSharp =
     [
@@ -47,23 +48,21 @@ public static class OutputCatalog
         Syntax, Ir, RazorErrors, Gcs, Html, Il, Seq, Cs, Asm, Xml, Run, Errors,
     ];
 
-    private static readonly OutputDefinition[] All =
-        [.. CSharp.Concat(Razor).DistinctBy(output => output.Id)];
+    private static readonly OutputDefinition[] Known =
+        [.. CSharp.Concat(Razor).DistinctBy(output => output.Id), Fail];
 
-    private static readonly Dictionary<string, OutputDefinition> ById = All.ToDictionary(
+    private static readonly Dictionary<string, OutputDefinition> ById = Known.ToDictionary(
         output => output.Id, StringComparer.Ordinal);
 
     public static OutputDefinition? Get(string id)
         => ById.GetValueOrDefault(id);
 
     public static OutputDefinition Require(string id)
-        => Get(id) ?? new OutputDefinition(id, id == FailId ? "Failure" : id, "plaintext");
+        => Get(id) ?? new OutputDefinition(id, id, "plaintext");
 
     public static string Label(string id) => Require(id).Label;
 
     public static string Language(string id) => Require(id).Language;
-
-    public static string Title(string id) => Require(id).Title;
 
     public static bool IsLocked(string id) => Get(id)?.Locked == true;
 
@@ -73,19 +72,11 @@ public static class OutputCatalog
     public static List<string> DefaultOrder(DocumentKind kind)
         => For(kind).Select(output => output.Id).ToList();
 
-    public static HashSet<string> ProducedTypes(string fileName)
-        => For(KindFor(fileName))
+    public static HashSet<string> ProducedTypes(DocumentKind kind)
+        => For(kind)
             .Where(output => output.Produced)
             .Select(output => output.Id)
             .ToHashSet(StringComparer.Ordinal);
-
-    public static string KindLabel(DocumentKind kind)
-        => kind switch
-        {
-            DocumentKind.Razor => "Razor",
-            DocumentKind.Cshtml => "CSHTML",
-            _ => "C#"
-        };
 
     public static DocumentKind KindFor(string fileName)
     {
@@ -101,12 +92,4 @@ public static class OutputCatalog
 
         return DocumentKind.Cs;
     }
-
-    public static string RepresentativeFile(DocumentKind kind)
-        => kind switch
-        {
-            DocumentKind.Razor => "Component.razor",
-            DocumentKind.Cshtml => "Page.cshtml",
-            _ => "Program.cs"
-        };
 }

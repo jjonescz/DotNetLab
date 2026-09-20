@@ -58,12 +58,12 @@
         @if (context == SpecialDocuments.Directives)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.NumberSymbol())" Width="16px" />
-            <span>Directives</span>
+            <span>@SpecialDocuments.Label(context)</span>
         }
         else if (context == SpecialDocuments.Configuration)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.DocumentSettings())" Width="16px" />
-            <span>Configuration</span>
+            <span>@SpecialDocuments.Label(context)</span>
         }
         else
         {

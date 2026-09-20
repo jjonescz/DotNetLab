@@ -33,9 +33,7 @@ public sealed class CompilerEffects(WorkerHost worker, IState<CompilerState> sta
                 versions
                     .Select(static version => new SdkOption(
                         version.Version,
-                        string.IsNullOrEmpty(version.ReleaseDate)
-                            ? version.Version
-                            : $"{version.Version} — {version.ReleaseDate}",
+                        version.ReleaseDate ?? "",
                         "",
                         ""))
                     .ToArray()));

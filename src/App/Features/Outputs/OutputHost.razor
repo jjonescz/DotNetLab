@@ -19,7 +19,7 @@
             }
             else
             {
-                <span title="@output.Title">@output.Label</span>
+                <span title="@($"{output.Label} ({output.Id})")">@output.Label</span>
             }
         }
         else if (output.View is { } view)

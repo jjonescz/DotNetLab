@@ -1,14 +1,7 @@
 namespace DotNetLab.Features.Compiler;
 
-public sealed record SdkOption(string Value, string Label, string Roslyn, string Razor)
+public sealed record SdkOption(string Value, string Released, string Roslyn, string Razor)
 {
-    public string Released
-    {
-        get
-        {
-            const string marker = " — ";
-            var index = Label.IndexOf(marker, StringComparison.Ordinal);
-            return index >= 0 ? Label[(index + marker.Length)..] : string.Empty;
-        }
-    }
+    public string Label =>
+        string.IsNullOrEmpty(Released) ? Value : $"{Value} — released {Released}";
 }

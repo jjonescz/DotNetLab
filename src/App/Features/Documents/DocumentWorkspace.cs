@@ -24,7 +24,7 @@ public sealed class DocumentWorkspace
     public event Action? Changed;
 
     public string Template { get; private set; } = "C#";
-    public string ActiveDocument { get; set; } = "Program.cs";
+    public string ActiveDocument { get; set; } = InitialCode.CSharp.SuggestedFileName;
 
     public IReadOnlyDictionary<string, string> Sources => _sources;
     public IReadOnlyList<string> SourceFiles => _sourceFiles;
@@ -34,7 +34,7 @@ public sealed class DocumentWorkspace
         [InitialCode.CSharp.SuggestedFileName] = InitialCode.CSharp.TextTemplate,
     };
 
-    private readonly List<string> _sourceFiles = ["Program.cs"];
+    private readonly List<string> _sourceFiles = [InitialCode.CSharp.SuggestedFileName];
 
     public string UriFor(string fileName)
     {
@@ -77,12 +77,7 @@ public sealed class DocumentWorkspace
         => fileName is SpecialDocuments.Directives or SpecialDocuments.Configuration;
 
     public static string DisplayName(string fileName)
-        => fileName switch
-        {
-            SpecialDocuments.Directives => "Directives",
-            SpecialDocuments.Configuration => "Configuration",
-            _ => fileName
-        };
+        => SpecialDocuments.Label(fileName);
 
     public void SetTemplate(string template)
     {
@@ -96,27 +91,16 @@ public sealed class DocumentWorkspace
             RemoveUri(file);
         }
 
-        foreach (var (name, contents) in FilesFor(template))
+        var files = FilesFor(template);
+        foreach (var (name, contents) in files)
         {
             InsertUserFile(name);
             _sources[name] = contents;
             EnsureUri(name);
         }
 
-        if (template is "Razor")
-        {
-            ActiveDocument = "TestComponent.razor";
-        }
-        else if (template is "CSHTML")
-        {
-            ActiveDocument = "TestPage.cshtml";
-        }
-        else
-        {
-            ActiveDocument = "Program.cs";
-        }
-
-        SetActiveOutput(template is "Razor" or "CSHTML" ? "gcs" : "cs");
+        ActiveDocument = files[0].Name;
+        SetActiveOutput(template is "Razor" or "CSHTML" ? OutputCatalog.Gcs.Id : OutputCatalog.Cs.Id);
         Stale = true;
         Notify();
         AfterChanged(before);

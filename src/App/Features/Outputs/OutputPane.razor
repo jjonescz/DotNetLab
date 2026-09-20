@@ -47,7 +47,7 @@
                                     Disabled="@(!Outputs.HasClosedOutputTabs(stripIds))"
                                     OnClick="RestoreClosedOutputTabs" />
                     <FluentDivider />
-                    <FluentMenuItem Label="@($"Save for {OutputCatalog.KindLabel(OutputCatalog.KindFor(DocumentsUi.Value.ActiveDocument))}")"
+                    <FluentMenuItem Label="@($"Save for {DocumentTypes.KindLabel(OutputCatalog.KindFor(DocumentsUi.Value.ActiveDocument))}")"
                                     OnClick="SaveOutputTabsAsync" />
                 </FluentMenuList>
             </FluentMenu>

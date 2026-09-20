@@ -21,13 +21,15 @@ public sealed class OutputTabTests
             "tree", "il", "seq", "cs", "asm", "xml", "run", "errors");
         OutputCatalog.DefaultOrder(DocumentKind.Razor).Should().StartWith(
             ["syntax", "ir", "razorErrors", "gcs", "html"]);
-        OutputCatalog.For(DocumentKind.Cshtml).Should().Equal(OutputCatalog.For(DocumentKind.Razor));
+        OutputCatalog.Require("fail").Should().Be(OutputCatalog.Fail);
+        OutputCatalog.Fail.Label.Should().Be("Failure");
+        OutputCatalog.CSharp.Should().NotContain(OutputCatalog.Fail);
         OutputCatalog.DefaultOrder(DocumentKind.Cshtml).Should().Equal(
             OutputCatalog.DefaultOrder(DocumentKind.Razor));
-        OutputCatalog.ProducedTypes("Program.cs").Should().Contain(["tree", "cs", "errors"]);
-        OutputCatalog.ProducedTypes("Program.cs").Should().NotContain("razorErrors");
-        OutputCatalog.ProducedTypes("TestComponent.razor").Should().Contain("gcs");
-        OutputCatalog.ProducedTypes("TestComponent.razor").Should().NotContain("razorErrors");
+        OutputCatalog.ProducedTypes(DocumentKind.Cs).Should().Contain(["tree", "cs", "errors"]);
+        OutputCatalog.ProducedTypes(DocumentKind.Cs).Should().NotContain("razorErrors");
+        OutputCatalog.ProducedTypes(DocumentKind.Razor).Should().Contain("gcs");
+        OutputCatalog.ProducedTypes(DocumentKind.Razor).Should().NotContain("razorErrors");
     }
 
     [TestMethod]

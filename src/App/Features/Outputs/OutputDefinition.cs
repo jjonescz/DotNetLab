@@ -8,8 +8,4 @@ public sealed record OutputDefinition(
     bool Produced = true,
     Type? Toolbar = null,
     Type? View = null,
-    Type? Tab = null)
-{
-    public string Title
-        => Id == "seq" ? "Sequence points (seq)" : $"{Label} ({Id})";
-}
+    Type? Tab = null);

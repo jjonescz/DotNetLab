@@ -8,8 +8,9 @@ public sealed partial class OutputWorkspace
     {
         get
         {
-            var produced = OutputCatalog.ProducedTypes(ActiveDocument);
-            return OpenTabs(OutputCatalog.KindFor(ActiveDocument))
+            var kind = OutputCatalog.KindFor(ActiveDocument);
+            var produced = OutputCatalog.ProducedTypes(kind);
+            return OpenTabs(kind)
                 .Where(produced.Contains)
                 .ToArray();
         }
@@ -130,7 +131,7 @@ public sealed partial class OutputWorkspace
     public void CaptureOpenOutputTabs(IReadOnlyList<string> ids)
     {
         var kind = OutputCatalog.KindFor(ActiveDocument);
-        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(kind);
         var catalog = OutputCatalog.For(kind).Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
         var next = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -153,8 +154,9 @@ public sealed partial class OutputWorkspace
     public IReadOnlyList<OutputDefinition> AddableOutputTabsFor(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
-        return OutputCatalog.For(OutputCatalog.KindFor(ActiveDocument))
+        var kind = OutputCatalog.KindFor(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(kind);
+        return OutputCatalog.For(kind)
             .Where(output => produced.Contains(output.Id) && !openSet.Contains(output.Id))
             .ToArray();
     }
@@ -162,7 +164,7 @@ public sealed partial class OutputWorkspace
     public bool HasClosedOutputTabs(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        return VisibleTabsFor(ActiveDocument).Any(output => !openSet.Contains(output.Id));
+        return VisibleTabsFor(OutputCatalog.KindFor(ActiveDocument)).Any(output => !openSet.Contains(output.Id));
     }
 
     public bool OutputTabOrderDiffers(IReadOnlyList<string> open)
@@ -176,7 +178,7 @@ public sealed partial class OutputWorkspace
     public void AddOutputTab(string type)
     {
         var kind = OutputCatalog.KindFor(ActiveDocument);
-        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(kind);
         if (!produced.Contains(type))
         {
             return;
@@ -217,7 +219,7 @@ public sealed partial class OutputWorkspace
         var kind = OutputCatalog.KindFor(ActiveDocument);
         var tabs = OpenTabs(kind);
         var settingsOrder = OutputTabOrder(kind);
-        foreach (var output in VisibleTabsFor(ActiveDocument))
+        foreach (var output in VisibleTabsFor(kind))
         {
             if (tabs.Contains(output.Id))
             {
@@ -301,17 +303,16 @@ public sealed partial class OutputWorkspace
             return;
         }
 
-        SetActiveOutput(tabs.FirstOrDefault(id => id is "cs" or "gcs")
+        SetActiveOutput(tabs.FirstOrDefault(id => id == OutputCatalog.Cs.Id || id == OutputCatalog.Gcs.Id)
             ?? tabs.FirstOrDefault()
             ?? OutputCatalog.ErrorsId);
     }
 
-    private IReadOnlyList<OutputDefinition> VisibleTabsFor(string fileName)
+    private IReadOnlyList<OutputDefinition> VisibleTabsFor(DocumentKind kind)
     {
-        var kind = OutputCatalog.KindFor(fileName);
         var catalog = OutputCatalog.For(kind);
         var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
-        var produced = OutputCatalog.ProducedTypes(fileName);
+        var produced = OutputCatalog.ProducedTypes(kind);
         var tabs = new List<OutputDefinition>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
@@ -343,10 +344,7 @@ public sealed partial class OutputWorkspace
     {
         if (!_openOutputTabs.TryGetValue(kind, out var tabs))
         {
-            var fileName = kind == OutputCatalog.KindFor(ActiveDocument)
-                ? ActiveDocument
-                : OutputCatalog.RepresentativeFile(kind);
-            tabs = VisibleTabsFor(fileName).Select(output => output.Id).ToList();
+            tabs = VisibleTabsFor(kind).Select(output => output.Id).ToList();
             _openOutputTabs[kind] = tabs;
         }
 
@@ -357,7 +355,7 @@ public sealed partial class OutputWorkspace
     {
         var kind = OutputCatalog.KindFor(ActiveDocument);
         var tabs = OpenTabs(kind);
-        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(kind);
         tabs.RemoveAll(id => !produced.Contains(id));
         if (produced.Contains(OutputCatalog.ErrorsId) && !tabs.Contains(OutputCatalog.ErrorsId))
         {

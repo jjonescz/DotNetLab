@@ -33,7 +33,7 @@ public sealed record CompilerState
     public SdkOption Resolved
         => AvailableSdks.FirstOrDefault(item => item.Value == Sdk)
            ?? CompilerCatalog.SdkVersions.FirstOrDefault(item => item.Value == Sdk)
-           ?? new SdkOption(Sdk, Sdk, Roslyn, Razor);
+           ?? new SdkOption(Sdk, "", Roslyn, Razor);
 
     public string RoslynResolved => FormatDependency(RoslynInfo, RoslynError, RoslynLoading);
 

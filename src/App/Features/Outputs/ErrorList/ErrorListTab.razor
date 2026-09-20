@@ -2,7 +2,7 @@
 @inherits FluxorComponent
 @inject IState<CompilationState> Compilation
 
-<span title="@OutputCatalog.Errors.Title" style="display:inline-flex;align-items:center;gap:6px;">
+<span title="@($"{OutputCatalog.Errors.Label} ({OutputCatalog.Errors.Id})")" style="display:inline-flex;align-items:center;gap:6px;">
     Error List
     @if (Compilation.Value.HasDiagnosticCounts)
     {
