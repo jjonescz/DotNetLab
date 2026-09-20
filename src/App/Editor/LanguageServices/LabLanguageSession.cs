@@ -17,7 +17,7 @@ public sealed class LabLanguageSession
     private readonly IState<CompilerState> _compiler;
     private readonly LabDocuments _documents;
     private readonly CompilationSession _compilation;
-    private readonly OutputSession _outputs;
+    private readonly OutputWorkspace _outputs;
     private Task? _languageInit;
 
     public LabLanguageSession(
@@ -28,7 +28,7 @@ public sealed class LabLanguageSession
         IState<CompilerState> compiler,
         LabDocuments documents,
         CompilationSession compilation,
-        OutputSession outputs)
+        OutputWorkspace outputs)
     {
         _language = language;
         _cursors = cursors;

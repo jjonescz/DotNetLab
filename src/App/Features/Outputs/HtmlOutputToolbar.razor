@@ -1,0 +1,8 @@
+@inject OutputWorkspace Outputs
+
+<FluentCheckbox Label="Rendered" Value="Outputs.ShowRenderedHtml" ValueChanged="OnShowRenderedHtmlChanged" />
+
+@code {
+    private void OnShowRenderedHtmlChanged(bool value)
+        => Outputs.SetShowRenderedHtml(value);
+}

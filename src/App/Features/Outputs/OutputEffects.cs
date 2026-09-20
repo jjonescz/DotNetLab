@@ -4,7 +4,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Outputs;
 
-public sealed class OutputEffects(OutputSession outputs)
+public sealed class OutputEffects(OutputWorkspace outputs)
 {
     [EffectMethod]
     public Task Handle(SetActiveOutputAction action, IDispatcher dispatcher)

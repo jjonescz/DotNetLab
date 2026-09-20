@@ -1,0 +1,39 @@
+@inherits FluxorComponent
+@inject OutputWorkspace Outputs
+@inject IState<DocumentMetadataState> DocumentsUi
+
+@if (Outputs.ShowRenderedHtml && !DocumentsUi.Value.ActiveDocument.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
+{
+    <iframe @key="@("html-preview")"
+            class="lab-html-preview"
+            title="Rendered HTML"
+            sandbox=""
+            srcdoc="@Outputs.GetOutput(Id)"></iframe>
+}
+else
+{
+    <TextOutputView Id="@Id" />
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

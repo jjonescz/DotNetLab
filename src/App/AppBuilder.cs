@@ -54,8 +54,7 @@ public static class AppBuilder
         services.AddScoped<LabDocuments>();
         services.AddScoped<LabFormatter>();
         services.AddScoped<CompilationSession>();
-        services.AddScoped<OutputSession>();
-        services.AddScoped<OutputTabLayout>();
+        services.AddScoped<OutputWorkspace>();
         services.AddScoped<LabUrlSync>();
         services.AddScoped<LabUrlWriter>();
         services.AddScoped<LabThemeService>();

@@ -8,7 +8,7 @@ using Fluxor;
 namespace DotNetLab;
 
 [TestClass]
-public sealed class OutputSessionTests
+public sealed class OutputWorkspaceTests
 {
     [TestMethod]
     public void GetOutput_AsksToCompileWhenThereIsNoAssembly()
@@ -66,7 +66,7 @@ public sealed class OutputSessionTests
         host.ActiveOutput = "cs";
         host.Compiled = AssemblyWithEager("cs", "", "csharp", errors: 1);
         session.SetTemporaryErrorList(true);
-        session.DisplayType.Should().Be(LabCatalog.ErrorsOutputType);
+        session.DisplayType.Should().Be(OutputCatalog.ErrorsId);
         session.DismissTemporaryErrorList().Should().BeTrue();
         session.DisplayType.Should().Be("cs");
     }
@@ -141,7 +141,7 @@ public sealed class OutputSessionTests
         session.GetDisclaimer("asm").Should().Be(OutputDisclaimer.JitAsmUnavailableUsingCached);
     }
 
-    private static (OutputSession Session, Harness Host) Create(ICompilerOutputPlugin? plugin = null)
+    private static (OutputWorkspace Session, Harness Host) Create(ICompilerOutputPlugin? plugin = null)
     {
         var host = new Harness(plugin);
         return (host.Session, host);
@@ -181,16 +181,18 @@ public sealed class OutputSessionTests
 
         public Harness(ICompilerOutputPlugin? plugin = null)
         {
-            var documents = new LabDocuments(new NoopDispatcher(), _compilation);
-            Session = new OutputSession(
+            var dispatcher = new NoopDispatcher();
+            var documents = new LabDocuments(dispatcher, _compilation);
+            Session = new OutputWorkspace(
                 documents,
                 _output,
                 _compilation,
+                dispatcher,
                 plugin,
                 compile: _compile);
         }
 
-        public OutputSession Session { get; }
+        public OutputWorkspace Session { get; }
 
         public bool Running
         {

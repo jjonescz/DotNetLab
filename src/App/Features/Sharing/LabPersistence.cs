@@ -19,7 +19,7 @@ public sealed class LabPersistence : IAsyncDisposable
     private readonly IDispatcher _dispatcher;
     private readonly LabDocuments _documents;
     private readonly CompilationSession _compilation;
-    private readonly OutputTabLayout _tabs;
+    private readonly OutputWorkspace _tabs;
     private readonly LabLanguageSession _language;
     private readonly LabUrlWriter _urls;
     private readonly LabEditorSnapshots _snapshots;
@@ -38,7 +38,7 @@ public sealed class LabPersistence : IAsyncDisposable
         ILogger<LabPersistence> logger,
         LabDocuments documents,
         CompilationSession compilation,
-        OutputTabLayout tabs,
+        OutputWorkspace tabs,
         LabLanguageSession language,
         LabUrlWriter urls,
         LabEditorSnapshots snapshots)

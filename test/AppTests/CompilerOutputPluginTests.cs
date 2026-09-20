@@ -110,5 +110,5 @@ public sealed class CompilerOutputPluginTests
 
     [TestMethod]
     public void OutputLanguage_MapsAsmToX86()
-        => LabCatalog.OutputLanguage("asm").Should().Be("x86");
+        => OutputCatalog.Language("asm").Should().Be("x86");
 }

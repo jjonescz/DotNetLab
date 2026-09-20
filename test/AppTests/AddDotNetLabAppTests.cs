@@ -30,7 +30,7 @@ public sealed class AddDotNetLabAppTests
         HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
         HasScoped<LabUrlWriter>(services).Should().BeTrue();
         HasScoped<LabWorkerReload>(services).Should().BeTrue();
-        HasScoped<LabFormatter>(services).Should().BeTrue();
+        HasScoped<OutputWorkspace>(services).Should().BeTrue();
         HasScoped<BlazorMonacoInterop>(services).Should().BeTrue();
         HasScoped<WorkerHost>(services).Should().BeTrue();
         HasScoped<HttpClient>(services).Should().BeTrue();

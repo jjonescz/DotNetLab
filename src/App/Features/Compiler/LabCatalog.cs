@@ -1,5 +1,3 @@
-using DotNetLab.Features.Outputs;
-
 namespace DotNetLab.Features.Compiler;
 
 public static class LabCatalog
@@ -61,123 +59,9 @@ public static class LabCatalog
             _ => "No Symbols",
         };
 
-    public const string ErrorsOutputType = "errors";
-    public const string FailOutputType = "fail";
-    public const string RazorErrorsOutputType = "razorErrors";
-
-    public static readonly OutputTab[] GlobalOutputTabs =
-    [
-        new("il", "IL"),
-        new("seq", "Seq"),
-        new("cs", "C#"),
-        new("asm", "Asm"),
-        new("xml", "Docs"),
-        new("run", "Run"),
-        new(ErrorsOutputType, "Error List")
-    ];
-
-    public static readonly OutputTab[] CsharpOutputCatalog =
-    [
-        new("tree", "Tree"),
-        .. GlobalOutputTabs
-    ];
-
-    public static readonly OutputTab[] RazorLikeOutputCatalog =
-    [
-        new("syntax", "Syntax"),
-        new("ir", "IR"),
-        new(RazorErrorsOutputType, "Razor Error List"),
-        new("gcs", "C#"),
-        new("html", "HTML"),
-        .. GlobalOutputTabs
-    ];
-
-    public static string OutputKindLabel(OutputFileKind kind)
-        => kind switch
-        {
-            OutputFileKind.Razor => "Razor",
-            OutputFileKind.Cshtml => "CSHTML",
-            _ => "C#"
-        };
-
-    public static OutputFileKind OutputKindFor(string fileName)
-    {
-        if (fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase))
-        {
-            return OutputFileKind.Razor;
-        }
-
-        if (fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
-        {
-            return OutputFileKind.Cshtml;
-        }
-
-        return OutputFileKind.Cs;
-    }
-
-    public static IReadOnlyList<OutputTab> CatalogFor(OutputFileKind kind)
-        => kind is OutputFileKind.Razor or OutputFileKind.Cshtml
-            ? RazorLikeOutputCatalog
-            : CsharpOutputCatalog;
-
-    public static bool IsOutputTabLocked(string type)
-        => type is ErrorsOutputType;
-
     public static bool IsRazorLike(string fileName)
         => fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) ||
            fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase);
-
-    public static List<string> DefaultTabOrder(OutputFileKind kind)
-        => CatalogFor(kind).Select(tab => tab.Type).ToList();
-
-    public static HashSet<string> ProducedOutputTypes(string fileName)
-        => CatalogFor(OutputKindFor(fileName))
-            .Select(tab => tab.Type)
-            .Where(type => type != RazorErrorsOutputType && type != FailOutputType)
-            .ToHashSet(StringComparer.Ordinal);
-
-    public static string RepresentativeFile(OutputFileKind kind)
-        => kind switch
-        {
-            OutputFileKind.Razor => "Component.razor",
-            OutputFileKind.Cshtml => "Page.cshtml",
-            _ => "Program.cs"
-        };
-
-    public static string OutputTypeLabel(string type)
-    {
-        foreach (var tab in RazorLikeOutputCatalog)
-        {
-            if (tab.Type == type)
-            {
-                return tab.Label;
-            }
-        }
-
-        foreach (var tab in CsharpOutputCatalog)
-        {
-            if (tab.Type == type)
-            {
-                return tab.Label;
-            }
-        }
-
-        return type switch
-        {
-            FailOutputType => "Failure",
-            _ => type
-        };
-    }
-
-    public static string OutputLanguage(string type)
-        => type switch
-        {
-            "cs" or "gcs" or "il" or "ir" or "errors" => "csharp",
-            "asm" => "x86",
-            "html" => "html",
-            "xml" => "xml",
-            _ => "plaintext"
-        };
 
     public static string LanguageFor(string fileName)
     {
