@@ -57,7 +57,7 @@ public static class AppBuilder
         services.AddScoped<OutputWorkspace>();
         services.AddScoped<ShareUrlSync>();
         services.AddScoped<ShareUrlWriter>();
-        services.AddScoped<Features.Preferences.ThemeService>();
+        services.AddScoped<AppThemeService>();
         services.AddScoped<LabPlatform>();
         services.AddScoped<ShareService>();
         services.AddScoped<SettingsStore>();

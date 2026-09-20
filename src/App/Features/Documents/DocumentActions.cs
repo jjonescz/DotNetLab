@@ -5,8 +5,8 @@ namespace DotNetLab.Features.Documents;
 public sealed record SetDocumentStateAction(
     string Template,
     string ActiveDocument,
-    ImmutableArray<string> OpenNames);
+    ImmutableArray<string> OpenDocuments);
 
 public sealed record DocumentsChangedAction(IReadOnlyList<string> PreviousUris);
 
-public sealed record ActiveSourceChangedAction;
+public sealed record ActiveDocumentChangedAction;

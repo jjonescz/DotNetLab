@@ -1,6 +1,6 @@
 @inherits FluxorComponent
 @inject DocumentFormatter Formatter
-@inject DotNetLab.Features.Preferences.ThemeService Theme
+@inject AppThemeService Theme
 @inject ShareService Share
 @inject LabPlatform Platform
 @inject IJSRuntime JS
@@ -277,7 +277,7 @@
     private IEnumerable<CommandItem> Commands()
     {
         yield return new("Compile", "compile run build", Platform.SaveChord, RequestCompile);
-        yield return new("Format document", "format indent", "", () => Formatter.FormatActiveSource());
+        yield return new("Format document", "format indent", "", () => Formatter.FormatActiveDocument());
         yield return new("Copy link", "copy share url link", "", Share.CopyLinkAsync);
         yield return new("Create gist", "gist github share", "", Share.CreateGistAsync);
         yield return new("Load from URL", "paste gist url load", "", OpenPasteUrl);

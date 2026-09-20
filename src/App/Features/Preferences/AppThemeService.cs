@@ -3,15 +3,15 @@ using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Preferences;
 
-public sealed class ThemeService : IAsyncDisposable
+public sealed class AppThemeService : IAsyncDisposable
 {
     private readonly IJSRuntime _js;
     private readonly IDispatcher _dispatcher;
     private readonly IState<PreferencesState> _prefs;
-    private DotNetObjectReference<ThemeService>? _self;
+    private DotNetObjectReference<AppThemeService>? _self;
     private bool _listening;
 
-    public ThemeService(IJSRuntime js, IDispatcher dispatcher, IState<PreferencesState> prefs)
+    public AppThemeService(IJSRuntime js, IDispatcher dispatcher, IState<PreferencesState> prefs)
     {
         _js = js;
         _dispatcher = dispatcher;

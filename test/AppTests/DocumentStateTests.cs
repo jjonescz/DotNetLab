@@ -7,7 +7,7 @@ namespace DotNetLab;
 public sealed class DocumentStateTests
 {
     [TestMethod]
-    public void Reduce_UpdatesTemplateActiveAndOpenNames()
+    public void Reduce_UpdatesTemplateActiveAndOpenDocuments()
     {
         var next = DocumentReducers.Reduce(
             new DocumentState(),
@@ -15,7 +15,7 @@ public sealed class DocumentStateTests
 
         next.Template.Should().Be("Razor");
         next.ActiveDocument.Should().Be("TestComponent.razor");
-        next.OpenNames.Should().Equal("TestComponent.razor", "_Imports.razor");
+        next.OpenDocuments.Should().Equal("TestComponent.razor", "_Imports.razor");
     }
 
     [TestMethod]
@@ -24,7 +24,7 @@ public sealed class DocumentStateTests
         var state = new DocumentState();
         var next = DocumentReducers.Reduce(
             state,
-            new SetDocumentStateAction(state.Template, state.ActiveDocument, state.OpenNames));
+            new SetDocumentStateAction(state.Template, state.ActiveDocument, state.OpenDocuments));
 
         next.Should().BeSameAs(state);
     }

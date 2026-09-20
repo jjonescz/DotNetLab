@@ -297,7 +297,7 @@ public sealed class CompilationSession : IAsyncDisposable
 
         _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
 
-        var activeIndex = userFiles.IndexOf(_documents.ActiveSource);
+        var activeIndex = userFiles.IndexOf(_documents.ActiveDocument);
         if (activeIndex < 0)
         {
             activeIndex = 0;

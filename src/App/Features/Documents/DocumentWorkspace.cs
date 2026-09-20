@@ -24,7 +24,7 @@ public sealed class DocumentWorkspace
     public event Action? Changed;
 
     public string Template { get; private set; } = "C#";
-    public string ActiveSource { get; set; } = "Program.cs";
+    public string ActiveDocument { get; set; } = "Program.cs";
 
     public IReadOnlyDictionary<string, string> Sources => _sources;
     public IReadOnlyList<string> SourceFiles => _sourceFiles;
@@ -105,15 +105,15 @@ public sealed class DocumentWorkspace
 
         if (template is "Razor")
         {
-            ActiveSource = "TestComponent.razor";
+            ActiveDocument = "TestComponent.razor";
         }
         else if (template is "CSHTML")
         {
-            ActiveSource = "TestPage.cshtml";
+            ActiveDocument = "TestPage.cshtml";
         }
         else
         {
-            ActiveSource = "Program.cs";
+            ActiveDocument = "Program.cs";
         }
 
         SetActiveOutput(template is "Razor" or "CSHTML" ? "gcs" : "cs");
@@ -180,9 +180,9 @@ public sealed class DocumentWorkspace
         RemoveUri(oldName);
         EnsureUri(normalized);
 
-        if (string.Equals(ActiveSource, oldName, StringComparison.Ordinal))
+        if (string.Equals(ActiveDocument, oldName, StringComparison.Ordinal))
         {
-            ActiveSource = normalized;
+            ActiveDocument = normalized;
         }
 
         Stale = true;
@@ -220,9 +220,9 @@ public sealed class DocumentWorkspace
         var before = ModelUris;
         _sources.Remove(file);
         RemoveUri(file);
-        if (ActiveSource == file)
+        if (ActiveDocument == file)
         {
-            ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
+            ActiveDocument = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
         }
 
         Stale = true;
@@ -256,7 +256,7 @@ public sealed class DocumentWorkspace
         InsertUserFile(name);
         _sources[name] = contents;
         EnsureUri(name);
-        ActiveSource = name;
+        ActiveDocument = name;
         Stale = true;
         Notify();
         AfterChanged(before);
@@ -280,7 +280,7 @@ public sealed class DocumentWorkspace
             Stale = true;
         }
 
-        ActiveSource = fileName;
+        ActiveDocument = fileName;
         Notify();
         AfterChanged(before);
     }
@@ -362,22 +362,22 @@ public sealed class DocumentWorkspace
             EnsureUri(name);
         }
 
-        ActiveSource = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
+        ActiveDocument = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
         Stale = true;
         Notify();
         AfterChanged(before);
     }
 
-    public void SetActiveSource(string file)
+    public void SetActiveDocument(string file)
     {
-        if (string.Equals(ActiveSource, file, StringComparison.Ordinal))
+        if (string.Equals(ActiveDocument, file, StringComparison.Ordinal))
         {
             return;
         }
 
-        ActiveSource = file;
+        ActiveDocument = file;
         Notify();
-        _dispatcher.Dispatch(new ActiveSourceChangedAction());
+        _dispatcher.Dispatch(new ActiveDocumentChangedAction());
         _dispatcher.Dispatch(new PersistUrlAction());
     }
 
@@ -449,7 +449,7 @@ public sealed class DocumentWorkspace
             selectable = _sourceFiles.ToList();
         }
 
-        ActiveSource = state.SelectedInputIndex >= 0 && state.SelectedInputIndex < selectable.Count
+        ActiveDocument = state.SelectedInputIndex >= 0 && state.SelectedInputIndex < selectable.Count
             ? selectable[state.SelectedInputIndex]
             : selectable[0];
 
@@ -467,7 +467,7 @@ public sealed class DocumentWorkspace
     {
         _dispatcher.Dispatch(new SetDocumentStateAction(
             Template,
-            ActiveSource,
+            ActiveDocument,
             [.. SourceFiles]));
         Changed?.Invoke();
     }

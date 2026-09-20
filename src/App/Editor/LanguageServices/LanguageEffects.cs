@@ -13,8 +13,8 @@ public sealed class LanguageEffects(LabLanguageSession language)
         return language.AfterDocumentsChangedAsync(action.PreviousUris);
     }
 
-    [EffectMethod(typeof(ActiveSourceChangedAction))]
-    public Task HandleActiveSource(IDispatcher dispatcher)
+    [EffectMethod(typeof(ActiveDocumentChangedAction))]
+    public Task HandleActiveDocument(IDispatcher dispatcher)
     {
         _ = dispatcher;
         return language.SyncAsync();

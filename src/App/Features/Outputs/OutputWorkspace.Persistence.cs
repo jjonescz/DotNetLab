@@ -11,9 +11,9 @@ public sealed partial class OutputWorkspace
         using (var writer = new Utf8JsonWriter(stream))
         {
             writer.WriteStartObject();
-            WriteSavedKind(writer, "cs", OutputFileKind.Cs);
-            WriteSavedKind(writer, "razor", OutputFileKind.Razor);
-            WriteSavedKind(writer, "cshtml", OutputFileKind.Cshtml);
+            WriteSavedKind(writer, "cs", DocumentKind.Cs);
+            WriteSavedKind(writer, "razor", DocumentKind.Razor);
+            WriteSavedKind(writer, "cshtml", DocumentKind.Cshtml);
             writer.WriteEndObject();
         }
 
@@ -35,9 +35,9 @@ public sealed partial class OutputWorkspace
                 return;
             }
 
-            ApplySavedKind(document.RootElement, "cs", OutputFileKind.Cs);
-            ApplySavedKind(document.RootElement, "razor", OutputFileKind.Razor);
-            ApplySavedKind(document.RootElement, "cshtml", OutputFileKind.Cshtml);
+            ApplySavedKind(document.RootElement, "cs", DocumentKind.Cs);
+            ApplySavedKind(document.RootElement, "razor", DocumentKind.Razor);
+            ApplySavedKind(document.RootElement, "cshtml", DocumentKind.Cshtml);
         }
         catch (JsonException)
         {
@@ -50,7 +50,7 @@ public sealed partial class OutputWorkspace
         Notify();
     }
 
-    private void WriteSavedKind(Utf8JsonWriter writer, string property, OutputFileKind kind)
+    private void WriteSavedKind(Utf8JsonWriter writer, string property, DocumentKind kind)
     {
         writer.WritePropertyName(property);
         writer.WriteStartObject();
@@ -71,7 +71,7 @@ public sealed partial class OutputWorkspace
         writer.WriteEndObject();
     }
 
-    private void ApplySavedKind(JsonElement root, string property, OutputFileKind kind)
+    private void ApplySavedKind(JsonElement root, string property, DocumentKind kind)
     {
         if (!root.TryGetProperty(property, out var value))
         {
@@ -111,7 +111,7 @@ public sealed partial class OutputWorkspace
         _hiddenOutputTabs[kind] = hidden;
     }
 
-    private void ApplyLegacyVisibleIds(OutputFileKind kind, IReadOnlyList<string> visible)
+    private void ApplyLegacyVisibleIds(DocumentKind kind, IReadOnlyList<string> visible)
     {
         var catalog = OutputCatalog.For(kind);
         var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
@@ -149,7 +149,7 @@ public sealed partial class OutputWorkspace
         _hiddenOutputTabs[kind] = hidden;
     }
 
-    private static List<string> SanitizeOrder(OutputFileKind kind, IReadOnlyList<string> ids)
+    private static List<string> SanitizeOrder(DocumentKind kind, IReadOnlyList<string> ids)
     {
         var catalog = OutputCatalog.For(kind);
         var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
@@ -194,7 +194,7 @@ public sealed partial class OutputWorkspace
         return ids;
     }
 
-    private void ResetKindToDefault(OutputFileKind kind)
+    private void ResetKindToDefault(DocumentKind kind)
     {
         _outputTabOrder[kind] = OutputCatalog.DefaultOrder(kind);
         _hiddenOutputTabs[kind] = new HashSet<string>(StringComparer.Ordinal);

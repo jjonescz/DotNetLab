@@ -10,7 +10,7 @@ public sealed record DocumentState
 
     public string ActiveDocument { get; init; } = "Program.cs";
 
-    public ImmutableArray<string> OpenNames { get; init; } = ["Program.cs"];
+    public ImmutableArray<string> OpenDocuments { get; init; } = ["Program.cs"];
 
     public DocumentState()
     {

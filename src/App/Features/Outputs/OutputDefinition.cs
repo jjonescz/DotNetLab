@@ -1,6 +1,6 @@
 namespace DotNetLab.Features.Outputs;
 
-public enum OutputFileKind
+public enum DocumentKind
 {
     Cs,
     Razor,

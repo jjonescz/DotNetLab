@@ -65,10 +65,10 @@ public static class OutputCatalog
 
     public static bool IsLocked(string id) => Get(id)?.Locked == true;
 
-    public static IReadOnlyList<OutputDefinition> For(OutputFileKind kind)
-        => kind is OutputFileKind.Razor or OutputFileKind.Cshtml ? Razor : CSharp;
+    public static IReadOnlyList<OutputDefinition> For(DocumentKind kind)
+        => kind is DocumentKind.Razor or DocumentKind.Cshtml ? Razor : CSharp;
 
-    public static List<string> DefaultOrder(OutputFileKind kind)
+    public static List<string> DefaultOrder(DocumentKind kind)
         => For(kind).Select(output => output.Id).ToList();
 
     public static HashSet<string> ProducedTypes(string fileName)
@@ -77,34 +77,34 @@ public static class OutputCatalog
             .Select(output => output.Id)
             .ToHashSet(StringComparer.Ordinal);
 
-    public static string KindLabel(OutputFileKind kind)
+    public static string KindLabel(DocumentKind kind)
         => kind switch
         {
-            OutputFileKind.Razor => "Razor",
-            OutputFileKind.Cshtml => "CSHTML",
+            DocumentKind.Razor => "Razor",
+            DocumentKind.Cshtml => "CSHTML",
             _ => "C#"
         };
 
-    public static OutputFileKind KindFor(string fileName)
+    public static DocumentKind KindFor(string fileName)
     {
         if (fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase))
         {
-            return OutputFileKind.Razor;
+            return DocumentKind.Razor;
         }
 
         if (fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
         {
-            return OutputFileKind.Cshtml;
+            return DocumentKind.Cshtml;
         }
 
-        return OutputFileKind.Cs;
+        return DocumentKind.Cs;
     }
 
-    public static string RepresentativeFile(OutputFileKind kind)
+    public static string RepresentativeFile(DocumentKind kind)
         => kind switch
         {
-            OutputFileKind.Razor => "Component.razor",
-            OutputFileKind.Cshtml => "Page.cshtml",
+            DocumentKind.Razor => "Component.razor",
+            DocumentKind.Cshtml => "Page.cshtml",
             _ => "Program.cs"
         };
 }

@@ -11,9 +11,9 @@ public sealed class DocumentFormatter(
     WorkerHost worker,
     AppPersistence persist)
 {
-    public async Task FormatActiveSource()
+    public async Task FormatActiveDocument()
     {
-        var fileName = documents.ActiveSource;
+        var fileName = documents.ActiveDocument;
         if (!documents.Sources.TryGetValue(fileName, out var currentCode))
         {
             return;

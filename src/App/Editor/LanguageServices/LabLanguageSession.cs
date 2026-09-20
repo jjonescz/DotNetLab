@@ -100,7 +100,7 @@ public sealed class LabLanguageSession
 
     public async Task RefreshAfterCompileAsync()
     {
-        var uri = _documents.UriFor(_documents.ActiveSource);
+        var uri = _documents.UriFor(_documents.ActiveDocument);
         if (!_language.Enabled || !await _language.UpdateDiagnosticsAfterCompilationAsync(uri))
         {
             await _language.ApplyCompileDiagnosticsAsync(
@@ -116,7 +116,7 @@ public sealed class LabLanguageSession
 
     public async Task RefreshAfterCachedCompileAsync(CompiledAssembly output)
     {
-        var uri = _documents.UriFor(_documents.ActiveSource);
+        var uri = _documents.UriFor(_documents.ActiveDocument);
         if (!_language.Enabled || !await _language.OnCachedCompilationLoadedAsync(CurrentCompilerConfiguration(), output, uri))
         {
             await _language.ApplyCompileDiagnosticsAsync(
@@ -147,14 +147,14 @@ public sealed class LabLanguageSession
                 await SyncAsync(refresh: true);
                 if (_compilation.HasLiveInput)
                 {
-                    await _language.UpdateDiagnosticsAfterCompilationAsync(_documents.UriFor(_documents.ActiveSource));
+                    await _language.UpdateDiagnosticsAfterCompilationAsync(_documents.UriFor(_documents.ActiveDocument));
                 }
                 else if (_compilation.Compiled is { } compiled)
                 {
                     await _language.OnCachedCompilationLoadedAsync(
                         CurrentCompilerConfiguration(),
                         compiled,
-                        _documents.UriFor(_documents.ActiveSource));
+                        _documents.UriFor(_documents.ActiveDocument));
                 }
             }
             else
@@ -188,7 +188,7 @@ public sealed class LabLanguageSession
         {
             await _language.OnDidChangeWorkspaceAsync(
                 _documents.CreateModelInfos(),
-                _documents.UriFor(_documents.ActiveSource),
+                _documents.UriFor(_documents.ActiveDocument),
                 refresh);
         }
         catch (JSException)

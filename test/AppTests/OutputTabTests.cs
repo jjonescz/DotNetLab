@@ -12,18 +12,18 @@ public sealed class OutputTabTests
     [TestMethod]
     public void Catalog_KindOrderAndLock()
     {
-        OutputCatalog.KindFor("Program.cs").Should().Be(OutputFileKind.Cs);
-        OutputCatalog.KindFor("TestComponent.razor").Should().Be(OutputFileKind.Razor);
-        OutputCatalog.KindFor("TestPage.cshtml").Should().Be(OutputFileKind.Cshtml);
+        OutputCatalog.KindFor("Program.cs").Should().Be(DocumentKind.Cs);
+        OutputCatalog.KindFor("TestComponent.razor").Should().Be(DocumentKind.Razor);
+        OutputCatalog.KindFor("TestPage.cshtml").Should().Be(DocumentKind.Cshtml);
         OutputCatalog.IsLocked("errors").Should().BeTrue();
         OutputCatalog.IsLocked("tree").Should().BeFalse();
-        OutputCatalog.DefaultOrder(OutputFileKind.Cs).Should().Equal(
+        OutputCatalog.DefaultOrder(DocumentKind.Cs).Should().Equal(
             "tree", "il", "seq", "cs", "asm", "xml", "run", "errors");
-        OutputCatalog.DefaultOrder(OutputFileKind.Razor).Should().StartWith(
+        OutputCatalog.DefaultOrder(DocumentKind.Razor).Should().StartWith(
             ["syntax", "ir", "razorErrors", "gcs", "html"]);
-        OutputCatalog.For(OutputFileKind.Cshtml).Should().Equal(OutputCatalog.For(OutputFileKind.Razor));
-        OutputCatalog.DefaultOrder(OutputFileKind.Cshtml).Should().Equal(
-            OutputCatalog.DefaultOrder(OutputFileKind.Razor));
+        OutputCatalog.For(DocumentKind.Cshtml).Should().Equal(OutputCatalog.For(DocumentKind.Razor));
+        OutputCatalog.DefaultOrder(DocumentKind.Cshtml).Should().Equal(
+            OutputCatalog.DefaultOrder(DocumentKind.Razor));
         OutputCatalog.ProducedTypes("Program.cs").Should().Contain(["tree", "cs", "errors"]);
         OutputCatalog.ProducedTypes("Program.cs").Should().NotContain("razorErrors");
         OutputCatalog.ProducedTypes("TestComponent.razor").Should().Contain("gcs");
@@ -35,22 +35,22 @@ public sealed class OutputTabTests
     {
         var (tabs, host) = Create();
         tabs.OpenIds.Should().Contain("tree");
-        tabs.SetOutputTabVisible(OutputFileKind.Cs, "tree", false);
-        tabs.IsOutputTabVisible(OutputFileKind.Cs, "tree").Should().BeFalse();
+        tabs.SetOutputTabVisible(DocumentKind.Cs, "tree", false);
+        tabs.IsOutputTabVisible(DocumentKind.Cs, "tree").Should().BeFalse();
         tabs.OpenIds.Should().NotContain("tree");
         tabs.OpenIds.Should().Contain("errors");
 
-        tabs.SetOutputTabVisible(OutputFileKind.Cs, "errors", false);
-        tabs.IsOutputTabVisible(OutputFileKind.Cs, "errors").Should().BeTrue();
+        tabs.SetOutputTabVisible(DocumentKind.Cs, "errors", false);
+        tabs.IsOutputTabVisible(DocumentKind.Cs, "errors").Should().BeTrue();
 
-        tabs.CanMoveOutputTab(OutputFileKind.Cs, "il", -1).Should().BeTrue();
-        tabs.MoveOutputTab(OutputFileKind.Cs, "il", -1);
-        tabs.SettingsRowsFor(OutputFileKind.Cs).Select(tab => tab.Id).First().Should().Be("il");
+        tabs.CanMoveOutputTab(DocumentKind.Cs, "il", -1).Should().BeTrue();
+        tabs.MoveOutputTab(DocumentKind.Cs, "il", -1);
+        tabs.SettingsRowsFor(DocumentKind.Cs).Select(tab => tab.Id).First().Should().Be("il");
 
-        tabs.CanMoveOutputTab(OutputFileKind.Cs, "il", -1).Should().BeFalse();
-        tabs.ResetOutputTabs(OutputFileKind.Cs);
-        tabs.IsOutputTabVisible(OutputFileKind.Cs, "tree").Should().BeTrue();
-        tabs.SettingsRowsFor(OutputFileKind.Cs).Select(tab => tab.Id).First().Should().Be("tree");
+        tabs.CanMoveOutputTab(DocumentKind.Cs, "il", -1).Should().BeFalse();
+        tabs.ResetOutputTabs(DocumentKind.Cs);
+        tabs.IsOutputTabVisible(DocumentKind.Cs, "tree").Should().BeTrue();
+        tabs.SettingsRowsFor(DocumentKind.Cs).Select(tab => tab.Id).First().Should().Be("tree");
         host.ActiveOutput.Should().Be("cs");
     }
 
@@ -58,13 +58,13 @@ public sealed class OutputTabTests
     public void SerializeRoundTripPreservesHiddenTabs()
     {
         var (tabs, _) = Create();
-        tabs.SetOutputTabVisible(OutputFileKind.Cs, "tree", false);
+        tabs.SetOutputTabVisible(DocumentKind.Cs, "tree", false);
         var json = tabs.SerializeOutputTabs();
 
         var (restored, _) = Create();
         restored.ApplySavedOutputTabs(json);
-        restored.IsOutputTabVisible(OutputFileKind.Cs, "tree").Should().BeFalse();
-        restored.IsOutputTabVisible(OutputFileKind.Cs, "errors").Should().BeTrue();
+        restored.IsOutputTabVisible(DocumentKind.Cs, "tree").Should().BeFalse();
+        restored.IsOutputTabVisible(DocumentKind.Cs, "errors").Should().BeTrue();
     }
 
     [TestMethod]
@@ -82,7 +82,7 @@ public sealed class OutputTabTests
     {
         var (tabs, _) = Create();
         tabs.ApplySavedOutputTabs("{not-json");
-        tabs.IsOutputTabVisible(OutputFileKind.Cs, "tree").Should().BeTrue();
+        tabs.IsOutputTabVisible(DocumentKind.Cs, "tree").Should().BeTrue();
     }
 
     private static (OutputWorkspace Tabs, Harness Host) Create()

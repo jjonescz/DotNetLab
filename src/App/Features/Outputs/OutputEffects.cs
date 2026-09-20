@@ -14,8 +14,8 @@ public sealed class OutputEffects(OutputWorkspace outputs)
         return outputs.EnsureOutputLoadedAsync(action.Value);
     }
 
-    [EffectMethod(typeof(ActiveSourceChangedAction))]
-    public Task HandleActiveSource(IDispatcher dispatcher)
+    [EffectMethod(typeof(ActiveDocumentChangedAction))]
+    public Task HandleActiveDocument(IDispatcher dispatcher)
     {
         _ = dispatcher;
         return outputs.RefreshDisplayAsync();

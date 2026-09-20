@@ -9,7 +9,7 @@ public static class DocumentReducers
     {
         if (string.Equals(state.Template, action.Template, StringComparison.Ordinal) &&
             string.Equals(state.ActiveDocument, action.ActiveDocument, StringComparison.Ordinal) &&
-            state.OpenNames.AsSpan().SequenceEqual(action.OpenNames.AsSpan()))
+            state.OpenDocuments.AsSpan().SequenceEqual(action.OpenDocuments.AsSpan()))
         {
             return state;
         }
@@ -18,7 +18,7 @@ public static class DocumentReducers
         {
             Template = action.Template,
             ActiveDocument = action.ActiveDocument,
-            OpenNames = action.OpenNames,
+            OpenDocuments = action.OpenDocuments,
         };
     }
 }

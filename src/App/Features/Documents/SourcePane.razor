@@ -6,7 +6,7 @@
 @inject IState<PreferencesState> Prefs
 
 <EditorGroups PaneId="source"
-              Items="DocumentsUi.Value.OpenNames"
+              Items="DocumentsUi.Value.OpenDocuments"
               Active="@DocumentsUi.Value.ActiveDocument"
               ActiveChanged="OnSourceSelected"
               ItemClosed="Documents.CloseFile"
@@ -21,7 +21,7 @@
                       Title="Format document"
                       AriaLabel="Format document"
                       IconStart="@(new Icons.Regular.Size20.TextEditStyle())"
-                      OnClick="Formatter.FormatActiveSource" />
+                      OnClick="Formatter.FormatActiveDocument" />
         <FluentTooltip Anchor="lab-source-format"
                        Class="lab-command-tooltip"
                        Positioning="Positioning.Below"
@@ -102,7 +102,7 @@
         }
 
         await StripChanging.InvokeAsync();
-        Documents.SetActiveSource(file);
+        Documents.SetActiveDocument(file);
     }
 
     private void OnSourceRenamed(TabRename rename)

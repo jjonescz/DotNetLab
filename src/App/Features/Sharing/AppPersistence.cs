@@ -19,7 +19,7 @@ public sealed class AppPersistence : IAsyncDisposable
     private readonly IDispatcher _dispatcher;
     private readonly DocumentWorkspace _documents;
     private readonly CompilationSession _compilation;
-    private readonly OutputWorkspace _tabs;
+    private readonly OutputWorkspace _outputs;
     private readonly LabLanguageSession _language;
     private readonly ShareUrlWriter _urls;
     private readonly LabEditorSnapshots _snapshots;
@@ -38,7 +38,7 @@ public sealed class AppPersistence : IAsyncDisposable
         ILogger<AppPersistence> logger,
         DocumentWorkspace documents,
         CompilationSession compilation,
-        OutputWorkspace tabs,
+        OutputWorkspace outputs,
         LabLanguageSession language,
         ShareUrlWriter urls,
         LabEditorSnapshots snapshots)
@@ -51,7 +51,7 @@ public sealed class AppPersistence : IAsyncDisposable
         _dispatcher = dispatcher;
         _documents = documents;
         _compilation = compilation;
-        _tabs = tabs;
+        _outputs = outputs;
         _language = language;
         _urls = urls;
         _snapshots = snapshots;
@@ -86,7 +86,7 @@ public sealed class AppPersistence : IAsyncDisposable
             await _language.SetEnabledAsync(_preferences.Value.LanguageServices, persist: false);
         }
 
-        _tabs.ApplySavedOutputTabs(await _settings.ReadOutputTabsAsync());
+        _outputs.ApplySavedOutputTabs(await _settings.ReadOutputTabsAsync());
     }
 
     public async ValueTask DisposeAsync()
@@ -170,7 +170,7 @@ public sealed class AppPersistence : IAsyncDisposable
 
         if ((kind & PersistKind.OutputTabs) != 0)
         {
-            await _settings.PersistOutputTabsAsync(_tabs.SerializeOutputTabs());
+            await _settings.PersistOutputTabsAsync(_outputs.SerializeOutputTabs());
         }
     }
 

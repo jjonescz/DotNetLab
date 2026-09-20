@@ -27,7 +27,7 @@ public sealed class DocumentTests
     {
         var harness = Create();
         harness.Documents.Template.Should().Be("C#");
-        harness.Documents.ActiveSource.Should().Be("Program.cs");
+        harness.Documents.ActiveDocument.Should().Be("Program.cs");
         harness.Documents.SourceFiles.Should().Equal("Program.cs");
         harness.Documents.Sources["Program.cs"].Should().Be(InitialCode.CSharp.TextTemplate);
         harness.Output.Value.ActiveOutput.Should().Be("cs");
@@ -40,7 +40,7 @@ public sealed class DocumentTests
         harness.Documents.SetTemplate("Razor");
 
         harness.Documents.Template.Should().Be("Razor");
-        harness.Documents.ActiveSource.Should().Be("TestComponent.razor");
+        harness.Documents.ActiveDocument.Should().Be("TestComponent.razor");
         harness.Documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
         harness.Output.Value.ActiveOutput.Should().Be("gcs");
         harness.Compilation.Value.Stale.Should().BeTrue();
@@ -52,7 +52,7 @@ public sealed class DocumentTests
     {
         var harness = Create();
         harness.Documents.SetTemplate("CSHTML");
-        harness.Documents.ActiveSource.Should().Be("TestPage.cshtml");
+        harness.Documents.ActiveDocument.Should().Be("TestPage.cshtml");
         harness.Documents.SourceFiles.Should().Equal("TestPage.cshtml");
         harness.Output.Value.ActiveOutput.Should().Be("gcs");
     }
@@ -62,12 +62,12 @@ public sealed class DocumentTests
     {
         var harness = Create();
         harness.Documents.AddFile(".cs");
-        harness.Documents.ActiveSource.Should().Be("File1.cs");
+        harness.Documents.ActiveDocument.Should().Be("File1.cs");
         harness.Documents.SourceFiles.Should().Equal("Program.cs", "File1.cs");
         harness.PersistCount.Should().Be(1);
 
         harness.Documents.CloseFile("Program.cs");
-        harness.Documents.ActiveSource.Should().Be("File1.cs");
+        harness.Documents.ActiveDocument.Should().Be("File1.cs");
         harness.Documents.SourceFiles.Should().Equal("File1.cs");
 
         harness.Documents.CloseFile("File1.cs");
@@ -79,7 +79,7 @@ public sealed class DocumentTests
     {
         var harness = Create();
         harness.Documents.RenameFile("Program.cs", "Hello.cs");
-        harness.Documents.ActiveSource.Should().Be("Hello.cs");
+        harness.Documents.ActiveDocument.Should().Be("Hello.cs");
         harness.Documents.SourceFiles.Should().Equal("Hello.cs");
         harness.PersistCount.Should().Be(1);
 
@@ -124,7 +124,7 @@ public sealed class DocumentTests
         var harness = Create();
         harness.Documents.LoadFromSavedState(SavedState.Razor);
         harness.Documents.Template.Should().Be("Razor");
-        harness.Documents.ActiveSource.Should().Be("TestComponent.razor");
+        harness.Documents.ActiveDocument.Should().Be("TestComponent.razor");
         harness.Documents.SourceFiles.Should().Equal("TestComponent.razor", "_Imports.razor");
     }
 
@@ -139,7 +139,7 @@ public sealed class DocumentTests
         });
         harness.Documents.SourceFiles.Should().Equal("App.cs");
         harness.Documents.Sources["App.cs"].Should().Be("class App;");
-        harness.Documents.ActiveSource.Should().Be("App.cs");
+        harness.Documents.ActiveDocument.Should().Be("App.cs");
         harness.Compilation.Value.Stale.Should().BeTrue();
         harness.PersistCount.Should().Be(1);
     }

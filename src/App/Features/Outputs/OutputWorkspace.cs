@@ -18,11 +18,11 @@ public sealed partial class OutputWorkspace
     private readonly Dictionary<string, OutputSnapshot> _cache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
     private readonly HashSet<string> _loading = new(StringComparer.Ordinal);
-    private readonly Dictionary<OutputFileKind, List<string>> _outputTabOrder = CreateDefaultOutputTabOrder();
-    private readonly Dictionary<OutputFileKind, HashSet<string>> _hiddenOutputTabs = CreateDefaultHiddenOutputTabs();
-    private readonly Dictionary<OutputFileKind, List<string>> _openOutputTabs = new();
+    private readonly Dictionary<DocumentKind, List<string>> _outputTabOrder = CreateDefaultOutputTabOrder();
+    private readonly Dictionary<DocumentKind, HashSet<string>> _hiddenOutputTabs = CreateDefaultHiddenOutputTabs();
+    private readonly Dictionary<DocumentKind, List<string>> _openOutputTabs = new();
     private OutputSnapshot? _cachedNativeAsm;
-    private OutputFileKind? _syncedOutputKind;
+    private DocumentKind? _syncedOutputKind;
     private bool _showErrorListIfOutputEmpty;
 
     public OutputWorkspace(
@@ -73,7 +73,7 @@ public sealed partial class OutputWorkspace
             ? OutputCatalog.ErrorsId
             : ActiveOutput;
 
-    private string ActiveSource => _documents.ActiveSource;
+    private string ActiveDocument => _documents.ActiveDocument;
 
     private string ActiveOutput => _output.Value.ActiveOutput;
 

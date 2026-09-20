@@ -6,14 +6,14 @@ public sealed partial class OutputWorkspace
     {
         get
         {
-            var produced = OutputCatalog.ProducedTypes(ActiveSource);
-            return OpenTabs(OutputCatalog.KindFor(ActiveSource))
+            var produced = OutputCatalog.ProducedTypes(ActiveDocument);
+            return OpenTabs(OutputCatalog.KindFor(ActiveDocument))
                 .Where(produced.Contains)
                 .ToArray();
         }
     }
 
-    public IReadOnlyList<OutputDefinition> SettingsRowsFor(OutputFileKind kind)
+    public IReadOnlyList<OutputDefinition> SettingsRowsFor(DocumentKind kind)
     {
         var catalog = OutputCatalog.For(kind);
         var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
@@ -39,10 +39,10 @@ public sealed partial class OutputWorkspace
         return rows;
     }
 
-    public bool IsOutputTabVisible(OutputFileKind kind, string type)
+    public bool IsOutputTabVisible(DocumentKind kind, string type)
         => !HiddenOutputTabs(kind).Contains(type);
 
-    public bool CanMoveOutputTab(OutputFileKind kind, string type, int delta)
+    public bool CanMoveOutputTab(DocumentKind kind, string type, int delta)
     {
         var order = OutputTabOrder(kind);
         var index = order.IndexOf(type);
@@ -50,7 +50,7 @@ public sealed partial class OutputWorkspace
         return index >= 0 && next >= 0 && next < order.Count;
     }
 
-    public void SetOutputTabVisible(OutputFileKind kind, string type, bool visible)
+    public void SetOutputTabVisible(DocumentKind kind, string type, bool visible)
     {
         if (OutputCatalog.IsLocked(type) && !visible)
         {
@@ -97,7 +97,7 @@ public sealed partial class OutputWorkspace
         Notify();
     }
 
-    public void MoveOutputTab(OutputFileKind kind, string type, int delta)
+    public void MoveOutputTab(DocumentKind kind, string type, int delta)
     {
         if (!CanMoveOutputTab(kind, type, delta))
         {
@@ -111,12 +111,12 @@ public sealed partial class OutputWorkspace
         Notify();
     }
 
-    public void ResetOutputTabs(OutputFileKind kind)
+    public void ResetOutputTabs(DocumentKind kind)
     {
         _outputTabOrder[kind] = OutputCatalog.DefaultOrder(kind);
         _hiddenOutputTabs[kind] = new HashSet<string>(StringComparer.Ordinal);
         _openOutputTabs.Remove(kind);
-        if (kind == OutputCatalog.KindFor(ActiveSource))
+        if (kind == OutputCatalog.KindFor(ActiveDocument))
         {
             Revision++;
         }
@@ -127,8 +127,8 @@ public sealed partial class OutputWorkspace
 
     public void CaptureOpenOutputTabs(IReadOnlyList<string> ids)
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
-        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
         var catalog = OutputCatalog.For(kind).Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
         var next = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -151,8 +151,8 @@ public sealed partial class OutputWorkspace
     public IReadOnlyList<OutputDefinition> AddableOutputTabsFor(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        var produced = OutputCatalog.ProducedTypes(ActiveSource);
-        return OutputCatalog.For(OutputCatalog.KindFor(ActiveSource))
+        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
+        return OutputCatalog.For(OutputCatalog.KindFor(ActiveDocument))
             .Where(output => produced.Contains(output.Id) && !openSet.Contains(output.Id))
             .ToArray();
     }
@@ -160,12 +160,12 @@ public sealed partial class OutputWorkspace
     public bool HasClosedOutputTabs(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
-        return VisibleTabsFor(ActiveSource).Any(output => !openSet.Contains(output.Id));
+        return VisibleTabsFor(ActiveDocument).Any(output => !openSet.Contains(output.Id));
     }
 
     public bool OutputTabOrderDiffers(IReadOnlyList<string> open)
     {
-        var order = OutputTabOrder(OutputCatalog.KindFor(ActiveSource));
+        var order = OutputTabOrder(OutputCatalog.KindFor(ActiveDocument));
         var expected = order.Where(open.Contains).ToList();
         var current = open.Where(order.Contains).ToList();
         return !expected.SequenceEqual(current, StringComparer.Ordinal);
@@ -173,8 +173,8 @@ public sealed partial class OutputWorkspace
 
     public void AddOutputTab(string type)
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
-        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
+        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
         if (!produced.Contains(type))
         {
             return;
@@ -193,7 +193,7 @@ public sealed partial class OutputWorkspace
 
     public void RestoreOutputTabOrder()
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
         var tabs = OpenTabs(kind);
         var rank = new Dictionary<string, int>(StringComparer.Ordinal);
         var order = OutputTabOrder(kind);
@@ -212,10 +212,10 @@ public sealed partial class OutputWorkspace
 
     public void RestoreClosedOutputTabs()
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
         var tabs = OpenTabs(kind);
         var settingsOrder = OutputTabOrder(kind);
-        foreach (var output in VisibleTabsFor(ActiveSource))
+        foreach (var output in VisibleTabsFor(ActiveDocument))
         {
             if (tabs.Contains(output.Id))
             {
@@ -244,7 +244,7 @@ public sealed partial class OutputWorkspace
 
     public void SaveOpenOutputTabsAsSettings()
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
         var catalog = OutputCatalog.For(kind);
         var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
         var open = OpenTabs(kind)
@@ -337,12 +337,12 @@ public sealed partial class OutputWorkspace
         return tabs;
     }
 
-    private List<string> OpenTabs(OutputFileKind kind)
+    private List<string> OpenTabs(DocumentKind kind)
     {
         if (!_openOutputTabs.TryGetValue(kind, out var tabs))
         {
-            var fileName = kind == OutputCatalog.KindFor(ActiveSource)
-                ? ActiveSource
+            var fileName = kind == OutputCatalog.KindFor(ActiveDocument)
+                ? ActiveDocument
                 : OutputCatalog.RepresentativeFile(kind);
             tabs = VisibleTabsFor(fileName).Select(output => output.Id).ToList();
             _openOutputTabs[kind] = tabs;
@@ -353,9 +353,9 @@ public sealed partial class OutputWorkspace
 
     private void SyncOpenOutputKind()
     {
-        var kind = OutputCatalog.KindFor(ActiveSource);
+        var kind = OutputCatalog.KindFor(ActiveDocument);
         var tabs = OpenTabs(kind);
-        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        var produced = OutputCatalog.ProducedTypes(ActiveDocument);
         tabs.RemoveAll(id => !produced.Contains(id));
         if (produced.Contains(OutputCatalog.ErrorsId) && !tabs.Contains(OutputCatalog.ErrorsId))
         {
@@ -373,24 +373,24 @@ public sealed partial class OutputWorkspace
         }
     }
 
-    private List<string> OutputTabOrder(OutputFileKind kind) => _outputTabOrder[kind];
+    private List<string> OutputTabOrder(DocumentKind kind) => _outputTabOrder[kind];
 
-    private HashSet<string> HiddenOutputTabs(OutputFileKind kind) => _hiddenOutputTabs[kind];
+    private HashSet<string> HiddenOutputTabs(DocumentKind kind) => _hiddenOutputTabs[kind];
 
-    private static Dictionary<OutputFileKind, List<string>> CreateDefaultOutputTabOrder()
+    private static Dictionary<DocumentKind, List<string>> CreateDefaultOutputTabOrder()
         => new()
         {
-            [OutputFileKind.Cs] = OutputCatalog.DefaultOrder(OutputFileKind.Cs),
-            [OutputFileKind.Razor] = OutputCatalog.DefaultOrder(OutputFileKind.Razor),
-            [OutputFileKind.Cshtml] = OutputCatalog.DefaultOrder(OutputFileKind.Cshtml)
+            [DocumentKind.Cs] = OutputCatalog.DefaultOrder(DocumentKind.Cs),
+            [DocumentKind.Razor] = OutputCatalog.DefaultOrder(DocumentKind.Razor),
+            [DocumentKind.Cshtml] = OutputCatalog.DefaultOrder(DocumentKind.Cshtml)
         };
 
-    private static Dictionary<OutputFileKind, HashSet<string>> CreateDefaultHiddenOutputTabs()
+    private static Dictionary<DocumentKind, HashSet<string>> CreateDefaultHiddenOutputTabs()
         => new()
         {
-            [OutputFileKind.Cs] = new(StringComparer.Ordinal),
-            [OutputFileKind.Razor] = new(StringComparer.Ordinal),
-            [OutputFileKind.Cshtml] = new(StringComparer.Ordinal)
+            [DocumentKind.Cs] = new(StringComparer.Ordinal),
+            [DocumentKind.Razor] = new(StringComparer.Ordinal),
+            [DocumentKind.Cshtml] = new(StringComparer.Ordinal)
         };
 
     private void SetActiveOutput(string type)

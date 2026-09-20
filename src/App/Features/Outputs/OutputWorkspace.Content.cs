@@ -246,7 +246,7 @@ public sealed partial class OutputWorkspace
             return null;
         }
 
-        if (compiled.Files.TryGetValue(ActiveSource, out var file) &&
+        if (compiled.Files.TryGetValue(ActiveDocument, out var file) &&
             file.GetOutput(tab) is { } perFile)
         {
             return perFile;
@@ -257,12 +257,12 @@ public sealed partial class OutputWorkspace
 
     private string? OutputFileName(string tab)
         => FindOutput(tab) is not null &&
-           Compiled?.Files.TryGetValue(ActiveSource, out var file) == true &&
+           Compiled?.Files.TryGetValue(ActiveDocument, out var file) == true &&
            file.GetOutput(tab) is not null
-            ? ActiveSource
+            ? ActiveDocument
             : null;
 
-    private string OutputCacheKey(string tab) => $"{ActiveSource}\0{tab}";
+    private string OutputCacheKey(string tab) => $"{ActiveDocument}\0{tab}";
 
     private OutputSnapshot Placeholder(string tab, string text)
         => new(text, "plaintext", CompiledFileOutputMetadata.SpecialMessage, OutputDisclaimer.None, OutputUriFor(tab));

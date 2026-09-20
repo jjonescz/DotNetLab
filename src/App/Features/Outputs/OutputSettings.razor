@@ -59,19 +59,19 @@
 </details>
 
 @code {
-    private static readonly (OutputFileKind Value, string Label)[] _outputKinds =
+    private static readonly (DocumentKind Value, string Label)[] _outputKinds =
     [
-        (OutputFileKind.Cs, "C#"),
-        (OutputFileKind.Razor, "Razor"),
-        (OutputFileKind.Cshtml, "CSHTML")
+        (DocumentKind.Cs, "C#"),
+        (DocumentKind.Razor, "Razor"),
+        (DocumentKind.Cshtml, "CSHTML")
     ];
 
-    private OutputFileKind _outputKind = OutputFileKind.Cs;
+    private DocumentKind _outputKind = DocumentKind.Cs;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        _outputKind = OutputCatalog.KindFor(Documents.ActiveSource);
+        _outputKind = OutputCatalog.KindFor(Documents.ActiveDocument);
         Outputs.Changed += OnChanged;
     }
 
