@@ -46,7 +46,7 @@ public sealed class AddDotNetLabAppTests
             d.Lifetime == ServiceLifetime.Scoped);
         HasScoped<IWorkerConfigurer>(services).Should().BeTrue();
         HasScoped<ICompilerOutputPlugin>(services).Should().BeTrue();
-        HasScoped<ICompilationCache>(services).Should().BeTrue();
+        HasScoped<CompilationCache>(services).Should().BeTrue();
     }
 
     [TestMethod]

@@ -9,7 +9,7 @@ namespace DotNetLab.Infrastructure.Caching.Compilation;
 /// Shared HTTP compilation cache (<c>vsinsertions.azurewebsites.net</c>). L2 of
 /// <see cref="CompilationCache"/>. Not <c>IDistributedCache</c>.
 /// </summary>
-internal sealed class RemoteCompilationCache(HttpClient client, ILogger<RemoteCompilationCache> logger) : ICompilationCacheStore
+public sealed class RemoteCompilationCache(HttpClient client, ILogger<RemoteCompilationCache> logger) : ICompilationCacheStore
 {
     private static readonly string Endpoint = "https://vsinsertions.azurewebsites.net/api/cache";
 

@@ -181,7 +181,7 @@ public sealed class CompilationSessionTests
         var session = new CompilationSession(
             worker,
             new TemplateCache(),
-            new NullCompilationCache(),
+            new CompilationCache(new EmptyStore(), new EmptyStore()),
             compiler ?? new Store<CompilerState>(new CompilerState()),
             new Store<PreferencesState>(new PreferencesState { EnableCaching = false, LanguageServices = false }),
             compilation,
@@ -373,12 +373,12 @@ public sealed class CompilationSessionTests
         public void Dispose() => SetSynchronizationContext(_previous);
     }
 
-    private sealed class NullCompilationCache : ICompilationCache
+    private sealed class EmptyStore : ICompilationCacheStore
     {
-        public ValueTask<CachedCompilation?> GetAsync(SavedState state, CancellationToken cancellationToken = default)
+        public ValueTask<CachedCompilation?> GetAsync(string key, CancellationToken cancellationToken)
             => ValueTask.FromResult<CachedCompilation?>(null);
 
-        public Task StoreAsync(SavedState state, CompiledAssembly output, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public ValueTask StoreAsync(string key, CachedCompilation value, CancellationToken cancellationToken)
+            => ValueTask.CompletedTask;
     }
 }

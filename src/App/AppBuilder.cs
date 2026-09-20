@@ -65,7 +65,7 @@ public static class AppBuilder
         services.AddScoped<TemplateCache>();
         services.AddScoped<IndexedDbCompilationCache>();
         services.AddScoped<RemoteCompilationCache>();
-        services.AddScoped<ICompilationCache, CompilationCache>();
+        services.AddScoped<CompilationCache>();
         services.AddScoped<BlazorMonacoInterop>();
         services.AddScoped<LabLanguageServices>();
         services.AddScoped<LabLanguageSession>();

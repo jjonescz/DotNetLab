@@ -9,7 +9,7 @@ namespace DotNetLab.Infrastructure.Caching.Compilation;
 /// Thin JS (<c>netLabCompileCache</c>); quota/open failures are a miss, never a
 /// cached miss. Native hosts no-op when IndexedDB is absent.
 /// </summary>
-internal sealed class IndexedDbCompilationCache(IJSRuntime js, ILogger<IndexedDbCompilationCache> logger) : ICompilationCacheStore
+public sealed class IndexedDbCompilationCache(IJSRuntime js, ILogger<IndexedDbCompilationCache> logger) : ICompilationCacheStore
 {
     public async ValueTask<CachedCompilation?> GetAsync(string key, CancellationToken cancellationToken)
     {

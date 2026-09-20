@@ -17,7 +17,7 @@ public sealed class CompilationSession : IAsyncDisposable
 {
     private readonly WorkerHost _worker;
     private readonly TemplateCache _templates;
-    private readonly ICompilationCache _cache;
+    private readonly CompilationCache _cache;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _preferences;
     private readonly IState<CompilationState> _compilation;
@@ -37,7 +37,7 @@ public sealed class CompilationSession : IAsyncDisposable
     public CompilationSession(
         WorkerHost worker,
         TemplateCache templates,
-        ICompilationCache cache,
+        CompilationCache cache,
         IState<CompilerState> compiler,
         IState<PreferencesState> preferences,
         IState<CompilationState> compilation,

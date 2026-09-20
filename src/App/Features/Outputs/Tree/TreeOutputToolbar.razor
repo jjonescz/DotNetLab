@@ -1,0 +1,20 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+
+<FluentSelect TOption="SymbolDisplayKinds"
+              TValue="SymbolDisplayKinds"
+              Items="CompilerCatalog.SymbolDisplayKindOptions"
+              OptionText="@(static (SymbolDisplayKinds kind) => CompilerCatalog.SymbolDisplayKindLabel(kind))"
+              Value="Options.Value.ShowSymbols"
+              ValueChanged="@(value => Dispatcher.Dispatch(new SetShowSymbolsAction(value)))"
+              AriaLabel="Symbols" />
+<FluentCheckbox
+    Label="Operations"
+    Value="Options.Value.ShowOperations"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetShowOperationsAction(value)))" />
+<FluentCheckbox
+    Label="Bound nodes"
+    Value="Options.Value.ShowBoundNodes"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetShowBoundNodesAction(value)))" />

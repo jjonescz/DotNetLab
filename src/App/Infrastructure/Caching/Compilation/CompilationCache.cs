@@ -7,7 +7,7 @@ namespace DotNetLab.Infrastructure.Caching.Compilation;
 /// L1 IndexedDB then L2 remote HTTP. Per-key in-flight Get coalesces stampede.
 /// Does not compile; the session compiles on miss and calls Store.
 /// </summary>
-internal sealed class CompilationCache : ICompilationCache
+public sealed class CompilationCache
 {
     private readonly ICompilationCacheStore _local;
     private readonly ICompilationCacheStore _remote;
