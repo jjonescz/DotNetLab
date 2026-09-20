@@ -1,11 +1,11 @@
 @inherits FluxorComponent
-@inject LabPersistence Persist
-@inject LabThemeService Theme
+@inject AppPersistence Persist
+@inject ThemeService Theme
 @inject IUpdateChecker Updates
 @inject IState<UpdateState> UpdateStore
 @inject IState<PreferencesState> Prefs
 @inject IState<CompilationOptionsState> Options
-@inject IState<SettingsUiState> Ui
+@inject IState<SettingsDialogState> Ui
 @inject IDispatcher Dispatcher
 @inject IJSRuntime JS
 @inject IServiceProvider Services
@@ -31,16 +31,16 @@
                     <SettingRow Title="Razor Toolchain">
                         <FluentSelect TOption="RazorToolchain"
                                       TValue="RazorToolchain"
-                                      Items="LabCatalog.RazorToolchainOptions"
-                                      OptionText="@(static (RazorToolchain value) => LabCatalog.RazorToolchainLabel(value))"
+                                      Items="CompilerCatalog.RazorToolchainOptions"
+                                      OptionText="@(static (RazorToolchain value) => CompilerCatalog.RazorToolchainLabel(value))"
                                       Value="Options.Value.RazorToolchain"
                                       ValueChanged="SetRazorToolchain" />
                     </SettingRow>
                     <SettingRow Title="Razor Strategy">
                         <FluentSelect TOption="RazorStrategy"
                                       TValue="RazorStrategy"
-                                      Items="LabCatalog.RazorStrategyOptions"
-                                      OptionText="@(static (RazorStrategy value) => LabCatalog.RazorStrategyLabel(value))"
+                                      Items="CompilerCatalog.RazorStrategyOptions"
+                                      OptionText="@(static (RazorStrategy value) => CompilerCatalog.RazorStrategyLabel(value))"
                                       Value="Options.Value.RazorStrategy"
                                       ValueChanged="SetRazorStrategy" />
                     </SettingRow>
@@ -67,20 +67,20 @@
             </div>
 
             <p class="lab-settings-identity">
-                @if (!string.IsNullOrEmpty(LabIdentity.Commit))
+                @if (!string.IsNullOrEmpty(BuildInfo.Commit))
                 {
                     <a class="lab-sdk-summary-versions"
-                       href="@($"{LabLinks.Repository}/commit/{LabIdentity.Commit}")"
+                       href="@($"{AppLinks.Repository}/commit/{BuildInfo.Commit}")"
                        target="_blank"
-                       rel="noopener noreferrer">@LabIdentity.Commit</a>
+                       rel="noopener noreferrer">@BuildInfo.Commit</a>
                     <span aria-hidden="true"> · </span>
                 }
-                @if (!string.IsNullOrEmpty(LabIdentity.Date))
+                @if (!string.IsNullOrEmpty(BuildInfo.Date))
                 {
-                    <span>@LabIdentity.Date</span>
+                    <span>@BuildInfo.Date</span>
                     <span aria-hidden="true"> · </span>
                 }
-                <a href="@LabLinks.Repository" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="@AppLinks.Repository" target="_blank" rel="noopener noreferrer">GitHub</a>
                 @if (UpdateStore.Value.Enabled && !UpdateStore.Value.Checking)
                 {
                     <span aria-hidden="true"> · </span>
@@ -98,7 +98,7 @@
                 <div class="lab-update">
                     <span>Update available</span>
                     <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" OnClick="() => LoadUpdateAsync(loadUpdate)">Reload</FluentButton>
-                    <a href="@LabLinks.Releases" target="_blank" rel="noopener noreferrer">Release notes</a>
+                    <a href="@AppLinks.Releases" target="_blank" rel="noopener noreferrer">Release notes</a>
                 </div>
             }
             else if (UpdateStore.Value.Downloading)
@@ -115,7 +115,7 @@
             }
 
             <a class="lab-native-apps"
-               href="@(Store?.Url ?? LabLinks.NativeApps)"
+               href="@(Store?.Url ?? AppLinks.NativeApps)"
                target="_blank"
                rel="noopener noreferrer"
                @onclick="OnStoreClick"

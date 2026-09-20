@@ -2,10 +2,10 @@ using Fluxor;
 
 namespace DotNetLab.Features.Documents;
 
-public static class DocumentMetadataReducers
+public static class DocumentReducers
 {
     [ReducerMethod]
-    public static DocumentMetadataState Reduce(DocumentMetadataState state, SetDocumentMetadataAction action)
+    public static DocumentState Reduce(DocumentState state, SetDocumentStateAction action)
     {
         if (string.Equals(state.Template, action.Template, StringComparison.Ordinal) &&
             string.Equals(state.ActiveDocument, action.ActiveDocument, StringComparison.Ordinal) &&

@@ -11,14 +11,14 @@ public sealed class DialogUiReducerTests
     [TestMethod]
     public void Settings_OpenAndClose_AreIdempotent()
     {
-        var closed = new SettingsUiState();
-        var opened = SettingsUiReducers.Reduce(closed, new OpenSettingsAction());
+        var closed = new SettingsDialogState();
+        var opened = SettingsDialogReducers.Reduce(closed, new OpenSettingsAction());
         opened.IsOpen.Should().BeTrue();
-        SettingsUiReducers.Reduce(opened, new OpenSettingsAction()).Should().BeSameAs(opened);
+        SettingsDialogReducers.Reduce(opened, new OpenSettingsAction()).Should().BeSameAs(opened);
 
-        var closedAgain = SettingsUiReducers.Reduce(opened, new CloseSettingsAction());
+        var closedAgain = SettingsDialogReducers.Reduce(opened, new CloseSettingsAction());
         closedAgain.IsOpen.Should().BeFalse();
-        SettingsUiReducers.Reduce(closedAgain, new CloseSettingsAction()).Should().BeSameAs(closedAgain);
+        SettingsDialogReducers.Reduce(closedAgain, new CloseSettingsAction()).Should().BeSameAs(closedAgain);
     }
 
     [TestMethod]
@@ -37,13 +37,13 @@ public sealed class DialogUiReducerTests
     [TestMethod]
     public void PasteUrl_OpenAndClose_AreIdempotent()
     {
-        var closed = new PasteUrlUiState();
-        var opened = PasteUrlUiReducers.Reduce(closed, new OpenPasteUrlAction());
+        var closed = new PasteUrlDialogState();
+        var opened = PasteUrlDialogReducers.Reduce(closed, new OpenPasteUrlAction());
         opened.IsOpen.Should().BeTrue();
-        PasteUrlUiReducers.Reduce(opened, new OpenPasteUrlAction()).Should().BeSameAs(opened);
+        PasteUrlDialogReducers.Reduce(opened, new OpenPasteUrlAction()).Should().BeSameAs(opened);
 
-        var closedAgain = PasteUrlUiReducers.Reduce(opened, new ClosePasteUrlAction());
+        var closedAgain = PasteUrlDialogReducers.Reduce(opened, new ClosePasteUrlAction());
         closedAgain.IsOpen.Should().BeFalse();
-        PasteUrlUiReducers.Reduce(closedAgain, new ClosePasteUrlAction()).Should().BeSameAs(closedAgain);
+        PasteUrlDialogReducers.Reduce(closedAgain, new ClosePasteUrlAction()).Should().BeSameAs(closedAgain);
     }
 }

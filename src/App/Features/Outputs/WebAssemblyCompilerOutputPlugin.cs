@@ -28,7 +28,7 @@ public sealed class WebAssemblyCompilerOutputPlugin : ICompilerOutputPlugin
             language = null;
             return $"""
                 JIT disassembler is not available on this platform.
-                Please use a native app instead ({LabLinks.NativeApps}).
+                Please use a native app instead ({AppLinks.NativeApps}).
 
                 """;
         }

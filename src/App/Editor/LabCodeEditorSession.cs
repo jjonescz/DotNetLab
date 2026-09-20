@@ -25,8 +25,8 @@ public readonly record struct LabCodeEditorView(
 public sealed class LabCodeEditorSession
 {
     private readonly IJSRuntime _js;
-    private readonly LabDocuments _documents;
-    private readonly LabPersistence _persist;
+    private readonly DocumentWorkspace _documents;
+    private readonly AppPersistence _persist;
     private readonly LabEditorSnapshots _snapshots;
     private readonly LabLanguageSession _language;
     private readonly IDispatcher _dispatcher;
@@ -52,8 +52,8 @@ public sealed class LabCodeEditorSession
 
     public LabCodeEditorSession(
         IJSRuntime js,
-        LabDocuments documents,
-        LabPersistence persist,
+        DocumentWorkspace documents,
+        AppPersistence persist,
         LabEditorSnapshots snapshots,
         LabLanguageSession language,
         IDispatcher dispatcher,

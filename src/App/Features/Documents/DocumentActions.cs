@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace DotNetLab.Features.Documents;
 
-public sealed record SetDocumentMetadataAction(
+public sealed record SetDocumentStateAction(
     string Template,
     string ActiveDocument,
     ImmutableArray<string> OpenNames);

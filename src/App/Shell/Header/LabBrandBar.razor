@@ -1,11 +1,11 @@
 @inherits FluxorComponent
-@inject LabDocuments Docs
-@inject LabThemeService Theme
-@inject LabShare Share
+@inject DocumentWorkspace Docs
+@inject DotNetLab.Features.Preferences.ThemeService Theme
+@inject ShareService Share
 @inject IDispatcher Dispatcher
 @inject IState<UpdateState> Updates
 @inject IState<PreferencesState> Prefs
-@inject IState<DocumentMetadataState> DocumentsUi
+@inject IState<DocumentState> DocumentsUi
 
 <div class="lab-brand-bar">
     <span class="lab-brand-mark" aria-hidden="true">
@@ -22,7 +22,7 @@
             Template: @DocumentsUi.Value.Template
         </FluentMenuButton>
         <FluentMenuList>
-            @foreach (var template in LabCatalog.Templates)
+            @foreach (var template in DocumentTypes.Templates)
             {
                 <FluentMenuItem Label="@template" OnClick="@(() => Docs.SetTemplate(template))" />
             }

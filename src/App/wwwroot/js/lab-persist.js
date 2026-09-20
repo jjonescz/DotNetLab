@@ -20,7 +20,7 @@ window.netLabPrefs = {
         }
     },
     // Pre-redesign SettingsService keys (one JSON value each). Keep in sync with
-    // LegacyLabSettings.cs. C# maps these into netlab-settings; we do not delete them.
+    // LegacySettings.cs. C# maps these into netlab-settings; we do not delete them.
     legacySettingsKeys: [
         "WordWrap",
         "UseVim",

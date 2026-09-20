@@ -3,11 +3,11 @@ using Fluxor;
 namespace DotNetLab.Features.Preferences;
 
 [FeatureState]
-public sealed record SettingsUiState
+public sealed record SettingsDialogState
 {
     public bool IsOpen { get; init; }
 
-    public SettingsUiState()
+    public SettingsDialogState()
     {
     }
 }

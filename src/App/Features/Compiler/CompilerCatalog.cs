@@ -1,6 +1,6 @@
 namespace DotNetLab.Features.Compiler;
 
-public static class LabCatalog
+public static class CompilerCatalog
 {
     public static readonly SdkOption[] SdkVersions =
     [
@@ -26,7 +26,6 @@ public static class LabCatalog
         RazorStrategy.Runtime,
         RazorStrategy.DesignTime,
     ];
-    public static readonly string[] Templates = ["C#", "Razor", "CSHTML"];
     public static readonly SymbolDisplayKinds[] SymbolDisplayKindOptions =
     [
         SymbolDisplayKinds.None,
@@ -58,23 +57,4 @@ public static class LabCatalog
             SymbolDisplayKinds.Both => "All Symbols",
             _ => "No Symbols",
         };
-
-    public static bool IsRazorLike(string fileName)
-        => fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) ||
-           fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase);
-
-    public static string LanguageFor(string fileName)
-    {
-        if (fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            return "csharp";
-        }
-
-        if (IsRazorLike(fileName))
-        {
-            return "razor";
-        }
-
-        return "plaintext";
-    }
 }

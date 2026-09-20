@@ -2,13 +2,13 @@ using Fluxor;
 
 namespace DotNetLab.Features.Preferences;
 
-public static class SettingsUiReducers
+public static class SettingsDialogReducers
 {
     [ReducerMethod]
-    public static SettingsUiState Reduce(SettingsUiState state, OpenSettingsAction _)
+    public static SettingsDialogState Reduce(SettingsDialogState state, OpenSettingsAction _)
         => state.IsOpen ? state : state with { IsOpen = true };
 
     [ReducerMethod]
-    public static SettingsUiState Reduce(SettingsUiState state, CloseSettingsAction _)
+    public static SettingsDialogState Reduce(SettingsDialogState state, CloseSettingsAction _)
         => state.IsOpen ? state with { IsOpen = false } : state;
 }

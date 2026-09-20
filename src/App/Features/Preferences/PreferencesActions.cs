@@ -2,7 +2,7 @@ namespace DotNetLab.Features.Preferences;
 
 public sealed record SeedPreferencesAction(bool DebugLogs);
 
-public sealed record HydratePreferencesAction(LabSettingsSnapshot Snapshot);
+public sealed record HydratePreferencesAction(SettingsSnapshot Snapshot);
 
 public sealed record PreferencesReadyAction;
 

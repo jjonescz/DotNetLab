@@ -1,7 +1,7 @@
 @inherits FluxorComponent
 @inject OutputWorkspace Outputs
-@inject LabPersistence Persist
-@inject IState<DocumentMetadataState> DocumentsUi
+@inject AppPersistence Persist
+@inject IState<DocumentState> DocumentsUi
 @inject IDispatcher Dispatcher
 
 <CascadingValue Value="Outputs" IsFixed="true">

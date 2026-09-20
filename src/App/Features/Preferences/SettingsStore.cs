@@ -4,22 +4,22 @@ using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Preferences;
 
-public sealed class LabSettings(IJSRuntime js)
+public sealed class SettingsStore(IJSRuntime js)
 {
     public CompilationPreferences CompilationPreferences { get; private set; } = CompilationPreferences.Default;
 
     /// <summary>
     /// Loads <c>netlab-settings</c>, or migrates old per-key localStorage once
-    /// if that blob is missing. See <see cref="LegacyLabSettings"/>.
+    /// if that blob is missing. See <see cref="LegacySettings"/>.
     /// </summary>
-    public async Task<LabSettingsSnapshot?> LoadAsync()
+    public async Task<SettingsSnapshot?> LoadAsync()
     {
         try
         {
             var json = await js.InvokeAsync<string>("netLabPrefs.readSettings");
             var snapshot = string.IsNullOrWhiteSpace(json)
                 ? await TryMigrateLegacyAsync()
-                : JsonSerializer.Deserialize(json, LabSettingsJsonContext.Default.LabSettingsSnapshot);
+                : JsonSerializer.Deserialize(json, SettingsJsonContext.Default.SettingsSnapshot);
 
             // Persist the mapped blob so later loads skip the per-key path.
             if (snapshot is not null && string.IsNullOrWhiteSpace(json))
@@ -47,12 +47,12 @@ public sealed class LabSettings(IJSRuntime js)
     /// <summary>
     /// Reads the pre-redesign SettingsService keys via JS. Does not delete them.
     /// </summary>
-    private async Task<LabSettingsSnapshot?> TryMigrateLegacyAsync()
+    private async Task<SettingsSnapshot?> TryMigrateLegacyAsync()
     {
         try
         {
             var legacy = await js.InvokeAsync<Dictionary<string, string?>>("netLabPrefs.readLegacySettings");
-            return LegacyLabSettings.TryCreate(legacy);
+            return LegacySettings.TryCreate(legacy);
         }
         catch (JSException)
         {
@@ -60,7 +60,7 @@ public sealed class LabSettings(IJSRuntime js)
         }
     }
 
-    public async Task SaveAsync(LabSettingsSnapshot snapshot)
+    public async Task SaveAsync(SettingsSnapshot snapshot)
     {
         if (snapshot.CompilationPreferences is { } preferences)
         {
@@ -69,7 +69,7 @@ public sealed class LabSettings(IJSRuntime js)
 
         try
         {
-            var json = JsonSerializer.Serialize(snapshot, LabSettingsJsonContext.Default.LabSettingsSnapshot);
+            var json = JsonSerializer.Serialize(snapshot, SettingsJsonContext.Default.SettingsSnapshot);
             await js.InvokeVoidAsync("netLabPrefs.persistSettings", json);
         }
         catch (JSException)
@@ -101,7 +101,7 @@ public sealed class LabSettings(IJSRuntime js)
     }
 }
 
-public sealed class LabSettingsSnapshot
+public sealed class SettingsSnapshot
 {
     public bool? WordWrap { get; set; }
     public bool? UseVim { get; set; }
@@ -118,6 +118,6 @@ public sealed class LabSettingsSnapshot
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-[JsonSerializable(typeof(LabSettingsSnapshot))]
+[JsonSerializable(typeof(SettingsSnapshot))]
 [JsonSerializable(typeof(CompilationPreferences))]
-internal sealed partial class LabSettingsJsonContext : JsonSerializerContext;
+internal sealed partial class SettingsJsonContext : JsonSerializerContext;

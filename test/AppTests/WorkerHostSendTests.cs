@@ -20,7 +20,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new LabSettings(new UnusedJsRuntime()),
+            new SettingsStore(new UnusedJsRuntime()),
             new UnsupportedWorkerTransport(),
             NullLogger<WorkerHost>.Instance);
 
@@ -39,7 +39,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime()),
             transport,
             NullLogger<WorkerHost>.Instance);
 
@@ -60,7 +60,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime()),
             transport,
             logger);
 
@@ -81,7 +81,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/", SupportsThreads: true),
             new LabLogging(),
-            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime()),
             transport,
             logger);
 
@@ -100,7 +100,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime()),
             new SpyInProcessTransport(),
             NullLogger<WorkerHost>.Instance,
             configurer);

@@ -142,7 +142,7 @@ public sealed class OutputWorkspaceTests
     }
 
     [TestMethod]
-    public void OutputLanguage_LabOutputMatchesIdUntilSnapshotExists()
+    public void OutputLanguage_OutputDefinitionMatchesIdUntilSnapshotExists()
     {
         var (session, _) = Create();
         session.OutputLanguage("asm").Should().Be("plaintext");
@@ -192,7 +192,7 @@ public sealed class OutputWorkspaceTests
         public Harness(ICompilerOutputPlugin? plugin = null)
         {
             var dispatcher = new NoopDispatcher();
-            var documents = new LabDocuments(dispatcher, _compilation);
+            var documents = new DocumentWorkspace(dispatcher, _compilation);
             Session = new OutputWorkspace(
                 documents,
                 _output,

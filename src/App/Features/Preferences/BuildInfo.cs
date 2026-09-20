@@ -1,12 +1,12 @@
 namespace DotNetLab.Features.Preferences;
 
-internal static class LabIdentity
+internal static class BuildInfo
 {
     public static string Commit { get; } = Read("LabCommit");
     public static string Date { get; } = Read("LabDate");
 
     private static string Read(string key)
-        => typeof(LabIdentity).Assembly
+        => typeof(BuildInfo).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attribute => attribute.Key == key)
             ?.Value ?? "";

@@ -6,7 +6,7 @@ namespace DotNetLab.Features.Preferences;
 /// App theme identity and storage. Preference is <c>light</c>, <c>dark</c>, or
 /// <c>system</c> (resolved against <c>prefers-color-scheme</c>).
 /// </summary>
-public static class LabTheme
+public static class ThemeDefinition
 {
     /// <summary>Current preference: the string <c>light</c>, <c>dark</c>, or <c>system</c>.</summary>
     public const string StorageKey = "netlab-theme";

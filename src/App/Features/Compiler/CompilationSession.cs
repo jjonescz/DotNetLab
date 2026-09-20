@@ -25,7 +25,7 @@ public sealed class CompilationSession : IAsyncDisposable
     private readonly IState<OutputState> _output;
     private readonly IDispatcher _dispatcher;
     private readonly ILogger _logger;
-    private readonly LabDocuments _documents;
+    private readonly DocumentWorkspace _documents;
     private readonly LabEditorSnapshots _snapshots;
     private readonly CompilationScheduler _scheduler;
     private GenerationCounter _compileGeneration;
@@ -45,7 +45,7 @@ public sealed class CompilationSession : IAsyncDisposable
         IState<OutputState> output,
         IDispatcher dispatcher,
         ILogger<CompilationSession> logger,
-        LabDocuments documents,
+        DocumentWorkspace documents,
         LabEditorSnapshots snapshots)
     {
         _worker = worker;
@@ -284,7 +284,7 @@ public sealed class CompilationSession : IAsyncDisposable
     public SavedState CaptureSavedState()
     {
         var userFiles = _documents.SourceFiles
-            .Where(file => file != LabFixtures.ConfigurationFileName)
+            .Where(file => file != BuiltInContent.ConfigurationFileName)
             .ToList();
 
         var inputs = userFiles
@@ -295,7 +295,7 @@ public sealed class CompilationSession : IAsyncDisposable
             })
             .ToImmutableArray();
 
-        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
 
         var activeIndex = userFiles.IndexOf(_documents.ActiveSource);
         if (activeIndex < 0)
@@ -321,7 +321,7 @@ public sealed class CompilationSession : IAsyncDisposable
     internal CompilationInput CreateCompilationInput()
     {
         var inputs = _documents.SourceFiles
-            .Where(file => file != LabFixtures.ConfigurationFileName)
+            .Where(file => file != BuiltInContent.ConfigurationFileName)
             .Select(file => new InputCode
             {
                 FileName = file,
@@ -329,7 +329,7 @@ public sealed class CompilationSession : IAsyncDisposable
             })
             .ToImmutableArray();
 
-        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
 
         var options = _options.Value;
         return new CompilationInput(inputs)

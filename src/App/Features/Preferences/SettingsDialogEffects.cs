@@ -3,7 +3,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Preferences;
 
-public sealed class SettingsUiEffects
+public sealed class SettingsDialogEffects
 {
     [EffectMethod(typeof(OpenSettingsAction))]
     public Task HandleOpen(IDispatcher dispatcher)

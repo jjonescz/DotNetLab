@@ -3,7 +3,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Preferences;
 
-public sealed class PreferencesEffects(LabSettings settings, IState<PreferencesState> state, LabLogging logging)
+public sealed class PreferencesEffects(SettingsStore settings, IState<PreferencesState> state, LabLogging logging)
 {
     [EffectMethod(typeof(SeedPreferencesAction))]
     public Task HandleSeed(IDispatcher dispatcher)

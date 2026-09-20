@@ -48,19 +48,19 @@ public static class AppBuilder
                 options.UseReduxDevTools();
             }
         });
-        services.AddScoped<LabPersistence>();
+        services.AddScoped<AppPersistence>();
         services.AddScoped<LabEditorSnapshots>();
-        services.AddScoped<LabWorkerReload>();
-        services.AddScoped<LabDocuments>();
-        services.AddScoped<LabFormatter>();
+        services.AddScoped<WorkerReload>();
+        services.AddScoped<DocumentWorkspace>();
+        services.AddScoped<DocumentFormatter>();
         services.AddScoped<CompilationSession>();
         services.AddScoped<OutputWorkspace>();
-        services.AddScoped<LabUrlSync>();
-        services.AddScoped<LabUrlWriter>();
-        services.AddScoped<LabThemeService>();
+        services.AddScoped<ShareUrlSync>();
+        services.AddScoped<ShareUrlWriter>();
+        services.AddScoped<Features.Preferences.ThemeService>();
         services.AddScoped<LabPlatform>();
-        services.AddScoped<LabShare>();
-        services.AddScoped<LabSettings>();
+        services.AddScoped<ShareService>();
+        services.AddScoped<SettingsStore>();
         services.AddScoped<TemplateCache>();
         services.AddScoped<IndexedDbCompilationCache>();
         services.AddScoped<RemoteCompilationCache>();
@@ -70,7 +70,7 @@ public static class AppBuilder
         services.AddScoped<LabLanguageSession>();
         services.AddScoped<LabCursorSync>();
         services.AddScoped<EditorCursor>();
-        services.AddScoped<EditorDragState>();
+        services.AddScoped<EditorDrag>();
         services.AddScoped<IUpdateChecker, DisabledUpdateChecker>();
         services.TryAddScoped<IWorkerTransport, UnsupportedWorkerTransport>();
         services.TryAddScoped<IWorkerConfigurer, NoopWorkerConfigurer>();

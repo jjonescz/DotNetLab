@@ -166,17 +166,17 @@ public sealed class CompilationSessionTests
         => new(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new LabSettings(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime()),
             transport,
             NullLogger<WorkerHost>.Instance);
 
-    private static (CompilationSession Session, LabDocuments Documents) CreateSession(
+    private static (CompilationSession Session, DocumentWorkspace Documents) CreateSession(
         WorkerHost worker,
         IState<CompilationState> compilation,
         IDispatcher dispatcher,
         IState<CompilerState>? compiler = null)
     {
-        var documents = new LabDocuments(dispatcher, compilation);
+        var documents = new DocumentWorkspace(dispatcher, compilation);
         documents.SetSource("Program.cs", "class C;");
         var session = new CompilationSession(
             worker,

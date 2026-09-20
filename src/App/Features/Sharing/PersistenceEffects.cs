@@ -2,7 +2,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Sharing;
 
-public sealed class PersistenceEffects(LabPersistence persist)
+public sealed class PersistenceEffects(AppPersistence persist)
 {
     [EffectMethod]
     public Task Handle(PersistUrlAction action, IDispatcher dispatcher)

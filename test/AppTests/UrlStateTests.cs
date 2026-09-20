@@ -15,7 +15,7 @@ public sealed class UrlStateTests
     [DataRow("https://example/#cshtml", "cshtml")]
     [DataRow("https://example/#slug-with#extra", "slug-with#extra")]
     public void GetSlugFromClipboardText(string? text, string expected)
-        => LabUrlSync.GetSlugFromClipboardText(text).Should().Be(expected);
+        => ShareUrlSync.GetSlugFromClipboardText(text).Should().Be(expected);
 
     [TestMethod]
     [DataRow("csharp")]
@@ -23,7 +23,7 @@ public sealed class UrlStateTests
     [DataRow("cshtml")]
     public void TryGetSavedStateFromSlug_WellKnown(string slug)
     {
-        LabUrlSync.TryGetSavedStateFromSlug(slug, out var state).Should().BeTrue();
+        ShareUrlSync.TryGetSavedStateFromSlug(slug, out var state).Should().BeTrue();
         state.Should().BeSameAs(WellKnownSlugs.ShorthandToState[slug]);
     }
 
@@ -31,13 +31,13 @@ public sealed class UrlStateTests
     public void TryGetSavedStateFromSlug_CompressedInitial()
     {
         var slug = Compressor.Compress(SavedState.Initial);
-        LabUrlSync.TryGetSavedStateFromSlug(slug, out var state).Should().BeTrue();
+        ShareUrlSync.TryGetSavedStateFromSlug(slug, out var state).Should().BeTrue();
         state!.Inputs.Should().BeEquivalentTo(SavedState.Initial.Inputs);
     }
 
     [TestMethod]
     public void TryGetSavedStateFromSlug_Garbage()
-        => LabUrlSync.TryGetSavedStateFromSlug("%%%not-a-slug%%%", out _).Should().BeFalse();
+        => ShareUrlSync.TryGetSavedStateFromSlug("%%%not-a-slug%%%", out _).Should().BeFalse();
 
     [TestMethod]
     [DataRow("abcdef12", true, "abcdef12")]
@@ -47,7 +47,7 @@ public sealed class UrlStateTests
     [DataRow("", false, "")]
     public void TryParseGistId(string url, bool expected, string gistId)
     {
-        LabLinks.TryParseGistId(url, out var parsed).Should().Be(expected);
+        AppLinks.TryParseGistId(url, out var parsed).Should().Be(expected);
         parsed.Should().Be(gistId);
     }
 }

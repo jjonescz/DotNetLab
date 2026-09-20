@@ -13,11 +13,11 @@ public sealed partial class OutputWorkspace
         }
     }
 
-    public IReadOnlyList<LabOutput> SettingsRowsFor(OutputFileKind kind)
+    public IReadOnlyList<OutputDefinition> SettingsRowsFor(OutputFileKind kind)
     {
         var catalog = OutputCatalog.For(kind);
         var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
-        var rows = new List<LabOutput>(catalog.Count);
+        var rows = new List<OutputDefinition>(catalog.Count);
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var id in OutputTabOrder(kind))
@@ -148,7 +148,7 @@ public sealed partial class OutputWorkspace
         _openOutputTabs[kind] = next;
     }
 
-    public IReadOnlyList<LabOutput> AddableOutputTabsFor(IReadOnlyList<string> open)
+    public IReadOnlyList<OutputDefinition> AddableOutputTabsFor(IReadOnlyList<string> open)
     {
         var openSet = open.ToHashSet(StringComparer.Ordinal);
         var produced = OutputCatalog.ProducedTypes(ActiveSource);
@@ -304,13 +304,13 @@ public sealed partial class OutputWorkspace
             ?? OutputCatalog.ErrorsId);
     }
 
-    private IReadOnlyList<LabOutput> VisibleTabsFor(string fileName)
+    private IReadOnlyList<OutputDefinition> VisibleTabsFor(string fileName)
     {
         var kind = OutputCatalog.KindFor(fileName);
         var catalog = OutputCatalog.For(kind);
         var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
         var produced = OutputCatalog.ProducedTypes(fileName);
-        var tabs = new List<LabOutput>();
+        var tabs = new List<OutputDefinition>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var id in OutputTabOrder(kind))

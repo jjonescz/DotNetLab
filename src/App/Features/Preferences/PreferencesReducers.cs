@@ -88,7 +88,7 @@ public static class PreferencesReducers
     public static PreferencesState Reduce(PreferencesState state, SetThemeAction action)
         => state with
         {
-            AppTheme = LabTheme.NormalizePreference(action.Preference),
+            AppTheme = ThemeDefinition.NormalizePreference(action.Preference),
             ResolvedDark = action.ResolvedDark,
         };
 }

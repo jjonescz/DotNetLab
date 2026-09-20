@@ -1,6 +1,6 @@
 namespace DotNetLab.Features.Workspace;
 
-public sealed class EditorDragState
+public sealed class EditorDrag
 {
     public string? Kind { get; private set; }
     public string? Pane { get; private set; }

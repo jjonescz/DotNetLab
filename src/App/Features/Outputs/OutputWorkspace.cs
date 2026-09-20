@@ -7,7 +7,7 @@ namespace DotNetLab.Features.Outputs;
 
 public sealed partial class OutputWorkspace
 {
-    private readonly LabDocuments _documents;
+    private readonly DocumentWorkspace _documents;
     private readonly IState<OutputState> _output;
     private readonly IState<CompilationState> _compilation;
     private readonly IDispatcher _dispatcher;
@@ -26,7 +26,7 @@ public sealed partial class OutputWorkspace
     private bool _showErrorListIfOutputEmpty;
 
     public OutputWorkspace(
-        LabDocuments documents,
+        DocumentWorkspace documents,
         IState<OutputState> output,
         IState<CompilationState> compilation,
         ICompilerOutputPlugin plugin,
@@ -38,7 +38,7 @@ public sealed partial class OutputWorkspace
     }
 
     internal OutputWorkspace(
-        LabDocuments documents,
+        DocumentWorkspace documents,
         IState<OutputState> output,
         IState<CompilationState> compilation,
         IDispatcher dispatcher,
@@ -93,7 +93,7 @@ public sealed partial class OutputWorkspace
 
     private void Notify() => Changed?.Invoke();
 
-    public LabOutput Get(string id) => OutputCatalog.Require(id);
+    public OutputDefinition Get(string id) => OutputCatalog.Require(id);
 
     public void SetShowRenderedHtml(bool value)
     {

@@ -9,38 +9,38 @@ using Fluxor;
 
 namespace DotNetLab.Features.Sharing;
 
-public sealed class LabPersistence : IAsyncDisposable
+public sealed class AppPersistence : IAsyncDisposable
 {
-    private readonly LabSettings _settings;
+    private readonly SettingsStore _settings;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _preferences;
     private readonly IState<CompilationOptionsState> _options;
     private readonly IState<OutputState> _output;
     private readonly IDispatcher _dispatcher;
-    private readonly LabDocuments _documents;
+    private readonly DocumentWorkspace _documents;
     private readonly CompilationSession _compilation;
     private readonly OutputWorkspace _tabs;
     private readonly LabLanguageSession _language;
-    private readonly LabUrlWriter _urls;
+    private readonly ShareUrlWriter _urls;
     private readonly LabEditorSnapshots _snapshots;
     private readonly PersistenceQueue _persistence;
     private bool _suppressUrlPersist;
     private bool _settingsReady;
     private bool _compilerWasLoading;
 
-    public LabPersistence(
-        LabSettings settings,
+    public AppPersistence(
+        SettingsStore settings,
         IState<CompilerState> compiler,
         IState<PreferencesState> preferences,
         IState<CompilationOptionsState> options,
         IState<OutputState> output,
         IDispatcher dispatcher,
-        ILogger<LabPersistence> logger,
-        LabDocuments documents,
+        ILogger<AppPersistence> logger,
+        DocumentWorkspace documents,
         CompilationSession compilation,
         OutputWorkspace tabs,
         LabLanguageSession language,
-        LabUrlWriter urls,
+        ShareUrlWriter urls,
         LabEditorSnapshots snapshots)
     {
         _settings = settings;
@@ -135,7 +135,7 @@ public sealed class LabPersistence : IAsyncDisposable
         }
     }
 
-    private LabSettingsSnapshot CaptureSettings()
+    private SettingsSnapshot CaptureSettings()
     {
         var snapshot = _preferences.Value.ToSnapshot();
         snapshot.CompilationPreferences = EditingUserPreferences

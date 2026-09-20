@@ -60,15 +60,15 @@
                         Options="@CompilerRefOptions"
                         Selected="SelectRazor">
             <Trailing>
-                @foreach (var item in LabCatalog.RazorToolchainOptions)
+                @foreach (var item in CompilerCatalog.RazorToolchainOptions)
                 {
-                    <FluentMenuItem Label="@($"Toolchain: {LabCatalog.RazorToolchainLabel(item)}")"
+                    <FluentMenuItem Label="@($"Toolchain: {CompilerCatalog.RazorToolchainLabel(item)}")"
                                     OnClick="@(() => Dispatcher.Dispatch(new SetRazorToolchainAction(item)))" />
                 }
                 <FluentDivider />
-                @foreach (var item in LabCatalog.RazorStrategyOptions)
+                @foreach (var item in CompilerCatalog.RazorStrategyOptions)
                 {
-                    <FluentMenuItem Label="@($"Strategy: {LabCatalog.RazorStrategyLabel(item)}")"
+                    <FluentMenuItem Label="@($"Strategy: {CompilerCatalog.RazorStrategyLabel(item)}")"
                                     OnClick="@(() => Dispatcher.Dispatch(new SetRazorStrategyAction(item)))" />
                 }
             </Trailing>
@@ -133,7 +133,7 @@
     private const string Success = "var(--lab-success)";
 
     private static readonly CompilerPickerOption[] CompilerRefOptions =
-        [.. LabCatalog.CompilerRefs.Select(item => new CompilerPickerOption(item, item))];
+        [.. CompilerCatalog.CompilerRefs.Select(item => new CompilerPickerOption(item, item))];
 
     private bool Busy => Compilation.Value.Running || Compiler.Value.Loading;
 

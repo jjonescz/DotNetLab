@@ -4,8 +4,8 @@
 
 <FluentSelect TOption="SymbolDisplayKinds"
               TValue="SymbolDisplayKinds"
-              Items="LabCatalog.SymbolDisplayKindOptions"
-              OptionText="@(static (SymbolDisplayKinds kind) => LabCatalog.SymbolDisplayKindLabel(kind))"
+              Items="CompilerCatalog.SymbolDisplayKindOptions"
+              OptionText="@(static (SymbolDisplayKinds kind) => CompilerCatalog.SymbolDisplayKindLabel(kind))"
               Value="Options.Value.ShowSymbols"
               ValueChanged="SetShowSymbols"
               AriaLabel="Symbols" />

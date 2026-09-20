@@ -1,8 +1,8 @@
 @inherits FluxorComponent
-@inject LabDocuments Documents
-@inject LabFormatter Formatter
+@inject DocumentWorkspace Documents
+@inject DocumentFormatter Formatter
 @inject EditorCursor Cursor
-@inject IState<DocumentMetadataState> DocumentsUi
+@inject IState<DocumentState> DocumentsUi
 @inject IState<PreferencesState> Prefs
 
 <EditorGroups PaneId="source"
@@ -11,7 +11,7 @@
               ActiveChanged="OnSourceSelected"
               ItemClosed="Documents.CloseFile"
               ItemRenamed="OnSourceRenamed"
-              PinnedOrder="LabFixtures.SpecialSourceOrder"
+              PinnedOrder="BuiltInContent.SpecialSourceOrder"
               Icon="@(new Icons.Regular.Size20.Code())">
     <Actions>
         <FluentButton Id="lab-source-format"
@@ -55,12 +55,12 @@
         </FluentMenu>
     </Actions>
     <ItemLabel>
-        @if (context == LabFixtures.DirectivesFileName)
+        @if (context == BuiltInContent.DirectivesFileName)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.NumberSymbol())" Width="16px" />
             <span>Directives</span>
         }
-        else if (context == LabFixtures.ConfigurationFileName)
+        else if (context == BuiltInContent.ConfigurationFileName)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.DocumentSettings())" Width="16px" />
             <span>Configuration</span>
@@ -74,7 +74,7 @@
         <LabCodeEditor @key="@($"source-{context}")"
                        FileName="@context"
                        Value="@Documents.Sources.GetValueOrDefault(context, "")"
-                       Language="@LabCatalog.LanguageFor(context)"
+                       Language="@DocumentTypes.LanguageFor(context)"
                        ModelUri="@Documents.UriFor(context)"
                        WordWrap="Prefs.Value.WordWrap"
                        OnCursorChanged="OnCursorChanged"

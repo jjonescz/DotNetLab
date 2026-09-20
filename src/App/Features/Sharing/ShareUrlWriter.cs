@@ -4,7 +4,7 @@ using DotNetLab.Lab;
 
 namespace DotNetLab.Features.Sharing;
 
-public sealed class LabUrlWriter(NavigationManager navigation, CompilationSession compilation)
+public sealed class ShareUrlWriter(NavigationManager navigation, CompilationSession compilation)
 {
     private bool _ignoreNextLocation;
     private string? _appliedSlug;

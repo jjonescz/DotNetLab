@@ -4,7 +4,7 @@ using Fluxor;
 namespace DotNetLab.Features.Documents;
 
 [FeatureState]
-public sealed record DocumentMetadataState
+public sealed record DocumentState
 {
     public string Template { get; init; } = "C#";
 
@@ -12,7 +12,7 @@ public sealed record DocumentMetadataState
 
     public ImmutableArray<string> OpenNames { get; init; } = ["Program.cs"];
 
-    public DocumentMetadataState()
+    public DocumentState()
     {
     }
 }

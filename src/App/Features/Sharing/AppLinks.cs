@@ -5,7 +5,7 @@ using DotNetLab.Features.Preferences;
 
 namespace DotNetLab.Features.Sharing;
 
-public static class LabLinks
+public static class AppLinks
 {
     public const string Repository = "https://github.com/jjonescz/DotNetLab";
     public const string Releases = $"{Repository}/releases";
@@ -13,7 +13,7 @@ public static class LabLinks
     public const string GistNew = "https://gist.github.com/";
     public const string GitHubApi = "https://api.github.com";
 
-    public static string NewIssue(CompilerState compiler, PreferencesState prefs, LabDocuments documents)
+    public static string NewIssue(CompilerState compiler, PreferencesState prefs, DocumentWorkspace documents)
     {
         var body = $"""
             ### Environment
@@ -31,7 +31,7 @@ public static class LabLinks
         return $"{Repository}/issues/new?title={Uri.EscapeDataString("[.NET Lab] ")}&body={Uri.EscapeDataString(body)}";
     }
 
-    public static string GistSnapshot(CompilerState compiler, LabDocuments documents)
+    public static string GistSnapshot(CompilerState compiler, DocumentWorkspace documents)
     {
         var text = new StringBuilder();
         text.AppendLine($"// .NET Lab snapshot · SDK {compiler.Sdk} · Roslyn {compiler.Roslyn} · Razor {compiler.Razor}");

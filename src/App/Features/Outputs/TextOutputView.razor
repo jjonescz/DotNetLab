@@ -5,7 +5,7 @@
 {
     <div class="lab-output-disclaimer" role="status">
         JIT disassembler is not available on this platform
-        (it's only available in a <a href="@LabLinks.NativeApps" target="_blank" rel="noopener noreferrer">native app</a>).
+        (it's only available in a <a href="@AppLinks.NativeApps" target="_blank" rel="noopener noreferrer">native app</a>).
         Displaying cached output.
     </div>
 }
@@ -21,7 +21,7 @@
     public OutputWorkspace Outputs { get; set; } = default!;
 
     [CascadingParameter]
-    public LabOutput Output { get; set; } = default!;
+    public OutputDefinition Output { get; set; } = default!;
 
     protected override void OnInitialized()
     {

@@ -1,6 +1,6 @@
 namespace DotNetLab.Features.Documents;
 
-public static class LabFixtures
+public static class BuiltInContent
 {
     public const string DefaultProgram = """
         using System;

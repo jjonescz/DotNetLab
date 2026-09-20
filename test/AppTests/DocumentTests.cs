@@ -14,12 +14,12 @@ public sealed class DocumentTests
     [TestMethod]
     public void DisplayName_SpecialSources()
     {
-        LabDocuments.IsSpecialSource("Directives.cs").Should().BeTrue();
-        LabDocuments.IsSpecialSource("Configuration.cs").Should().BeTrue();
-        LabDocuments.IsSpecialSource("Program.cs").Should().BeFalse();
-        LabDocuments.DisplayName("Directives.cs").Should().Be("Directives");
-        LabDocuments.DisplayName("Configuration.cs").Should().Be("Configuration");
-        LabDocuments.DisplayName("Program.cs").Should().Be("Program.cs");
+        DocumentWorkspace.IsSpecialSource("Directives.cs").Should().BeTrue();
+        DocumentWorkspace.IsSpecialSource("Configuration.cs").Should().BeTrue();
+        DocumentWorkspace.IsSpecialSource("Program.cs").Should().BeFalse();
+        DocumentWorkspace.DisplayName("Directives.cs").Should().Be("Directives");
+        DocumentWorkspace.DisplayName("Configuration.cs").Should().Be("Configuration");
+        DocumentWorkspace.DisplayName("Program.cs").Should().Be("Program.cs");
     }
 
     [TestMethod]
@@ -153,10 +153,10 @@ public sealed class DocumentTests
             Compilation = new Store<CompilationState>(new CompilationState());
             Output = new Store<OutputState>(new OutputState());
             Dispatcher = new RecordingDispatcher(Compilation, Output);
-            Documents = new LabDocuments(Dispatcher, Compilation);
+            Documents = new DocumentWorkspace(Dispatcher, Compilation);
         }
 
-        public LabDocuments Documents { get; }
+        public DocumentWorkspace Documents { get; }
 
         public Store<CompilationState> Compilation { get; }
 

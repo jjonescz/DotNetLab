@@ -27,7 +27,7 @@ public sealed class CompilerOutputPluginTests
         disclaimer.Should().Be(OutputDisclaimer.None);
         language.Should().BeNull();
         text.Should().Contain("JIT disassembler is not available on this platform.");
-        text.Should().Contain(LabLinks.NativeApps);
+        text.Should().Contain(AppLinks.NativeApps);
     }
 
     [TestMethod]
@@ -89,7 +89,7 @@ public sealed class CompilerOutputPluginTests
 
         disclaimer.Should().Be(OutputDisclaimer.None);
         language.Should().BeNull();
-        text.Should().Contain(LabLinks.NativeApps);
+        text.Should().Contain(AppLinks.NativeApps);
     }
 
     [TestMethod]

@@ -15,7 +15,7 @@ public sealed class LabLanguageSession
     private readonly IDispatcher _dispatcher;
     private readonly IState<PreferencesState> _preferences;
     private readonly IState<CompilerState> _compiler;
-    private readonly LabDocuments _documents;
+    private readonly DocumentWorkspace _documents;
     private readonly CompilationSession _compilation;
     private readonly OutputWorkspace _outputs;
     private Task? _languageInit;
@@ -26,7 +26,7 @@ public sealed class LabLanguageSession
         IDispatcher dispatcher,
         IState<PreferencesState> preferences,
         IState<CompilerState> compiler,
-        LabDocuments documents,
+        DocumentWorkspace documents,
         CompilationSession compilation,
         OutputWorkspace outputs)
     {
@@ -198,7 +198,7 @@ public sealed class LabLanguageSession
 
     private CompilerConfiguration CurrentCompilerConfiguration()
     {
-        _documents.Sources.TryGetValue(LabFixtures.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
         var current = _compiler.Value;
         return new CompilerConfiguration
         {

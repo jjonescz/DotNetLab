@@ -26,7 +26,7 @@ public sealed record PreferencesState
     {
     }
 
-    public string MonacoTheme => LabTheme.MonacoThemeName(ResolvedDark);
+    public string MonacoTheme => ThemeDefinition.MonacoThemeName(ResolvedDark);
 
     public PreferencesState WithNormalizedLogs()
     {
@@ -43,7 +43,7 @@ public sealed record PreferencesState
         return this;
     }
 
-    public PreferencesState WithSnapshot(LabSettingsSnapshot snapshot)
+    public PreferencesState WithSnapshot(SettingsSnapshot snapshot)
     {
         var next = this;
         if (snapshot.WordWrap is { } wordWrap)
@@ -104,7 +104,7 @@ public sealed record PreferencesState
         return next.WithNormalizedLogs();
     }
 
-    public LabSettingsSnapshot ToSnapshot()
+    public SettingsSnapshot ToSnapshot()
         => new()
         {
             WordWrap = WordWrap,

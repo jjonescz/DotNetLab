@@ -4,7 +4,7 @@ using Fluxor;
 
 namespace DotNetLab.Features.Compiler;
 
-public sealed class LabWorkerReload(
+public sealed class WorkerReload(
     WorkerHost worker,
     CompilationSession compilation,
     LabLanguageSession language,

@@ -26,10 +26,10 @@ public sealed class AddDotNetLabAppTests
         services.AddDotNetLabApp(environment);
 
         HasSingleton<ILabEnvironment>(services).Should().BeTrue();
-        HasScoped<LabPersistence>(services).Should().BeTrue();
+        HasScoped<AppPersistence>(services).Should().BeTrue();
         HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
-        HasScoped<LabUrlWriter>(services).Should().BeTrue();
-        HasScoped<LabWorkerReload>(services).Should().BeTrue();
+        HasScoped<ShareUrlWriter>(services).Should().BeTrue();
+        HasScoped<WorkerReload>(services).Should().BeTrue();
         HasScoped<OutputWorkspace>(services).Should().BeTrue();
         HasScoped<BlazorMonacoInterop>(services).Should().BeTrue();
         HasScoped<WorkerHost>(services).Should().BeTrue();

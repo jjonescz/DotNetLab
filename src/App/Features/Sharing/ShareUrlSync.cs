@@ -7,20 +7,20 @@ using DotNetLab.Lab;
 
 namespace DotNetLab.Features.Sharing;
 
-public sealed class LabUrlSync : IDisposable
+public sealed class ShareUrlSync : IDisposable
 {
     private readonly NavigationManager _navigation;
-    private readonly LabPersistence _persist;
-    private readonly LabUrlWriter _writer;
-    private readonly LabSettings _settings;
+    private readonly AppPersistence _persist;
+    private readonly ShareUrlWriter _writer;
+    private readonly SettingsStore _settings;
     private readonly IJSRuntime _js;
     private bool _loaded;
 
-    public LabUrlSync(
+    public ShareUrlSync(
         NavigationManager navigation,
-        LabPersistence persist,
-        LabUrlWriter writer,
-        LabSettings settings,
+        AppPersistence persist,
+        ShareUrlWriter writer,
+        SettingsStore settings,
         IJSRuntime js)
     {
         _navigation = navigation;

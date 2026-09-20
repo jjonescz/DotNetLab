@@ -7,7 +7,7 @@ public enum OutputFileKind
     Cshtml
 }
 
-public sealed record LabOutput(
+public sealed record OutputDefinition(
     string Id,
     string Label,
     string Language,

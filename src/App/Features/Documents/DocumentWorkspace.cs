@@ -6,13 +6,13 @@ using Fluxor;
 
 namespace DotNetLab.Features.Documents;
 
-public sealed class LabDocuments
+public sealed class DocumentWorkspace
 {
     private readonly IDispatcher _dispatcher;
     private readonly IState<CompilationState> _compilation;
     private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
 
-    public LabDocuments(
+    public DocumentWorkspace(
         IDispatcher dispatcher,
         IState<CompilationState> compilation)
     {
@@ -67,20 +67,20 @@ public sealed class LabDocuments
             .Select(file => new ModelInfo(UriFor(file), file)
             {
                 NewContent = _sources.GetValueOrDefault(file) ?? "",
-                IsConfiguration = file == LabFixtures.ConfigurationFileName,
+                IsConfiguration = file == BuiltInContent.ConfigurationFileName,
             })
             .ToImmutableArray();
 
     private void EnsureUri(string fileName) => UriFor(fileName);
 
     public static bool IsSpecialSource(string fileName)
-        => fileName is LabFixtures.DirectivesFileName or LabFixtures.ConfigurationFileName;
+        => fileName is BuiltInContent.DirectivesFileName or BuiltInContent.ConfigurationFileName;
 
     public static string DisplayName(string fileName)
         => fileName switch
         {
-            LabFixtures.DirectivesFileName => "Directives",
-            LabFixtures.ConfigurationFileName => "Configuration",
+            BuiltInContent.DirectivesFileName => "Directives",
+            BuiltInContent.ConfigurationFileName => "Configuration",
             _ => fileName
         };
 
@@ -305,11 +305,11 @@ public sealed class LabDocuments
             userCount = _sourceFiles.Count;
         }
 
-        var slot = Array.IndexOf(LabFixtures.SpecialSourceOrder, fileName);
+        var slot = Array.IndexOf(BuiltInContent.SpecialSourceOrder, fileName);
         var at = userCount;
         for (var i = 0; i < slot; i++)
         {
-            if (_sourceFiles.Contains(LabFixtures.SpecialSourceOrder[i]))
+            if (_sourceFiles.Contains(BuiltInContent.SpecialSourceOrder[i]))
             {
                 at++;
             }
@@ -412,7 +412,7 @@ public sealed class LabDocuments
 
         if (state.Configuration is { } configuration)
         {
-            specialFiles[LabFixtures.ConfigurationFileName] = configuration;
+            specialFiles[BuiltInContent.ConfigurationFileName] = configuration;
         }
 
         _sourceFiles.Clear();
@@ -434,7 +434,7 @@ public sealed class LabDocuments
             _sources[name] = contents;
         }
 
-        foreach (var fileName in LabFixtures.SpecialSourceOrder)
+        foreach (var fileName in BuiltInContent.SpecialSourceOrder)
         {
             if (specialFiles.TryGetValue(fileName, out var contents))
             {
@@ -443,7 +443,7 @@ public sealed class LabDocuments
             }
         }
 
-        var selectable = _sourceFiles.Where(name => name != LabFixtures.ConfigurationFileName).ToList();
+        var selectable = _sourceFiles.Where(name => name != BuiltInContent.ConfigurationFileName).ToList();
         if (selectable.Count == 0)
         {
             selectable = _sourceFiles.ToList();
@@ -465,7 +465,7 @@ public sealed class LabDocuments
 
     private void Notify()
     {
-        _dispatcher.Dispatch(new SetDocumentMetadataAction(
+        _dispatcher.Dispatch(new SetDocumentStateAction(
             Template,
             ActiveSource,
             [.. SourceFiles]));

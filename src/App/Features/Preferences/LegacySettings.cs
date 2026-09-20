@@ -5,31 +5,31 @@ namespace DotNetLab.Features.Preferences;
 
 /// <summary>
 /// One-time import of pre-redesign <c>SettingsService</c> localStorage entries
-/// into <see cref="LabSettingsSnapshot"/>.
+/// into <see cref="SettingsSnapshot"/>.
 /// </summary>
 /// <remarks>
 /// The old UI stored each setting as JSON under its own key (the C# property
 /// name, or <c>[DisplayName]</c> when that differed). The redesign stores one
 /// camelCase blob at <c>netlab-settings</c>. When that blob is missing,
-/// <see cref="LabSettings.LoadAsync"/> reads these keys, maps them here, and
+/// <see cref="SettingsStore.LoadAsync"/> reads these keys, maps them here, and
 /// writes the blob. Existing keys are left in place; <c>netlab-settings</c>
 /// wins on later loads.
 /// <para>
 /// Key → snapshot property:
 /// <c>WordWrap</c>, <c>UseVim</c>, <c>DebugLogs</c>, <c>TraceLogs</c>,
 /// <c>EnableCaching</c>, <c>CompilationPreferences</c> (same names);
-/// <c>EnableMemoryUsageView</c> → <see cref="LabSettingsSnapshot.MemoryUsageView"/>;
-/// <c>EnableLanguageServices2</c> → <see cref="LabSettingsSnapshot.LanguageServices"/>
+/// <c>EnableMemoryUsageView</c> → <see cref="SettingsSnapshot.MemoryUsageView"/>;
+/// <c>EnableLanguageServices2</c> → <see cref="SettingsSnapshot.LanguageServices"/>
 /// (the <c>2</c> was a previous default-on migration);
-/// <c>EnableWorker</c> → <see cref="LabSettingsSnapshot.BackgroundWorker"/>;
-/// <c>AutoCompileOnStart</c> → <see cref="LabSettingsSnapshot.AutomaticCompilation"/>;
+/// <c>EnableWorker</c> → <see cref="SettingsSnapshot.BackgroundWorker"/>;
+/// <c>AutoCompileOnStart</c> → <see cref="SettingsSnapshot.AutomaticCompilation"/>;
 /// <c>displayHintSquiggles</c> / <c>disableInputVirtualKeyboard</c> (legacy
 /// camelCase names kept so older builds keep loading).
 /// </para>
 /// Bool values are JSON <c>true</c>/<c>false</c>. Compilation preferences are
 /// camelCase JSON matching <see cref="CompilationPreferences"/>.
 /// </remarks>
-internal static class LegacyLabSettings
+internal static class LegacySettings
 {
     public const string WordWrapKey = "WordWrap";
     public const string UseVimKey = "UseVim";
@@ -48,14 +48,14 @@ internal static class LegacyLabSettings
     /// Returns a snapshot when at least one recognized key parses; otherwise
     /// <see langword="null"/> so callers do not persist an empty blob.
     /// </summary>
-    public static LabSettingsSnapshot? TryCreate(IReadOnlyDictionary<string, string?>? items)
+    public static SettingsSnapshot? TryCreate(IReadOnlyDictionary<string, string?>? items)
     {
         if (items is null || items.Count == 0)
         {
             return null;
         }
 
-        var snapshot = new LabSettingsSnapshot();
+        var snapshot = new SettingsSnapshot();
         var any = false;
 
         if (TryGetBool(items, WordWrapKey, out var wordWrap))
@@ -124,7 +124,7 @@ internal static class LegacyLabSettings
             any = true;
         }
 
-        if (TryGetJson(items, CompilationPreferencesKey, LabSettingsJsonContext.Default.CompilationPreferences, out var compilationPreferences))
+        if (TryGetJson(items, CompilationPreferencesKey, SettingsJsonContext.Default.CompilationPreferences, out var compilationPreferences))
         {
             snapshot.CompilationPreferences = compilationPreferences;
             any = true;

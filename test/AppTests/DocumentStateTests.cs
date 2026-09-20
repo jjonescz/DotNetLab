@@ -4,14 +4,14 @@ using DotNetLab.Features.Documents;
 namespace DotNetLab;
 
 [TestClass]
-public sealed class DocumentMetadataStateTests
+public sealed class DocumentStateTests
 {
     [TestMethod]
     public void Reduce_UpdatesTemplateActiveAndOpenNames()
     {
-        var next = DocumentMetadataReducers.Reduce(
-            new DocumentMetadataState(),
-            new SetDocumentMetadataAction("Razor", "TestComponent.razor", ["TestComponent.razor", "_Imports.razor"]));
+        var next = DocumentReducers.Reduce(
+            new DocumentState(),
+            new SetDocumentStateAction("Razor", "TestComponent.razor", ["TestComponent.razor", "_Imports.razor"]));
 
         next.Template.Should().Be("Razor");
         next.ActiveDocument.Should().Be("TestComponent.razor");
@@ -21,10 +21,10 @@ public sealed class DocumentMetadataStateTests
     [TestMethod]
     public void Reduce_SameFacts_ReturnsSameInstance()
     {
-        var state = new DocumentMetadataState();
-        var next = DocumentMetadataReducers.Reduce(
+        var state = new DocumentState();
+        var next = DocumentReducers.Reduce(
             state,
-            new SetDocumentMetadataAction(state.Template, state.ActiveDocument, state.OpenNames));
+            new SetDocumentStateAction(state.Template, state.ActiveDocument, state.OpenNames));
 
         next.Should().BeSameAs(state);
     }

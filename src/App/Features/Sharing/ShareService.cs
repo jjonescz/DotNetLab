@@ -7,20 +7,20 @@ using Fluxor;
 
 namespace DotNetLab.Features.Sharing;
 
-public sealed class LabShare
+public sealed class ShareService
 {
     private readonly IJSRuntime _js;
     private readonly NavigationManager _navigation;
-    private readonly LabPersistence _persist;
-    private readonly LabDocuments _documents;
+    private readonly AppPersistence _persist;
+    private readonly DocumentWorkspace _documents;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _prefs;
 
-    public LabShare(
+    public ShareService(
         IJSRuntime js,
         NavigationManager navigation,
-        LabPersistence persist,
-        LabDocuments documents,
+        AppPersistence persist,
+        DocumentWorkspace documents,
         IState<CompilerState> compiler,
         IState<PreferencesState> prefs)
     {
@@ -41,11 +41,11 @@ public sealed class LabShare
     public async Task CreateGistAsync()
     {
         await _persist.SnapshotEditorsAsync();
-        await WriteClipboardAsync(LabLinks.GistSnapshot(_compiler.Value, _documents));
-        await OpenExternalAsync(LabLinks.GistNew);
+        await WriteClipboardAsync(AppLinks.GistSnapshot(_compiler.Value, _documents));
+        await OpenExternalAsync(AppLinks.GistNew);
     }
 
-    public Task ReportIssueAsync() => OpenExternalAsync(LabLinks.NewIssue(_compiler.Value, _prefs.Value, _documents));
+    public Task ReportIssueAsync() => OpenExternalAsync(AppLinks.NewIssue(_compiler.Value, _prefs.Value, _documents));
 
     public async Task OpenExternalAsync(string url)
     {

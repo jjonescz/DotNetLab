@@ -19,7 +19,7 @@ public sealed record CompilerState
     public string? RazorError { get; init; }
     public PackageDependencyInfo? RoslynInfo { get; init; }
     public PackageDependencyInfo? RazorInfo { get; init; }
-    public IReadOnlyList<SdkOption> AvailableSdks { get; init; } = LabCatalog.SdkVersions;
+    public IReadOnlyList<SdkOption> AvailableSdks { get; init; } = CompilerCatalog.SdkVersions;
     public bool ListLoaded { get; init; }
 
     public CompilerState()
@@ -32,7 +32,7 @@ public sealed record CompilerState
 
     public SdkOption Resolved
         => AvailableSdks.FirstOrDefault(item => item.Value == Sdk)
-           ?? LabCatalog.SdkVersions.FirstOrDefault(item => item.Value == Sdk)
+           ?? CompilerCatalog.SdkVersions.FirstOrDefault(item => item.Value == Sdk)
            ?? new SdkOption(Sdk, Sdk, Roslyn, Razor);
 
     public string RoslynResolved => FormatDependency(RoslynInfo, RoslynError, RoslynLoading);

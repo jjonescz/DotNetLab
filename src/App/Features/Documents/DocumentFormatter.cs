@@ -5,11 +5,11 @@ using DotNetLab.Lab;
 
 namespace DotNetLab.Features.Documents;
 
-public sealed class LabFormatter(
-    LabDocuments documents,
+public sealed class DocumentFormatter(
+    DocumentWorkspace documents,
     LabLanguageSession language,
     WorkerHost worker,
-    LabPersistence persist)
+    AppPersistence persist)
 {
     public async Task FormatActiveSource()
     {
@@ -20,7 +20,7 @@ public sealed class LabFormatter(
         }
 
         if (!fileName.IsCSharpFileName(out var isScript) &&
-            fileName != LabFixtures.ConfigurationFileName)
+            fileName != BuiltInContent.ConfigurationFileName)
         {
             return;
         }

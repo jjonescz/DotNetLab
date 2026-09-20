@@ -24,7 +24,7 @@ public sealed class WorkerHost : IAsyncDisposable
     private readonly string _baseUrl;
     private readonly bool _supportsThreads;
     private readonly LabLogging _logging;
-    private readonly LabSettings _settings;
+    private readonly SettingsStore _settings;
     private readonly IWorkerTransport _transport;
     private readonly IWorkerConfigurer? _workerConfigurer;
     private readonly ILogger<WorkerHost> _logger;
@@ -42,7 +42,7 @@ public sealed class WorkerHost : IAsyncDisposable
     public WorkerHost(
         ILabEnvironment environment,
         LabLogging logging,
-        LabSettings settings,
+        SettingsStore settings,
         IWorkerTransport transport,
         ILogger<WorkerHost> logger,
         IWorkerConfigurer? workerConfigurer = null)

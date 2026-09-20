@@ -1,5 +1,5 @@
 @inherits FluxorComponent
-@inject IState<DocumentMetadataState> DocumentsUi
+@inject IState<DocumentState> DocumentsUi
 
 @if (Outputs.ShowRenderedHtml && !DocumentsUi.Value.ActiveDocument.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
 {
@@ -19,7 +19,7 @@ else
     public OutputWorkspace Outputs { get; set; } = default!;
 
     [CascadingParameter]
-    public LabOutput Output { get; set; } = default!;
+    public OutputDefinition Output { get; set; } = default!;
 
     protected override void OnInitialized()
     {
