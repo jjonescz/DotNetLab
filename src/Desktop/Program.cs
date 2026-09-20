@@ -35,6 +35,7 @@ static class Program
         appBuilder.Services.AddScoped<IUpdateChecker, DesktopUpdateChecker>();
         appBuilder.Services.AddScoped<IWorkerConfigurer, DesktopWorkerConfigurer>();
         appBuilder.Services.AddScoped<ICompilerOutputPlugin, DesktopCompilerOutputPlugin>();
+        appBuilder.Services.AddScoped<IExternalUrlOpener, DesktopExternalUrlOpener>();
         if (OperatingSystem.IsWindows())
         {
             const string storeUrl = "ms-windows-store://pdp/?productid=9PCPMM329DZT";
@@ -184,6 +185,15 @@ file sealed class WebHostEnvironment : IWebHostEnvironment
     public IFileProvider ContentRootFileProvider { get; set; } = new PhysicalFileProvider(AppContext.BaseDirectory);
     public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
     public string EnvironmentName { get; set; } = DesktopAppHostEnvironment.Environment;
+}
+
+file sealed class DesktopExternalUrlOpener : IExternalUrlOpener
+{
+    public Task OpenAsync(string url)
+    {
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        return Task.CompletedTask;
+    }
 }
 
 file sealed class DesktopUpdateChecker : IUpdateChecker

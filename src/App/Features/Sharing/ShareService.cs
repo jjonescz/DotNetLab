@@ -4,6 +4,7 @@ using Microsoft.JSInterop;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Preferences;
+using DotNetLab.Infrastructure.Browser;
 using Fluxor;
 
 namespace DotNetLab.Features.Sharing;
@@ -11,6 +12,7 @@ namespace DotNetLab.Features.Sharing;
 public sealed class ShareService
 {
     private readonly IJSRuntime _js;
+    private readonly IExternalUrlOpener _external;
     private readonly NavigationManager _navigation;
     private readonly AppPersistence _persist;
     private readonly DocumentWorkspace _documents;
@@ -20,6 +22,7 @@ public sealed class ShareService
 
     public ShareService(
         IJSRuntime js,
+        IExternalUrlOpener external,
         NavigationManager navigation,
         AppPersistence persist,
         DocumentWorkspace documents,
@@ -28,6 +31,7 @@ public sealed class ShareService
         ILogger<ShareService> logger)
     {
         _js = js;
+        _external = external;
         _navigation = navigation;
         _persist = persist;
         _documents = documents;
@@ -55,9 +59,9 @@ public sealed class ShareService
     {
         try
         {
-            await _js.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
+            await _external.OpenAsync(url);
         }
-        catch (JSException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Opening an external URL failed.");
         }

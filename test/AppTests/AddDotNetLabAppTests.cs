@@ -24,6 +24,10 @@ public sealed class AddDotNetLabAppTests
         client.DefaultRequestHeaders.UserAgent.ToString().Should().Contain("DotNetLab");
         provider.GetRequiredService<IWorkerTransport>().Should().BeOfType<UnsupportedWorkerTransport>();
         provider.GetService<IStoreLink>().Should().BeNull();
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IExternalUrlOpener) &&
+            d.ImplementationType == typeof(JsExternalUrlOpener) &&
+            d.Lifetime == ServiceLifetime.Scoped);
     }
 
     [TestMethod]

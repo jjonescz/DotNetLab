@@ -63,6 +63,17 @@ internal sealed class AndroidStoreLink(ILogger<AndroidStoreLink> logger) : IStor
     }
 }
 
+internal sealed class AndroidExternalUrlOpener : IExternalUrlOpener
+{
+    public Task OpenAsync(string url)
+    {
+        using var intent = new Intent(Intent.ActionView, Android.Net.Uri.Parse(url));
+        intent.AddFlags(ActivityFlags.NewTask);
+        Android.App.Application.Context.StartActivity(intent);
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class AndroidUpdateChecker : IUpdateChecker
 {
     public bool Enabled => false;

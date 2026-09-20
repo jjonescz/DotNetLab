@@ -76,6 +76,7 @@ public static class AppBuilder
         services.TryAddScoped<IWorkerTransport, UnsupportedWorkerTransport>();
         services.TryAddScoped<IWorkerConfigurer, NoopWorkerConfigurer>();
         services.TryAddScoped<ICompilerOutputPlugin, PassThroughCompilerOutputPlugin>();
+        services.TryAddScoped<IExternalUrlOpener, JsExternalUrlOpener>();
         services.AddSingleton<LabLogging>();
         services.AddSingleton<CommitInfoLookup>();
         services.AddOptions<LoggerFilterOptions>().Configure<LabLogging>((options, logging) =>

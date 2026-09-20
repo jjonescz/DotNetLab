@@ -28,6 +28,7 @@ public static class MauiProgram
         builder.Services.AddScoped<IUpdateChecker, AndroidUpdateChecker>();
         builder.Services.AddScoped<IWorkerConfigurer, AndroidWorkerConfigurer>();
         builder.Services.AddScoped<ICompilerOutputPlugin, AndroidCompilerOutputPlugin>();
+        builder.Services.AddScoped<IExternalUrlOpener, AndroidExternalUrlOpener>();
         builder.Services.AddSingleton<IStoreLink, AndroidStoreLink>();
 
 #if DEBUG
