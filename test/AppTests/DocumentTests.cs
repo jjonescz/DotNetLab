@@ -12,14 +12,11 @@ namespace DotNetLab;
 public sealed class DocumentTests
 {
     [TestMethod]
-    public void DisplayName_SpecialSources()
+    public void IsSpecialSource()
     {
         DocumentWorkspace.IsSpecialSource("Directives.cs").Should().BeTrue();
         DocumentWorkspace.IsSpecialSource("Configuration.cs").Should().BeTrue();
         DocumentWorkspace.IsSpecialSource("Program.cs").Should().BeFalse();
-        DocumentWorkspace.DisplayName("Directives.cs").Should().Be("Directives");
-        DocumentWorkspace.DisplayName("Configuration.cs").Should().Be("Configuration");
-        DocumentWorkspace.DisplayName("Program.cs").Should().Be("Program.cs");
     }
 
     [TestMethod]

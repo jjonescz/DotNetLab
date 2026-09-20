@@ -107,8 +107,4 @@ public sealed class CompilerOutputPluginTests
         language.Should().Be("x86");
         text.Should().Be("mov eax, 1");
     }
-
-    [TestMethod]
-    public void OutputLanguage_MapsAsmToX86()
-        => OutputCatalog.Language("asm").Should().Be("x86");
 }

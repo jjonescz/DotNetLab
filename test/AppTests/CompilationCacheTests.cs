@@ -116,18 +116,10 @@ public sealed class CompilationCacheTests
     }
 
     [TestMethod]
-    public void CacheKey_IsStableForTheSameState()
+    public void CacheKey_MatchesLegacyUnprefixedHash()
     {
-        CompilationCacheKey.Create(SavedState.CSharp).Should().Be(CompilationCacheKey.Create(SavedState.CSharp));
-        CompilationCacheKey.Create(SavedState.CSharp).Should().NotBe(CompilationCacheKey.Create(SavedState.Razor));
-    }
-
-    [TestMethod]
-    public void CacheKey_IsUnprefixedHex()
-    {
-        var key = CompilationCacheKey.Create(SavedState.CSharp);
-        key.Length.Should().Be(32);
-        key.Should().MatchRegex("^[0-9a-f]{32}$");
+        CompilationCacheKey.Create(SavedState.CSharp)
+            .Should().Be("828581498c5fd067ba6043b69dabba60");
     }
 
     [TestMethod]

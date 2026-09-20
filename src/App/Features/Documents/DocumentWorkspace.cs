@@ -76,9 +76,6 @@ public sealed class DocumentWorkspace
     public static bool IsSpecialSource(string fileName)
         => fileName is SpecialDocuments.Directives or SpecialDocuments.Configuration;
 
-    public static string DisplayName(string fileName)
-        => SpecialDocuments.Label(fileName);
-
     public void SetTemplate(string template)
     {
         var before = ModelUris;

@@ -39,7 +39,7 @@ public static class StatusSelectors
         ];
         var diagnostics = DiagnosticParts(compilation.ErrorCount, compilation.WarningCount);
         return IsOutput(side)
-            ? [DocumentWorkspace.DisplayName(activeSource), .. diagnostics]
+            ? [SpecialDocuments.Label(activeSource), .. diagnostics]
             : [.. cursor, template, .. diagnostics];
     }
 

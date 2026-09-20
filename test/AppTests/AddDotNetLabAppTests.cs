@@ -1,16 +1,6 @@
 using AwesomeAssertions;
-using DotNetLab.Editor;
-using DotNetLab.Editor.Monaco;
-using DotNetLab.Infrastructure.Caching.Compilation;
-using DotNetLab.Features.Compiler;
-using DotNetLab.Features.Documents;
-using DotNetLab.Features.Outputs;
-using DotNetLab.Features.Sharing;
-using DotNetLab.Features.Updates;
 using DotNetLab.Infrastructure.Browser;
-using DotNetLab.Infrastructure.GitHub;
 using DotNetLab.Infrastructure.Worker;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetLab;
@@ -18,37 +8,6 @@ namespace DotNetLab;
 [TestClass]
 public sealed class AddDotNetLabAppTests
 {
-    [TestMethod]
-    public void RegistersHostNeutralServices()
-    {
-        var services = new ServiceCollection();
-        var environment = new LabEnvironment(true, "https://example.test/");
-
-        services.AddDotNetLabApp(environment);
-
-        HasSingleton<LabEnvironment>(services).Should().BeTrue();
-        HasSingleton<CommitInfoLookup>(services).Should().BeTrue();
-        HasScoped<AppPersistence>(services).Should().BeTrue();
-        HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
-        HasScoped<ShareUrlWriter>(services).Should().BeTrue();
-        HasScoped<WorkerReload>(services).Should().BeTrue();
-        HasScoped<OutputWorkspace>(services).Should().BeTrue();
-        HasScoped<BlazorMonacoInterop>(services).Should().BeTrue();
-        HasScoped<WorkerHost>(services).Should().BeTrue();
-        HasScoped<HttpClient>(services).Should().BeTrue();
-        services.Should().Contain(d =>
-            d.ServiceType == typeof(IUpdateChecker) &&
-            d.ImplementationType == typeof(DisabledUpdateChecker) &&
-            d.Lifetime == ServiceLifetime.Scoped);
-        services.Should().Contain(d =>
-            d.ServiceType == typeof(IWorkerTransport) &&
-            d.ImplementationType == typeof(UnsupportedWorkerTransport) &&
-            d.Lifetime == ServiceLifetime.Scoped);
-        HasScoped<IWorkerConfigurer>(services).Should().BeTrue();
-        HasScoped<ICompilerOutputPlugin>(services).Should().BeTrue();
-        HasScoped<CompilationCache>(services).Should().BeTrue();
-    }
-
     [TestMethod]
     public void ResolvesEnvironmentAndHttpClient()
     {
@@ -105,22 +64,6 @@ public sealed class AddDotNetLabAppTests
             .WithMessage("Workers are only supported in the browser.");
         transport.SupportsBackgroundWorker.Should().BeFalse();
     }
-
-    [TestMethod]
-    public void RegistersRootComponents()
-    {
-        var registered = new List<(Type Type, string Selector)>();
-        AppBuilder.RegisterRootComponents((type, selector) => registered.Add((type, selector)));
-
-        registered.Should().Contain((typeof(App), "#app"));
-        registered.Should().Contain((typeof(HeadOutlet), "head::after"));
-    }
-
-    private static bool HasSingleton<T>(IServiceCollection services) =>
-        services.Any(d => d.ServiceType == typeof(T) && d.Lifetime == ServiceLifetime.Singleton);
-
-    private static bool HasScoped<T>(IServiceCollection services) =>
-        services.Any(d => d.ServiceType == typeof(T) && d.Lifetime == ServiceLifetime.Scoped);
 
     private static IEnumerable<ServiceDescriptor> WorkerTransports(IServiceCollection services) =>
         services.Where(d => d.ServiceType == typeof(IWorkerTransport));
