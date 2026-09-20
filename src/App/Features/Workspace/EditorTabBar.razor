@@ -156,17 +156,21 @@
             return;
         }
 
-        if (_focusedRename == Renaming)
+        if (_focusedRename == Renaming || _renameInput.Context is null)
         {
             return;
         }
 
-        _focusedRename = Renaming;
         try
         {
             await _renameInput.FocusAsync();
+            _focusedRename = Renaming;
         }
         catch (JSException)
+        {
+            _focusedRename = Renaming;
+        }
+        catch (InvalidOperationException)
         {
         }
     }

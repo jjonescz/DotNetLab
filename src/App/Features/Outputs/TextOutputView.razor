@@ -1,7 +1,7 @@
 @inherits FluxorComponent
 @inject IState<PreferencesState> Prefs
 
-@if (Outputs.GetDisclaimer(Output.Id) == OutputDisclaimer.JitAsmUnavailableUsingCached)
+@if (Outputs.GetDisclaimer(Output) == OutputDisclaimer.JitAsmUnavailableUsingCached)
 {
     <div class="lab-output-disclaimer" role="status">
         JIT disassembler is not available on this platform
@@ -10,9 +10,9 @@
     </div>
 }
 <LabCodeEditor @key="@($"output-{Output.Id}")"
-               Value="@Outputs.GetOutput(Output.Id)"
-               Language="@Outputs.OutputLanguage(Output.Id)"
-               ModelUri="@Outputs.OutputUriFor(Output.Id)"
+               Value="@Outputs.GetOutput(Output)"
+               Language="@Outputs.OutputLanguage(Output)"
+               ModelUri="@Outputs.OutputUriFor(Output)"
                ReadOnly="true"
                WordWrap="Prefs.Value.WordWrap" />
 
@@ -22,4 +22,22 @@
 
     [CascadingParameter]
     public LabOutput Output { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
 }

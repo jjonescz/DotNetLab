@@ -61,8 +61,6 @@ public sealed class LabThemeService : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        _self?.Dispose();
-        _self = null;
         try
         {
             await _js.InvokeVoidAsync("netLabTheme.stopListening");
@@ -70,6 +68,9 @@ public sealed class LabThemeService : IAsyncDisposable
         catch (JSException)
         {
         }
+
+        _self?.Dispose();
+        _self = null;
     }
 
     private async Task ApplyAsync(string preference, bool dark, bool persist)

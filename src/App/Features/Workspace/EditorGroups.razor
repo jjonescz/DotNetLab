@@ -16,8 +16,8 @@
                           Actions="Actions"
                           ShowActions="_layout.IsFirst(group)"
                           ItemLabel="ItemLabel"
-                          Renaming="_renaming"
-                          RenameDraft="_renameDraft"
+                          Renaming="@(OwnsRename(group) ? _renaming : null)"
+                          RenameDraft="@_renameDraft"
                           RenameInput="OnRenameInput"
                           RenameKey="OnRenameKeyAsync"
                           RenameBlur="CommitRenameAsync"
@@ -243,6 +243,11 @@
 
     private bool IsGroupFocused(EditorGroup group)
         => string.Equals(Active, group.Active, StringComparison.Ordinal);
+
+    private bool OwnsRename(EditorGroup group)
+        => _renaming is not null
+           && group.Items.Contains(_renaming)
+           && !_layout.IsPinnedItem(_renaming);
 
     private Task ActivateGroupAsync(EditorGroup group)
         => string.Equals(Active, group.Active, StringComparison.Ordinal)

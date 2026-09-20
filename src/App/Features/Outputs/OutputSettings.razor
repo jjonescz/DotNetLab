@@ -2,7 +2,6 @@
 @inject OutputWorkspace Outputs
 @inject LabDocuments Documents
 @inject LabPersistence Persist
-@inject IState<SettingsUiState> Ui
 
 <details class="lab-settings-fold lab-settings-output-tabs">
     <summary>Output tabs</summary>
@@ -68,23 +67,12 @@
     ];
 
     private OutputFileKind _outputKind = OutputFileKind.Cs;
-    private bool _open;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        _outputKind = OutputCatalog.KindFor(Documents.ActiveSource);
         Outputs.Changed += OnChanged;
-    }
-
-    protected override void OnParametersSet()
-    {
-        var open = Ui.Value.IsOpen;
-        if (open && !_open)
-        {
-            _outputKind = OutputCatalog.KindFor(Documents.ActiveSource);
-        }
-
-        _open = open;
     }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);

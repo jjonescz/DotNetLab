@@ -22,9 +22,13 @@
                 <span title="@output.Title">@output.Label</span>
             }
         }
+        else if (output.View is { } view)
+        {
+            <DynamicComponent Type="view" />
+        }
         else
         {
-            <DynamicComponent Type="@(output.View ?? typeof(TextOutputView))" />
+            <TextOutputView />
         }
     </CascadingValue>
 }

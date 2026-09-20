@@ -35,10 +35,14 @@ public sealed partial class OutputWorkspace
             ? snapshot.Language
             : "plaintext";
 
+    public string OutputLanguage(LabOutput output) => OutputLanguage(output.Id);
+
     public OutputDisclaimer GetDisclaimer(string type)
         => TryGetSnapshot(type, out var snapshot)
             ? snapshot.Disclaimer
             : OutputDisclaimer.None;
+
+    public OutputDisclaimer GetDisclaimer(LabOutput output) => GetDisclaimer(output.Id);
 
     public string OutputUriFor(string tab)
     {
@@ -50,6 +54,10 @@ public sealed partial class OutputWorkspace
 
         return uri;
     }
+
+    public string OutputUriFor(LabOutput output) => OutputUriFor(output.Id);
+
+    public string GetOutput(LabOutput output) => GetOutput(output.Id);
 
     public string GetOutput(string tab)
     {

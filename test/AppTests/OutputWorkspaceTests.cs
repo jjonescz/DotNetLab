@@ -141,6 +141,16 @@ public sealed class OutputWorkspaceTests
         session.GetDisclaimer("asm").Should().Be(OutputDisclaimer.JitAsmUnavailableUsingCached);
     }
 
+    [TestMethod]
+    public void OutputLanguage_LabOutputMatchesIdUntilSnapshotExists()
+    {
+        var (session, _) = Create();
+        session.OutputLanguage("asm").Should().Be("plaintext");
+        session.OutputLanguage(OutputCatalog.Asm).Should().Be("plaintext");
+        session.OutputLanguage("cs").Should().Be("plaintext");
+        session.OutputLanguage(OutputCatalog.Cs).Should().Be("plaintext");
+    }
+
     private static (OutputWorkspace Session, Harness Host) Create(ICompilerOutputPlugin? plugin = null)
     {
         var host = new Harness(plugin);

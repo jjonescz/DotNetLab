@@ -7,7 +7,7 @@
             class="lab-html-preview"
             title="Rendered HTML"
             sandbox=""
-            srcdoc="@Outputs.GetOutput(Output.Id)"></iframe>
+            srcdoc="@Outputs.GetOutput(Output)"></iframe>
 }
 else
 {
@@ -20,4 +20,22 @@ else
 
     [CascadingParameter]
     public LabOutput Output { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
 }

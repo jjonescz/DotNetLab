@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using DotNetLab.Lab;
@@ -18,6 +19,11 @@ internal sealed class RemoteCompilationCache(HttpClient client, ILogger<RemoteCo
         {
             using var content = new StringContent(JsonSerializer.Serialize(value.Output, WorkerJsonContext.Default.CompiledAssembly), Encoding.UTF8, "text/plain");
             using var response = await client.PostAsync($"{Endpoint}/add/{key}", content, cancellationToken);
+            if (response.StatusCode is HttpStatusCode.Conflict)
+            {
+                return;
+            }
+
             response.EnsureSuccessStatusCode();
         }
         catch (Exception e) when (e is not OperationCanceledException)
