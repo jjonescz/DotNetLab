@@ -1,4 +1,8 @@
+@inherits FluxorComponent
 @inject LabUrlSync Urls
+@inject IState<PasteUrlUiState> Ui
+@inject IDispatcher Dispatcher
+@inject IJSRuntime JS
 
 <FluentDialog @ref="_dialog" Class="lab-paste-dialog" Modal="true" OnStateChange="OnDialogStateChange">
     <FluentDialogBody>
@@ -9,10 +13,10 @@
                           IconOnly="true"
                           Title="Close"
                           IconStart="@(new Icons.Regular.Size20.Dismiss())"
-                          OnClick="HideAsync" />
+                          OnClick="RequestClose" />
         </TitleActionTemplate>
         <ActionTemplate>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HideAsync">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="RequestClose">Cancel</FluentButton>
             <FluentButton Appearance="ButtonAppearance.Primary" Disabled="@string.IsNullOrWhiteSpace(_text)" OnClick="LoadAsync">Load</FluentButton>
         </ActionTemplate>
         <ChildContent>
@@ -30,28 +34,58 @@
 @code {
     private FluentDialog? _dialog;
     private string _text = "";
+    private bool _shown;
     private bool _hiding;
+    private bool _opening;
 
-    public async Task ShowAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_dialog is null)
+        await base.OnAfterRenderAsync(firstRender);
+        await SyncDialogAsync();
+    }
+
+    private async Task SyncDialogAsync()
+    {
+        var shouldOpen = Ui.Value.IsOpen;
+        if (shouldOpen && !_shown)
+        {
+            await ShowAsync();
+        }
+        else if (!shouldOpen && _shown)
+        {
+            await HideAsync();
+        }
+    }
+
+    private void RequestClose() => Dispatcher.Dispatch(new ClosePasteUrlAction());
+
+    private async Task ShowAsync()
+    {
+        if (_dialog is null || _shown)
         {
             return;
         }
 
         _text = "";
+        _shown = true;
+        _opening = true;
         try
         {
             await _dialog.ShowAsync();
         }
         catch (JSException)
         {
+            _shown = false;
+        }
+        finally
+        {
+            _opening = false;
         }
     }
 
-    public async Task HideAsync()
+    private async Task HideAsync()
     {
-        if (_dialog is null || _hiding)
+        if (_dialog is null || _hiding || !_shown)
         {
             return;
         }
@@ -66,17 +100,46 @@
         }
         finally
         {
+            _shown = false;
             _hiding = false;
         }
     }
 
-    private Task OnDialogStateChange(DialogEventArgs args)
-        => args.State == DialogState.Closed ? HideAsync() : Task.CompletedTask;
+    private async Task OnDialogStateChange(DialogEventArgs args)
+    {
+        if (args.State != DialogState.Closed)
+        {
+            return;
+        }
+
+        if (_hiding || _opening || await IsNativeOpenAsync())
+        {
+            return;
+        }
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
+        {
+            Dispatcher.Dispatch(new ClosePasteUrlAction());
+        }
+    }
+
+    private async Task<bool> IsNativeOpenAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("netLabDialog.isOpen", ".lab-paste-dialog");
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
 
     private async Task LoadAsync()
     {
         var text = _text;
-        await HideAsync();
+        RequestClose();
         await Urls.ApplySlugOrUrlAsync(text);
     }
 }

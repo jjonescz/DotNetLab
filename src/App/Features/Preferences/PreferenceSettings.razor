@@ -1,6 +1,6 @@
 @inherits FluxorComponent
 @inject IState<PreferencesState> Prefs
-@inject LabWorkspaceState Workspace
+@inject LabWorkerReload WorkerReload
 @inject LabLanguageSession Language
 @inject IDispatcher Dispatcher
 @inject IWorkerTransport Transport
@@ -55,7 +55,7 @@
             <SettingRow Title="Worker stuck?" Hint="Restart the compilation worker">
                 <FluentButton Size="ButtonSize.Small"
                               IconStart="@(new Icons.Regular.Size20.ArrowSync())"
-                              OnClick="Workspace.ReloadWorkerAsync">Restart the worker</FluentButton>
+                              OnClick="WorkerReload.ReloadWorkerAsync">Restart the worker</FluentButton>
             </SettingRow>
             <SettingRow Title="Enable Caching" Hint="Server cache for faster sharing">
                 <FluentSwitch Value="Prefs.Value.EnableCaching"

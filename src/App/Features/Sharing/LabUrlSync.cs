@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using DotNetLab.Features.Preferences;
-using DotNetLab.Features.Workspace;
 using DotNetLab.Lab;
 
 namespace DotNetLab.Features.Sharing;
@@ -11,20 +10,24 @@ namespace DotNetLab.Features.Sharing;
 public sealed class LabUrlSync : IDisposable
 {
     private readonly NavigationManager _navigation;
-    private readonly LabWorkspaceState _state;
+    private readonly LabPersistence _persist;
+    private readonly LabUrlWriter _writer;
     private readonly LabSettings _settings;
     private readonly IJSRuntime _js;
-    private bool _ignoreNextLocation;
     private bool _loaded;
-    private string? _appliedSlug;
 
-    public LabUrlSync(NavigationManager navigation, LabWorkspaceState state, LabSettings settings, IJSRuntime js)
+    public LabUrlSync(
+        NavigationManager navigation,
+        LabPersistence persist,
+        LabUrlWriter writer,
+        LabSettings settings,
+        IJSRuntime js)
     {
         _navigation = navigation;
-        _state = state;
+        _persist = persist;
+        _writer = writer;
         _settings = settings;
         _js = js;
-        _state.UrlPersistRequested = SaveAsync;
         _navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -35,7 +38,7 @@ public sealed class LabUrlSync : IDisposable
         var slug = await ReadBrowserHashAsync();
         if (string.IsNullOrWhiteSpace(slug))
         {
-            slug = GetSlug(_navigation.Uri);
+            slug = _writer.GetSlug(_navigation.Uri);
         }
 
         _loaded = true;
@@ -43,26 +46,7 @@ public sealed class LabUrlSync : IDisposable
         await ApplySlugAsync(empty ? "csharp" : slug, loadPreferences: empty);
     }
 
-    public Task SaveAsync()
-    {
-        var state = _state.CaptureSavedState();
-        var slug = Compressor.Compress(state);
-        if (WellKnownSlugs.FullSlugToShorthand.TryGetValue(slug, out var shorthand))
-        {
-            slug = shorthand;
-        }
-
-        if (string.Equals(GetSlug(_navigation.Uri), slug, StringComparison.Ordinal))
-        {
-            return Task.CompletedTask;
-        }
-
-        _ignoreNextLocation = true;
-        _appliedSlug = slug;
-        _navigation.NavigateTo(_navigation.BaseUri + "#" + slug,
-            new NavigationOptions { ReplaceHistoryEntry = true });
-        return Task.CompletedTask;
-    }
+    public Task SaveAsync() => _writer.SaveAsync();
 
     public async Task ApplySlugOrUrlAsync(string text)
     {
@@ -109,7 +93,7 @@ public sealed class LabUrlSync : IDisposable
 
     private async Task ApplySlugAsync(string slug, bool loadPreferences = false)
     {
-        if (string.Equals(_appliedSlug, slug, StringComparison.Ordinal))
+        if (string.Equals(_writer.AppliedSlug, slug, StringComparison.Ordinal))
         {
             return;
         }
@@ -137,8 +121,8 @@ public sealed class LabUrlSync : IDisposable
             state = state.WithPreferences(_settings.CompilationPreferences);
         }
 
-        _state.EditingUserPreferences = loadPreferences;
-        await _state.ApplySavedStateAsync(state);
+        _persist.EditingUserPreferences = loadPreferences;
+        await _persist.ApplySavedStateAsync(state);
         if (invalid)
         {
             InvalidShareUrl?.Invoke();
@@ -146,7 +130,7 @@ public sealed class LabUrlSync : IDisposable
             return;
         }
 
-        _appliedSlug = slug;
+        _writer.AppliedSlug = slug;
     }
 
     private async Task<string> ReadBrowserHashAsync()
@@ -163,9 +147,8 @@ public sealed class LabUrlSync : IDisposable
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
-        if (_ignoreNextLocation)
+        if (_writer.TakeIgnoreNextLocation())
         {
-            _ignoreNextLocation = false;
             return;
         }
 
@@ -174,25 +157,12 @@ public sealed class LabUrlSync : IDisposable
             return;
         }
 
-        var slug = GetSlug(args.Location);
+        var slug = _writer.GetSlug(args.Location);
         _ = ApplyLocationSlugAsync(slug);
-    }
-
-    private string GetSlug(string uri)
-    {
-        try
-        {
-            return (_navigation.ToAbsoluteUri(uri).Fragment ?? "").TrimStart('#');
-        }
-        catch (UriFormatException)
-        {
-            return "";
-        }
     }
 
     public void Dispose()
     {
-        _state.UrlPersistRequested = null;
         _navigation.LocationChanged -= OnLocationChanged;
     }
 }

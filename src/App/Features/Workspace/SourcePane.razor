@@ -1,0 +1,123 @@
+@inherits FluxorComponent
+@inject LabDocuments Documents
+@inject LabFormatter Formatter
+@inject EditorCursor Cursor
+@inject IState<DocumentMetadataState> DocumentsUi
+@inject IState<PreferencesState> Prefs
+
+<EditorGroups PaneId="source"
+              Items="DocumentsUi.Value.OpenNames"
+              Active="@DocumentsUi.Value.ActiveDocument"
+              ActiveChanged="OnSourceSelected"
+              ItemClosed="Documents.CloseFile"
+              ItemRenamed="OnSourceRenamed"
+              PinnedOrder="LabFixtures.SpecialSourceOrder"
+              Icon="@(new Icons.Regular.Size20.Code())">
+    <Actions>
+        <FluentButton Id="lab-source-format"
+                      Appearance="ButtonAppearance.Subtle"
+                      Size="ButtonSize.Small"
+                      IconOnly="true"
+                      Title="Format document"
+                      AriaLabel="Format document"
+                      IconStart="@(new Icons.Regular.Size20.TextEditStyle())"
+                      OnClick="Formatter.FormatActiveSource" />
+        <FluentTooltip Anchor="lab-source-format"
+                       Class="lab-command-tooltip"
+                       Positioning="Positioning.Below"
+                       UseTooltipService="false">
+            Format document
+        </FluentTooltip>
+        <FluentMenu>
+            <FluentMenuButton Appearance="ButtonAppearance.Subtle"
+                              Size="ButtonSize.Small"
+                              IconOnly="true"
+                              Title="Add file"
+                              IconStart="@(new Icons.Regular.Size20.Add())" />
+            <FluentMenuList>
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.Braces())"
+                                Label=".cs file"
+                                OnClick="@(() => Documents.AddFile(".cs"))" />
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.Code())"
+                                Label=".razor file"
+                                OnClick="@(() => Documents.AddFile(".razor"))" />
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.Globe())"
+                                Label=".cshtml file"
+                                OnClick="@(() => Documents.AddFile(".cshtml"))" />
+                <FluentDivider />
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.NumberSymbol())"
+                                Label="Directives"
+                                OnClick="Documents.OpenDirectives" />
+                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.DocumentSettings())"
+                                Label="Configuration"
+                                OnClick="Documents.OpenConfiguration" />
+            </FluentMenuList>
+        </FluentMenu>
+    </Actions>
+    <ItemLabel>
+        @if (context == LabFixtures.DirectivesFileName)
+        {
+            <FluentIcon Value="@(new Icons.Regular.Size20.NumberSymbol())" Width="16px" />
+            <span>Directives</span>
+        }
+        else if (context == LabFixtures.ConfigurationFileName)
+        {
+            <FluentIcon Value="@(new Icons.Regular.Size20.DocumentSettings())" Width="16px" />
+            <span>Configuration</span>
+        }
+        else
+        {
+            @context
+        }
+    </ItemLabel>
+    <ItemContent>
+        <LabCodeEditor @key="@($"source-{context}")"
+                       FileName="@context"
+                       Value="@Documents.Sources.GetValueOrDefault(context, "")"
+                       Language="@LabCatalog.LanguageFor(context)"
+                       ModelUri="@Documents.UriFor(context)"
+                       WordWrap="Prefs.Value.WordWrap"
+                       OnCursorChanged="OnCursorChanged"
+                       OnFocused="@(() => OnSourceSelected(context))" />
+    </ItemContent>
+</EditorGroups>
+<StatusBar Side="source" />
+
+@code {
+    [Parameter] public EventCallback StripChanging { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Documents.Changed += OnDocumentsChanged;
+    }
+
+    private void OnDocumentsChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task OnSourceSelected(string file)
+    {
+        if (string.Equals(DocumentsUi.Value.ActiveDocument, file, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await StripChanging.InvokeAsync();
+        Documents.SetActiveSource(file);
+    }
+
+    private void OnSourceRenamed(TabRename rename)
+        => Documents.RenameFile(rename.From, rename.To);
+
+    private void OnCursorChanged(CursorPositionChangedEvent args)
+        => Cursor.Set(args.Position.LineNumber, args.Position.Column);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Documents.Changed -= OnDocumentsChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

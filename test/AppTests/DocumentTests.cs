@@ -1,7 +1,8 @@
 using AwesomeAssertions;
-using DotNetLab.Features.Compilation;
+using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Sharing;
 using DotNetLab.Lab;
 using Fluxor;
 
@@ -151,13 +152,8 @@ public sealed class DocumentTests
         {
             Compilation = new Store<CompilationState>(new CompilationState());
             Output = new Store<OutputState>(new OutputState());
-            var dispatcher = new RecordingDispatcher(Compilation, Output);
-            Documents = new LabDocuments(dispatcher, Compilation);
-            Documents.PersistUrlRequested = () =>
-            {
-                PersistCount++;
-                return Task.CompletedTask;
-            };
+            Dispatcher = new RecordingDispatcher(Compilation, Output);
+            Documents = new LabDocuments(Dispatcher, Compilation);
         }
 
         public LabDocuments Documents { get; }
@@ -166,7 +162,9 @@ public sealed class DocumentTests
 
         public Store<OutputState> Output { get; }
 
-        public int PersistCount { get; private set; }
+        public RecordingDispatcher Dispatcher { get; }
+
+        public int PersistCount => Dispatcher.PersistCount;
     }
 
     private sealed class Store<T>(T value) : IState<T>
@@ -188,6 +186,8 @@ public sealed class DocumentTests
             remove { }
         }
 
+        public int PersistCount { get; private set; }
+
         public void Dispatch(object action)
         {
             if (action is SetStaleAction stale)
@@ -197,6 +197,10 @@ public sealed class DocumentTests
             else if (action is SetActiveOutputAction active)
             {
                 output.Value = OutputReducers.Reduce(output.Value, active);
+            }
+            else if (action is PersistUrlAction)
+            {
+                PersistCount++;
             }
         }
     }

@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject LabThemeService Theme
-@inject LabWorkspaceState Workspace
-@inject LabDialogs Dialogs
+@inject LabPersistence Persist
 @inject LabUrlSync Urls
 @inject LabPlatform Platform
 @inject ILabEnvironment Environment
@@ -28,9 +27,9 @@
                 </div>
             }
             @Body
-            <SettingsDialog @ref="_settings" />
-            <CommandPalette @ref="_palette" />
-            <PasteUrlDialog @ref="_paste" />
+            <SettingsDialog />
+            <CommandPalette />
+            <PasteUrlDialog />
         }
     </div>
 </div>
@@ -38,18 +37,12 @@
 <FluentProviders />
 
 @code {
-    private SettingsDialog? _settings;
-    private CommandPalette? _palette;
-    private PasteUrlDialog? _paste;
     private bool _ready;
     private bool _splashHidden;
     private bool _invalidShareUrl;
 
     protected override void OnInitialized()
     {
-        Dialogs.SettingsRequested = OpenSettingsAsync;
-        Dialogs.PaletteRequested = TogglePaletteAsync;
-        Dialogs.PasteUrlRequested = OpenPasteAsync;
         Urls.InvalidShareUrl += OnInvalidShareUrl;
     }
 
@@ -63,7 +56,7 @@
                 await Theme.InitializeAsync();
                 await Platform.InitializeAsync();
                 Dispatcher.Dispatch(new InitializeUpdatesAction());
-                await Workspace.LoadSettingsAsync();
+                await Persist.LoadSettingsAsync();
                 await Urls.LoadFromUriAsync();
             }
             finally
@@ -99,17 +92,8 @@
         _invalidShareUrl = false;
     }
 
-    private Task OpenSettingsAsync() => _settings?.ShowAsync() ?? Task.CompletedTask;
-
-    private Task TogglePaletteAsync() => _palette?.ToggleAsync() ?? Task.CompletedTask;
-
-    private Task OpenPasteAsync() => _paste?.ShowAsync() ?? Task.CompletedTask;
-
     public void Dispose()
     {
-        Dialogs.SettingsRequested = null;
-        Dialogs.PaletteRequested = null;
-        Dialogs.PasteUrlRequested = null;
         Urls.InvalidShareUrl -= OnInvalidShareUrl;
     }
 }

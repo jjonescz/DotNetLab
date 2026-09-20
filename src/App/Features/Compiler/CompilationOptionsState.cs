@@ -1,7 +1,7 @@
 using DotNetLab.Lab;
 using Fluxor;
 
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 [FeatureState]
 public sealed record CompilationOptionsState

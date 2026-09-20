@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using DotNetLab.Features.Compilation;
+using DotNetLab.Features.Compiler;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DotNetLab;

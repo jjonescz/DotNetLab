@@ -1,11 +1,11 @@
 @inherits FluxorComponent
-@inject LabWorkspaceState Workspace
-@inject LabDialogs Dialogs
+@inject LabFormatter Formatter
 @inject LabThemeService Theme
 @inject LabShare Share
 @inject LabPlatform Platform
 @inject IJSRuntime JS
 @inject IState<PreferencesState> Prefs
+@inject IState<CommandPaletteState> Palette
 @inject IDispatcher Dispatcher
 
 @{ Rebuild(); }
@@ -24,7 +24,7 @@
                type="text"
                role="combobox"
                aria-autocomplete="list"
-               aria-expanded="@(_open ? "true" : "false")"
+               aria-expanded="@(Palette.Value.IsOpen ? "true" : "false")"
                aria-controls="lab-palette-list"
                aria-activedescendant="@ActiveOptionId"
                autocomplete="off"
@@ -71,9 +71,8 @@
     private ElementReference _host;
     private ElementReference _input;
     private DotNetObjectReference<CommandPalette>? _self;
-    private bool _open;
+    private bool _shown;
     private bool _bound;
-    private bool _showAfterRender;
     private string _query = "";
     private int _active;
 
@@ -104,53 +103,39 @@
             }
         }
 
-        if (!_showAfterRender || !_open)
+        await SyncPaletteAsync();
+    }
+
+    private async Task SyncPaletteAsync()
+    {
+        var open = Palette.Value.IsOpen;
+        if (open && !_shown)
+        {
+            _query = "";
+            _active = 0;
+            _shown = true;
+            Rebuild();
+            try
+            {
+                await JS.InvokeVoidAsync("netLabPalette.show", _host);
+                await _input.FocusAsync();
+            }
+            catch (JSException)
+            {
+                _shown = false;
+            }
+
+            return;
+        }
+
+        if (open || !_shown)
         {
             return;
         }
 
-        _showAfterRender = false;
-        try
-        {
-            await JS.InvokeVoidAsync("netLabPalette.show", _host);
-            await _input.FocusAsync();
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    public Task ToggleAsync() => _open ? HideAsync() : ShowAsync();
-
-    private Task OnScrimClickAsync() => HideAsync();
-
-    public Task ShowAsync()
-    {
-        if (_open)
-        {
-            return Task.CompletedTask;
-        }
-
+        _shown = false;
         _query = "";
         _active = 0;
-        _open = true;
-        _showAfterRender = true;
-        Rebuild();
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    public async Task HideAsync()
-    {
-        if (!_open)
-        {
-            return;
-        }
-
-        _open = false;
-        _query = "";
-        _active = 0;
-        _showAfterRender = false;
         try
         {
             await JS.InvokeVoidAsync("netLabPalette.hide", _host);
@@ -160,14 +145,31 @@
         }
 
         Rebuild();
-        StateHasChanged();
+    }
+
+    private void RequestClose() => Dispatcher.Dispatch(new CloseCommandPaletteAction());
+
+    private Task OnScrimClickAsync()
+    {
+        RequestClose();
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task ToggleFromKeyboard() => InvokeAsync(ToggleAsync);
+    public Task ToggleFromKeyboard()
+        => InvokeAsync(() =>
+        {
+            Dispatcher.Dispatch(new ToggleCommandPaletteAction());
+            return Task.CompletedTask;
+        });
 
     [JSInvokable]
-    public Task HideFromKeyboard() => InvokeAsync(HideAsync);
+    public Task HideFromKeyboard()
+        => InvokeAsync(() =>
+        {
+            Dispatcher.Dispatch(new CloseCommandPaletteAction());
+            return Task.CompletedTask;
+        });
 
     [JSInvokable]
     public Task ToggleWordWrapFromKeyboard()
@@ -189,7 +191,7 @@
     {
         if (args.Key is "Escape")
         {
-            await HideAsync();
+            RequestClose();
             return;
         }
 
@@ -218,13 +220,25 @@
 
     private async Task RunAsync(CommandItem item)
     {
-        await HideAsync();
         await item.Run();
+        RequestClose();
     }
 
     private Task RequestCompile()
     {
         Dispatcher.Dispatch(new CompileRequestedAction());
+        return Task.CompletedTask;
+    }
+
+    private Task OpenPasteUrl()
+    {
+        Dispatcher.Dispatch(new OpenPasteUrlAction());
+        return Task.CompletedTask;
+    }
+
+    private Task OpenSettings()
+    {
+        Dispatcher.Dispatch(new OpenSettingsAction());
         return Task.CompletedTask;
     }
 
@@ -263,11 +277,11 @@
     private IEnumerable<CommandItem> Commands()
     {
         yield return new("Compile", "compile run build", Platform.SaveChord, RequestCompile);
-        yield return new("Format document", "format indent", "", () => Workspace.FormatActiveSource());
+        yield return new("Format document", "format indent", "", () => Formatter.FormatActiveSource());
         yield return new("Copy link", "copy share url link", "", Share.CopyLinkAsync);
         yield return new("Create gist", "gist github share", "", Share.CreateGistAsync);
-        yield return new("Load from URL", "paste gist url load", "", () => Dialogs.ShowPasteUrlAsync());
-        yield return new("Settings", "settings preferences options", "", () => Dialogs.ShowSettingsAsync());
+        yield return new("Load from URL", "paste gist url load", "", OpenPasteUrl);
+        yield return new("Settings", "settings preferences options", "", OpenSettings);
         yield return new("Toggle word wrap", "wrap word-wrap", "Alt+Z", () =>
         {
             Dispatcher.Dispatch(new ToggleWordWrapAction());

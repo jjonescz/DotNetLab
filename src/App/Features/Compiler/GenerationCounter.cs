@@ -1,4 +1,4 @@
-namespace DotNetLab.Features.Workspace;
+namespace DotNetLab.Features.Compiler;
 
 internal struct GenerationCounter
 {

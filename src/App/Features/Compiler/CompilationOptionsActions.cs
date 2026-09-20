@@ -1,4 +1,4 @@
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 public sealed record RestoreCompilationOptionsAction(CompilationOptionsState Value);
 

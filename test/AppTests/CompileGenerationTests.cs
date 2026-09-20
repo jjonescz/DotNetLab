@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using DotNetLab.Editor;
-using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
-using DotNetLab.Features.Workspace;
 using DotNetLab.Lab;
 using DotNetLab.Shell.StatusBar;
 

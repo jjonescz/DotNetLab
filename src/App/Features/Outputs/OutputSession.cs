@@ -1,4 +1,3 @@
-using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Infrastructure.Worker;
@@ -49,11 +48,9 @@ public sealed class OutputSession
         _compilationSession = compilationSession;
         _worker = worker;
         _compile = compile;
-        documents.ActiveSourceChanged.Add(RefreshDisplayAsync);
         if (compilationSession is not null)
         {
             compilationSession.NewOutputGeneration += Clear;
-            compilationSession.DisplayReady += OnDisplayReady;
         }
     }
 
@@ -257,9 +254,7 @@ public sealed class OutputSession
         }
     }
 
-    private void OnDisplayReady() => _ = RefreshDisplayAsync();
-
-    private Task RefreshDisplayAsync()
+    internal Task RefreshDisplayAsync()
     {
         SetTemporaryErrorList(Compiled is { NumErrors: > 0 });
         Notify();

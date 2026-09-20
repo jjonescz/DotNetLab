@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace DotNetLab.Features.Theme;
+namespace DotNetLab.Features.Preferences;
 
 /// <summary>
 /// App theme identity and storage. Preference is <c>light</c>, <c>dark</c>, or

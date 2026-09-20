@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using DotNetLab.Features.Compilation;
+using DotNetLab.Editor;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
@@ -48,7 +48,6 @@ public sealed class CompilationSessionTests
     [TestMethod]
     public async Task BusyCompile_SetsRunningWhileInFlight()
     {
-        using var context = ImmediateSynchronizationContext.Install();
         var transport = new DelayedCompileTransport();
         await using var worker = CreateWorker(transport);
         var compilation = new Store<CompilationState>(new CompilationState());
@@ -68,7 +67,6 @@ public sealed class CompilationSessionTests
     [TestMethod]
     public async Task Compile_SameInput_StillSendsAndShowsBusy()
     {
-        using var context = ImmediateSynchronizationContext.Install();
         var transport = new DelayedCompileTransport();
         await using var worker = CreateWorker(transport);
         var compilation = new Store<CompilationState>(new CompilationState());
@@ -94,7 +92,6 @@ public sealed class CompilationSessionTests
     [TestMethod]
     public async Task LatestCompile_IsPreferredOverQueuedMiddle()
     {
-        using var context = ImmediateSynchronizationContext.Install();
         var transport = new DelayedCompileTransport();
         await using var worker = CreateWorker(transport);
         var compilation = new Store<CompilationState>(new CompilationState());
@@ -125,7 +122,6 @@ public sealed class CompilationSessionTests
     [TestMethod]
     public async Task Compile_WaitsUntilCompilerIdleBeforeSending()
     {
-        using var context = ImmediateSynchronizationContext.Install();
         var transport = new DelayedCompileTransport();
         await using var worker = CreateWorker(transport);
         var compilation = new Store<CompilationState>(new CompilationState());
@@ -149,7 +145,6 @@ public sealed class CompilationSessionTests
     [TestMethod]
     public async Task CompileRequestedAction_EnqueuesOnExistingScheduler()
     {
-        using var context = ImmediateSynchronizationContext.Install();
         var transport = new DelayedCompileTransport();
         await using var worker = CreateWorker(transport);
         var compilation = new Store<CompilationState>(new CompilationState());
@@ -194,7 +189,8 @@ public sealed class CompilationSessionTests
             new Store<OutputState>(new OutputState()),
             dispatcher,
             NullLogger<CompilationSession>.Instance,
-            documents);
+            documents,
+            new LabEditorSnapshots());
         return (session, documents);
     }
 

@@ -1,0 +1,83 @@
+@inherits FluxorComponent
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+
+@if (Tab == "tree")
+{
+    <div class="lab-toolbar">
+        <FluentSelect TOption="SymbolDisplayKinds"
+                      TValue="SymbolDisplayKinds"
+                      Items="LabCatalog.SymbolDisplayKindOptions"
+                      OptionText="@(static (SymbolDisplayKinds kind) => LabCatalog.SymbolDisplayKindLabel(kind))"
+                      Value="Options.Value.ShowSymbols"
+                      ValueChanged="SetShowSymbols"
+                      AriaLabel="Symbols" />
+        <FluentCheckbox Label="Operations" Value="Options.Value.ShowOperations" ValueChanged="SetShowOperations" />
+        <FluentCheckbox Label="Bound nodes" Value="Options.Value.ShowBoundNodes" ValueChanged="SetShowBoundNodes" />
+    </div>
+}
+else if (Tab == "gcs")
+{
+    <div class="lab-toolbar">
+        <FluentCheckbox Label="Declaration document" Value="Options.Value.ShowDeclarationDocument" ValueChanged="SetShowDeclarationDocument" />
+    </div>
+}
+else if (Tab == "html")
+{
+    <div class="lab-toolbar">
+        <FluentCheckbox Label="Rendered" Value="ShowRenderedHtml" ValueChanged="OnShowRenderedHtmlChanged" />
+    </div>
+}
+else if (Tab == "il")
+{
+    <div class="lab-toolbar">
+        <FluentCheckbox Label="Decode custom attribute blobs" Value="Options.Value.DecodeCustomAttributeBlobs" ValueChanged="SetDecodeCustomAttributeBlobs" />
+        <FluentCheckbox Label="Sequence points" Value="Options.Value.ShowSequencePoints" ValueChanged="SetShowSequencePoints" />
+        <FluentCheckbox Label="Full IL" Value="Options.Value.FullIl" ValueChanged="SetFullIl" />
+    </div>
+}
+else if (Tab == "errors")
+{
+    <div class="lab-toolbar">
+        <FluentCheckbox Label="Exclude single file name" Value="Options.Value.ExcludeSingleFileNameInDiagnostics" ValueChanged="SetExcludeSingleFileNameInDiagnostics" />
+        <FluentCheckbox Label="Include hidden diagnostics" Value="Options.Value.IncludeHiddenDiagnostics" ValueChanged="SetIncludeHiddenDiagnostics" />
+    </div>
+}
+
+@code {
+    [Parameter] public string Tab { get; set; } = "";
+
+    [Parameter] public bool ShowRenderedHtml { get; set; }
+
+    [Parameter] public EventCallback<bool> ShowRenderedHtmlChanged { get; set; }
+
+    private Task OnShowRenderedHtmlChanged(bool value)
+        => ShowRenderedHtmlChanged.InvokeAsync(value);
+
+    private void SetShowSymbols(SymbolDisplayKinds value)
+        => Dispatcher.Dispatch(new SetShowSymbolsAction(value));
+
+    private void SetShowOperations(bool value)
+        => Dispatcher.Dispatch(new SetShowOperationsAction(value));
+
+    private void SetShowBoundNodes(bool value)
+        => Dispatcher.Dispatch(new SetShowBoundNodesAction(value));
+
+    private void SetShowDeclarationDocument(bool value)
+        => Dispatcher.Dispatch(new SetShowDeclarationDocumentAction(value));
+
+    private void SetDecodeCustomAttributeBlobs(bool value)
+        => Dispatcher.Dispatch(new SetDecodeCustomAttributeBlobsAction(value));
+
+    private void SetShowSequencePoints(bool value)
+        => Dispatcher.Dispatch(new SetShowSequencePointsAction(value));
+
+    private void SetFullIl(bool value)
+        => Dispatcher.Dispatch(new SetFullIlAction(value));
+
+    private void SetExcludeSingleFileNameInDiagnostics(bool value)
+        => Dispatcher.Dispatch(new SetExcludeSingleFileNameInDiagnosticsAction(value));
+
+    private void SetIncludeHiddenDiagnostics(bool value)
+        => Dispatcher.Dispatch(new SetIncludeHiddenDiagnosticsAction(value));
+}

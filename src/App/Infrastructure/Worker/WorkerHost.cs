@@ -58,18 +58,14 @@ public sealed class WorkerHost : IAsyncDisposable
 
     public event Action<string>? Failed;
 
+    public string? LastError { get; private set; }
+
     /// <summary>
     /// Raised at the start of <see cref="RecreateAsync"/> / dispose, after the
     /// epoch advances. Language services cancel leftover deltas here so they
     /// are not applied to the next worker.
     /// </summary>
     internal event Action? Recreating;
-
-    /// <summary>
-    /// Raised after the replacement worker is running. Language services drain
-    /// the cancelled queue and start a new reader.
-    /// </summary>
-    internal Func<Task>? Recreated { get; set; }
 
     public PingResult? LastPingResult { get; private set; }
 
@@ -105,14 +101,11 @@ public sealed class WorkerHost : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             Interlocked.Increment(ref _epoch);
+            LastError = null;
             Recreating?.Invoke();
             await DisposeCurrentNoLockAsync();
             _useWorker ??= await LoadUseWorkerAsync();
             await StartNoLockAsync();
-            if (Recreated is { } recreated)
-            {
-                await recreated();
-            }
         }
         finally
         {
@@ -441,6 +434,7 @@ public sealed class WorkerHost : IAsyncDisposable
                 }
 
                 DiscardPending("Worker error", error);
+                LastError = error;
                 Failed?.Invoke(error);
                 return Task.CompletedTask;
             });

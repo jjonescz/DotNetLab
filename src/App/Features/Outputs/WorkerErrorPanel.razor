@@ -1,0 +1,33 @@
+@inject WorkerHost Worker
+@inject LabWorkerReload WorkerReload
+@implements IDisposable
+
+@if (Worker.LastError is { } workerError)
+{
+    <div class="lab-worker-error" role="alert">
+        <div class="lab-worker-error-title">Compiler worker failed.</div>
+        <div class="lab-worker-error-body">@workerError</div>
+        <FluentButton Size="ButtonSize.Small"
+                      Appearance="ButtonAppearance.Primary"
+                      IconStart="@(new Icons.Regular.Size20.ArrowSync())"
+                      OnClick="WorkerReload.ReloadWorkerAsync">Re-create the worker</FluentButton>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        Worker.Failed += OnFailed;
+        Worker.Recreating += OnRecreating;
+    }
+
+    private void OnFailed(string _) => InvokeAsync(StateHasChanged);
+
+    private void OnRecreating() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Worker.Failed -= OnFailed;
+        Worker.Recreating -= OnRecreating;
+    }
+}

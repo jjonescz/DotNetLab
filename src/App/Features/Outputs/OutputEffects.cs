@@ -1,3 +1,5 @@
+using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using Fluxor;
 
 namespace DotNetLab.Features.Outputs;
@@ -10,5 +12,27 @@ public sealed class OutputEffects(OutputSession outputs)
         _ = dispatcher;
         outputs.DismissTemporaryErrorList();
         return outputs.EnsureOutputLoadedAsync(action.Value);
+    }
+
+    [EffectMethod(typeof(ActiveSourceChangedAction))]
+    public Task HandleActiveSource(IDispatcher dispatcher)
+    {
+        _ = dispatcher;
+        return outputs.RefreshDisplayAsync();
+    }
+
+    [EffectMethod]
+    public Task HandleFinished(CompilationFinishedAction action, IDispatcher dispatcher)
+    {
+        _ = dispatcher;
+        return action.AppliedToDisplay ? outputs.RefreshDisplayAsync() : Task.CompletedTask;
+    }
+
+    [EffectMethod]
+    public Task Handle(CachedCompilationLoadedAction action, IDispatcher dispatcher)
+    {
+        _ = dispatcher;
+        _ = action;
+        return outputs.RefreshDisplayAsync();
     }
 }

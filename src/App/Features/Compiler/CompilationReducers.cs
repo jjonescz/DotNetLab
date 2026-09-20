@@ -1,7 +1,6 @@
-using DotNetLab.Features.Compiler;
 using Fluxor;
 
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 public static class CompilationReducers
 {

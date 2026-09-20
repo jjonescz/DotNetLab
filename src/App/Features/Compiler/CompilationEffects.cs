@@ -1,6 +1,6 @@
 using Fluxor;
 
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 public sealed class CompilationEffects(CompilationSession compilation)
 {

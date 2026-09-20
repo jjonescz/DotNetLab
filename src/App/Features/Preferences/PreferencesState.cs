@@ -1,4 +1,3 @@
-using DotNetLab.Features.Theme;
 using DotNetLab.Lab;
 using Fluxor;
 

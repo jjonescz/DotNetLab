@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using DotNetLab.Features.Theme;
+using DotNetLab.Features.Preferences;
 
 namespace DotNetLab;
 

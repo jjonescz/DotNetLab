@@ -1,5 +1,4 @@
 @inherits FluxorComponent
-@inject LabDialogs Dialogs
 @inject LabPlatform Platform
 @inject IState<CompilerState> Compiler
 @inject IState<CompilationState> Compilation
@@ -39,7 +38,7 @@
                         Options="@SdkOptions"
                         Selected="SelectSdk">
             <Trailing>
-                <FluentMenuItem Label="More SDK versions…" OnClick="Dialogs.ShowSettingsAsync" />
+                <FluentMenuItem Label="More SDK versions…" OnClick="OpenSettings" />
             </Trailing>
         </CompilerPicker>
 
@@ -50,7 +49,7 @@
                         Options="@CompilerRefOptions"
                         Selected="SelectRoslyn">
             <Trailing>
-                <FluentMenuItem Label="Version, PR, branch or build…" OnClick="Dialogs.ShowSettingsAsync" />
+                <FluentMenuItem Label="Version, PR, branch or build…" OnClick="OpenSettings" />
             </Trailing>
         </CompilerPicker>
 
@@ -91,7 +90,7 @@
                       Title="@Platform.PaletteLabel"
                       AriaLabel="@Platform.PaletteLabel"
                       IconStart="@(new Icons.Regular.Size20.KeyCommand())"
-                      OnClick="Dialogs.ShowPaletteAsync" />
+                      OnClick="TogglePalette" />
         <FluentTooltip Anchor="lab-cmd-palette"
                        Class="lab-command-tooltip"
                        Positioning="Positioning.Below"
@@ -187,4 +186,8 @@
     private void ToggleStacked() => Dispatcher.Dispatch(new ToggleStackedAction());
 
     private void RequestCompile() => Dispatcher.Dispatch(new CompileRequestedAction());
+
+    private void OpenSettings() => Dispatcher.Dispatch(new OpenSettingsAction());
+
+    private void TogglePalette() => Dispatcher.Dispatch(new ToggleCommandPaletteAction());
 }

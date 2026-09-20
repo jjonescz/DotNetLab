@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 /// <summary>
 /// Latest-wins compile scheduler. The Channel is bounded 1 / <see cref="BoundedChannelFullMode.DropOldest"/>

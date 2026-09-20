@@ -1,11 +1,15 @@
 @inherits FluxorComponent
-@inject LabWorkspaceState Workspace
+@inject OutputTabLayout Tabs
+@inject LabDocuments Documents
+@inject LabPersistence Persist
 @inject LabThemeService Theme
 @inject IUpdateChecker Updates
 @inject IState<UpdateState> UpdateStore
 @inject IState<PreferencesState> Prefs
 @inject IState<CompilationOptionsState> Options
+@inject IState<SettingsUiState> Ui
 @inject IDispatcher Dispatcher
+@inject IJSRuntime JS
 @inject IServiceProvider Services
 
 <FluentDialog @ref="_dialog" Class="lab-settings-dialog" Modal="false" OnStateChange="OnDialogStateChange">
@@ -17,10 +21,10 @@
                           IconOnly="true"
                           Title="Close"
                           IconStart="@(new Icons.Regular.Size20.Dismiss())"
-                          OnClick="HideAsync" />
+                          OnClick="RequestClose" />
         </TitleActionTemplate>
         <ActionTemplate>
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="HideAsync">Done</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RequestClose">Done</FluentButton>
         </ActionTemplate>
         <ChildContent>
         <div class="lab-settings-stack">
@@ -62,9 +66,9 @@
                         }
                     </div>
                     <div class="lab-output-tab-list">
-                        @foreach (var tab in Workspace.Tabs.SettingsRowsFor(_outputKind))
+                        @foreach (var tab in Tabs.SettingsRowsFor(_outputKind))
                         {
-                            var visible = Workspace.Tabs.IsOutputTabVisible(_outputKind, tab.Type);
+                            var visible = Tabs.IsOutputTabVisible(_outputKind, tab.Type);
                             var locked = LabCatalog.IsOutputTabLocked(tab.Type);
                             <div @key="@($"{tab.Type}:{visible}")" class="lab-output-tab-row @(visible ? null : "is-hidden")">
                                 <div>
@@ -77,7 +81,7 @@
                                                   IconOnly="true"
                                                   Title="Move up"
                                                   AriaLabel="@($"Move {tab.Label} up")"
-                                                  Disabled="@(!Workspace.Tabs.CanMoveOutputTab(_outputKind, tab.Type, -1))"
+                                                  Disabled="@(!Tabs.CanMoveOutputTab(_outputKind, tab.Type, -1))"
                                                   IconStart="@(new Icons.Regular.Size16.ChevronUp())"
                                                   OnClick="@(() => MoveOutputTabAsync(tab.Type, -1))" />
                                     <FluentButton Appearance="ButtonAppearance.Subtle"
@@ -85,7 +89,7 @@
                                                   IconOnly="true"
                                                   Title="Move down"
                                                   AriaLabel="@($"Move {tab.Label} down")"
-                                                  Disabled="@(!Workspace.Tabs.CanMoveOutputTab(_outputKind, tab.Type, 1))"
+                                                  Disabled="@(!Tabs.CanMoveOutputTab(_outputKind, tab.Type, 1))"
                                                   IconStart="@(new Icons.Regular.Size16.ChevronDown())"
                                                   OnClick="@(() => MoveOutputTabAsync(tab.Type, 1))" />
                                     <FluentSwitch Value="@visible"
@@ -199,15 +203,38 @@
     ];
 
     private FluentDialog? _dialog;
+    private bool _shown;
     private bool _hiding;
+    private bool _opening;
     private OutputFileKind _outputKind = OutputFileKind.Cs;
     private IStoreLink? Store => Services.GetService<IStoreLink>();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Workspace.Tabs.Changed += OnTabsChanged;
+        Tabs.Changed += OnTabsChanged;
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        await SyncDialogAsync();
+    }
+
+    private async Task SyncDialogAsync()
+    {
+        var shouldOpen = Ui.Value.IsOpen;
+        if (shouldOpen && !_shown)
+        {
+            await ShowAsync();
+        }
+        else if (!shouldOpen && _shown)
+        {
+            await HideAsync();
+        }
+    }
+
+    private void RequestClose() => Dispatcher.Dispatch(new CloseSettingsAction());
 
     private void OnTabsChanged() => InvokeAsync(StateHasChanged);
 
@@ -221,33 +248,39 @@
     {
         if (disposing)
         {
-            Workspace.Tabs.Changed -= OnTabsChanged;
+            Tabs.Changed -= OnTabsChanged;
         }
 
         return base.DisposeAsyncCore(disposing);
     }
 
-    public async Task ShowAsync()
+    private async Task ShowAsync()
     {
-        if (_dialog is null)
+        if (_dialog is null || _shown)
         {
             return;
         }
 
-        _outputKind = LabCatalog.OutputKindFor(Workspace.Documents.ActiveSource);
-        Dispatcher.Dispatch(new EnsureSdkVersionsAction());
+        _outputKind = LabCatalog.OutputKindFor(Documents.ActiveSource);
+        _shown = true;
+        _opening = true;
         try
         {
             await _dialog.ShowAsync();
         }
         catch (JSException)
         {
+            _shown = false;
+        }
+        finally
+        {
+            _opening = false;
         }
     }
 
-    public async Task HideAsync()
+    private async Task HideAsync()
     {
-        if (_dialog is null || _hiding)
+        if (_dialog is null || _hiding || !_shown)
         {
             return;
         }
@@ -262,38 +295,65 @@
         }
         finally
         {
+            _shown = false;
             _hiding = false;
         }
     }
 
-    private Task OnDialogStateChange(DialogEventArgs args)
+    private async Task OnDialogStateChange(DialogEventArgs args)
     {
-        return args.State == DialogState.Closed ? HideAsync() : Task.CompletedTask;
+        if (args.State != DialogState.Closed)
+        {
+            return;
+        }
+
+        if (_hiding || _opening || await IsNativeOpenAsync())
+        {
+            return;
+        }
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
+        {
+            Dispatcher.Dispatch(new CloseSettingsAction());
+        }
+    }
+
+    private async Task<bool> IsNativeOpenAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("netLabDialog.isOpen", ".lab-settings-dialog");
+        }
+        catch (JSException)
+        {
+            return false;
+        }
     }
 
     private Task OnThemeChangedAsync(string theme) => Theme.SetPreferenceAsync(theme);
 
     private async Task SetOutputTabVisibleAsync(string type, bool visible)
     {
-        Workspace.Tabs.SetOutputTabVisible(_outputKind, type, visible);
+        Tabs.SetOutputTabVisible(_outputKind, type, visible);
         await PersistOutputTabsAsync();
     }
 
     private async Task MoveOutputTabAsync(string type, int delta)
     {
-        Workspace.Tabs.MoveOutputTab(_outputKind, type, delta);
+        Tabs.MoveOutputTab(_outputKind, type, delta);
         await PersistOutputTabsAsync();
     }
 
     private async Task ResetOutputTabsAsync()
     {
-        Workspace.Tabs.ResetOutputTabs(_outputKind);
+        Tabs.ResetOutputTabs(_outputKind);
         await PersistOutputTabsAsync();
     }
 
     private async Task PersistOutputTabsAsync()
     {
-        await Workspace.PersistOutputTabsAsync();
+        await Persist.PersistOutputTabsAsync();
     }
 
     private void CheckForUpdates() => Dispatcher.Dispatch(new CheckUpdatesAction());
@@ -302,7 +362,7 @@
 
     private async Task LoadUpdateAsync(Action loadUpdate)
     {
-        await Workspace.PersistUrlAsync();
+        await Persist.PersistUrlAsync();
         loadUpdate();
     }
 }

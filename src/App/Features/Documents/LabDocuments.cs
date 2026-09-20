@@ -1,5 +1,6 @@
-using DotNetLab.Features.Compilation;
+using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Sharing;
 using DotNetLab.Lab;
 using Fluxor;
 
@@ -21,12 +22,6 @@ public sealed class LabDocuments
     }
 
     public event Action? Changed;
-
-    public Func<Task>? PersistUrlRequested { get; set; }
-
-    public Func<IReadOnlyList<string>, Task>? FilesChanged { get; set; }
-
-    public List<Func<Task>> ActiveSourceChanged { get; } = [];
 
     public string Template { get; private set; } = "C#";
     public string ActiveSource { get; set; } = "Program.cs";
@@ -129,15 +124,8 @@ public sealed class LabDocuments
 
     private void AfterChanged(IReadOnlyList<string> before)
     {
-        if (FilesChanged is { } filesChanged)
-        {
-            _ = filesChanged(before);
-        }
-
-        if (PersistUrlRequested is { } persist)
-        {
-            _ = persist();
-        }
+        _dispatcher.Dispatch(new DocumentsChangedAction(before));
+        _dispatcher.Dispatch(new PersistUrlAction());
     }
 
     private static (string Name, string Contents)[] FilesFor(string template)
@@ -389,11 +377,8 @@ public sealed class LabDocuments
 
         ActiveSource = file;
         Notify();
-        _ = NotifyActiveSourceChangedAsync();
-        if (PersistUrlRequested is { } persist)
-        {
-            _ = persist();
-        }
+        _dispatcher.Dispatch(new ActiveSourceChangedAction());
+        _dispatcher.Dispatch(new PersistUrlAction());
     }
 
     public void LoadFromSavedState(SavedState state)
@@ -475,10 +460,7 @@ public sealed class LabDocuments
                 : "C#";
 
         Notify();
-        if (FilesChanged is { } filesChanged)
-        {
-            _ = filesChanged(before);
-        }
+        _dispatcher.Dispatch(new DocumentsChangedAction(before));
     }
 
     private void Notify()
@@ -494,14 +476,6 @@ public sealed class LabDocuments
     {
         get => _compilation.Value.Stale;
         set => _dispatcher.Dispatch(new SetStaleAction(value));
-    }
-
-    private async Task NotifyActiveSourceChangedAsync()
-    {
-        foreach (var handler in ActiveSourceChanged.ToArray())
-        {
-            await handler();
-        }
     }
 
     private void SetActiveOutput(string type) =>

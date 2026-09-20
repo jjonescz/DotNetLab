@@ -1,5 +1,4 @@
 using BlazorMonaco.Editor;
-using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
@@ -39,10 +38,6 @@ public sealed class LabLanguageSession
         _documents = documents;
         _compilation = compilation;
         _outputs = outputs;
-        documents.FilesChanged = AfterDocumentsChangedAsync;
-        documents.ActiveSourceChanged.Add(SyncActiveSourceAsync);
-        compilation.AfterCompile = RefreshAfterCompileAsync;
-        compilation.AfterCachedCompile = RefreshAfterCachedCompileAsync;
     }
 
     public bool Started => _languageInit is not null;
@@ -134,8 +129,6 @@ public sealed class LabLanguageSession
             await SyncAsync(refresh: true);
         }
     }
-
-    private Task SyncActiveSourceAsync() => SyncAsync();
 
     private async Task EnableOnceAsync()
     {

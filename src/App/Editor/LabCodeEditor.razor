@@ -1,9 +1,15 @@
 @inject IJSRuntime JS
+@inject LabDocuments Documents
+@inject LabPersistence Persist
+@inject LabEditorSnapshots Snapshots
+@inject LabLanguageSession LanguageSession
+@inject IDispatcher Dispatcher
+@inject IState<PreferencesState> Prefs
 @implements IAsyncDisposable
 
 <div class="lab-editor">
     <StandaloneCodeEditor @ref="_editor"
-                          Id="@_editorId"
+                          Id="@_session.EditorId"
                           ConstructionOptions="ConstructionOptions"
                           OnDidInit="OnInitAsync"
                           OnDidChangeModelContent="OnModelChangedAsync"
@@ -11,29 +17,12 @@
                           OnDidFocusEditorText="OnFocusedAsync"
                           OnDidBlurEditorText="OnBlurredAsync"
                           OnKeyDown="OnKeyDownAsync" />
-    <div id="@VimStatusId" class="lab-vim-status" aria-live="polite"></div>
+    <div id="@_session.VimStatusId" class="lab-vim-status" aria-live="polite"></div>
 </div>
 
 @code {
-    private readonly string _editorId = $"lab-editor-{Guid.NewGuid():N}";
     private StandaloneCodeEditor? _editor;
-    private string _lastValue = "";
-    private string _lastLanguage = "";
-    private bool _lastReadOnly;
-    private bool _lastWordWrap;
-    private int _lastCursorLine;
-    private int _lastCursorColumn;
-    private bool _ready;
-    private bool _disposed;
-    private bool _suppressChange;
-    private Task _init = Task.CompletedTask;
-    private Task _applyQueue = Task.CompletedTask;
-    private string? _appliedMonacoTheme;
-    private bool? _appliedKeyboardDisabled;
-    private bool? _appliedVim;
-    private string? _lastModelUri;
-
-    private string VimStatusId => $"{_editorId}-vim";
+    private LabCodeEditorSession _session = default!;
 
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public string Language { get; set; } = "csharp";
@@ -45,481 +34,72 @@
     [Parameter] public EventCallback<CursorPositionChangedEvent> OnCursorChanged { get; set; }
     [Parameter] public EventCallback OnFocused { get; set; }
 
-    [Inject] private LabWorkspaceState State { get; set; } = default!;
-    [Inject] private LabLanguageSession LanguageSession { get; set; } = default!;
-    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
-    [Inject] private IState<PreferencesState> Prefs { get; set; } = default!;
-
     protected override void OnInitialized()
-    {
-        Prefs.StateChanged += OnPreferencesChanged;
-        State.SnapshotRequested.Add(FlushAsync);
-    }
+        => _session = new LabCodeEditorSession(JS, Documents, Persist, Snapshots, LanguageSession, Dispatcher, Prefs);
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        Prefs.StateChanged -= OnPreferencesChanged;
-        State.SnapshotRequested.Remove(FlushAsync);
-        try
-        {
-            await _init;
-        }
-        catch (JSException)
-        {
-        }
-
-        try
-        {
-            await _applyQueue;
-        }
-        catch (JSException)
-        {
-        }
-
-        await DisposeEditorChromeAsync();
-        await LanguageSession.DetachEditorAsync(_editorId);
-    }
-
-    private async Task DisposeEditorChromeAsync()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("netLabVim.dispose", _editorId);
-        }
-        catch (JSException)
-        {
-        }
-
-        try
-        {
-            await JS.InvokeVoidAsync("netLabKeyboard.dispose", _editorId);
-        }
-        catch (JSException)
-        {
-        }
-    }
+    public ValueTask DisposeAsync() => _session.DisposeAsync();
 
     protected override bool ShouldRender()
-        => !_ready
-           || !string.Equals(_lastValue, Value, StringComparison.Ordinal)
-           || !string.Equals(_lastLanguage, Language, StringComparison.Ordinal)
-           || !string.Equals(_lastModelUri, ModelUri, StringComparison.Ordinal)
-           || _lastReadOnly != ReadOnly
-           || _lastWordWrap != WordWrap;
-
-    private StandaloneEditorConstructionOptions ConstructionOptions(StandaloneCodeEditor _)
-    {
-        _lastValue = Value;
-        _lastLanguage = Language;
-        _lastReadOnly = ReadOnly;
-        _lastWordWrap = WordWrap;
-        _lastModelUri = ModelUri;
-        return new StandaloneEditorConstructionOptions
-        {
-            AutomaticLayout = true,
-            Language = Language,
-            Value = Value,
-            Theme = Prefs.Value.MonacoTheme,
-            ReadOnly = ReadOnly,
-            DomReadOnly = ReadOnly,
-            FontSize = 13,
-            LineHeight = 20,
-            FontFamily = "'JetBrains Mono', Consolas, monospace",
-            FontLigatures = true,
-            Minimap = new EditorMinimapOptions { Enabled = false },
-            ScrollBeyondLastLine = false,
-            SmoothScrolling = true,
-            TabSize = 4,
-            WordWrap = WordWrap ? "on" : "off",
-            GlyphMargin = false,
-            Contextmenu = true,
-            RenderLineHighlight = ReadOnly ? "none" : "line",
-            Scrollbar = new EditorScrollbarOptions
-            {
-                VerticalScrollbarSize = 10,
-                HorizontalScrollbarSize = 10
-            }
-        };
-    }
+        => _session.ShouldRender(Value, Language, ModelUri, ReadOnly, WordWrap);
 
     protected override Task OnParametersSetAsync()
     {
-        if (_disposed || !_ready || _editor is null)
-        {
-            return Task.CompletedTask;
-        }
-
-        _applyQueue = ApplyParametersAsync(_applyQueue);
-        return _applyQueue;
+        Bind();
+        return _session.OnParametersSetAsync();
     }
 
-    private async Task ApplyParametersAsync(Task previous)
+    private StandaloneEditorConstructionOptions ConstructionOptions(StandaloneCodeEditor _)
     {
-        try
-        {
-            await previous;
-        }
-        catch (JSException)
-        {
-        }
-
-        if (_disposed || !_ready || _editor is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var modelUriChanged = !string.Equals(_lastModelUri, ModelUri, StringComparison.Ordinal);
-            if (modelUriChanged)
-            {
-                await AttachNamedModelAsync();
-                _lastModelUri = ModelUri;
-            }
-
-            // SetValue is async. A cached recompile can push Compiling… then the real text
-            // before the first SetValue finishes, which left Monaco stuck until a tab switch.
-            var valueChanged = false;
-            while (!_disposed && !string.Equals(_lastValue, Value, StringComparison.Ordinal))
-            {
-                var toSet = Value;
-                _suppressChange = true;
-                try
-                {
-                    await _editor.SetValue(toSet);
-                    _lastValue = toSet;
-                    valueChanged = true;
-                }
-                finally
-                {
-                    _suppressChange = false;
-                }
-            }
-
-            var languageChanged = !string.Equals(_lastLanguage, Language, StringComparison.Ordinal);
-            if (languageChanged)
-            {
-                var model = await _editor.GetModel();
-                if (model is not null)
-                {
-                    await global::BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, Language);
-                }
-
-                _lastLanguage = Language;
-            }
-
-            if (_lastReadOnly != ReadOnly || _lastWordWrap != WordWrap)
-            {
-                await _editor.UpdateOptions(new EditorUpdateOptions
-                {
-                    ReadOnly = ReadOnly,
-                    WordWrap = WordWrap ? "on" : "off"
-                });
-                _lastReadOnly = ReadOnly;
-                _lastWordWrap = WordWrap;
-            }
-
-            if (!_disposed && (modelUriChanged || valueChanged || languageChanged))
-            {
-                await LanguageSession.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: languageChanged);
-            }
-        }
-        catch (JSException)
-        {
-            _ready = false;
-            _suppressChange = false;
-        }
+        Bind();
+        return _session.ConstructionOptions();
     }
 
     private Task OnInitAsync()
     {
-        _init = InitializeEditorAsync();
-        return _init;
-    }
-
-    private async Task InitializeEditorAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _lastValue = Value;
-        _lastLanguage = Language;
-        _lastModelUri = ModelUri;
-        _ready = true;
-        await AttachNamedModelAsync();
-        if (_disposed)
-        {
-            return;
-        }
-
-        await ApplyMonacoThemeAsync();
-        await ApplyVirtualKeyboardAsync();
-        await ApplyVimAsync();
-        await ApplyWrapAndReadOnlyAsync();
-        if (_disposed)
-        {
-            return;
-        }
-
-        await LanguageSession.InitializeAsync();
-        if (_disposed)
-        {
-            return;
-        }
-
-        await LanguageSession.OnEditorReadyAsync(_editorId, ModelUri, ReadOnly, fold: true);
-    }
-
-    private async Task ApplyWrapAndReadOnlyAsync()
-    {
-        if (_editor is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await _editor.UpdateOptions(new EditorUpdateOptions
-            {
-                ReadOnly = ReadOnly,
-                WordWrap = WordWrap ? "on" : "off"
-            });
-            _lastReadOnly = ReadOnly;
-            _lastWordWrap = WordWrap;
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private async Task AttachNamedModelAsync()
-    {
-        if (_editor is null || string.IsNullOrEmpty(ModelUri))
-        {
-            return;
-        }
-
-        try
-        {
-            var existing = await global::BlazorMonaco.Editor.Global.GetModel(JS, ModelUri);
-            TextModel model;
-            if (existing is null)
-            {
-                model = await global::BlazorMonaco.Editor.Global.CreateModel(JS, Value, Language, ModelUri);
-            }
-            else
-            {
-                model = existing;
-                var text = await model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
-                if (!string.Equals(text, Value, StringComparison.Ordinal))
-                {
-                    _suppressChange = true;
-                    try
-                    {
-                        await model.SetValue(Value);
-                    }
-                    finally
-                    {
-                        _suppressChange = false;
-                    }
-                }
-            }
-
-            await _editor.SetModel(model);
-            _lastValue = Value;
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private void OnPreferencesChanged(object? sender, EventArgs e)
-    {
-        if (_disposed || !_ready)
-        {
-            return;
-        }
-
-        if (!string.Equals(_appliedMonacoTheme, Prefs.Value.MonacoTheme, StringComparison.Ordinal))
-        {
-            _ = ApplyMonacoThemeAsync();
-        }
-
-        _ = ApplyVirtualKeyboardAsync();
-        _ = ApplyVimAsync();
-    }
-
-    private async Task ApplyVirtualKeyboardAsync()
-    {
-        var disabled = ReadOnly || Prefs.Value.DisableInputVirtualKeyboard;
-        if (_appliedKeyboardDisabled == disabled)
-        {
-            return;
-        }
-
-        if (_appliedKeyboardDisabled is null && !disabled)
-        {
-            _appliedKeyboardDisabled = false;
-            return;
-        }
-
-        try
-        {
-            await JS.InvokeVoidAsync("netLabKeyboard.setDisabled", _editorId, disabled);
-            _appliedKeyboardDisabled = disabled;
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private async Task ApplyVimAsync()
-    {
-        var enabled = !ReadOnly && Prefs.Value.UseVim;
-        if (_appliedVim == enabled)
-        {
-            return;
-        }
-
-        if (_appliedVim is null && !enabled)
-        {
-            _appliedVim = false;
-            return;
-        }
-
-        try
-        {
-            if (enabled)
-            {
-                await JS.InvokeVoidAsync("netLabVim.enable", _editorId, VimStatusId);
-            }
-            else
-            {
-                await JS.InvokeVoidAsync("netLabVim.dispose", _editorId);
-            }
-
-            _appliedVim = enabled;
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private async Task ApplyMonacoThemeAsync()
-    {
-        try
-        {
-            _appliedMonacoTheme = Prefs.Value.MonacoTheme;
-            await JS.InvokeVoidAsync("netLabMonaco.applyTheme", Prefs.Value.ResolvedDark);
-        }
-        catch (JSException)
-        {
-        }
+        Bind();
+        return _session.OnInitAsync();
     }
 
     private Task OnModelChangedAsync(ModelContentChangedEvent args)
     {
-        if (_disposed || _suppressChange || !_ready || _editor is null || ReadOnly)
-        {
-            return Task.CompletedTask;
-        }
-
-        return SyncFromEditorAsync(args);
-    }
-
-    private async Task SyncFromEditorAsync(ModelContentChangedEvent args)
-    {
-        if (_editor is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var next = await _editor.GetValue();
-            PushSource(next);
-            if (!string.IsNullOrEmpty(ModelUri))
-            {
-                await LanguageSession.OnSourceModelContentChangedAsync(ModelUri, args);
-            }
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private void PushSource(string next)
-    {
-        _lastValue = next;
-        if (!string.IsNullOrEmpty(FileName))
-        {
-            State.Documents.SetSource(FileName, next);
-        }
-        else if (OnValueChanged.HasDelegate)
-        {
-            _ = OnValueChanged.InvokeAsync(next);
-        }
-    }
-
-    private async Task FlushAsync()
-    {
-        if (_disposed || ReadOnly || !_ready || _editor is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var next = await _editor.GetValue();
-            if (string.Equals(_lastValue, next, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            PushSource(next);
-        }
-        catch (JSException)
-        {
-        }
+        Bind();
+        return _session.OnModelChangedAsync(args);
     }
 
     private Task OnFocusedAsync()
-        => OnFocused.HasDelegate ? OnFocused.InvokeAsync() : Task.CompletedTask;
+    {
+        Bind();
+        return _session.OnFocusedAsync();
+    }
 
     private Task OnBlurredAsync()
-        => ReadOnly ? Task.CompletedTask : State.PersistUrlAsync(snapshot: true);
+    {
+        Bind();
+        return _session.OnBlurredAsync();
+    }
 
     private Task OnCursorChangedAsync(CursorPositionChangedEvent args)
     {
-        var line = args.Position.LineNumber;
-        var column = args.Position.Column;
-        if (line == _lastCursorLine && column == _lastCursorColumn)
-        {
-            return Task.CompletedTask;
-        }
-
-        _lastCursorLine = line;
-        _lastCursorColumn = column;
-        return OnCursorChanged.InvokeAsync(args);
+        Bind();
+        return _session.OnCursorChangedAsync(args);
     }
 
     private Task OnKeyDownAsync(KeyboardEvent keyboardEvent)
     {
-        if (keyboardEvent.CtrlKey && string.Equals(keyboardEvent.KeyCode.ToString(), "KeyS", StringComparison.OrdinalIgnoreCase)
-            || keyboardEvent.MetaKey && string.Equals(keyboardEvent.Code, "KeyS", StringComparison.OrdinalIgnoreCase)
-            || keyboardEvent.CtrlKey && string.Equals(keyboardEvent.Code, "KeyS", StringComparison.OrdinalIgnoreCase))
-        {
-            Dispatcher.Dispatch(new CompileRequestedAction());
-        }
-
-        return Task.CompletedTask;
+        Bind();
+        return _session.OnKeyDownAsync(keyboardEvent);
     }
+
+    private void Bind()
+        => _session.View = new LabCodeEditorView(
+            _editor,
+            Value,
+            Language,
+            FileName,
+            ModelUri,
+            ReadOnly,
+            WordWrap,
+            OnValueChanged,
+            OnCursorChanged,
+            OnFocused);
 }

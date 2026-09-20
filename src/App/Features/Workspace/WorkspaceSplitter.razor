@@ -1,0 +1,105 @@
+@inherits FluxorComponent
+@inject IState<PreferencesState> Prefs
+@inject IState<WorkspaceState> Layout
+@inject IDispatcher Dispatcher
+@inject IJSRuntime JS
+
+<div @ref="_splitter"
+     class="lab-splitter @(Prefs.Value.Stacked ? "is-stacked" : null) @(_resizing ? "is-resizing" : null)"
+     role="separator"
+     tabindex="0"
+     aria-label="Resize source and output panes"
+     aria-orientation="@(Prefs.Value.Stacked ? "horizontal" : "vertical")"
+     @onpointerdown="OnPointerDown"
+     @onpointerdown:preventDefault
+     @onpointerup="OnPointerUp"
+     @onpointercancel="OnPointerUp"
+     @onlostpointercapture="OnPointerUp"
+     @onkeydown="OnKeyDown"></div>
+
+@code {
+    [Parameter] public ElementReference Workspace { get; set; }
+
+    [Parameter] public EventCallback<bool> ResizingChanged { get; set; }
+
+    private ElementReference _splitter;
+    private bool _resizing;
+
+    private async Task OnPointerDown(PointerEventArgs args)
+    {
+        if (args.Button != 0)
+        {
+            return;
+        }
+
+        _resizing = true;
+        await ResizingChanged.InvokeAsync(true);
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "netLabLayout.beginSplit",
+                Workspace,
+                _splitter,
+                args.PointerId,
+                args.ClientX,
+                args.ClientY);
+        }
+        catch (JSException)
+        {
+            await EndResizeAsync(commit: false);
+        }
+    }
+
+    private Task OnPointerUp(PointerEventArgs args)
+    {
+        _ = args;
+        return EndResizeAsync(commit: true);
+    }
+
+    private async Task EndResizeAsync(bool commit)
+    {
+        if (!_resizing)
+        {
+            return;
+        }
+
+        _resizing = false;
+        double? percent = null;
+        if (commit)
+        {
+            try
+            {
+                percent = await JS.InvokeAsync<double?>("netLabLayout.endSplit", Workspace, _splitter);
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        await ResizingChanged.InvokeAsync(false);
+
+        if (percent is { } value)
+        {
+            SetSplit(value);
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        var delta = args.Key is "ArrowLeft" or "ArrowUp" ? -2 : args.Key is "ArrowRight" or "ArrowDown" ? 2 : 0;
+        if (delta != 0)
+        {
+            SetSplit(Layout.Value.Split + delta);
+        }
+    }
+
+    private void SetSplit(double value)
+    {
+        if (Math.Abs(value - Layout.Value.Split) < 0.05)
+        {
+            return;
+        }
+
+        Dispatcher.Dispatch(new SetSplitAction(value));
+    }
+}

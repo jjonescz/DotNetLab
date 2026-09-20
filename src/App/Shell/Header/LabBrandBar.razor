@@ -2,7 +2,7 @@
 @inject LabDocuments Docs
 @inject LabThemeService Theme
 @inject LabShare Share
-@inject LabDialogs Dialogs
+@inject IDispatcher Dispatcher
 @inject IState<UpdateState> Updates
 @inject IState<PreferencesState> Prefs
 @inject IState<DocumentMetadataState> DocumentsUi
@@ -47,7 +47,7 @@
                       Color="@BrandForeground"
                       AriaLabel="Paste"
                       IconStart="@(new Icons.Regular.Size20.ClipboardPaste())"
-                      OnClick="Dialogs.ShowPasteUrlAsync">
+                      OnClick="OpenPaste">
             Paste
         </FluentButton>
     </div>
@@ -88,7 +88,7 @@
                   Size="ButtonSize.Small"
                   Color="@BrandForeground"
                   IconStart="@(new Icons.Regular.Size20.Settings())"
-                  OnClick="Dialogs.ShowSettingsAsync">
+                  OnClick="OpenSettings">
         Settings
         @if (Updates.Value.Available)
         {
@@ -106,4 +106,8 @@
 
     private Task ToggleThemeAsync()
         => Theme.SetPreferenceAsync(Prefs.Value.ResolvedDark ? "light" : "dark");
+
+    private void OpenPaste() => Dispatcher.Dispatch(new OpenPasteUrlAction());
+
+    private void OpenSettings() => Dispatcher.Dispatch(new OpenSettingsAction());
 }

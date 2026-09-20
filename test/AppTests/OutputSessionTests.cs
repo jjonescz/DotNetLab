@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using DotNetLab.Features.Compilation;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;

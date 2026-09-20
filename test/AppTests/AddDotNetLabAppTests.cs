@@ -1,12 +1,14 @@
 using AwesomeAssertions;
+using DotNetLab.Editor;
 using DotNetLab.Editor.Monaco;
 using DotNetLab.Infrastructure.Caching.Compilation;
+using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Sharing;
 using DotNetLab.Features.Updates;
-using DotNetLab.Features.Workspace;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Worker;
-using DotNetLab.Shell;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,8 +26,11 @@ public sealed class AddDotNetLabAppTests
         services.AddDotNetLabApp(environment);
 
         HasSingleton<ILabEnvironment>(services).Should().BeTrue();
-        HasScoped<LabWorkspaceState>(services).Should().BeTrue();
-        HasScoped<LabDialogs>(services).Should().BeTrue();
+        HasScoped<LabPersistence>(services).Should().BeTrue();
+        HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
+        HasScoped<LabUrlWriter>(services).Should().BeTrue();
+        HasScoped<LabWorkerReload>(services).Should().BeTrue();
+        HasScoped<LabFormatter>(services).Should().BeTrue();
         HasScoped<BlazorMonacoInterop>(services).Should().BeTrue();
         HasScoped<WorkerHost>(services).Should().BeTrue();
         HasScoped<HttpClient>(services).Should().BeTrue();

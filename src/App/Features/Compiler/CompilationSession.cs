@@ -1,17 +1,17 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using DotNetLab.Features.Compiler;
+using DotNetLab.Editor;
 using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
-using DotNetLab.Features.Workspace;
+using DotNetLab.Features.Sharing;
 using DotNetLab.Infrastructure.Caching.Compilation;
 using DotNetLab.Infrastructure.Caching.Template;
 using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Lab;
 using Fluxor;
 
-namespace DotNetLab.Features.Compilation;
+namespace DotNetLab.Features.Compiler;
 
 public sealed class CompilationSession : IAsyncDisposable
 {
@@ -26,6 +26,7 @@ public sealed class CompilationSession : IAsyncDisposable
     private readonly IDispatcher _dispatcher;
     private readonly ILogger _logger;
     private readonly LabDocuments _documents;
+    private readonly LabEditorSnapshots _snapshots;
     private readonly CompilationScheduler _scheduler;
     private GenerationCounter _compileGeneration;
     private GenerationCounter _applyGeneration;
@@ -44,7 +45,8 @@ public sealed class CompilationSession : IAsyncDisposable
         IState<OutputState> output,
         IDispatcher dispatcher,
         ILogger<CompilationSession> logger,
-        LabDocuments documents)
+        LabDocuments documents,
+        LabEditorSnapshots snapshots)
     {
         _worker = worker;
         _templates = templates;
@@ -57,20 +59,11 @@ public sealed class CompilationSession : IAsyncDisposable
         _dispatcher = dispatcher;
         _logger = logger;
         _documents = documents;
+        _snapshots = snapshots;
         _scheduler = new CompilationScheduler(CompileCoreAsync, logger);
     }
 
-    public event Action? Changed;
-
-    public Func<bool, Task>? PersistUrlRequested { get; set; }
-
     public event Action? NewOutputGeneration;
-
-    public event Action? DisplayReady;
-
-    public Func<Task>? AfterCompile { get; set; }
-
-    public Func<CompiledAssembly, Task>? AfterCachedCompile { get; set; }
 
     public ValueTask DisposeAsync() => _scheduler.DisposeAsync();
 
@@ -103,8 +96,6 @@ public sealed class CompilationSession : IAsyncDisposable
     internal bool IsCurrentCompile(int generation) => _compileGeneration.IsCurrent(generation);
 
     private void SetRunning(bool value) => _dispatcher.Dispatch(new SetRunningAction(value));
-
-    private void Notify() => Changed?.Invoke();
 
     private CompilerState Compiler => _compiler.Value;
 
@@ -143,7 +134,6 @@ public sealed class CompilationSession : IAsyncDisposable
             if (showBusy)
             {
                 SetRunning(true);
-                Notify();
                 await Task.Yield();
             }
 
@@ -155,7 +145,8 @@ public sealed class CompilationSession : IAsyncDisposable
 
             if (showBusy)
             {
-                await RequestPersistUrlAsync(snapshot: true);
+                await _snapshots.FlushAsync();
+                _dispatcher.Dispatch(new PersistUrlAction());
             }
 
             var compiled = await _worker.SendAsync(
@@ -219,18 +210,12 @@ public sealed class CompilationSession : IAsyncDisposable
             if (showBusy)
             {
                 SetRunning(false);
-                Notify();
             }
         }
 
-        if (appliedToDisplay)
+        if (_scheduler.IsCurrent(request.Generation))
         {
-            RaiseDisplayReady();
-        }
-
-        if (_scheduler.IsCurrent(request.Generation) && AfterCompile is { } afterCompile)
-        {
-            await afterCompile();
+            _dispatcher.Dispatch(new CompilationFinishedAction(appliedToDisplay));
         }
     }
 
@@ -402,18 +387,8 @@ public sealed class CompilationSession : IAsyncDisposable
         Compiled = output;
         _dispatcher.Dispatch(new SetStaleAction(stale));
         BeginNewOutputGeneration();
-        RaiseDisplayReady();
-        Notify();
-        if (AfterCachedCompile is { } afterCached)
-        {
-            _ = afterCached(output);
-        }
+        _dispatcher.Dispatch(new CachedCompilationLoadedAction(output));
     }
-
-    private void RaiseDisplayReady() => DisplayReady?.Invoke();
-
-    private Task RequestPersistUrlAsync(bool snapshot)
-        => PersistUrlRequested?.Invoke(snapshot) ?? Task.CompletedTask;
 
     private static bool SourcesEqual(SavedState left, SavedState right)
     {

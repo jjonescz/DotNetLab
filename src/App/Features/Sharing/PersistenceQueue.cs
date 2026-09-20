@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace DotNetLab.Features.Workspace;
+namespace DotNetLab.Features.Sharing;
 
 /// <summary>
 /// Latest-wins persistence scheduler. URL / settings / output-tab writes are snapshots,

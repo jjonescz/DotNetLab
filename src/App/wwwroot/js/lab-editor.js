@@ -356,3 +356,11 @@ window.netLabVim = {
         window.netLabVim.adapters.delete(editorId);
     }
 };
+
+window.netLabDialog = {
+    isOpen: function (selector) {
+        const host = document.querySelector(selector);
+        const dialog = host && host.shadowRoot && host.shadowRoot.querySelector("dialog");
+        return !!(dialog && dialog.open);
+    }
+};
