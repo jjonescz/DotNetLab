@@ -8,5 +8,3 @@ public enum DropZone
     Top,
     Bottom
 }
-
-public readonly record struct TabRename(string From, string To);
