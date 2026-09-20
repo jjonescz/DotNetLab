@@ -40,7 +40,18 @@
         <a href="https://github.com" target="_blank" rel="noopener noreferrer">branches</a>
         <a href="https://github.com" target="_blank" rel="noopener noreferrer">builds</a>
     </div>
-    <p class="lab-mono-hint">@Resolved</p>
+    <p class="lab-mono-hint">
+        @if (ShowCommit)
+        {
+            var package = PackageLabel;
+            <text>Package @package · commit </text>
+            <CommitHashView Commit="Info!.Commit" Enabled="Enabled" />
+        }
+        else
+        {
+            @Resolved
+        }
+    </p>
 </div>
 
 @code {
@@ -53,6 +64,15 @@
     [Parameter] public string Config { get; set; } = "Release";
     [Parameter] public EventCallback<string> ConfigChanged { get; set; }
     [Parameter] public string Resolved { get; set; } = "";
+    [Parameter] public PackageDependencyInfo? Info { get; set; }
+    [Parameter] public bool Enabled { get; set; }
+
+    private bool ShowCommit
+        => Info is { Commit.Hash.Length: > 0 }
+           && Resolved.StartsWith("Package ", StringComparison.Ordinal);
+
+    private string PackageLabel
+        => string.IsNullOrEmpty(Info?.Version) ? "built-in" : Info.Version;
 
     private string? _draft;
     private string _lastValue = "";

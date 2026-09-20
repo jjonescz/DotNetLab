@@ -99,3 +99,13 @@
     color: var(--lab-muted);
     margin: 0;
 }
+
+.lab-mono-hint a {
+    color: var(--lab-muted);
+    text-decoration: none;
+}
+
+.lab-mono-hint a:hover {
+    color: var(--lab-foreground);
+    text-decoration: underline;
+}

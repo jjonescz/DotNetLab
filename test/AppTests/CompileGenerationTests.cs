@@ -96,7 +96,9 @@ public sealed class CompileGenerationTests
         var count = 0;
         cursor.Changed += () => count++;
 
-        cursor.Set(9, 34);
+        cursor.Line.Should().Be(1);
+        cursor.Column.Should().Be(1);
+        cursor.Set(1, 1);
         count.Should().Be(0);
 
         cursor.Set(3, 5);

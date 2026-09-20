@@ -845,6 +845,20 @@ html.app-ready body {
     color: inherit;
 }
 
+html[data-theme="dark"] .loading-progress #line path,
+html[data-theme="dark"] .loading-progress #line-supplement rect {
+    stroke: color-mix(in srgb, var(--lab-background) 70%, #000);
+    stroke-opacity: 0.9;
+}
+
+html[data-theme="dark"] .loading-progress path[fill="#D0CFCE"] {
+    fill: color-mix(in srgb, var(--lab-background) 45%, #9a90a8);
+}
+
+html[data-theme="dark"] .loading-info svg path[fill="#e8e8e8"] {
+    fill: color-mix(in srgb, var(--lab-brand-foreground) 48%, transparent);
+}
+
 .loading-progress .filling {
     transform: scaleY(var(--blazor-load-percentage, 0%));
     transform-box: fill-box;

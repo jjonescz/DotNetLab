@@ -1,0 +1,52 @@
+@inject HttpClient Client
+
+@if (!string.IsNullOrEmpty(Commit.Hash) && !string.IsNullOrEmpty(Commit.Url))
+{
+    <a href="@Commit.Url"
+       target="_blank"
+       rel="noopener noreferrer"
+       title="@_info?.Message"
+       class="@CssClass">@Commit.ShortHash</a>
+    @if (ShowDate && _info is not null)
+    {
+        <span aria-hidden="true"> · </span>
+        <span>@_info.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</span>
+    }
+}
+
+@code {
+    private CommitInfo? _info;
+    private string? _loadedFor;
+
+    [Parameter, EditorRequired]
+    public CommitLink Commit { get; set; } = null!;
+
+    [Parameter]
+    public bool Enabled { get; set; } = true;
+
+    [Parameter]
+    public bool ShowDate { get; set; }
+
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Enabled || string.IsNullOrEmpty(Commit.Hash))
+        {
+            return;
+        }
+
+        var key = $"{Commit.RepoUrl}/{Commit.Hash}";
+        if (string.Equals(_loadedFor, key, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _info = await CommitInfoLookup.TryGetAsync(Client, Commit);
+        if (_info is not null)
+        {
+            _loadedFor = key;
+        }
+    }
+}

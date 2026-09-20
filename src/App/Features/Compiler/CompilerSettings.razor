@@ -1,5 +1,6 @@
 @inherits FluxorComponent
 @inject IState<CompilerState> Compiler
+@inject IState<SettingsDialogState> Dialog
 @inject IDispatcher Dispatcher
 
 <div class="lab-settings-compiler">
@@ -78,13 +79,17 @@
                                  ValueChanged="OnRoslynChanged"
                                  Config="@Compiler.Value.RoslynConfig"
                                  ConfigChanged="OnRoslynConfigChanged"
-                                 Resolved="@Compiler.Value.RoslynResolved" />
+                                 Resolved="@Compiler.Value.RoslynResolved"
+                                 Info="Compiler.Value.RoslynInfo"
+                                 Enabled="Dialog.Value.IsOpen" />
                 <CompilerSection Name="Razor"
                                  Value="@Compiler.Value.Razor"
                                  ValueChanged="OnRazorChanged"
                                  Config="@Compiler.Value.RazorConfig"
                                  ConfigChanged="OnRazorConfigChanged"
-                                 Resolved="@Compiler.Value.RazorResolved" />
+                                 Resolved="@Compiler.Value.RazorResolved"
+                                 Info="Compiler.Value.RazorInfo"
+                                 Enabled="Dialog.Value.IsOpen" />
             </div>
         </div>
     </details>

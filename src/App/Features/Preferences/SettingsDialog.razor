@@ -67,17 +67,12 @@
             </div>
 
             <p class="lab-settings-identity">
-                @if (!string.IsNullOrEmpty(BuildInfo.Commit))
+                @if (!string.IsNullOrEmpty(VersionUtil.CurrentCommit.Hash))
                 {
-                    <a class="lab-sdk-summary-versions"
-                       href="@($"{AppLinks.Repository}/commit/{BuildInfo.Commit}")"
-                       target="_blank"
-                       rel="noopener noreferrer">@BuildInfo.Commit</a>
-                    <span aria-hidden="true"> · </span>
-                }
-                @if (!string.IsNullOrEmpty(BuildInfo.Date))
-                {
-                    <span>@BuildInfo.Date</span>
+                    <CommitHashView CssClass="lab-sdk-summary-versions"
+                                    Enabled="Ui.Value.IsOpen"
+                                    ShowDate="true"
+                                    Commit="VersionUtil.CurrentCommit" />
                     <span aria-hidden="true"> · </span>
                 }
                 <a href="@AppLinks.Repository" target="_blank" rel="noopener noreferrer">GitHub</a>

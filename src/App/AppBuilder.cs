@@ -32,7 +32,7 @@ public static class AppBuilder
 
     public static IServiceCollection AddDotNetLabApp(
         this IServiceCollection services,
-        ILabEnvironment environment,
+        LabEnvironment environment,
         bool useReduxDevTools = false)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -87,7 +87,7 @@ public static class AppBuilder
 
         services.AddScoped(sp => new HttpClient
         {
-            BaseAddress = new Uri(sp.GetRequiredService<ILabEnvironment>().BaseAddress),
+            BaseAddress = new Uri(sp.GetRequiredService<LabEnvironment>().BaseAddress),
             DefaultRequestHeaders = { { "User-Agent", "DotNetLab" } },
         });
 

@@ -40,7 +40,7 @@ public sealed class WorkerHost : IAsyncDisposable
     private bool _disposed;
 
     public WorkerHost(
-        ILabEnvironment environment,
+        LabEnvironment environment,
         LabLogging logging,
         SettingsStore settings,
         IWorkerTransport transport,

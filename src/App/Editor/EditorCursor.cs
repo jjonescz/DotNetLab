@@ -2,8 +2,8 @@ namespace DotNetLab.Editor;
 
 public sealed class EditorCursor
 {
-    public int Line { get; private set; } = 9;
-    public int Column { get; private set; } = 34;
+    public int Line { get; private set; } = 1;
+    public int Column { get; private set; } = 1;
 
     public event Action? Changed;
 

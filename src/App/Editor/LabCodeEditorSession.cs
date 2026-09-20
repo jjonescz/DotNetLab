@@ -80,6 +80,7 @@ public sealed class LabCodeEditorSession
         set => _view = value;
     }
 
+    // First paint, then only when editor inputs change — not on every parent render.
     public bool ShouldRender(string value, string language, string? modelUri, bool readOnly, bool wordWrap)
         => !_ready
            || !string.Equals(_lastValue, value, StringComparison.Ordinal)

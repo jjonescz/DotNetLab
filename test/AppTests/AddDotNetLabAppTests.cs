@@ -25,7 +25,7 @@ public sealed class AddDotNetLabAppTests
 
         services.AddDotNetLabApp(environment);
 
-        HasSingleton<ILabEnvironment>(services).Should().BeTrue();
+        HasSingleton<LabEnvironment>(services).Should().BeTrue();
         HasScoped<AppPersistence>(services).Should().BeTrue();
         HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
         HasScoped<ShareUrlWriter>(services).Should().BeTrue();
@@ -55,7 +55,7 @@ public sealed class AddDotNetLabAppTests
         services.AddDotNetLabApp(environment);
 
         using var provider = services.BuildServiceProvider();
-        provider.GetRequiredService<ILabEnvironment>().Should().BeSameAs(environment);
+        provider.GetRequiredService<LabEnvironment>().Should().BeSameAs(environment);
         environment.SupportsThreads.Should().BeFalse();
 
         using var client = provider.GetRequiredService<HttpClient>();
