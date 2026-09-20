@@ -1,6 +1,4 @@
 @inherits FluxorComponent
-@inject OutputWorkspace Tabs
-@inject LabDocuments Documents
 @inject LabPersistence Persist
 @inject LabThemeService Theme
 @inject IUpdateChecker Updates
@@ -48,60 +46,7 @@
                     </SettingRow>
             </PreferenceSettings>
 
-            <details class="lab-settings-fold lab-settings-output-tabs">
-                <summary>Output tabs</summary>
-                <div class="lab-settings-fold-body">
-                    <div class="lab-settings-output-head">
-                        <p class="lab-setting-hint">Show, hide, and reorder tabs for each file format. Error List stays on.</p>
-                        <button type="button" class="lab-settings-reset" @onclick="ResetOutputTabsAsync">Reset to default</button>
-                    </div>
-                    <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="Output tab file format">
-                        @foreach (var kind in _outputKinds)
-                        {
-                            <button type="button"
-                                    class="lab-seg-item @(_outputKind == kind.Value ? "active" : null)"
-                                    @onclick="@(() => _outputKind = kind.Value)">
-                                @kind.Label
-                            </button>
-                        }
-                    </div>
-                    <div class="lab-output-tab-list">
-                        @foreach (var tab in Tabs.SettingsRowsFor(_outputKind))
-                        {
-                            var visible = Tabs.IsOutputTabVisible(_outputKind, tab.Id);
-                            var locked = tab.Locked;
-                            <div @key="@($"{tab.Id}:{visible}")" class="lab-output-tab-row @(visible ? null : "is-hidden")">
-                                <div>
-                                    <div class="lab-setting-title">@tab.Label</div>
-                                    <p class="lab-setting-hint">@tab.Id</p>
-                                </div>
-                                <div class="lab-output-tab-actions">
-                                    <FluentButton Appearance="ButtonAppearance.Subtle"
-                                                  Size="ButtonSize.Small"
-                                                  IconOnly="true"
-                                                  Title="Move up"
-                                                  AriaLabel="@($"Move {tab.Label} up")"
-                                                  Disabled="@(!Tabs.CanMoveOutputTab(_outputKind, tab.Id, -1))"
-                                                  IconStart="@(new Icons.Regular.Size16.ChevronUp())"
-                                                  OnClick="@(() => MoveOutputTabAsync(tab.Id, -1))" />
-                                    <FluentButton Appearance="ButtonAppearance.Subtle"
-                                                  Size="ButtonSize.Small"
-                                                  IconOnly="true"
-                                                  Title="Move down"
-                                                  AriaLabel="@($"Move {tab.Label} down")"
-                                                  Disabled="@(!Tabs.CanMoveOutputTab(_outputKind, tab.Id, 1))"
-                                                  IconStart="@(new Icons.Regular.Size16.ChevronDown())"
-                                                  OnClick="@(() => MoveOutputTabAsync(tab.Id, 1))" />
-                                    <FluentSwitch Value="@visible"
-                                                  ValueChanged="@(value => SetOutputTabVisibleAsync(tab.Id, value))"
-                                                  Disabled="@locked"
-                                                  AriaLabel="@($"Show {tab.Label}")" />
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </details>
+            <OutputSettings />
         </div>
 
         <CompilerSettings />
@@ -195,25 +140,11 @@
         ("dark", "Dark")
     ];
 
-    private static readonly (OutputFileKind Value, string Label)[] _outputKinds =
-    [
-        (OutputFileKind.Cs, "C#"),
-        (OutputFileKind.Razor, "Razor"),
-        (OutputFileKind.Cshtml, "CSHTML")
-    ];
-
     private FluentDialog? _dialog;
     private bool _shown;
     private bool _hiding;
     private bool _opening;
-    private OutputFileKind _outputKind = OutputFileKind.Cs;
     private IStoreLink? Store => Services.GetService<IStoreLink>();
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        Tabs.Changed += OnTabsChanged;
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -236,23 +167,11 @@
 
     private void RequestClose() => Dispatcher.Dispatch(new CloseSettingsAction());
 
-    private void OnTabsChanged() => InvokeAsync(StateHasChanged);
-
     private void SetRazorToolchain(RazorToolchain value)
         => Dispatcher.Dispatch(new SetRazorToolchainAction(value));
 
     private void SetRazorStrategy(RazorStrategy value)
         => Dispatcher.Dispatch(new SetRazorStrategyAction(value));
-
-    protected override ValueTask DisposeAsyncCore(bool disposing)
-    {
-        if (disposing)
-        {
-            Tabs.Changed -= OnTabsChanged;
-        }
-
-        return base.DisposeAsyncCore(disposing);
-    }
 
     private async Task ShowAsync()
     {
@@ -261,7 +180,6 @@
             return;
         }
 
-        _outputKind = OutputCatalog.KindFor(Documents.ActiveSource);
         _shown = true;
         _opening = true;
         try
@@ -332,29 +250,6 @@
     }
 
     private Task OnThemeChangedAsync(string theme) => Theme.SetPreferenceAsync(theme);
-
-    private async Task SetOutputTabVisibleAsync(string type, bool visible)
-    {
-        Tabs.SetOutputTabVisible(_outputKind, type, visible);
-        await PersistOutputTabsAsync();
-    }
-
-    private async Task MoveOutputTabAsync(string type, int delta)
-    {
-        Tabs.MoveOutputTab(_outputKind, type, delta);
-        await PersistOutputTabsAsync();
-    }
-
-    private async Task ResetOutputTabsAsync()
-    {
-        Tabs.ResetOutputTabs(_outputKind);
-        await PersistOutputTabsAsync();
-    }
-
-    private async Task PersistOutputTabsAsync()
-    {
-        await Persist.PersistOutputTabsAsync();
-    }
 
     private void CheckForUpdates() => Dispatcher.Dispatch(new CheckUpdatesAction());
 

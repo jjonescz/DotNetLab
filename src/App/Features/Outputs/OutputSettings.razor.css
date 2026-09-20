@@ -1,0 +1,121 @@
+.lab-settings-fold {
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    padding: 0.15rem 0.75rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.lab-settings-fold > summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--lab-foreground);
+    padding: 0.55rem 0;
+}
+
+.lab-settings-fold > summary::-webkit-details-marker {
+    display: none;
+}
+
+.lab-settings-fold > summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 1rem;
+    color: var(--lab-muted);
+}
+
+.lab-settings-fold[open] > summary::before {
+    content: "▾";
+}
+
+.lab-settings-fold-body {
+    padding: 0.15rem 0 0.85rem;
+}
+
+.lab-settings-output-tabs .lab-settings-fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.lab-settings-output-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.lab-settings-output-head .lab-setting-hint {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.lab-settings-reset {
+    appearance: none;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.22rem 0.55rem;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    background: transparent;
+    color: var(--lab-muted);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.lab-settings-reset:hover {
+    color: var(--lab-foreground);
+    border-color: var(--lab-primary);
+    background: color-mix(in srgb, var(--lab-primary) 12%, transparent);
+}
+
+.lab-settings-reset:focus-visible {
+    outline: 1px solid var(--lab-primary);
+    outline-offset: 2px;
+}
+
+.lab-settings-reset:active {
+    background: color-mix(in srgb, var(--lab-primary) 22%, transparent);
+}
+
+.lab-output-tab-list {
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--lab-panel-raised) 82%, transparent);
+}
+
+.lab-output-tab-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--lab-hairline);
+}
+
+.lab-output-tab-row:last-child {
+    border-bottom: 0;
+}
+
+.lab-output-tab-row.is-hidden {
+    color: var(--lab-muted);
+}
+
+.lab-output-tab-row.is-hidden .lab-setting-title {
+    color: var(--lab-muted);
+}
+
+.lab-output-tab-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}

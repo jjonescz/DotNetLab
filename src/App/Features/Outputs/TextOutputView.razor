@@ -1,8 +1,7 @@
 @inherits FluxorComponent
-@inject OutputWorkspace Outputs
 @inject IState<PreferencesState> Prefs
 
-@if (Outputs.GetDisclaimer(Id) == OutputDisclaimer.JitAsmUnavailableUsingCached)
+@if (Outputs.GetDisclaimer(Output.Id) == OutputDisclaimer.JitAsmUnavailableUsingCached)
 {
     <div class="lab-output-disclaimer" role="status">
         JIT disassembler is not available on this platform
@@ -10,14 +9,17 @@
         Displaying cached output.
     </div>
 }
-<LabCodeEditor @key="@($"output-{Id}")"
-               Value="@Outputs.GetOutput(Id)"
-               Language="@Outputs.OutputLanguage(Id)"
-               ModelUri="@Outputs.OutputUriFor(Id)"
+<LabCodeEditor @key="@($"output-{Output.Id}")"
+               Value="@Outputs.GetOutput(Output.Id)"
+               Language="@Outputs.OutputLanguage(Output.Id)"
+               ModelUri="@Outputs.OutputUriFor(Output.Id)"
                ReadOnly="true"
                WordWrap="Prefs.Value.WordWrap" />
 
 @code {
-    [Parameter]
-    public string Id { get; set; } = "";
+    [CascadingParameter]
+    public OutputWorkspace Outputs { get; set; } = default!;
+
+    [CascadingParameter]
+    public LabOutput Output { get; set; } = default!;
 }

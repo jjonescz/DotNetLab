@@ -1,5 +1,4 @@
 @inherits FluxorComponent
-@inject OutputWorkspace Outputs
 @inject IState<DocumentMetadataState> DocumentsUi
 
 @if (Outputs.ShowRenderedHtml && !DocumentsUi.Value.ActiveDocument.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
@@ -8,32 +7,17 @@
             class="lab-html-preview"
             title="Rendered HTML"
             sandbox=""
-            srcdoc="@Outputs.GetOutput(Id)"></iframe>
+            srcdoc="@Outputs.GetOutput(Output.Id)"></iframe>
 }
 else
 {
-    <TextOutputView Id="@Id" />
+    <TextOutputView />
 }
 
 @code {
-    [Parameter]
-    public string Id { get; set; } = "";
+    [CascadingParameter]
+    public OutputWorkspace Outputs { get; set; } = default!;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        Outputs.Changed += OnChanged;
-    }
-
-    private void OnChanged() => InvokeAsync(StateHasChanged);
-
-    protected override ValueTask DisposeAsyncCore(bool disposing)
-    {
-        if (disposing)
-        {
-            Outputs.Changed -= OnChanged;
-        }
-
-        return base.DisposeAsyncCore(disposing);
-    }
+    [CascadingParameter]
+    public LabOutput Output { get; set; } = default!;
 }

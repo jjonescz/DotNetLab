@@ -7,40 +7,46 @@ public static class OutputCatalog
     public const string RazorErrorsId = "razorErrors";
 
     public static readonly LabOutput Tree = new(
-        "tree", "Tree", "plaintext", OutputKinds.Cs, Toolbar: typeof(TreeOutputToolbar));
-    public static readonly LabOutput Syntax = new("syntax", "Syntax", "plaintext", OutputKinds.RazorLike);
-    public static readonly LabOutput Ir = new("ir", "IR", "csharp", OutputKinds.RazorLike);
+        "tree", "Tree", "plaintext", Toolbar: typeof(TreeOutputToolbar));
+    public static readonly LabOutput Syntax = new("syntax", "Syntax", "plaintext");
+    public static readonly LabOutput Ir = new("ir", "IR", "csharp");
     public static readonly LabOutput RazorErrors = new(
-        RazorErrorsId, "Razor Error List", "csharp", OutputKinds.RazorLike, Produced: false);
+        RazorErrorsId, "Razor Error List", "csharp", Produced: false);
     public static readonly LabOutput Gcs = new(
-        "gcs", "C#", "csharp", OutputKinds.RazorLike, Toolbar: typeof(GcsOutputToolbar));
+        "gcs", "C#", "csharp", Toolbar: typeof(GcsOutputToolbar));
     public static readonly LabOutput Html = new(
         "html",
         "HTML",
         "html",
-        OutputKinds.RazorLike,
         Toolbar: typeof(HtmlOutputToolbar),
         View: typeof(HtmlOutputView));
     public static readonly LabOutput Il = new(
-        "il", "IL", "csharp", OutputKinds.All, Toolbar: typeof(IlOutputToolbar));
-    public static readonly LabOutput Seq = new("seq", "Seq", "plaintext", OutputKinds.All);
-    public static readonly LabOutput Cs = new("cs", "C#", "csharp", OutputKinds.All);
-    public static readonly LabOutput Asm = new("asm", "Asm", "x86", OutputKinds.All);
-    public static readonly LabOutput Xml = new("xml", "Docs", "xml", OutputKinds.All);
-    public static readonly LabOutput Run = new("run", "Run", "plaintext", OutputKinds.All);
+        "il", "IL", "csharp", Toolbar: typeof(IlOutputToolbar));
+    public static readonly LabOutput Seq = new("seq", "Seq", "plaintext");
+    public static readonly LabOutput Cs = new("cs", "C#", "csharp");
+    public static readonly LabOutput Asm = new("asm", "Asm", "x86");
+    public static readonly LabOutput Xml = new("xml", "Docs", "xml");
+    public static readonly LabOutput Run = new("run", "Run", "plaintext");
     public static readonly LabOutput Errors = new(
         ErrorsId,
         "Error List",
         "csharp",
-        OutputKinds.All,
         Locked: true,
         Toolbar: typeof(ErrorsOutputToolbar),
         Tab: typeof(ErrorsOutputTab));
 
-    public static readonly LabOutput[] All =
+    public static readonly LabOutput[] CSharp =
     [
-        Tree, Syntax, Ir, RazorErrors, Gcs, Html, Il, Seq, Cs, Asm, Xml, Run, Errors,
+        Tree, Il, Seq, Cs, Asm, Xml, Run, Errors,
     ];
+
+    public static readonly LabOutput[] Razor =
+    [
+        Syntax, Ir, RazorErrors, Gcs, Html, Il, Seq, Cs, Asm, Xml, Run, Errors,
+    ];
+
+    private static readonly LabOutput[] All =
+        [.. CSharp.Concat(Razor).DistinctBy(output => output.Id)];
 
     private static readonly Dictionary<string, LabOutput> ById = All.ToDictionary(
         output => output.Id, StringComparer.Ordinal);
@@ -49,7 +55,7 @@ public static class OutputCatalog
         => ById.GetValueOrDefault(id);
 
     public static LabOutput Require(string id)
-        => Get(id) ?? new LabOutput(id, id == FailId ? "Failure" : id, "plaintext", OutputKinds.None);
+        => Get(id) ?? new LabOutput(id, id == FailId ? "Failure" : id, "plaintext");
 
     public static string Label(string id) => Require(id).Label;
 
@@ -59,23 +65,14 @@ public static class OutputCatalog
 
     public static bool IsLocked(string id) => Get(id)?.Locked == true;
 
-    public static IReadOnlyList<LabOutput> CatalogFor(OutputFileKind kind)
-        => All.Where(output => output.Supports(kind)).ToArray();
+    public static IReadOnlyList<LabOutput> For(OutputFileKind kind)
+        => kind is OutputFileKind.Razor or OutputFileKind.Cshtml ? Razor : CSharp;
 
     public static List<string> DefaultOrder(OutputFileKind kind)
-        => kind is OutputFileKind.Razor or OutputFileKind.Cshtml
-            ?
-            [
-                Syntax.Id, Ir.Id, RazorErrors.Id, Gcs.Id, Html.Id,
-                Il.Id, Seq.Id, Cs.Id, Asm.Id, Xml.Id, Run.Id, Errors.Id,
-            ]
-            :
-            [
-                Tree.Id, Il.Id, Seq.Id, Cs.Id, Asm.Id, Xml.Id, Run.Id, Errors.Id,
-            ];
+        => For(kind).Select(output => output.Id).ToList();
 
     public static HashSet<string> ProducedTypes(string fileName)
-        => CatalogFor(KindFor(fileName))
+        => For(KindFor(fileName))
             .Where(output => output.Produced)
             .Select(output => output.Id)
             .ToHashSet(StringComparer.Ordinal);

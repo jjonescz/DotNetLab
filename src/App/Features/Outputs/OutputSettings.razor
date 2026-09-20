@@ -1,0 +1,119 @@
+@inherits FluxorComponent
+@inject OutputWorkspace Outputs
+@inject LabDocuments Documents
+@inject LabPersistence Persist
+@inject IState<SettingsUiState> Ui
+
+<details class="lab-settings-fold lab-settings-output-tabs">
+    <summary>Output tabs</summary>
+    <div class="lab-settings-fold-body">
+        <div class="lab-settings-output-head">
+            <p class="lab-setting-hint">Show, hide, and reorder tabs for each file format. Error List stays on.</p>
+            <button type="button" class="lab-settings-reset" @onclick="ResetOutputTabsAsync">Reset to default</button>
+        </div>
+        <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="Output tab file format">
+            @foreach (var kind in _outputKinds)
+            {
+                <button type="button"
+                        class="lab-seg-item @(_outputKind == kind.Value ? "active" : null)"
+                        @onclick="@(() => _outputKind = kind.Value)">
+                    @kind.Label
+                </button>
+            }
+        </div>
+        <div class="lab-output-tab-list">
+            @foreach (var tab in Outputs.SettingsRowsFor(_outputKind))
+            {
+                var visible = Outputs.IsOutputTabVisible(_outputKind, tab.Id);
+                var locked = tab.Locked;
+                <div @key="@($"{tab.Id}:{visible}")" class="lab-output-tab-row @(visible ? null : "is-hidden")">
+                    <div>
+                        <div class="lab-setting-title">@tab.Label</div>
+                        <p class="lab-setting-hint">@tab.Id</p>
+                    </div>
+                    <div class="lab-output-tab-actions">
+                        <FluentButton Appearance="ButtonAppearance.Subtle"
+                                      Size="ButtonSize.Small"
+                                      IconOnly="true"
+                                      Title="Move up"
+                                      AriaLabel="@($"Move {tab.Label} up")"
+                                      Disabled="@(!Outputs.CanMoveOutputTab(_outputKind, tab.Id, -1))"
+                                      IconStart="@(new Icons.Regular.Size16.ChevronUp())"
+                                      OnClick="@(() => MoveOutputTabAsync(tab.Id, -1))" />
+                        <FluentButton Appearance="ButtonAppearance.Subtle"
+                                      Size="ButtonSize.Small"
+                                      IconOnly="true"
+                                      Title="Move down"
+                                      AriaLabel="@($"Move {tab.Label} down")"
+                                      Disabled="@(!Outputs.CanMoveOutputTab(_outputKind, tab.Id, 1))"
+                                      IconStart="@(new Icons.Regular.Size16.ChevronDown())"
+                                      OnClick="@(() => MoveOutputTabAsync(tab.Id, 1))" />
+                        <FluentSwitch Value="@visible"
+                                      ValueChanged="@(value => SetOutputTabVisibleAsync(tab.Id, value))"
+                                      Disabled="@locked"
+                                      AriaLabel="@($"Show {tab.Label}")" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</details>
+
+@code {
+    private static readonly (OutputFileKind Value, string Label)[] _outputKinds =
+    [
+        (OutputFileKind.Cs, "C#"),
+        (OutputFileKind.Razor, "Razor"),
+        (OutputFileKind.Cshtml, "CSHTML")
+    ];
+
+    private OutputFileKind _outputKind = OutputFileKind.Cs;
+    private bool _open;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        var open = Ui.Value.IsOpen;
+        if (open && !_open)
+        {
+            _outputKind = OutputCatalog.KindFor(Documents.ActiveSource);
+        }
+
+        _open = open;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task SetOutputTabVisibleAsync(string type, bool visible)
+    {
+        Outputs.SetOutputTabVisible(_outputKind, type, visible);
+        await Persist.PersistOutputTabsAsync();
+    }
+
+    private async Task MoveOutputTabAsync(string type, int delta)
+    {
+        Outputs.MoveOutputTab(_outputKind, type, delta);
+        await Persist.PersistOutputTabsAsync();
+    }
+
+    private async Task ResetOutputTabsAsync()
+    {
+        Outputs.ResetOutputTabs(_outputKind);
+        await Persist.PersistOutputTabsAsync();
+    }
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

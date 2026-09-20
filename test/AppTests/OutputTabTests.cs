@@ -21,6 +21,9 @@ public sealed class OutputTabTests
             "tree", "il", "seq", "cs", "asm", "xml", "run", "errors");
         OutputCatalog.DefaultOrder(OutputFileKind.Razor).Should().StartWith(
             ["syntax", "ir", "razorErrors", "gcs", "html"]);
+        OutputCatalog.For(OutputFileKind.Cshtml).Should().Equal(OutputCatalog.For(OutputFileKind.Razor));
+        OutputCatalog.DefaultOrder(OutputFileKind.Cshtml).Should().Equal(
+            OutputCatalog.DefaultOrder(OutputFileKind.Razor));
         OutputCatalog.ProducedTypes("Program.cs").Should().Contain(["tree", "cs", "errors"]);
         OutputCatalog.ProducedTypes("Program.cs").Should().NotContain("razorErrors");
         OutputCatalog.ProducedTypes("TestComponent.razor").Should().Contain("gcs");

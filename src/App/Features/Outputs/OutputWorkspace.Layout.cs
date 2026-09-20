@@ -1,0 +1,596 @@
+using System.Text;
+using System.Text.Json;
+
+namespace DotNetLab.Features.Outputs;
+
+public sealed partial class OutputWorkspace
+{
+    public IReadOnlyList<string> OpenIds
+    {
+        get
+        {
+            var produced = OutputCatalog.ProducedTypes(ActiveSource);
+            return OpenTabs(OutputCatalog.KindFor(ActiveSource))
+                .Where(produced.Contains)
+                .ToArray();
+        }
+    }
+
+    public IReadOnlyList<LabOutput> SettingsRowsFor(OutputFileKind kind)
+    {
+        var catalog = OutputCatalog.For(kind);
+        var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
+        var rows = new List<LabOutput>(catalog.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var id in OutputTabOrder(kind))
+        {
+            if (byId.TryGetValue(id, out var output) && seen.Add(id))
+            {
+                rows.Add(output);
+            }
+        }
+
+        foreach (var output in catalog)
+        {
+            if (seen.Add(output.Id))
+            {
+                rows.Add(output);
+            }
+        }
+
+        return rows;
+    }
+
+    public bool IsOutputTabVisible(OutputFileKind kind, string type)
+        => !HiddenOutputTabs(kind).Contains(type);
+
+    public bool CanMoveOutputTab(OutputFileKind kind, string type, int delta)
+    {
+        var order = OutputTabOrder(kind);
+        var index = order.IndexOf(type);
+        var next = index + delta;
+        return index >= 0 && next >= 0 && next < order.Count;
+    }
+
+    public void SetOutputTabVisible(OutputFileKind kind, string type, bool visible)
+    {
+        if (OutputCatalog.IsLocked(type) && !visible)
+        {
+            return;
+        }
+
+        if (!OutputCatalog.For(kind).Any(output => output.Id == type))
+        {
+            return;
+        }
+
+        var hidden = HiddenOutputTabs(kind);
+        var currentlyVisible = !hidden.Contains(type);
+        if (visible == currentlyVisible)
+        {
+            return;
+        }
+
+        if (visible)
+        {
+            hidden.Remove(type);
+        }
+        else
+        {
+            hidden.Add(type);
+        }
+
+        if (_openOutputTabs.TryGetValue(kind, out var tabs))
+        {
+            if (visible)
+            {
+                if (!tabs.Contains(type))
+                {
+                    tabs.Add(type);
+                }
+            }
+            else
+            {
+                tabs.Remove(type);
+            }
+        }
+
+        EnsureActiveOutput();
+        Notify();
+    }
+
+    public void MoveOutputTab(OutputFileKind kind, string type, int delta)
+    {
+        if (!CanMoveOutputTab(kind, type, delta))
+        {
+            return;
+        }
+
+        var order = OutputTabOrder(kind);
+        var index = order.IndexOf(type);
+        var next = index + delta;
+        (order[index], order[next]) = (order[next], order[index]);
+        Notify();
+    }
+
+    public void ResetOutputTabs(OutputFileKind kind)
+    {
+        _outputTabOrder[kind] = OutputCatalog.DefaultOrder(kind);
+        _hiddenOutputTabs[kind] = new HashSet<string>(StringComparer.Ordinal);
+        _openOutputTabs.Remove(kind);
+        if (kind == OutputCatalog.KindFor(ActiveSource))
+        {
+            Revision++;
+        }
+
+        EnsureActiveOutput();
+        Notify();
+    }
+
+    public string SerializeOutputTabs()
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            WriteSavedKind(writer, "cs", OutputFileKind.Cs);
+            WriteSavedKind(writer, "razor", OutputFileKind.Razor);
+            WriteSavedKind(writer, "cshtml", OutputFileKind.Cshtml);
+            writer.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    public void ApplySavedOutputTabs(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            ApplySavedKind(document.RootElement, "cs", OutputFileKind.Cs);
+            ApplySavedKind(document.RootElement, "razor", OutputFileKind.Razor);
+            ApplySavedKind(document.RootElement, "cshtml", OutputFileKind.Cshtml);
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+
+        _openOutputTabs.Clear();
+        Revision++;
+        EnsureActiveOutput();
+        Notify();
+    }
+
+    public void CaptureOpenOutputTabs(IReadOnlyList<string> ids)
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        var catalog = OutputCatalog.For(kind).Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
+        var next = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in ids)
+        {
+            if ((produced.Contains(id) || catalog.Contains(id)) && seen.Add(id))
+            {
+                next.Add(id);
+            }
+        }
+
+        if (produced.Contains(OutputCatalog.ErrorsId) && seen.Add(OutputCatalog.ErrorsId))
+        {
+            next.Add(OutputCatalog.ErrorsId);
+        }
+
+        _openOutputTabs[kind] = next;
+    }
+
+    public IReadOnlyList<LabOutput> AddableOutputTabsFor(IReadOnlyList<string> open)
+    {
+        var openSet = open.ToHashSet(StringComparer.Ordinal);
+        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        return OutputCatalog.For(OutputCatalog.KindFor(ActiveSource))
+            .Where(output => produced.Contains(output.Id) && !openSet.Contains(output.Id))
+            .ToArray();
+    }
+
+    public bool HasClosedOutputTabs(IReadOnlyList<string> open)
+    {
+        var openSet = open.ToHashSet(StringComparer.Ordinal);
+        return VisibleTabsFor(ActiveSource).Any(output => !openSet.Contains(output.Id));
+    }
+
+    public bool OutputTabOrderDiffers(IReadOnlyList<string> open)
+    {
+        var order = OutputTabOrder(OutputCatalog.KindFor(ActiveSource));
+        var expected = order.Where(open.Contains).ToList();
+        var current = open.Where(order.Contains).ToList();
+        return !expected.SequenceEqual(current, StringComparer.Ordinal);
+    }
+
+    public void AddOutputTab(string type)
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        if (!produced.Contains(type))
+        {
+            return;
+        }
+
+        var tabs = OpenTabs(kind);
+        if (tabs.Contains(type))
+        {
+            return;
+        }
+
+        tabs.Add(type);
+        SetActiveOutput(type);
+        Notify();
+    }
+
+    public void RestoreOutputTabOrder()
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var tabs = OpenTabs(kind);
+        var rank = new Dictionary<string, int>(StringComparer.Ordinal);
+        var order = OutputTabOrder(kind);
+        for (var i = 0; i < order.Count; i++)
+        {
+            rank[order[i]] = i;
+        }
+
+        _openOutputTabs[kind] = tabs
+            .OrderBy(id => rank.GetValueOrDefault(id, int.MaxValue))
+            .ThenBy(id => tabs.IndexOf(id))
+            .ToList();
+        Revision++;
+        Notify();
+    }
+
+    public void RestoreClosedOutputTabs()
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var tabs = OpenTabs(kind);
+        var settingsOrder = OutputTabOrder(kind);
+        foreach (var output in VisibleTabsFor(ActiveSource))
+        {
+            if (tabs.Contains(output.Id))
+            {
+                continue;
+            }
+
+            var idRank = settingsOrder.IndexOf(output.Id);
+            var insertAt = tabs.Count;
+            for (var i = 0; i < tabs.Count; i++)
+            {
+                var rank = settingsOrder.IndexOf(tabs[i]);
+                if (rank >= 0 && rank > idRank)
+                {
+                    insertAt = i;
+                    break;
+                }
+            }
+
+            tabs.Insert(insertAt, output.Id);
+        }
+
+        Revision++;
+        EnsureActiveOutput();
+        Notify();
+    }
+
+    public void SaveOpenOutputTabsAsSettings()
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var catalog = OutputCatalog.For(kind);
+        var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
+        var open = OpenTabs(kind)
+            .Where(catalogIds.Contains)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (!open.Contains(OutputCatalog.ErrorsId))
+        {
+            open.Add(OutputCatalog.ErrorsId);
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var order = new List<string>();
+        foreach (var id in open)
+        {
+            if (seen.Add(id))
+            {
+                order.Add(id);
+            }
+        }
+
+        foreach (var id in OutputTabOrder(kind))
+        {
+            if (catalogIds.Contains(id) && seen.Add(id))
+            {
+                order.Add(id);
+            }
+        }
+
+        foreach (var output in catalog)
+        {
+            if (seen.Add(output.Id))
+            {
+                order.Add(output.Id);
+            }
+        }
+
+        _outputTabOrder[kind] = order;
+        _hiddenOutputTabs[kind] = catalog
+            .Select(output => output.Id)
+            .Where(id => !open.Contains(id) && id != OutputCatalog.ErrorsId)
+            .ToHashSet(StringComparer.Ordinal);
+        Notify();
+    }
+
+    public void EnsureActiveOutput()
+    {
+        SyncOpenOutputKind();
+        var tabs = OpenIds;
+        if (tabs.Contains(ActiveOutput))
+        {
+            return;
+        }
+
+        SetActiveOutput(tabs.FirstOrDefault(id => id is "cs" or "gcs")
+            ?? tabs.FirstOrDefault()
+            ?? OutputCatalog.ErrorsId);
+    }
+
+    private IReadOnlyList<LabOutput> VisibleTabsFor(string fileName)
+    {
+        var kind = OutputCatalog.KindFor(fileName);
+        var catalog = OutputCatalog.For(kind);
+        var byId = catalog.ToDictionary(output => output.Id, StringComparer.Ordinal);
+        var produced = OutputCatalog.ProducedTypes(fileName);
+        var tabs = new List<LabOutput>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var id in OutputTabOrder(kind))
+        {
+            if (HiddenOutputTabs(kind).Contains(id) || !produced.Contains(id) || !seen.Add(id))
+            {
+                continue;
+            }
+
+            if (byId.TryGetValue(id, out var output))
+            {
+                tabs.Add(output);
+            }
+        }
+
+        foreach (var id in produced)
+        {
+            if (!byId.ContainsKey(id) && seen.Add(id))
+            {
+                tabs.Add(OutputCatalog.Require(id));
+            }
+        }
+
+        return tabs;
+    }
+
+    private List<string> OpenTabs(OutputFileKind kind)
+    {
+        if (!_openOutputTabs.TryGetValue(kind, out var tabs))
+        {
+            var fileName = kind == OutputCatalog.KindFor(ActiveSource)
+                ? ActiveSource
+                : OutputCatalog.RepresentativeFile(kind);
+            tabs = VisibleTabsFor(fileName).Select(output => output.Id).ToList();
+            _openOutputTabs[kind] = tabs;
+        }
+
+        return tabs;
+    }
+
+    private void SyncOpenOutputKind()
+    {
+        var kind = OutputCatalog.KindFor(ActiveSource);
+        var tabs = OpenTabs(kind);
+        var produced = OutputCatalog.ProducedTypes(ActiveSource);
+        tabs.RemoveAll(id => !produced.Contains(id));
+        if (produced.Contains(OutputCatalog.ErrorsId) && !tabs.Contains(OutputCatalog.ErrorsId))
+        {
+            tabs.Add(OutputCatalog.ErrorsId);
+        }
+
+        if (_syncedOutputKind != kind)
+        {
+            var first = _syncedOutputKind is null;
+            _syncedOutputKind = kind;
+            if (!first)
+            {
+                Revision++;
+            }
+        }
+    }
+
+    private List<string> OutputTabOrder(OutputFileKind kind) => _outputTabOrder[kind];
+
+    private HashSet<string> HiddenOutputTabs(OutputFileKind kind) => _hiddenOutputTabs[kind];
+
+    private static Dictionary<OutputFileKind, List<string>> CreateDefaultOutputTabOrder()
+        => new()
+        {
+            [OutputFileKind.Cs] = OutputCatalog.DefaultOrder(OutputFileKind.Cs),
+            [OutputFileKind.Razor] = OutputCatalog.DefaultOrder(OutputFileKind.Razor),
+            [OutputFileKind.Cshtml] = OutputCatalog.DefaultOrder(OutputFileKind.Cshtml)
+        };
+
+    private static Dictionary<OutputFileKind, HashSet<string>> CreateDefaultHiddenOutputTabs()
+        => new()
+        {
+            [OutputFileKind.Cs] = new(StringComparer.Ordinal),
+            [OutputFileKind.Razor] = new(StringComparer.Ordinal),
+            [OutputFileKind.Cshtml] = new(StringComparer.Ordinal)
+        };
+
+    private void WriteSavedKind(Utf8JsonWriter writer, string property, OutputFileKind kind)
+    {
+        writer.WritePropertyName(property);
+        writer.WriteStartObject();
+        writer.WriteStartArray("order");
+        foreach (var id in OutputTabOrder(kind))
+        {
+            writer.WriteStringValue(id);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteStartArray("hidden");
+        foreach (var id in HiddenOutputTabs(kind))
+        {
+            writer.WriteStringValue(id);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private void ApplySavedKind(JsonElement root, string property, OutputFileKind kind)
+    {
+        if (!root.TryGetProperty(property, out var value))
+        {
+            ResetKindToDefault(kind);
+            return;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            ApplyLegacyVisibleIds(kind, ReadStringArray(value));
+            return;
+        }
+
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            ResetKindToDefault(kind);
+            return;
+        }
+
+        var catalog = OutputCatalog.For(kind).Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
+        var order = value.TryGetProperty("order", out var orderElement) && orderElement.ValueKind == JsonValueKind.Array
+            ? SanitizeOrder(kind, ReadStringArray(orderElement))
+            : OutputCatalog.DefaultOrder(kind);
+        var hidden = new HashSet<string>(StringComparer.Ordinal);
+        if (value.TryGetProperty("hidden", out var hiddenElement) && hiddenElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var id in ReadStringArray(hiddenElement))
+            {
+                if (catalog.Contains(id) && id != OutputCatalog.ErrorsId)
+                {
+                    hidden.Add(id);
+                }
+            }
+        }
+
+        _outputTabOrder[kind] = order;
+        _hiddenOutputTabs[kind] = hidden;
+    }
+
+    private void ApplyLegacyVisibleIds(OutputFileKind kind, IReadOnlyList<string> visible)
+    {
+        var catalog = OutputCatalog.For(kind);
+        var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var order = new List<string>();
+        var hidden = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var id in visible)
+        {
+            if (catalogIds.Contains(id) && seen.Add(id))
+            {
+                order.Add(id);
+            }
+        }
+
+        foreach (var output in catalog)
+        {
+            if (seen.Add(output.Id))
+            {
+                order.Add(output.Id);
+                if (output.Id != OutputCatalog.ErrorsId)
+                {
+                    hidden.Add(output.Id);
+                }
+            }
+        }
+
+        if (!order.Contains(OutputCatalog.ErrorsId))
+        {
+            order.Add(OutputCatalog.ErrorsId);
+        }
+
+        hidden.Remove(OutputCatalog.ErrorsId);
+        _outputTabOrder[kind] = order;
+        _hiddenOutputTabs[kind] = hidden;
+    }
+
+    private static List<string> SanitizeOrder(OutputFileKind kind, IReadOnlyList<string> ids)
+    {
+        var catalog = OutputCatalog.For(kind);
+        var catalogIds = catalog.Select(output => output.Id).ToHashSet(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var order = new List<string>();
+        foreach (var id in ids)
+        {
+            if (catalogIds.Contains(id) && seen.Add(id))
+            {
+                order.Add(id);
+            }
+        }
+
+        foreach (var output in catalog)
+        {
+            if (seen.Add(output.Id))
+            {
+                order.Add(output.Id);
+            }
+        }
+
+        return order;
+    }
+
+    private static List<string> ReadStringArray(JsonElement value)
+    {
+        var ids = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var id = item.GetString();
+            if (!string.IsNullOrEmpty(id))
+            {
+                ids.Add(id);
+            }
+        }
+
+        return ids;
+    }
+
+    private void ResetKindToDefault(OutputFileKind kind)
+    {
+        _outputTabOrder[kind] = OutputCatalog.DefaultOrder(kind);
+        _hiddenOutputTabs[kind] = new HashSet<string>(StringComparer.Ordinal);
+    }
+
+    private void SetActiveOutput(string type)
+        => _dispatcher.Dispatch(new SetActiveOutputAction(type));
+}
