@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.JSInterop;
 
@@ -9,50 +8,23 @@ public sealed class SettingsStore(IJSRuntime js)
     public CompilationPreferences CompilationPreferences { get; private set; } = CompilationPreferences.Default;
 
     /// <summary>
-    /// Loads <c>netlab-settings</c>, or migrates old per-key localStorage once
-    /// if that blob is missing. See <see cref="LegacySettings"/>.
+    /// Loads the established per-key localStorage values. See
+    /// <see cref="SettingsStorageSchema"/>.
     /// </summary>
     public async Task<SettingsSnapshot?> LoadAsync()
     {
         try
         {
-            var json = await js.InvokeAsync<string>("netLabPrefs.readSettings");
-            var snapshot = string.IsNullOrWhiteSpace(json)
-                ? await TryMigrateLegacyAsync()
-                : JsonSerializer.Deserialize(json, SettingsJsonContext.Default.SettingsSnapshot);
-
-            // Persist the mapped blob so later loads skip the per-key path.
-            if (snapshot is not null && string.IsNullOrWhiteSpace(json))
-            {
-                await SaveAsync(snapshot);
-            }
-
+            var values = await js.InvokeAsync<Dictionary<string, string?>>(
+                "netLabPrefs.readSettings",
+                SettingsStorageSchema.Keys);
+            var snapshot = SettingsStorageSchema.Read(values);
             if (snapshot?.CompilationPreferences is { } preferences)
             {
                 CompilationPreferences = preferences;
             }
 
             return snapshot;
-        }
-        catch (JSException)
-        {
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Reads the pre-redesign SettingsService keys via JS. Does not delete them.
-    /// </summary>
-    private async Task<SettingsSnapshot?> TryMigrateLegacyAsync()
-    {
-        try
-        {
-            var legacy = await js.InvokeAsync<Dictionary<string, string?>>("netLabPrefs.readLegacySettings");
-            return LegacySettings.TryCreate(legacy);
         }
         catch (JSException)
         {
@@ -69,8 +41,7 @@ public sealed class SettingsStore(IJSRuntime js)
 
         try
         {
-            var json = JsonSerializer.Serialize(snapshot, SettingsJsonContext.Default.SettingsSnapshot);
-            await js.InvokeVoidAsync("netLabPrefs.persistSettings", json);
+            await js.InvokeVoidAsync("netLabPrefs.persistSettings", SettingsStorageSchema.Write(snapshot));
         }
         catch (JSException)
         {
@@ -118,6 +89,6 @@ public sealed class SettingsSnapshot
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-[JsonSerializable(typeof(SettingsSnapshot))]
+[JsonSerializable(typeof(bool))]
 [JsonSerializable(typeof(CompilationPreferences))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext;

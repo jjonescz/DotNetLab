@@ -4,16 +4,12 @@ using System.Text.Json.Serialization.Metadata;
 namespace DotNetLab.Features.Preferences;
 
 /// <summary>
-/// One-time import of pre-redesign <c>SettingsService</c> localStorage entries
-/// into <see cref="SettingsSnapshot"/>.
+/// Per-key localStorage contract shared with older .NET Lab builds.
 /// </summary>
 /// <remarks>
-/// The old UI stored each setting as JSON under its own key (the C# property
-/// name, or <c>[DisplayName]</c> when that differed). The redesign stores one
-/// camelCase blob at <c>netlab-settings</c>. When that blob is missing,
-/// <see cref="SettingsStore.LoadAsync"/> reads these keys, maps them here, and
-/// writes the blob. Existing keys are left in place; <c>netlab-settings</c>
-/// wins on later loads.
+/// Each setting is JSON under its own key (the C# property name, or
+/// <c>[DisplayName]</c> when that differed). <see cref="SettingsSnapshot"/> is
+/// in-memory only; <see cref="SettingsStore"/> reads and writes these keys.
 /// <para>
 /// Key → snapshot property:
 /// <c>WordWrap</c>, <c>UseVim</c>, <c>DebugLogs</c>, <c>TraceLogs</c>,
@@ -29,7 +25,7 @@ namespace DotNetLab.Features.Preferences;
 /// Bool values are JSON <c>true</c>/<c>false</c>. Compilation preferences are
 /// camelCase JSON matching <see cref="CompilationPreferences"/>.
 /// </remarks>
-internal static class LegacySettings
+internal static class SettingsStorageSchema
 {
     public const string WordWrapKey = "WordWrap";
     public const string UseVimKey = "UseVim";
@@ -44,11 +40,27 @@ internal static class LegacySettings
     public const string DisableInputVirtualKeyboardKey = "disableInputVirtualKeyboard";
     public const string CompilationPreferencesKey = "CompilationPreferences";
 
+    public static readonly string[] Keys =
+    [
+        WordWrapKey,
+        UseVimKey,
+        DebugLogsKey,
+        TraceLogsKey,
+        MemoryUsageViewKey,
+        LanguageServicesKey,
+        BackgroundWorkerKey,
+        EnableCachingKey,
+        AutomaticCompilationKey,
+        DisplayHintSquigglesKey,
+        DisableInputVirtualKeyboardKey,
+        CompilationPreferencesKey,
+    ];
+
     /// <summary>
     /// Returns a snapshot when at least one recognized key parses; otherwise
-    /// <see langword="null"/> so callers do not persist an empty blob.
+    /// <see langword="null"/>.
     /// </summary>
-    public static SettingsSnapshot? TryCreate(IReadOnlyDictionary<string, string?>? items)
+    public static SettingsSnapshot? Read(IReadOnlyDictionary<string, string?>? items)
     {
         if (items is null || items.Count == 0)
         {
@@ -131,6 +143,38 @@ internal static class LegacySettings
         }
 
         return any ? snapshot : null;
+    }
+
+    public static Dictionary<string, string?> Write(SettingsSnapshot snapshot)
+    {
+        var values = new Dictionary<string, string?>(StringComparer.Ordinal);
+        WriteBool(values, WordWrapKey, snapshot.WordWrap);
+        WriteBool(values, UseVimKey, snapshot.UseVim);
+        WriteBool(values, DebugLogsKey, snapshot.DebugLogs);
+        WriteBool(values, TraceLogsKey, snapshot.TraceLogs);
+        WriteBool(values, MemoryUsageViewKey, snapshot.MemoryUsageView);
+        WriteBool(values, LanguageServicesKey, snapshot.LanguageServices);
+        WriteBool(values, BackgroundWorkerKey, snapshot.BackgroundWorker);
+        WriteBool(values, EnableCachingKey, snapshot.EnableCaching);
+        WriteBool(values, AutomaticCompilationKey, snapshot.AutomaticCompilation);
+        WriteBool(values, DisplayHintSquigglesKey, snapshot.DisplayHintSquiggles);
+        WriteBool(values, DisableInputVirtualKeyboardKey, snapshot.DisableInputVirtualKeyboard);
+        if (snapshot.CompilationPreferences is { } preferences)
+        {
+            values[CompilationPreferencesKey] = JsonSerializer.Serialize(
+                preferences,
+                SettingsJsonContext.Default.CompilationPreferences);
+        }
+
+        return values;
+    }
+
+    private static void WriteBool(Dictionary<string, string?> values, string key, bool? value)
+    {
+        if (value is { } flag)
+        {
+            values[key] = JsonSerializer.Serialize(flag, SettingsJsonContext.Default.Boolean);
+        }
     }
 
     private static bool TryGetBool(IReadOnlyDictionary<string, string?> items, string key, out bool value)

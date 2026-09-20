@@ -1,6 +1,5 @@
 window.netLabPrefs = {
     outputTabsKey: "netlab-output-tabs",
-    settingsKey: "netlab-settings",
     readOutputTabs: function () {
         try {
             return localStorage.getItem(this.outputTabsKey) || "";
@@ -19,38 +18,13 @@ window.netLabPrefs = {
         } catch {
         }
     },
-    // Pre-redesign SettingsService keys (one JSON value each). Keep in sync with
-    // LegacySettings.cs. C# maps these into netlab-settings; we do not delete them.
-    legacySettingsKeys: [
-        "WordWrap",
-        "UseVim",
-        "DebugLogs",
-        "TraceLogs",
-        "EnableMemoryUsageView",
-        "EnableLanguageServices2",
-        "EnableWorker",
-        "EnableCaching",
-        "AutoCompileOnStart",
-        "displayHintSquiggles",
-        "disableInputVirtualKeyboard",
-        "CompilationPreferences"
-    ],
-    readSettings: function () {
-        try {
-            return localStorage.getItem(this.settingsKey) || "";
-        } catch {
-            return "";
-        }
-    },
-    // Used only when netlab-settings is empty. Returns { key: json } for keys that exist.
-    readLegacySettings: function () {
+    readSettings: function (keys) {
         const result = {};
         try {
-            for (let i = 0; i < this.legacySettingsKeys.length; i++) {
-                const key = this.legacySettingsKeys[i];
-                const value = localStorage.getItem(key);
+            for (let i = 0; i < keys.length; i++) {
+                const value = localStorage.getItem(keys[i]);
                 if (value !== null) {
-                    result[key] = value;
+                    result[keys[i]] = value;
                 }
             }
         } catch {
@@ -58,14 +32,15 @@ window.netLabPrefs = {
 
         return result;
     },
-    persistSettings: function (json) {
+    persistSettings: function (settings) {
         try {
-            if (!json) {
-                localStorage.removeItem(this.settingsKey);
-                return;
+            for (const [key, value] of Object.entries(settings)) {
+                if (value == null) {
+                    localStorage.removeItem(key);
+                } else {
+                    localStorage.setItem(key, value);
+                }
             }
-
-            localStorage.setItem(this.settingsKey, json);
         } catch {
         }
     }
