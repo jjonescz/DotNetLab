@@ -284,7 +284,7 @@ public sealed class CompilationSession : IAsyncDisposable
     public SavedState CaptureSavedState()
     {
         var userFiles = _documents.SourceFiles
-            .Where(file => file != BuiltInContent.ConfigurationFileName)
+            .Where(file => file != SpecialDocuments.Configuration)
             .ToList();
 
         var inputs = userFiles
@@ -295,7 +295,7 @@ public sealed class CompilationSession : IAsyncDisposable
             })
             .ToImmutableArray();
 
-        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(SpecialDocuments.Configuration, out var configuration);
 
         var activeIndex = userFiles.IndexOf(_documents.ActiveDocument);
         if (activeIndex < 0)
@@ -321,7 +321,7 @@ public sealed class CompilationSession : IAsyncDisposable
     internal CompilationInput CreateCompilationInput()
     {
         var inputs = _documents.SourceFiles
-            .Where(file => file != BuiltInContent.ConfigurationFileName)
+            .Where(file => file != SpecialDocuments.Configuration)
             .Select(file => new InputCode
             {
                 FileName = file,
@@ -329,7 +329,7 @@ public sealed class CompilationSession : IAsyncDisposable
             })
             .ToImmutableArray();
 
-        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(SpecialDocuments.Configuration, out var configuration);
 
         var options = _options.Value;
         return new CompilationInput(inputs)

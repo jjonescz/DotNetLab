@@ -2,35 +2,47 @@ using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DotNetLab.Features.Sharing;
 using DotNetLab.Lab;
 
-namespace DotNetLab.Features.Compiler;
+namespace DotNetLab.Infrastructure.GitHub;
 
 internal sealed record CommitInfo(string Message, DateTimeOffset Date);
 
-internal static class CommitInfoLookup
+internal sealed class CommitInfoLookup
 {
-    private static readonly ConcurrentDictionary<string, CommitInfo> Cache = new(StringComparer.Ordinal);
+    private readonly HttpClient _client;
+    private readonly ConcurrentDictionary<string, Lazy<Task<CommitInfo?>>> _cache = new(StringComparer.Ordinal);
 
-    public static async Task<CommitInfo?> TryGetAsync(HttpClient client, CommitLink commit)
+    public CommitInfoLookup()
+        : this(CreateGitHubClient())
+    {
+    }
+
+    internal CommitInfoLookup(HttpClient client)
+    {
+        _client = client;
+    }
+
+    public Task<CommitInfo?> TryGetAsync(CommitLink commit)
     {
         if (string.IsNullOrEmpty(commit.Hash) || commit.OwnerAndName is not { } ownerAndName)
         {
-            return null;
+            return Task.FromResult<CommitInfo?>(null);
         }
 
         var key = $"{commit.RepoUrl}/{commit.Hash}";
-        if (Cache.TryGetValue(key, out var cached))
-        {
-            return cached;
-        }
+        return _cache.GetOrAdd(
+            key,
+            _ => new Lazy<Task<CommitInfo?>>(() => LoadAsync(ownerAndName, commit.Hash))).Value;
+    }
 
+    private async Task<CommitInfo?> LoadAsync(string ownerAndName, string hash)
+    {
         GitHubCommitResponse? response;
         try
         {
-            response = await client.GetFromJsonAsync(
-                $"{AppLinks.GitHubApi}/repos/{ownerAndName}/commits/{commit.Hash}",
+            response = await _client.GetFromJsonAsync(
+                $"https://api.github.com/repos/{ownerAndName}/commits/{hash}",
                 CommitInfoJsonContext.Default.GitHubCommitResponse);
         }
         catch (HttpRequestException)
@@ -48,9 +60,14 @@ internal static class CommitInfoLookup
             return null;
         }
 
-        var info = new CommitInfo(message, response.Commit.Author.Date);
-        Cache[key] = info;
-        return info;
+        return new CommitInfo(message, response.Commit.Author.Date);
+    }
+
+    private static HttpClient CreateGitHubClient()
+    {
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "DotNetLab");
+        return client;
     }
 }
 

@@ -1,5 +1,12 @@
 namespace DotNetLab.Features.Documents;
 
+public enum DocumentKind
+{
+    Cs,
+    Razor,
+    Cshtml
+}
+
 public static class DocumentTypes
 {
     public static readonly string[] Templates = ["C#", "Razor", "CSHTML"];

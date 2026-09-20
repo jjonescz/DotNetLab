@@ -11,7 +11,7 @@
               ActiveChanged="OnSourceSelected"
               ItemClosed="Documents.CloseFile"
               ItemRenamed="OnSourceRenamed"
-              PinnedOrder="BuiltInContent.SpecialSourceOrder"
+              PinnedOrder="SpecialDocuments.Order"
               Icon="@(new Icons.Regular.Size20.Code())">
     <Actions>
         <FluentButton Id="lab-source-format"
@@ -55,12 +55,12 @@
         </FluentMenu>
     </Actions>
     <ItemLabel>
-        @if (context == BuiltInContent.DirectivesFileName)
+        @if (context == SpecialDocuments.Directives)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.NumberSymbol())" Width="16px" />
             <span>Directives</span>
         }
-        else if (context == BuiltInContent.ConfigurationFileName)
+        else if (context == SpecialDocuments.Configuration)
         {
             <FluentIcon Value="@(new Icons.Regular.Size20.DocumentSettings())" Width="16px" />
             <span>Configuration</span>

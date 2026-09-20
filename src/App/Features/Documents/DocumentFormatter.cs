@@ -20,7 +20,7 @@ public sealed class DocumentFormatter(
         }
 
         if (!fileName.IsCSharpFileName(out var isScript) &&
-            fileName != BuiltInContent.ConfigurationFileName)
+            fileName != SpecialDocuments.Configuration)
         {
             return;
         }

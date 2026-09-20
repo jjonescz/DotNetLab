@@ -1,3 +1,5 @@
+using DotNetLab.Features.Documents;
+
 namespace DotNetLab.Features.Outputs;
 
 public static class OutputCatalog

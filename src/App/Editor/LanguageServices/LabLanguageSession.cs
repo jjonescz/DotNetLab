@@ -198,7 +198,7 @@ public sealed class LabLanguageSession
 
     private CompilerConfiguration CurrentCompilerConfiguration()
     {
-        _documents.Sources.TryGetValue(BuiltInContent.ConfigurationFileName, out var configuration);
+        _documents.Sources.TryGetValue(SpecialDocuments.Configuration, out var configuration);
         var current = _compiler.Value;
         return new CompilerConfiguration
         {

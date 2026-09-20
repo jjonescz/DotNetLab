@@ -174,7 +174,7 @@ public sealed class LabLanguageServices(
                     continue;
                 }
 
-                var configuration = fileName == BuiltInContent.ConfigurationFileName;
+                var configuration = fileName == SpecialDocuments.Configuration;
                 var markers = compiled is { } result
                     ? result.GetDiagnosticsForFile(fileName, configuration)
                         .Select(static d => d.ToMarkerData())

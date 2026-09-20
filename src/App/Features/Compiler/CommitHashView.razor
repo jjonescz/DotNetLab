@@ -1,4 +1,4 @@
-@inject HttpClient Client
+@inject CommitInfoLookup Lookup
 
 @if (!string.IsNullOrEmpty(Commit.Hash) && !string.IsNullOrEmpty(Commit.Url))
 {
@@ -43,10 +43,7 @@
             return;
         }
 
-        _info = await CommitInfoLookup.TryGetAsync(Client, Commit);
-        if (_info is not null)
-        {
-            _loadedFor = key;
-        }
+        _loadedFor = key;
+        _info = await Lookup.TryGetAsync(Commit);
     }
 }

@@ -1,12 +1,5 @@
 namespace DotNetLab.Features.Outputs;
 
-public enum DocumentKind
-{
-    Cs,
-    Razor,
-    Cshtml
-}
-
 public sealed record OutputDefinition(
     string Id,
     string Label,

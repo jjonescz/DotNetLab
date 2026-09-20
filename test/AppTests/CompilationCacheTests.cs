@@ -123,13 +123,11 @@ public sealed class CompilationCacheTests
     }
 
     [TestMethod]
-    public void CacheKey_IncludesSchemaPrefix()
+    public void CacheKey_IsUnprefixedHex()
     {
         var key = CompilationCacheKey.Create(SavedState.CSharp);
-        var prefix = $"v{CompilationCacheKey.Schema}-";
-        key.Should().StartWith(prefix);
-        key.Length.Should().Be(prefix.Length + 32);
-        key.Should().NotBe(key[prefix.Length..]);
+        key.Length.Should().Be(32);
+        key.Should().MatchRegex("^[0-9a-f]{32}$");
     }
 
     [TestMethod]

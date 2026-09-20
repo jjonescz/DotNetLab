@@ -11,6 +11,7 @@ using DotNetLab.Features.Workspace;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Caching.Compilation;
 using DotNetLab.Infrastructure.Caching.Template;
+using DotNetLab.Infrastructure.GitHub;
 using DotNetLab.Infrastructure.Logging;
 using DotNetLab.Infrastructure.Worker;
 using DotNetLab.Shell;
@@ -76,6 +77,7 @@ public static class AppBuilder
         services.TryAddScoped<IWorkerConfigurer, NoopWorkerConfigurer>();
         services.TryAddScoped<ICompilerOutputPlugin, PassThroughCompilerOutputPlugin>();
         services.AddSingleton<LabLogging>();
+        services.AddSingleton<CommitInfoLookup>();
         services.AddOptions<LoggerFilterOptions>().Configure<LabLogging>((options, logging) =>
         {
             options.AddFilter("DotNetLab.*", logLevel => logLevel >= logging.LogLevel);

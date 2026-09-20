@@ -67,20 +67,20 @@ public sealed class DocumentWorkspace
             .Select(file => new ModelInfo(UriFor(file), file)
             {
                 NewContent = _sources.GetValueOrDefault(file) ?? "",
-                IsConfiguration = file == BuiltInContent.ConfigurationFileName,
+                IsConfiguration = file == SpecialDocuments.Configuration,
             })
             .ToImmutableArray();
 
     private void EnsureUri(string fileName) => UriFor(fileName);
 
     public static bool IsSpecialSource(string fileName)
-        => fileName is BuiltInContent.DirectivesFileName or BuiltInContent.ConfigurationFileName;
+        => fileName is SpecialDocuments.Directives or SpecialDocuments.Configuration;
 
     public static string DisplayName(string fileName)
         => fileName switch
         {
-            BuiltInContent.DirectivesFileName => "Directives",
-            BuiltInContent.ConfigurationFileName => "Configuration",
+            SpecialDocuments.Directives => "Directives",
+            SpecialDocuments.Configuration => "Configuration",
             _ => fileName
         };
 
@@ -305,11 +305,11 @@ public sealed class DocumentWorkspace
             userCount = _sourceFiles.Count;
         }
 
-        var slot = Array.IndexOf(BuiltInContent.SpecialSourceOrder, fileName);
+        var slot = Array.IndexOf(SpecialDocuments.Order, fileName);
         var at = userCount;
         for (var i = 0; i < slot; i++)
         {
-            if (_sourceFiles.Contains(BuiltInContent.SpecialSourceOrder[i]))
+            if (_sourceFiles.Contains(SpecialDocuments.Order[i]))
             {
                 at++;
             }
@@ -412,7 +412,7 @@ public sealed class DocumentWorkspace
 
         if (state.Configuration is { } configuration)
         {
-            specialFiles[BuiltInContent.ConfigurationFileName] = configuration;
+            specialFiles[SpecialDocuments.Configuration] = configuration;
         }
 
         _sourceFiles.Clear();
@@ -434,7 +434,7 @@ public sealed class DocumentWorkspace
             _sources[name] = contents;
         }
 
-        foreach (var fileName in BuiltInContent.SpecialSourceOrder)
+        foreach (var fileName in SpecialDocuments.Order)
         {
             if (specialFiles.TryGetValue(fileName, out var contents))
             {
@@ -443,7 +443,7 @@ public sealed class DocumentWorkspace
             }
         }
 
-        var selectable = _sourceFiles.Where(name => name != BuiltInContent.ConfigurationFileName).ToList();
+        var selectable = _sourceFiles.Where(name => name != SpecialDocuments.Configuration).ToList();
         if (selectable.Count == 0)
         {
             selectable = _sourceFiles.ToList();

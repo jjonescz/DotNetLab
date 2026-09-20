@@ -8,6 +8,7 @@ using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Sharing;
 using DotNetLab.Features.Updates;
 using DotNetLab.Infrastructure.Browser;
+using DotNetLab.Infrastructure.GitHub;
 using DotNetLab.Infrastructure.Worker;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,7 @@ public sealed class AddDotNetLabAppTests
         services.AddDotNetLabApp(environment);
 
         HasSingleton<LabEnvironment>(services).Should().BeTrue();
+        HasSingleton<CommitInfoLookup>(services).Should().BeTrue();
         HasScoped<AppPersistence>(services).Should().BeTrue();
         HasScoped<LabEditorSnapshots>(services).Should().BeTrue();
         HasScoped<ShareUrlWriter>(services).Should().BeTrue();
