@@ -166,7 +166,7 @@ public sealed class CompilationSessionTests
         => new(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new SettingsStore(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime(), NullLogger<SettingsStore>.Instance),
             transport,
             NullLogger<WorkerHost>.Instance);
 

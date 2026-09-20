@@ -1,4 +1,5 @@
 ﻿using BlazorMonaco.Languages;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -15,9 +16,11 @@ public sealed partial class BlazorMonacoInterop : IAsyncDisposable
     private const string moduleName = nameof(BlazorMonacoInterop);
 
     private readonly Lazy<Task<IJSObjectReference>> initialize;
+    private readonly ILogger<BlazorMonacoInterop> _logger;
 
-    public BlazorMonacoInterop(IJSRuntime jsRuntime)
+    public BlazorMonacoInterop(IJSRuntime jsRuntime, ILogger<BlazorMonacoInterop> logger)
     {
+        _logger = logger;
         initialize = new(() => jsRuntime.InvokeAsync<IJSObjectReference>("import", "../_content/DotNetLab.App/js/BlazorMonacoInterop.js").AsTask());
     }
 
@@ -166,8 +169,9 @@ public sealed partial class BlazorMonacoInterop : IAsyncDisposable
         {
             return await (await Module).InvokeAsync<int>("getAlternativeVersionId", modelUri);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Reading the alternative model version failed.");
             return -1;
         }
     }

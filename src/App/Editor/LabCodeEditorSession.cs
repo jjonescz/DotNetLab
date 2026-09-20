@@ -6,6 +6,7 @@ using DotNetLab.Features.Documents;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Features.Sharing;
 using Fluxor;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Editor;
@@ -31,6 +32,7 @@ public sealed class LabCodeEditorSession
     private readonly LabLanguageSession _language;
     private readonly IDispatcher _dispatcher;
     private readonly IState<PreferencesState> _prefs;
+    private readonly ILogger<LabCodeEditorSession> _logger;
     private readonly string _editorId = $"lab-editor-{Guid.NewGuid():N}";
 
     private LabCodeEditorView _view;
@@ -57,7 +59,8 @@ public sealed class LabCodeEditorSession
         LabEditorSnapshots snapshots,
         LabLanguageSession language,
         IDispatcher dispatcher,
-        IState<PreferencesState> prefs)
+        IState<PreferencesState> prefs,
+        ILogger<LabCodeEditorSession> logger)
     {
         _js = js;
         _documents = documents;
@@ -66,6 +69,7 @@ public sealed class LabCodeEditorSession
         _language = language;
         _dispatcher = dispatcher;
         _prefs = prefs;
+        _logger = logger;
         _prefs.StateChanged += OnPreferencesChanged;
         _snapshots.Register(FlushAsync);
     }
@@ -158,6 +162,7 @@ public sealed class LabCodeEditorSession
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
 
         try
@@ -166,6 +171,7 @@ public sealed class LabCodeEditorSession
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
 
         await DisposeEditorChromeAsync();
@@ -222,6 +228,7 @@ public sealed class LabCodeEditorSession
         }
         catch (JSException)
         {
+            // Prior apply already logged; keep the queue alive.
         }
 
         var editor = _view.Editor;
@@ -286,8 +293,9 @@ public sealed class LabCodeEditorSession
                 await _language.OnEditorReadyAsync(_editorId, _view.ModelUri, _view.ReadOnly, fold: languageChanged);
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying editor parameters failed.");
             _ready = false;
             _suppressChange = false;
         }
@@ -346,8 +354,9 @@ public sealed class LabCodeEditorSession
             _lastReadOnly = _view.ReadOnly;
             _lastWordWrap = _view.WordWrap;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying wrap and read-only options failed.");
         }
     }
 
@@ -389,8 +398,9 @@ public sealed class LabCodeEditorSession
             await editor.SetModel(model);
             _lastValue = _view.Value;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Attaching the named editor model failed.");
         }
     }
 
@@ -429,8 +439,9 @@ public sealed class LabCodeEditorSession
             await _js.InvokeVoidAsync("netLabKeyboard.setDisabled", _editorId, disabled);
             _appliedKeyboardDisabled = disabled;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Applying virtual keyboard state failed.");
         }
     }
 
@@ -461,8 +472,9 @@ public sealed class LabCodeEditorSession
 
             _appliedVim = enabled;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying vim mode failed.");
         }
     }
 
@@ -473,8 +485,9 @@ public sealed class LabCodeEditorSession
             _appliedMonacoTheme = _prefs.Value.MonacoTheme;
             await _js.InvokeVoidAsync("netLabMonaco.applyTheme", _prefs.Value.ResolvedDark);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying the Monaco theme failed.");
         }
     }
 
@@ -495,8 +508,9 @@ public sealed class LabCodeEditorSession
                 await _language.OnSourceModelContentChangedAsync(_view.ModelUri, args);
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Reading the editor value after a change failed.");
         }
     }
 
@@ -531,8 +545,9 @@ public sealed class LabCodeEditorSession
 
             PushSource(next);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Flushing the editor value failed.");
         }
     }
 
@@ -544,6 +559,7 @@ public sealed class LabCodeEditorSession
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
 
         try
@@ -552,6 +568,7 @@ public sealed class LabCodeEditorSession
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
     }
 }

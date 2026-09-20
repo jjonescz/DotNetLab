@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Preferences;
 
-public sealed class SettingsStore(IJSRuntime js)
+public sealed class SettingsStore(IJSRuntime js, ILogger<SettingsStore> logger)
 {
     public CompilationPreferences CompilationPreferences { get; private set; } = CompilationPreferences.Default;
 
@@ -26,8 +27,9 @@ public sealed class SettingsStore(IJSRuntime js)
 
             return snapshot;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Loading settings from localStorage failed.");
             return null;
         }
     }
@@ -43,8 +45,9 @@ public sealed class SettingsStore(IJSRuntime js)
         {
             await js.InvokeVoidAsync("netLabPrefs.persistSettings", SettingsStorageSchema.Write(snapshot));
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogWarning(ex, "Saving settings to localStorage failed.");
         }
     }
 
@@ -54,8 +57,9 @@ public sealed class SettingsStore(IJSRuntime js)
         {
             return await js.InvokeAsync<string>("netLabPrefs.readOutputTabs") ?? "";
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Reading saved output tabs failed.");
             return "";
         }
     }
@@ -66,8 +70,9 @@ public sealed class SettingsStore(IJSRuntime js)
         {
             await js.InvokeVoidAsync("netLabPrefs.persistOutputTabs", json);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogWarning(ex, "Saving output tabs failed.");
         }
     }
 }

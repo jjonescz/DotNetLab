@@ -96,8 +96,9 @@ public sealed class LabLanguageServices(
         {
             await blazorMonacoInterop.EnableSemanticHighlightingAsync();
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Enabling semantic highlighting failed.");
         }
     }
 
@@ -183,8 +184,9 @@ public sealed class LabLanguageServices(
                     : [];
                 await BlazorMonaco.Editor.Global.SetModelMarkers(jsRuntime, model, MonacoConstants.MarkersOwner, markers);
             }
-            catch (JSException)
+            catch (JSException ex)
             {
+                logger.LogDebug(ex, "Applying compile diagnostics to {FileName} failed.", fileName);
             }
         }
     }
@@ -223,8 +225,9 @@ public sealed class LabLanguageServices(
                 await blazorMonacoInterop.UnderlineLinksAsync(editorId, offsets);
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Applying output editor folding or underlines failed.");
         }
     }
 
@@ -245,6 +248,7 @@ public sealed class LabLanguageServices(
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
     }
 
@@ -269,8 +273,9 @@ public sealed class LabLanguageServices(
                     await asm.InvokeVoidAsync("registerX86Language");
                 }
             }
-            catch (JSException)
+            catch (JSException ex)
             {
+                logger.LogDebug(ex, "Registering the x86 language failed.");
             }
 
             _outputSemanticTokensProvider = await blazorMonacoInterop.RegisterSemanticTokensProviderAsync(_outputLanguageSelector, new(loggerFactory)

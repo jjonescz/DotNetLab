@@ -278,6 +278,7 @@ public sealed class WorkerHost : IAsyncDisposable
         }
         catch (JSException)
         {
+            // SettingsStore.LoadAsync already handles JS failures.
             return true;
         }
     }

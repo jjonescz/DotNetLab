@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Infrastructure.Browser;
@@ -5,10 +6,12 @@ namespace DotNetLab.Infrastructure.Browser;
 public sealed class LabPlatform
 {
     private readonly IJSRuntime _js;
+    private readonly ILogger<LabPlatform> _logger;
 
-    public LabPlatform(IJSRuntime js)
+    public LabPlatform(IJSRuntime js, ILogger<LabPlatform> logger)
     {
         _js = js;
+        _logger = logger;
     }
 
     public bool IsMac { get; private set; }
@@ -22,8 +25,9 @@ public sealed class LabPlatform
         {
             IsMac = await _js.InvokeAsync<bool>("netLabPalette.isMac");
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Detecting the Mac platform failed.");
         }
     }
 }

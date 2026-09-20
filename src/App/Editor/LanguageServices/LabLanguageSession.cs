@@ -4,6 +4,7 @@ using DotNetLab.Features.Documents;
 using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Preferences;
 using Fluxor;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Editor.LanguageServices;
@@ -18,6 +19,7 @@ public sealed class LabLanguageSession
     private readonly DocumentWorkspace _documents;
     private readonly CompilationSession _compilation;
     private readonly OutputWorkspace _outputs;
+    private readonly ILogger<LabLanguageSession> _logger;
     private Task? _languageInit;
 
     public LabLanguageSession(
@@ -28,7 +30,8 @@ public sealed class LabLanguageSession
         IState<CompilerState> compiler,
         DocumentWorkspace documents,
         CompilationSession compilation,
-        OutputWorkspace outputs)
+        OutputWorkspace outputs,
+        ILogger<LabLanguageSession> logger)
     {
         _language = language;
         _cursors = cursors;
@@ -38,6 +41,7 @@ public sealed class LabLanguageSession
         _documents = documents;
         _compilation = compilation;
         _outputs = outputs;
+        _logger = logger;
     }
 
     public bool Started => _languageInit is not null;
@@ -84,8 +88,9 @@ public sealed class LabLanguageSession
                 await _cursors.AttachSourceAsync(editorId);
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Attaching language services to the editor failed.");
         }
     }
 
@@ -164,8 +169,9 @@ public sealed class LabLanguageSession
                     _documents.SourceFiles.Select(file => (file, _documents.UriFor(file))));
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Enabling or disabling language services failed.");
         }
 
         if (persist)
@@ -191,8 +197,9 @@ public sealed class LabLanguageSession
                 _documents.UriFor(_documents.ActiveDocument),
                 refresh);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Syncing the language-service workspace failed.");
         }
     }
 

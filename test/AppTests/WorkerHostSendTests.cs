@@ -20,7 +20,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new SettingsStore(new UnusedJsRuntime()),
+            new SettingsStore(new UnusedJsRuntime(), NullLogger<SettingsStore>.Instance),
             new UnsupportedWorkerTransport(),
             NullLogger<WorkerHost>.Instance);
 
@@ -39,7 +39,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new SettingsStore(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime(), NullLogger<SettingsStore>.Instance),
             transport,
             NullLogger<WorkerHost>.Instance);
 
@@ -60,7 +60,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new SettingsStore(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime(), NullLogger<SettingsStore>.Instance),
             transport,
             logger);
 
@@ -81,7 +81,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/", SupportsThreads: true),
             new LabLogging(),
-            new SettingsStore(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime(), NullLogger<SettingsStore>.Instance),
             transport,
             logger);
 
@@ -100,7 +100,7 @@ public sealed class WorkerHostSendTests
         await using var host = new WorkerHost(
             new LabEnvironment(IsDevelopment: false, BaseAddress: "http://localhost/"),
             new LabLogging(),
-            new SettingsStore(new EmptyPrefsJsRuntime()),
+            new SettingsStore(new EmptyPrefsJsRuntime(), NullLogger<SettingsStore>.Instance),
             new SpyInProcessTransport(),
             NullLogger<WorkerHost>.Instance,
             configurer);

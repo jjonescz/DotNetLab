@@ -1,4 +1,5 @@
 using Fluxor;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Updates;
@@ -7,11 +8,13 @@ public sealed class UpdateEffects : IDisposable
 {
     private readonly IUpdateChecker _updates;
     private readonly IDispatcher _dispatcher;
+    private readonly ILogger<UpdateEffects> _logger;
 
-    public UpdateEffects(IUpdateChecker updates, IDispatcher dispatcher)
+    public UpdateEffects(IUpdateChecker updates, IDispatcher dispatcher, ILogger<UpdateEffects> logger)
     {
         _updates = updates;
         _dispatcher = dispatcher;
+        _logger = logger;
         _updates.UpdateStatusChanged += OnStatusChanged;
     }
 
@@ -22,8 +25,9 @@ public sealed class UpdateEffects : IDisposable
         {
             await _updates.InitializeAsync();
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Initializing the update checker failed.");
         }
 
         dispatcher.Dispatch(Sync());
@@ -38,8 +42,9 @@ public sealed class UpdateEffects : IDisposable
             await _updates.CheckForUpdatesAsync();
             dispatcher.Dispatch(new UpdatesCheckFinishedAction(_updates.UpdateIsAvailable));
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Checking for updates failed.");
             dispatcher.Dispatch(new UpdatesCheckFinishedAction(false));
         }
     }

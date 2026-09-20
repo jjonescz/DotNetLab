@@ -1,10 +1,11 @@
 using DotNetLab.Editor.Monaco;
 using DotNetLab.Lab;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Editor.LanguageServices;
 
-public sealed class LabCursorSync(BlazorMonacoInterop interop) : IAsyncDisposable
+public sealed class LabCursorSync(BlazorMonacoInterop interop, ILogger<LabCursorSync> logger) : IAsyncDisposable
 {
     private string? _sourceEditorId;
     private string? _outputEditorId;
@@ -73,8 +74,9 @@ public sealed class LabCursorSync(BlazorMonacoInterop interop) : IAsyncDisposabl
         {
             await interop.SetSelectionAsync(_outputEditorId, outputSpan.Start, outputSpan.End);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Syncing the output selection from the source cursor failed.");
         }
     }
 
@@ -91,8 +93,9 @@ public sealed class LabCursorSync(BlazorMonacoInterop interop) : IAsyncDisposabl
         {
             await interop.SetSelectionAsync(_sourceEditorId, inputSpan.Start, inputSpan.End);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            logger.LogDebug(ex, "Syncing the source selection from the output cursor failed.");
         }
     }
 
@@ -118,6 +121,7 @@ public sealed class LabCursorSync(BlazorMonacoInterop interop) : IAsyncDisposabl
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
 
         return null;

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using DotNetLab.Features.Compiler;
 using DotNetLab.Features.Documents;
@@ -15,6 +16,7 @@ public sealed class ShareService
     private readonly DocumentWorkspace _documents;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _prefs;
+    private readonly ILogger<ShareService> _logger;
 
     public ShareService(
         IJSRuntime js,
@@ -22,7 +24,8 @@ public sealed class ShareService
         AppPersistence persist,
         DocumentWorkspace documents,
         IState<CompilerState> compiler,
-        IState<PreferencesState> prefs)
+        IState<PreferencesState> prefs,
+        ILogger<ShareService> logger)
     {
         _js = js;
         _navigation = navigation;
@@ -30,6 +33,7 @@ public sealed class ShareService
         _documents = documents;
         _compiler = compiler;
         _prefs = prefs;
+        _logger = logger;
     }
 
     public async Task CopyLinkAsync()
@@ -53,8 +57,9 @@ public sealed class ShareService
         {
             await _js.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Opening an external URL failed.");
         }
     }
 
@@ -64,8 +69,9 @@ public sealed class ShareService
         {
             await _js.InvokeVoidAsync("navigator.clipboard.writeText", text);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Writing to the clipboard failed.");
         }
     }
 }

@@ -1,4 +1,5 @@
 using Fluxor;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace DotNetLab.Features.Preferences;
@@ -8,14 +9,16 @@ public sealed class AppThemeService : IAsyncDisposable
     private readonly IJSRuntime _js;
     private readonly IDispatcher _dispatcher;
     private readonly IState<PreferencesState> _prefs;
+    private readonly ILogger<AppThemeService> _logger;
     private DotNetObjectReference<AppThemeService>? _self;
     private bool _listening;
 
-    public AppThemeService(IJSRuntime js, IDispatcher dispatcher, IState<PreferencesState> prefs)
+    public AppThemeService(IJSRuntime js, IDispatcher dispatcher, IState<PreferencesState> prefs, ILogger<AppThemeService> logger)
     {
         _js = js;
         _dispatcher = dispatcher;
         _prefs = prefs;
+        _logger = logger;
     }
 
     public async Task InitializeAsync()
@@ -36,8 +39,9 @@ public sealed class AppThemeService : IAsyncDisposable
             await _js.InvokeVoidAsync("netThemeDefinition.listenSystem", _self);
             _listening = true;
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Listening for system theme changes failed.");
         }
     }
 
@@ -67,6 +71,7 @@ public sealed class AppThemeService : IAsyncDisposable
         }
         catch (JSException)
         {
+            // JS runtime may already be gone during dispose.
         }
 
         _self?.Dispose();
@@ -83,8 +88,9 @@ public sealed class AppThemeService : IAsyncDisposable
                 await _js.InvokeVoidAsync("netThemeDefinition.persist", preference);
             }
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying the document theme failed.");
         }
 
         _dispatcher.Dispatch(new SetThemeAction(preference, dark));
@@ -93,8 +99,9 @@ public sealed class AppThemeService : IAsyncDisposable
         {
             await _js.InvokeVoidAsync("netLabMonaco.applyTheme", dark);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogWarning(ex, "Applying the Monaco theme failed.");
         }
     }
 
@@ -104,8 +111,9 @@ public sealed class AppThemeService : IAsyncDisposable
         {
             return await _js.InvokeAsync<bool>("netThemeDefinition.resolveDark", preference);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Resolving the system theme failed.");
             return preference != "light";
         }
     }
@@ -116,8 +124,9 @@ public sealed class AppThemeService : IAsyncDisposable
         {
             return await _js.InvokeAsync<string>(identifier);
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Reading the theme preference failed.");
             return fallback;
         }
     }

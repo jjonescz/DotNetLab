@@ -5,6 +5,7 @@
 @inject LabLanguageSession LanguageSession
 @inject IDispatcher Dispatcher
 @inject IState<PreferencesState> Prefs
+@inject ILogger<LabCodeEditorSession> Logger
 @implements IAsyncDisposable
 
 <div class="lab-editor">
@@ -35,7 +36,7 @@
     [Parameter] public EventCallback OnFocused { get; set; }
 
     protected override void OnInitialized()
-        => _session = new LabCodeEditorSession(JS, Documents, Persist, Snapshots, LanguageSession, Dispatcher, Prefs);
+        => _session = new LabCodeEditorSession(JS, Documents, Persist, Snapshots, LanguageSession, Dispatcher, Prefs, Logger);
 
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 

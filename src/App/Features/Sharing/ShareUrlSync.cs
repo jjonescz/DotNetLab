@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Lab;
@@ -14,6 +15,7 @@ public sealed class ShareUrlSync : IDisposable
     private readonly ShareUrlWriter _writer;
     private readonly SettingsStore _settings;
     private readonly IJSRuntime _js;
+    private readonly ILogger<ShareUrlSync> _logger;
     private bool _loaded;
 
     public ShareUrlSync(
@@ -21,13 +23,15 @@ public sealed class ShareUrlSync : IDisposable
         AppPersistence persist,
         ShareUrlWriter writer,
         SettingsStore settings,
-        IJSRuntime js)
+        IJSRuntime js,
+        ILogger<ShareUrlSync> logger)
     {
         _navigation = navigation;
         _persist = persist;
         _writer = writer;
         _settings = settings;
         _js = js;
+        _logger = logger;
         _navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -139,8 +143,9 @@ public sealed class ShareUrlSync : IDisposable
         {
             return await _js.InvokeAsync<string>("netLabUrl.hash") ?? "";
         }
-        catch (JSException)
+        catch (JSException ex)
         {
+            _logger.LogDebug(ex, "Reading the browser hash failed.");
             return "";
         }
     }
