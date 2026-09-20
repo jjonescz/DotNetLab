@@ -16,6 +16,16 @@ const args = [...new URLSearchParams(self.location.search).entries()].filter(([k
 const dotnet = dn;
 
 const instance = await dotnet
+    .withConfig({
+        runtimeConfig: {
+            runtimeOptions: {
+                configProperties: {
+                    // Show full exception messages in the Run tab.
+                    'System.Resources.UseSystemResourceKeys': false,
+                },
+            },
+        },
+    })
     .withApplicationArguments(...args)
     .create();
 
