@@ -2,6 +2,7 @@
 @inject DocumentWorkspace Docs
 @inject AppThemeService Theme
 @inject ShareService Share
+@inject ShareUrlSync Urls
 @inject IDispatcher Dispatcher
 @inject IState<UpdateState> Updates
 @inject IState<PreferencesState> Prefs
@@ -107,7 +108,16 @@
     private Task ToggleThemeAsync()
         => Theme.SetPreferenceAsync(Prefs.Value.ResolvedDark ? "light" : "dark");
 
-    private void OpenPaste() => Dispatcher.Dispatch(new OpenPasteUrlAction());
+    private async Task OpenPaste()
+    {
+        var (applied, text) = await Urls.TryApplyFromClipboardAsync();
+        if (applied)
+        {
+            return;
+        }
+
+        Dispatcher.Dispatch(new OpenPasteUrlAction(text));
+    }
 
     private void OpenSettings() => Dispatcher.Dispatch(new OpenSettingsAction());
 }

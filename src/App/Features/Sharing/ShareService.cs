@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using DotNetLab.Features.Compiler;
@@ -13,8 +12,8 @@ public sealed class ShareService
 {
     private readonly IJSRuntime _js;
     private readonly IExternalUrlOpener _external;
-    private readonly NavigationManager _navigation;
     private readonly AppPersistence _persist;
+    private readonly ShareUrlWriter _urls;
     private readonly DocumentWorkspace _documents;
     private readonly IState<CompilerState> _compiler;
     private readonly IState<PreferencesState> _prefs;
@@ -23,8 +22,8 @@ public sealed class ShareService
     public ShareService(
         IJSRuntime js,
         IExternalUrlOpener external,
-        NavigationManager navigation,
         AppPersistence persist,
+        ShareUrlWriter urls,
         DocumentWorkspace documents,
         IState<CompilerState> compiler,
         IState<PreferencesState> prefs,
@@ -32,8 +31,8 @@ public sealed class ShareService
     {
         _js = js;
         _external = external;
-        _navigation = navigation;
         _persist = persist;
+        _urls = urls;
         _documents = documents;
         _compiler = compiler;
         _prefs = prefs;
@@ -42,8 +41,9 @@ public sealed class ShareService
 
     public async Task CopyLinkAsync()
     {
-        await _persist.PersistUrlAsync(snapshot: true);
-        await WriteClipboardAsync(_navigation.Uri);
+        await _persist.SnapshotEditorsAsync();
+        var url = await _urls.SaveAsync();
+        await WriteClipboardAsync(url);
     }
 
     public async Task CreateGistAsync()

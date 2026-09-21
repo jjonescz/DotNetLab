@@ -26,7 +26,7 @@ public sealed class ShareUrlWriter(NavigationManager navigation, CompilationSess
         return true;
     }
 
-    public Task SaveAsync()
+    public Task<string> SaveAsync()
     {
         var state = compilation.CaptureSavedState();
         var slug = Compressor.Compress(state);
@@ -35,16 +35,16 @@ public sealed class ShareUrlWriter(NavigationManager navigation, CompilationSess
             slug = shorthand;
         }
 
+        var url = navigation.BaseUri + "#" + slug;
         if (string.Equals(GetSlug(navigation.Uri), slug, StringComparison.Ordinal))
         {
-            return Task.CompletedTask;
+            return Task.FromResult(url);
         }
 
         _ignoreNextLocation = true;
         _appliedSlug = slug;
-        navigation.NavigateTo(navigation.BaseUri + "#" + slug,
-            new NavigationOptions { ReplaceHistoryEntry = true });
-        return Task.CompletedTask;
+        navigation.NavigateTo(url);
+        return Task.FromResult(url);
     }
 
     public string GetSlug(string uri)

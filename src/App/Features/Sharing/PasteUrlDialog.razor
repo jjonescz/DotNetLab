@@ -3,8 +3,9 @@
 @inject IState<PasteUrlDialogState> Ui
 @inject IDispatcher Dispatcher
 @inject IJSRuntime JS
+@implements IDisposable
 
-<FluentDialog @ref="_dialog" Class="lab-paste-dialog" Modal="true" OnStateChange="OnDialogStateChange">
+<FluentDialog @ref="_dialog" Class="lab-paste-dialog" Modal="false" OnStateChange="OnDialogStateChange">
     <FluentDialogBody>
         <TitleTemplate>Load from URL</TitleTemplate>
         <TitleActionTemplate>
@@ -23,6 +24,7 @@
             <div class="lab-paste-body">
                 <p class="lab-setting-hint">Paste a .NET Lab link.</p>
                 <FluentTextArea @bind-Value="_text"
+                                Immediate="true"
                                 Rows="3"
                                 AriaLabel="URL"
                                 Placeholder="https://…#…" />
@@ -37,6 +39,7 @@
     private bool _shown;
     private bool _hiding;
     private bool _opening;
+    private DotNetObjectReference<PasteUrlDialog>? _self;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -66,12 +69,14 @@
             return;
         }
 
-        _text = "";
+        _text = Ui.Value.InitialText;
         _shown = true;
         _opening = true;
         try
         {
             await _dialog.ShowAsync();
+            _self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("netLabDialog.bindClose", ".lab-paste-dialog", _self);
         }
         catch (JSException)
         {
@@ -105,14 +110,14 @@
         }
     }
 
-    private async Task OnDialogStateChange(DialogEventArgs args)
+    private void OnDialogStateChange(DialogEventArgs args)
     {
         if (args.State != DialogState.Closed)
         {
             return;
         }
 
-        if (_hiding || _opening || await IsNativeOpenAsync())
+        if (_hiding || _opening)
         {
             return;
         }
@@ -124,22 +129,31 @@
         }
     }
 
-    private async Task<bool> IsNativeOpenAsync()
-    {
-        try
-        {
-            return await JS.InvokeAsync<bool>("netLabDialog.isOpen", ".lab-paste-dialog");
-        }
-        catch (JSException)
-        {
-            return false;
-        }
-    }
-
     private async Task LoadAsync()
     {
         var text = _text;
         RequestClose();
         await Urls.ApplySlugOrUrlAsync(text);
+    }
+
+    [JSInvokable]
+    public void OnNativeClosed()
+    {
+        if (_hiding || _opening)
+        {
+            return;
+        }
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
+        {
+            Dispatcher.Dispatch(new ClosePasteUrlAction());
+        }
+    }
+
+    public void Dispose()
+    {
+        _self?.Dispose();
+        _self = null;
     }
 }

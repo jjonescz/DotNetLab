@@ -7,6 +7,8 @@ public sealed record PasteUrlDialogState
 {
     public bool IsOpen { get; init; }
 
+    public string InitialText { get; init; } = "";
+
     public PasteUrlDialogState()
     {
     }

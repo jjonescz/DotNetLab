@@ -362,5 +362,17 @@ window.netLabDialog = {
         const host = document.querySelector(selector);
         const dialog = host && host.shadowRoot && host.shadowRoot.querySelector("dialog");
         return !!(dialog && dialog.open);
+    },
+    bindClose: function (selector, helper) {
+        const host = document.querySelector(selector);
+        const dialog = host && host.shadowRoot && host.shadowRoot.querySelector("dialog");
+        if (!dialog || dialog._labCloseBound) {
+            return;
+        }
+
+        dialog._labCloseBound = true;
+        dialog.addEventListener("close", function () {
+            helper.invokeMethodAsync("OnNativeClosed");
+        });
     }
 };

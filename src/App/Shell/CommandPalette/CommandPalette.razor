@@ -2,6 +2,7 @@
 @inject DocumentFormatter Formatter
 @inject AppThemeService Theme
 @inject ShareService Share
+@inject ShareUrlSync Urls
 @inject LabPlatform Platform
 @inject IJSRuntime JS
 @inject IState<PreferencesState> Prefs
@@ -230,10 +231,15 @@
         return Task.CompletedTask;
     }
 
-    private Task OpenPasteUrl()
+    private async Task OpenPasteUrl()
     {
-        Dispatcher.Dispatch(new OpenPasteUrlAction());
-        return Task.CompletedTask;
+        var (applied, text) = await Urls.TryApplyFromClipboardAsync();
+        if (applied)
+        {
+            return;
+        }
+
+        Dispatcher.Dispatch(new OpenPasteUrlAction(text));
     }
 
     private Task OpenSettings()

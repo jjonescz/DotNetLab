@@ -38,12 +38,14 @@ public sealed class DialogUiReducerTests
     public void PasteUrl_OpenAndClose_AreIdempotent()
     {
         var closed = new PasteUrlDialogState();
-        var opened = PasteUrlDialogReducers.Reduce(closed, new OpenPasteUrlAction());
+        var opened = PasteUrlDialogReducers.Reduce(closed, new OpenPasteUrlAction("https://example/#razor"));
         opened.IsOpen.Should().BeTrue();
-        PasteUrlDialogReducers.Reduce(opened, new OpenPasteUrlAction()).Should().BeSameAs(opened);
+        opened.InitialText.Should().Be("https://example/#razor");
+        PasteUrlDialogReducers.Reduce(opened, new OpenPasteUrlAction("ignored")).Should().BeSameAs(opened);
 
         var closedAgain = PasteUrlDialogReducers.Reduce(opened, new ClosePasteUrlAction());
         closedAgain.IsOpen.Should().BeFalse();
+        closedAgain.InitialText.Should().BeEmpty();
         PasteUrlDialogReducers.Reduce(closedAgain, new ClosePasteUrlAction()).Should().BeSameAs(closedAgain);
     }
 }

@@ -77,6 +77,28 @@ public sealed class ShareUrlSync : IDisposable
 
     public Task SaveAsync() => _writer.SaveAsync();
 
+    public async Task<(bool Applied, string Text)> TryApplyFromClipboardAsync()
+    {
+        string text;
+        try
+        {
+            text = await _js.InvokeAsync<string>("navigator.clipboard.readText") ?? "";
+        }
+        catch (JSException ex)
+        {
+            _logger.LogDebug(ex, "Reading the clipboard failed.");
+            return (false, "");
+        }
+
+        if (!TryGetSavedStateFromShareText(text, out _))
+        {
+            return (false, text);
+        }
+
+        await ApplySlugOrUrlAsync(text);
+        return (true, text);
+    }
+
     public async Task ApplySlugOrUrlAsync(string text)
     {
         var slug = GetSlugFromClipboardText(text);
@@ -94,6 +116,20 @@ public sealed class ShareUrlSync : IDisposable
         text ??= "";
         var hashIndex = text.IndexOf('#');
         return hashIndex >= 0 ? text[(hashIndex + 1)..] : text.Trim();
+    }
+
+    public static bool TryGetSavedStateFromShareText(
+        string? text,
+        [NotNullWhen(true)] out SavedState? state)
+    {
+        var slug = GetSlugFromClipboardText(text);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            state = null;
+            return false;
+        }
+
+        return TryGetSavedStateFromSlug(slug, out state);
     }
 
     public static bool TryGetSavedStateFromSlug(

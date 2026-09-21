@@ -9,6 +9,7 @@
 @inject IDispatcher Dispatcher
 @inject IJSRuntime JS
 @inject IServiceProvider Services
+@implements IDisposable
 
 <FluentDialog @ref="_dialog" Class="lab-settings-dialog" Modal="false" OnStateChange="OnDialogStateChange">
     <FluentDialogBody>
@@ -139,6 +140,7 @@
     private bool _shown;
     private bool _hiding;
     private bool _opening;
+    private DotNetObjectReference<SettingsDialog>? _self;
     private IStoreLink? Store => Services.GetService<IStoreLink>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -180,6 +182,8 @@
         try
         {
             await _dialog.ShowAsync();
+            _self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("netLabDialog.bindClose", ".lab-settings-dialog", _self);
         }
         catch (JSException)
         {
@@ -213,14 +217,14 @@
         }
     }
 
-    private async Task OnDialogStateChange(DialogEventArgs args)
+    private void OnDialogStateChange(DialogEventArgs args)
     {
         if (args.State != DialogState.Closed)
         {
             return;
         }
 
-        if (_hiding || _opening || await IsNativeOpenAsync())
+        if (_hiding || _opening)
         {
             return;
         }
@@ -232,16 +236,25 @@
         }
     }
 
-    private async Task<bool> IsNativeOpenAsync()
+    [JSInvokable]
+    public void OnNativeClosed()
     {
-        try
+        if (_hiding || _opening)
         {
-            return await JS.InvokeAsync<bool>("netLabDialog.isOpen", ".lab-settings-dialog");
+            return;
         }
-        catch (JSException)
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
         {
-            return false;
+            Dispatcher.Dispatch(new CloseSettingsAction());
         }
+    }
+
+    public void Dispose()
+    {
+        _self?.Dispose();
+        _self = null;
     }
 
     private Task OnThemeChangedAsync(string theme) => Theme.SetPreferenceAsync(theme);

@@ -18,6 +18,16 @@ public sealed class UrlStateTests
         => ShareUrlSync.GetSlugFromClipboardText(text).Should().Be(expected);
 
     [TestMethod]
+    [DataRow("csharp", true)]
+    [DataRow("https://example/#razor", true)]
+    [DataRow("  cshtml  ", true)]
+    [DataRow("%%%not-a-slug%%%", false)]
+    [DataRow("", false)]
+    [DataRow(null, false)]
+    public void TryGetSavedStateFromShareText(string? text, bool expected)
+        => ShareUrlSync.TryGetSavedStateFromShareText(text, out _).Should().Be(expected);
+
+    [TestMethod]
     [DataRow("csharp")]
     [DataRow("razor")]
     [DataRow("cshtml")]
