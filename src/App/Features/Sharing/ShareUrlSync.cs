@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 using DotNetLab.Features.Preferences;
 using DotNetLab.Lab;
@@ -15,6 +16,7 @@ public sealed class ShareUrlSync : IDisposable
     private readonly ShareUrlWriter _writer;
     private readonly SettingsStore _settings;
     private readonly IJSRuntime _js;
+    private readonly INotificationService _notifications;
     private readonly ILogger<ShareUrlSync> _logger;
     private bool _loaded;
     private Task? _initialApply;
@@ -25,6 +27,7 @@ public sealed class ShareUrlSync : IDisposable
         ShareUrlWriter writer,
         SettingsStore settings,
         IJSRuntime js,
+        INotificationService notifications,
         ILogger<ShareUrlSync> logger)
     {
         _navigation = navigation;
@@ -32,6 +35,7 @@ public sealed class ShareUrlSync : IDisposable
         _writer = writer;
         _settings = settings;
         _js = js;
+        _notifications = notifications;
         _logger = logger;
         _navigation.LocationChanged += OnLocationChanged;
     }
@@ -87,15 +91,18 @@ public sealed class ShareUrlSync : IDisposable
         catch (JSException ex)
         {
             _logger.LogDebug(ex, "Reading the clipboard failed.");
+            await _notifications.ShowErrorToastAsync("No share link on the clipboard", lifetime: 2);
             return (false, "");
         }
 
         if (!TryGetSavedStateFromShareText(text, out _))
         {
+            await _notifications.ShowErrorToastAsync("No share link on the clipboard", lifetime: 2);
             return (false, text);
         }
 
         await ApplySlugOrUrlAsync(text);
+        await _notifications.ShowSuccessToastAsync("Opened share link", lifetime: 2);
         return (true, text);
     }
 

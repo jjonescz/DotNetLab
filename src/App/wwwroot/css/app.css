@@ -529,6 +529,59 @@ h1:focus {
     cursor: pointer;
 }
 
+fluent-toast-b {
+    --fontFamilyBase: var(--font-body);
+    --fontSizeBase300: 12px;
+    --lineHeightBase300: 1.3;
+    --fontWeightSemibold: 600;
+    --colorNeutralBackground1: var(--lab-panel-raised);
+    --colorNeutralForeground1: var(--lab-foreground);
+    --colorNeutralForeground2: var(--lab-muted);
+    --colorTransparentStroke: var(--lab-hairline);
+    --borderRadiusMedium: 8px;
+    --shadow8: var(--lab-shadow);
+    --colorStatusSuccessForeground1: var(--lab-success);
+    --colorStatusDangerForeground1: var(--lab-danger);
+    --colorStatusWarningForeground1: var(--lab-warning);
+    --colorBrandForeground1: var(--lab-muted);
+    --success: var(--lab-success);
+    --error: var(--lab-danger);
+    --warning: var(--lab-warning);
+}
+
+fluent-toast-b[intent="error"] {
+    --colorNeutralBackground1: var(--lab-error-bar);
+}
+
+fluent-toast-b::part(dialog) {
+    font-family: var(--font-body);
+    padding: 0.55rem 0.75rem;
+    min-width: 0;
+    max-width: min(18rem, calc(100vw - 1.5rem));
+    width: max-content;
+}
+
+fluent-toast-b [slot="title"] {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+fluent-toast-b [slot="media"] svg {
+    width: 16px;
+    height: 16px;
+}
+
+fluent-toast-b [slot="action"] {
+    color: var(--lab-muted);
+}
+
+fluent-toast-b [slot="action"] svg {
+    width: 16px;
+    height: 16px;
+}
+
 .lab-brand-title {
     margin: 0;
     font-family: var(--font-display);
