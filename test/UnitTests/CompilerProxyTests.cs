@@ -858,6 +858,52 @@ public class C
     }
 
     [TestMethod]
+    public async Task BclSourceGenerator_GeneratedRegex()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var source = """
+            using System.Text.RegularExpressions;
+            using System;
+
+            Console.Write(EmailValidator.IsValid("a@b.co"));
+
+            public static partial class EmailValidator
+            {
+                [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase)]
+                private static partial Regex EmailRegex();
+
+                public static bool IsValid(string input) => EmailRegex().IsMatch(input);
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
+        TestContext.WriteLine(cSharpText);
+        Assert.Contains("EmailRegex", cSharpText);
+
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        TestContext.WriteLine(ilText);
+        Assert.Contains("EmailRegex", ilText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            True
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
+    }
+
+    [TestMethod]
     public async Task Directives_Package()
     {
         var services = WorkerServices.CreateTest(TestContext);

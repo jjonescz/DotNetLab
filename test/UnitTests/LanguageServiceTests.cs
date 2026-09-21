@@ -417,6 +417,46 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Diagnostics_BclSourceGenerator()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    using System.Text.RegularExpressions;
+                    using System;
+
+                    Console.Write(EmailValidator.IsValid("a@b.co"));
+
+                    public static partial class EmailValidator
+                    {
+                        [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase)]
+                        private static partial Regex EmailRegex();
+
+                        public static bool IsValid(string input) => EmailRegex().IsMatch(input);
+                    }
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        TestContext.WriteLine(markers.Select(static m => m.ToDisplayString()).JoinToString("\n"));
+        markers.Should().NotContain(static m => m.GetCode() == "CS8795");
+    }
+
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest(TestContext);

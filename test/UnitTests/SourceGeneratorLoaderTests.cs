@@ -13,6 +13,13 @@ public sealed class SourceGeneratorLoaderTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
+    public void SdkAnalyzerAssemblies_IncludesRegexGenerator()
+    {
+        SdkAnalyzerAssemblies.All.Should().Contain(static a =>
+            a.Name == "System.Text.RegularExpressions.Generator");
+    }
+
+    [TestMethod]
     public void Load_DiscoversGeneratorWhenDependencyIsListedAfterIt()
     {
         var helperBytes = Emit("Helper", """
