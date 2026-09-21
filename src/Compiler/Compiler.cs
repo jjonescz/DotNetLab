@@ -51,7 +51,7 @@ public sealed class Compiler(
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
-    private int lastPackageGeneratorCount;
+    private int lastPackageAnalyzerAssembliesCount;
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
 
@@ -197,10 +197,12 @@ public sealed class Compiler(
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
+        
+        var packageAnalyzerAssemblies = Config.Instance.ConfigureAnalyzers();
+        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(SdkAnalyzerAssemblies.All);
 
-        analyzerAssemblies = Config.Instance.ConfigureAnalyzers();
-        var packageGenerators = PackageGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
-
+        var packageGenerators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+        
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
             logger.LogDebug("Using references:\n{References}", references.Assemblies
@@ -638,7 +640,9 @@ public sealed class Compiler(
                 .. packageGenerators,
             ];
 
-            if (generatorDriver is null || packageGenerators.Length > 0 || lastPackageGeneratorCount > 0)
+            if (generatorDriver is null || 
+                packageAnalyzerAssemblies.Length > 0 ||
+                lastPackageAnalyzerAssembliesCount > 0)
             {
                 generatorDriver = CSharpGeneratorDriver.Create(
                     generators: generators,
@@ -654,7 +658,7 @@ public sealed class Compiler(
                     .WithUpdatedAnalyzerConfigOptions(optionsProvider);
             }
 
-            lastPackageGeneratorCount = packageGenerators.Length;
+            lastPackageAnalyzerAssembliesCount = packageAnalyzerAssemblies.Length;
 
             generatorDriver = (CSharpGeneratorDriver)generatorDriver.RunGeneratorsAndUpdateCompilation(
                 initialCompilation,

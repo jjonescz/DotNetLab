@@ -8,7 +8,7 @@ using System.Runtime.Loader;
 
 namespace DotNetLab;
 
-internal static class PackageGeneratorLoader
+internal static class SourceGeneratorLoader
 {
 #pragma warning disable RS2008 // Compiler is not a shipped analyzer package
     private static readonly DiagnosticDescriptor AnalyzerLoadFailed = new(
@@ -35,7 +35,7 @@ internal static class PackageGeneratorLoader
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 #pragma warning restore RS2008
-
+    
     public static ImmutableArray<ISourceGenerator> Load(
         AssemblyLoadContext alc,
         ImmutableArray<RefAssembly> analyzerAssemblies,

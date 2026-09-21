@@ -8,7 +8,7 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 [TestClass]
-public sealed class PackageGeneratorLoaderTests
+public sealed class SourceGeneratorLoaderTests
 {
     public required TestContext TestContext { get; set; }
 
@@ -41,7 +41,7 @@ public sealed class PackageGeneratorLoaderTests
         var alc = new AssemblyLoadContext(nameof(Load_DiscoversGeneratorWhenDependencyIsListedAfterIt), isCollectible: true);
         try
         {
-            var generators = PackageGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+            var generators = SourceGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
 
             diagnostics.Should().BeEmpty();
             generators.Should().ContainSingle();

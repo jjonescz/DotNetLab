@@ -16,5 +16,16 @@
     <_RefAssemblyToEmbed Include="$(NuGetPackageRoot)\microsoft.aspnetcore.app.ref\$(AspNetCoreVersion)\ref\*\*.dll" />
     <EmbeddedResource Include="@(_RefAssemblyToEmbed)" WithCulture="false" LogicalName="%(FileName)" Link="Ref/%(FileName)%(Extension)" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <_SdkAnalyzerToEmbed
+      Include="$(NuGetPackageRoot)\microsoft.netcore.app.ref\$(NetCoreVersion)\analyzers\dotnet\cs\*.dll"
+      Exclude="$(NuGetPackageRoot)\microsoft.netcore.app.ref\$(NetCoreVersion)\analyzers\dotnet\cs\*.resources.dll" />
+    <EmbeddedResource
+      Include="@(_SdkAnalyzerToEmbed)"
+      WithCulture="false"
+      LogicalName="analyzer:%(FileName)"
+      Link="Analyzers/%(FileName)%(Extension)" />
+  </ItemGroup>
 
 </Project>
