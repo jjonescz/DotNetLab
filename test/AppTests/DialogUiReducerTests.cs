@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using DotNetLab.Features.Preferences;
-using DotNetLab.Features.Sharing;
 using DotNetLab.Shell.CommandPalette;
 
 namespace DotNetLab;
@@ -32,20 +31,5 @@ public sealed class DialogUiReducerTests
         var closedAgain = CommandPaletteReducers.Reduce(opened, new CloseCommandPaletteAction());
         closedAgain.IsOpen.Should().BeFalse();
         CommandPaletteReducers.Reduce(closedAgain, new CloseCommandPaletteAction()).Should().BeSameAs(closedAgain);
-    }
-
-    [TestMethod]
-    public void PasteUrl_OpenAndClose_AreIdempotent()
-    {
-        var closed = new PasteUrlDialogState();
-        var opened = PasteUrlDialogReducers.Reduce(closed, new OpenPasteUrlAction("https://example/#razor"));
-        opened.IsOpen.Should().BeTrue();
-        opened.InitialText.Should().Be("https://example/#razor");
-        PasteUrlDialogReducers.Reduce(opened, new OpenPasteUrlAction("ignored")).Should().BeSameAs(opened);
-
-        var closedAgain = PasteUrlDialogReducers.Reduce(opened, new ClosePasteUrlAction());
-        closedAgain.IsOpen.Should().BeFalse();
-        closedAgain.InitialText.Should().BeEmpty();
-        PasteUrlDialogReducers.Reduce(closedAgain, new ClosePasteUrlAction()).Should().BeSameAs(closedAgain);
     }
 }

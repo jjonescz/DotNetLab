@@ -231,16 +231,8 @@
         return Task.CompletedTask;
     }
 
-    private async Task OpenPasteUrl()
-    {
-        var (applied, text) = await Urls.TryApplyFromClipboardAsync();
-        if (applied)
-        {
-            return;
-        }
-
-        Dispatcher.Dispatch(new OpenPasteUrlAction(text));
-    }
+    private async Task PasteUrlAsync()
+        => await Urls.TryApplyFromClipboardAsync();
 
     private Task OpenSettings()
     {
@@ -285,8 +277,7 @@
         yield return new("Compile", "compile run build", Platform.SaveChord, RequestCompile);
         yield return new("Format document", "format indent", "", () => Formatter.FormatActiveDocument());
         yield return new("Copy link", "copy share url link", "", Share.CopyLinkAsync);
-        yield return new("Create gist", "gist github share", "", Share.CreateGistAsync);
-        yield return new("Load from URL", "paste gist url load", "", OpenPasteUrl);
+        yield return new("Paste URL", "paste share url load", "", PasteUrlAsync);
         yield return new("Settings", "settings preferences options", "", OpenSettings);
         yield return new("Toggle word wrap", "wrap word-wrap", "Alt+Z", () =>
         {

@@ -249,27 +249,15 @@ fluent-dialog::part(dialog) {
     font-family: var(--font-body);
 }
 
-fluent-dialog.lab-settings-dialog::part(dialog),
-fluent-dialog.lab-paste-dialog::part(dialog) {
+fluent-dialog.lab-settings-dialog::part(dialog) {
     display: flex;
     flex-direction: column;
     border-radius: 0;
     overflow: hidden;
-}
-
-fluent-dialog.lab-settings-dialog::part(dialog) {
     width: min(46rem, calc(100vw - 1.5rem)) !important;
     max-width: min(46rem, calc(100vw - 1.5rem)) !important;
     height: min(52rem, calc(100vh - 2.5rem));
     max-height: min(52rem, calc(100vh - 2.5rem));
-}
-
-fluent-dialog.lab-paste-dialog::part(dialog) {
-    width: min(28rem, calc(100vw - 1.5rem)) !important;
-    max-width: min(28rem, calc(100vw - 1.5rem)) !important;
-    height: fit-content !important;
-    max-height: min(80vh, calc(100vh - 2.5rem));
-    min-height: 0 !important;
 }
 
 fluent-dialog.lab-settings-dialog fluent-dialog-body {
@@ -280,15 +268,7 @@ fluent-dialog.lab-settings-dialog fluent-dialog-body {
     grid-template-rows: auto minmax(0, 1fr) auto !important;
 }
 
-fluent-dialog.lab-paste-dialog fluent-dialog-body {
-    display: grid !important;
-    grid-template-rows: auto auto auto !important;
-    height: auto;
-    flex: none;
-}
-
-fluent-dialog.lab-settings-dialog fluent-dialog-body::part(title),
-fluent-dialog.lab-paste-dialog fluent-dialog-body::part(title) {
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(title) {
     border-bottom: 0;
     padding: 1.15rem 1.25rem 0.15rem;
     font-size: 18px;
@@ -296,8 +276,7 @@ fluent-dialog.lab-paste-dialog fluent-dialog-body::part(title) {
     position: static;
 }
 
-fluent-dialog.lab-settings-dialog fluent-dialog-body::part(content),
-fluent-dialog.lab-paste-dialog fluent-dialog-body::part(content) {
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(content) {
     padding: 1.15rem 1.25rem 1.6rem;
     display: flex;
     flex-direction: column;
@@ -309,8 +288,7 @@ fluent-dialog.lab-paste-dialog fluent-dialog-body::part(content) {
     scrollbar-color: var(--lab-hairline) transparent;
 }
 
-fluent-dialog.lab-settings-dialog fluent-dialog-body::part(actions),
-fluent-dialog.lab-paste-dialog fluent-dialog-body::part(actions) {
+fluent-dialog.lab-settings-dialog fluent-dialog-body::part(actions) {
     border-top: 1px solid var(--lab-hairline);
     padding: 0.75rem 1.1rem 1rem;
     justify-content: flex-end;
@@ -323,13 +301,7 @@ fluent-dialog.lab-paste-dialog fluent-dialog-body::part(actions) {
 .lab-settings-dialog fluent-select,
 .lab-settings-dialog fluent-dropdown,
 .lab-settings-dialog fluent-text-input,
-.lab-settings-dialog fluent-textarea,
-.lab-paste-dialog fluent-button,
-.lab-paste-dialog fluent-anchor-button,
-.lab-paste-dialog fluent-select,
-.lab-paste-dialog fluent-dropdown,
-.lab-paste-dialog fluent-text-input,
-.lab-paste-dialog fluent-textarea {
+.lab-settings-dialog fluent-textarea {
     --borderRadiusSmall: 0;
     --borderRadiusMedium: 0;
     --borderRadiusLarge: 0;

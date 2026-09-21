@@ -46,13 +46,6 @@ public sealed class ShareService
         await WriteClipboardAsync(url);
     }
 
-    public async Task CreateGistAsync()
-    {
-        await _persist.SnapshotEditorsAsync();
-        await WriteClipboardAsync(AppLinks.GistSnapshot(_compiler.Value, _documents));
-        await OpenExternalAsync(AppLinks.GistNew);
-    }
-
     public Task ReportIssueAsync() => OpenExternalAsync(AppLinks.NewIssue(_compiler.Value, _prefs.Value, _documents));
 
     public async Task OpenExternalAsync(string url)

@@ -48,16 +48,4 @@ public sealed class UrlStateTests
     [TestMethod]
     public void TryGetSavedStateFromSlug_Garbage()
         => ShareUrlSync.TryGetSavedStateFromSlug("%%%not-a-slug%%%", out _).Should().BeFalse();
-
-    [TestMethod]
-    [DataRow("abcdef12", true, "abcdef12")]
-    [DataRow("https://gist.github.com/user/0123456789abcdef0123456789abcdef", true, "0123456789abcdef0123456789abcdef")]
-    [DataRow("https://gist.githubusercontent.com/user/deadbeef/raw", true, "deadbeef")]
-    [DataRow("https://github.com/user/repo", false, "")]
-    [DataRow("", false, "")]
-    public void TryParseGistId(string url, bool expected, string gistId)
-    {
-        AppLinks.TryParseGistId(url, out var parsed).Should().Be(expected);
-        parsed.Should().Be(gistId);
-    }
 }

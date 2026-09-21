@@ -31,24 +31,20 @@
     </FluentMenu>
 
     <div class="lab-brand-share">
-        <FluentMenu>
-            <FluentMenuButton Appearance="ButtonAppearance.Transparent"
-                              Size="ButtonSize.Small"
-                              Color="@BrandForeground"
-                              IconStart="@(new Icons.Regular.Size20.Share())">
-                Share
-            </FluentMenuButton>
-            <FluentMenuList>
-                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.Link())" Label="Copy link" OnClick="Share.CopyLinkAsync" />
-                <FluentMenuItem IconStart="@(new Icons.Regular.Size20.CloudArrowUp())" Label="Create gist" OnClick="Share.CreateGistAsync" />
-            </FluentMenuList>
-        </FluentMenu>
+        <FluentButton Appearance="ButtonAppearance.Transparent"
+                      Size="ButtonSize.Small"
+                      Color="@BrandForeground"
+                      AriaLabel="Share"
+                      IconStart="@(new Icons.Regular.Size20.Share())"
+                      OnClick="Share.CopyLinkAsync">
+            Share
+        </FluentButton>
         <FluentButton Appearance="ButtonAppearance.Transparent"
                       Size="ButtonSize.Small"
                       Color="@BrandForeground"
                       AriaLabel="Paste"
                       IconStart="@(new Icons.Regular.Size20.ClipboardPaste())"
-                      OnClick="OpenPaste">
+                      OnClick="PasteUrlAsync">
             Paste
         </FluentButton>
     </div>
@@ -108,16 +104,8 @@
     private Task ToggleThemeAsync()
         => Theme.SetPreferenceAsync(Prefs.Value.ResolvedDark ? "light" : "dark");
 
-    private async Task OpenPaste()
-    {
-        var (applied, text) = await Urls.TryApplyFromClipboardAsync();
-        if (applied)
-        {
-            return;
-        }
-
-        Dispatcher.Dispatch(new OpenPasteUrlAction(text));
-    }
+    private async Task PasteUrlAsync()
+        => await Urls.TryApplyFromClipboardAsync();
 
     private void OpenSettings() => Dispatcher.Dispatch(new OpenSettingsAction());
 }
