@@ -26,6 +26,7 @@ public sealed class AppPersistence : IAsyncDisposable
     private readonly PersistenceQueue _persistence;
     private bool _suppressUrlPersist;
     private bool _settingsReady;
+    private bool _urlHydrated;
     private bool _compilerWasLoading;
 
     public AppPersistence(
@@ -64,6 +65,8 @@ public sealed class AppPersistence : IAsyncDisposable
     public bool EditingUserPreferences { get; set; }
 
     public void MarkReady() => _settingsReady = true;
+
+    public void MarkUrlHydrated() => _urlHydrated = true;
 
     public async Task LoadSettingsAsync()
     {
@@ -158,7 +161,7 @@ public sealed class AppPersistence : IAsyncDisposable
 
     private async Task PersistQueuedAsync(PersistKind kind)
     {
-        if ((kind & PersistKind.Url) != 0 && !_suppressUrlPersist)
+        if ((kind & PersistKind.Url) != 0 && _urlHydrated && !_suppressUrlPersist)
         {
             await _urls.SaveAsync();
         }
@@ -180,14 +183,14 @@ public sealed class AppPersistence : IAsyncDisposable
 
     public async Task PersistUrlAsync(bool snapshot = false)
     {
+        if (!_urlHydrated || _suppressUrlPersist)
+        {
+            return;
+        }
+
         if (snapshot)
         {
             await SnapshotEditorsAsync();
-        }
-
-        if (_suppressUrlPersist)
-        {
-            return;
         }
 
         await _persistence.EnqueueAsync(PersistKind.Url);

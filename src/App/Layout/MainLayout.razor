@@ -5,80 +5,55 @@
 @inject LabPlatform Platform
 @inject LabEnvironment Environment
 @inject IDispatcher Dispatcher
-@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="lab-shell">
     <div class="lab-app">
-        @if (_ready)
+        <header aria-label="Application commands">
+            <LabBrandBar />
+            <LabCommandBar />
+        </header>
+        @if (_invalidShareUrl)
         {
-            <header aria-label="Application commands">
-                <LabBrandBar />
-                <LabCommandBar />
-            </header>
-            @if (_invalidShareUrl)
-            {
-                <div class="lab-share-url-error" role="status">
-                    <div>
-                        <div class="lab-share-url-error-title">Could not open this share link.</div>
-                        <div>The link was invalid. Loaded the C# template instead.</div>
-                    </div>
-                    <button type="button" class="lab-share-url-error-dismiss" @onclick="DismissInvalidShareUrl">Dismiss</button>
+            <div class="lab-share-url-error" role="status">
+                <div>
+                    <div class="lab-share-url-error-title">Could not open this share link.</div>
+                    <div>The link was invalid. Loaded the C# template instead.</div>
                 </div>
-            }
-            @Body
-            <SettingsDialog />
-            <CommandPalette />
-            <PasteUrlDialog />
+                <button type="button" class="lab-share-url-error-dismiss" @onclick="DismissInvalidShareUrl">Dismiss</button>
+            </div>
         }
+        @Body
+        <SettingsDialog />
+        <CommandPalette />
+        <PasteUrlDialog />
     </div>
 </div>
 
 <FluentProviders />
 
 @code {
-    private bool _ready;
-    private bool _splashHidden;
     private bool _invalidShareUrl;
 
     protected override void OnInitialized()
     {
         Urls.InvalidShareUrl += OnInvalidShareUrl;
+        Urls.ApplyFromNavigationUri();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            try
-            {
-                Dispatcher.Dispatch(new SeedPreferencesAction(Environment.IsDevelopment));
-                await Theme.InitializeAsync();
-                await Platform.InitializeAsync();
-                Dispatcher.Dispatch(new InitializeUpdatesAction());
-                await Persist.LoadSettingsAsync();
-                await Urls.LoadFromUriAsync();
-            }
-            finally
-            {
-                _ready = true;
-                StateHasChanged();
-            }
-
             return;
         }
 
-        if (_ready && !_splashHidden)
-        {
-            _splashHidden = true;
-            try
-            {
-                await JS.InvokeVoidAsync("netLabHideSplash");
-            }
-            catch (JSException)
-            {
-            }
-        }
+        Dispatcher.Dispatch(new SeedPreferencesAction(Environment.IsDevelopment));
+        await Theme.InitializeAsync();
+        await Platform.InitializeAsync();
+        Dispatcher.Dispatch(new InitializeUpdatesAction());
+        await Persist.LoadSettingsAsync();
+        await Urls.LoadFromUriAsync();
     }
 
     private void OnInvalidShareUrl()

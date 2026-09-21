@@ -72,18 +72,23 @@ window.netLabTheme = {
     },
     applyDocument: function (isDark) {
         const theme = isDark ? "dark" : "light";
-        document.documentElement.setAttribute("data-theme", theme);
-        document.documentElement.setAttribute("theme", theme);
-        document.documentElement.style.colorScheme = theme;
-        if (document.body) {
+        const root = document.documentElement;
+        if (root.getAttribute("data-theme") !== theme) {
+            root.setAttribute("data-theme", theme);
+            root.setAttribute("theme", theme);
+            root.style.colorScheme = theme;
+        }
+
+        if (document.body && document.body.getAttribute("data-theme") !== theme) {
             document.body.setAttribute("data-theme", theme);
         }
 
         // Fluent UI 5 buttons use --colorNeutralForeground2 from its own
         // palette (system/dark by default). Keep that in sync with the lab.
         const setMode = window.Blazor && window.Blazor.theme && window.Blazor.theme.setThemeMode;
-        if (typeof setMode === "function") {
+        if (typeof setMode === "function" && window.netLabTheme._fluentMode !== theme) {
             setMode(theme);
+            window.netLabTheme._fluentMode = theme;
         }
     },
     listenSystem: function (dotNet) {

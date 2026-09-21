@@ -17,6 +17,7 @@ public sealed class ShareUrlSync : IDisposable
     private readonly IJSRuntime _js;
     private readonly ILogger<ShareUrlSync> _logger;
     private bool _loaded;
+    private Task? _initialApply;
 
     public ShareUrlSync(
         NavigationManager navigation,
@@ -37,17 +38,41 @@ public sealed class ShareUrlSync : IDisposable
 
     public event Action? InvalidShareUrl;
 
-    public async Task LoadFromUriAsync()
+    public void ApplyFromNavigationUri()
     {
-        var slug = await ReadBrowserHashAsync();
+        var slug = _writer.GetSlug(_navigation.Uri);
         if (string.IsNullOrWhiteSpace(slug))
         {
-            slug = _writer.GetSlug(_navigation.Uri);
+            return;
         }
 
-        _loaded = true;
-        var empty = string.IsNullOrWhiteSpace(slug);
-        await ApplySlugAsync(empty ? "csharp" : slug, loadPreferences: empty);
+        _initialApply = ApplySlugAsync(slug);
+    }
+
+    public async Task LoadFromUriAsync()
+    {
+        try
+        {
+            if (_initialApply is not null)
+            {
+                await _initialApply;
+                return;
+            }
+
+            var slug = await ReadBrowserHashAsync();
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                slug = _writer.GetSlug(_navigation.Uri);
+            }
+
+            var empty = string.IsNullOrWhiteSpace(slug);
+            await ApplySlugAsync(empty ? "csharp" : slug, loadPreferences: empty);
+        }
+        finally
+        {
+            _loaded = true;
+            _persist.MarkUrlHydrated();
+        }
     }
 
     public Task SaveAsync() => _writer.SaveAsync();

@@ -819,26 +819,6 @@ html[data-theme="light"] .loading-splash {
     color: var(--lab-foreground);
 }
 
-html:not(.app-ready),
-html:not(.app-ready) body {
-    background-color: var(--lab-brand);
-}
-
-html[data-theme="light"]:not(.app-ready),
-html[data-theme="light"]:not(.app-ready) body {
-    background-color: #fff;
-}
-
-html.app-ready .loading-splash {
-    display: none;
-    pointer-events: none;
-}
-
-html.app-ready,
-html.app-ready body {
-    background-color: var(--lab-background);
-}
-
 .loading-progress {
     position: relative;
     display: block;
