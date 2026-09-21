@@ -84,14 +84,9 @@ public sealed class LabCodeEditorSession
         set => _view = value;
     }
 
-    // First paint, then only when editor inputs change — not on every parent render.
-    public bool ShouldRender(string value, string language, string? modelUri, bool readOnly, bool wordWrap)
-        => !_ready
-           || !string.Equals(_lastValue, value, StringComparison.Ordinal)
-           || !string.Equals(_lastLanguage, language, StringComparison.Ordinal)
-           || !string.Equals(_lastModelUri, modelUri, StringComparison.Ordinal)
-           || _lastReadOnly != readOnly
-           || _lastWordWrap != wordWrap;
+    // First paint only. Tab switches change Value/Language/ModelUri; applying
+    // those through a re-render remounts Monaco instead of swapping the model.
+    public bool ShouldRender() => !_ready;
 
     public StandaloneEditorConstructionOptions ConstructionOptions()
     {
@@ -371,6 +366,7 @@ public sealed class LabCodeEditorSession
 
         try
         {
+            _suppressChange = true;
             var existing = await Global.GetModel(_js, modelUri);
             TextModel model;
             if (existing is null)
@@ -383,15 +379,7 @@ public sealed class LabCodeEditorSession
                 var text = await model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
                 if (!string.Equals(text, _view.Value, StringComparison.Ordinal))
                 {
-                    _suppressChange = true;
-                    try
-                    {
-                        await model.SetValue(_view.Value);
-                    }
-                    finally
-                    {
-                        _suppressChange = false;
-                    }
+                    await model.SetValue(_view.Value);
                 }
             }
 
@@ -401,6 +389,10 @@ public sealed class LabCodeEditorSession
         catch (JSException ex)
         {
             _logger.LogWarning(ex, "Attaching the named editor model failed.");
+        }
+        finally
+        {
+            _suppressChange = false;
         }
     }
 

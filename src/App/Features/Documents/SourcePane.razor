@@ -71,8 +71,7 @@
         }
     </ItemLabel>
     <ItemContent>
-        <LabCodeEditor @key="@($"source-{context}")"
-                       FileName="@context"
+        <LabCodeEditor FileName="@context"
                        Value="@Documents.Sources.GetValueOrDefault(context, "")"
                        Language="@DocumentTypes.LanguageFor(context)"
                        ModelUri="@Documents.UriFor(context)"

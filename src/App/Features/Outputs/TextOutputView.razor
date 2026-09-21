@@ -9,8 +9,7 @@
         Displaying cached output.
     </div>
 }
-<LabCodeEditor @key="@($"output-{Output.Id}")"
-               Value="@Outputs.GetOutput(Output)"
+<LabCodeEditor Value="@Outputs.GetOutput(Output)"
                Language="@Outputs.OutputLanguage(Output)"
                ModelUri="@Outputs.OutputUriFor(Output)"
                ReadOnly="true"

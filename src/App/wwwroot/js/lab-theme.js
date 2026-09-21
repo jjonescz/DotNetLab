@@ -368,12 +368,18 @@ window.netLabMonaco = {
         };
     },
     applyTheme: function (isDark) {
+        const name = isDark ? "netlab-dark" : "netlab-light";
+        if (window.netLabMonaco._theme === name) {
+            return;
+        }
+
         window.netLabMonaco.defineTheme();
         if (!window.monaco || !window.monaco.editor) {
             return;
         }
 
-        window.monaco.editor.setTheme(isDark ? "netlab-dark" : "netlab-light");
+        window.netLabMonaco._theme = name;
+        window.monaco.editor.setTheme(name);
         window.netLabMonaco.styleMenus();
     },
     styleMenus: function () {

@@ -7,7 +7,7 @@
      data-lab-pane="@PaneId">
     @foreach (var group in _layout.Groups)
     {
-        <div class="lab-group @(IsGroupFocused(group) ? "lab-group-focused" : null)">
+        <div @key="group.Id" class="lab-group @(IsGroupFocused(group) ? "lab-group-focused" : null)">
             <EditorTabBar Layout="_layout"
                           Group="group"
                           PaneId="@PaneId"

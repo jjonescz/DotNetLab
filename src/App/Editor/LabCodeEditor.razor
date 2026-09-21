@@ -40,11 +40,10 @@
 
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 
-    // Parent panes re-render on cursor, compile, and Fluxor updates. Re-diffing
-    // StandaloneCodeEditor would reset Monaco's DOM; after init, content and
-    // options are applied through the session's Monaco APIs instead.
-    protected override bool ShouldRender()
-        => _session.ShouldRender(Value, Language, ModelUri, ReadOnly, WordWrap);
+    // Parent panes re-render on tab, cursor, compile, and Fluxor updates.
+    // Re-diffing StandaloneCodeEditor remounts Monaco; after init, content
+    // and options go through the session APIs instead.
+    protected override bool ShouldRender() => _session.ShouldRender();
 
     protected override Task OnParametersSetAsync()
     {

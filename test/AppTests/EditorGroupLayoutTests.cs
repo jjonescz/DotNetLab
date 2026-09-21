@@ -7,6 +7,19 @@ namespace DotNetLab;
 public sealed class EditorGroupLayoutTests
 {
     [TestMethod]
+    public void Select_KeepsTheSameGroupId()
+    {
+        var layout = Create("Program.cs", "File1.cs");
+        var id = layout.Groups[0].Id;
+
+        layout.Select(id, "File1.cs");
+
+        layout.Groups.Should().ContainSingle();
+        layout.Groups[0].Id.Should().Be(id);
+        layout.Groups[0].Active.Should().Be("File1.cs");
+    }
+
+    [TestMethod]
     public void SyncFromItems_AddsAndRemoves()
     {
         var layout = Create("Program.cs", "File1.cs");
