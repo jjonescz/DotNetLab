@@ -37,6 +37,11 @@ public sealed class RemoteCompilationCache(HttpClient client, ILogger<RemoteComp
         try
         {
             using var response = await client.PostAsync($"{Endpoint}/get/{key}", content: null, cancellationToken);
+            if (response.StatusCode is HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
             response.EnsureSuccessStatusCode();
 
             if (!response.Headers.TryGetValues("X-Timestamp", out var values) ||

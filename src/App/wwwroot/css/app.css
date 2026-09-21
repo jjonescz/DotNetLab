@@ -81,7 +81,10 @@ fluent-menu-list[popover] {
     box-shadow: var(--lab-shadow) !important;
     padding: 4px !important;
     font-family: var(--font-body) !important;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    max-height: min(20rem, calc(100dvh - 8rem)) !important;
     align-items: stretch;
     width: max-content !important;
     min-width: max-content !important;

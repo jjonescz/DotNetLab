@@ -1162,9 +1162,10 @@ internal sealed partial class MockHttpMessageHandler : HttpClientHandler
                 Groups: [_, { ValueSpan: var fileName }],
             })
         {
-            if (fileName.EndsWith(".wasm", StringComparison.Ordinal))
+            if (fileName.EndsWith(".wasm", StringComparison.Ordinal) ||
+                fileName.EndsWith(".dll", StringComparison.Ordinal))
             {
-                var assemblyName = fileName[..^5];
+                var assemblyName = Path.GetFileNameWithoutExtension(fileName);
                 var assemblyPath = Path.Join(directory, assemblyName) + ".dll";
 
                 if (!File.Exists(assemblyPath))

@@ -155,6 +155,20 @@ public sealed class CompilationCacheTests
         logger.Errors.Should().ContainSingle(message => message.Contains("Failed to store"));
     }
 
+    [TestMethod]
+    public async Task RemoteGet_NotFoundIsMiss()
+    {
+        var handler = new StatusHandler(HttpStatusCode.NotFound);
+        using var client = new HttpClient(handler);
+        var logger = new ListLogger();
+        var cache = new RemoteCompilationCache(client, logger);
+
+        var result = await cache.GetAsync("v1-abc", CancellationToken.None);
+
+        result.Should().BeNull();
+        logger.Errors.Should().BeEmpty();
+    }
+
     private sealed class FakeStore : ICompilationCacheStore
     {
         public Dictionary<string, CachedCompilation> Items { get; } = new(StringComparer.Ordinal);

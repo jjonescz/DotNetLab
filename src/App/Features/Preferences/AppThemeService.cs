@@ -24,7 +24,7 @@ public sealed class AppThemeService : IAsyncDisposable
     public async Task InitializeAsync()
     {
         var preference = ThemeDefinition.NormalizePreference(
-            await InvokeAsync("netThemeDefinition.readPreference", "dark"));
+            await InvokeAsync("netLabTheme.readPreference", "dark"));
         var dark = await ResolveDarkAsync(preference);
         await ApplyAsync(preference, dark, persist: false);
 
@@ -36,7 +36,7 @@ public sealed class AppThemeService : IAsyncDisposable
         _self = DotNetObjectReference.Create(this);
         try
         {
-            await _js.InvokeVoidAsync("netThemeDefinition.listenSystem", _self);
+            await _js.InvokeVoidAsync("netLabTheme.listenSystem", _self);
             _listening = true;
         }
         catch (JSException ex)
@@ -67,7 +67,7 @@ public sealed class AppThemeService : IAsyncDisposable
     {
         try
         {
-            await _js.InvokeVoidAsync("netThemeDefinition.stopListening");
+            await _js.InvokeVoidAsync("netLabTheme.stopListening");
         }
         catch (JSException)
         {
@@ -82,10 +82,10 @@ public sealed class AppThemeService : IAsyncDisposable
     {
         try
         {
-            await _js.InvokeVoidAsync("netThemeDefinition.applyDocument", dark);
+            await _js.InvokeVoidAsync("netLabTheme.applyDocument", dark);
             if (persist)
             {
-                await _js.InvokeVoidAsync("netThemeDefinition.persist", preference);
+                await _js.InvokeVoidAsync("netLabTheme.persist", preference);
             }
         }
         catch (JSException ex)
@@ -109,7 +109,7 @@ public sealed class AppThemeService : IAsyncDisposable
     {
         try
         {
-            return await _js.InvokeAsync<bool>("netThemeDefinition.resolveDark", preference);
+            return await _js.InvokeAsync<bool>("netLabTheme.resolveDark", preference);
         }
         catch (JSException ex)
         {

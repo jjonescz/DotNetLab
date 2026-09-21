@@ -3,7 +3,9 @@ using DotNetLab.Features.Outputs;
 using DotNetLab.Features.Updates;
 using DotNetLab.Infrastructure.Browser;
 using DotNetLab.Infrastructure.Worker;
+using DotNetLab.Lab;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.Versioning;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -27,5 +29,9 @@ file sealed class WebAssemblyWorkerConfigurer : IWorkerConfigurer
 {
     public void ConfigureWorkerServices(ServiceCollection services)
     {
+        services.Configure<CompilerProxyOptions>(static options =>
+        {
+            options.AssembliesAreAlwaysInDllFormat = true;
+        });
     }
 }
