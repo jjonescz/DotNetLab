@@ -18,7 +18,7 @@ public sealed class SettingsStore(IJSRuntime js, ILogger<SettingsStore> logger)
         {
             var values = await js.InvokeAsync<Dictionary<string, string?>>(
                 "netLabPrefs.readSettings",
-                SettingsStorageSchema.Keys);
+                new object[] { SettingsStorageSchema.Keys });
             var snapshot = SettingsStorageSchema.Read(values);
             if (snapshot?.CompilationPreferences is { } preferences)
             {
