@@ -59,8 +59,8 @@ internal static class SourceGeneratorLoader
             {
                 var assembly = GetOrLoadAssembly(alc, analyzer);
 
-                // A #:package analyzer can match a built-in analyzer by name and version,
-                // e.g. #:package System.Text.Json. Skip it so the generator runs once.
+                // The same assembly can appear twice in this list.
+                // Skip it so its generators run once.
                 if (loaded.Contains(assembly))
                 {
                     logger.LogWarning("Analyzer '{Name}' was already loaded, skipping duplicate.", analyzer.Name);

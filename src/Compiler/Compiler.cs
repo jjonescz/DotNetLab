@@ -199,7 +199,18 @@ public sealed class Compiler(
         references = Config.Instance.ConfigureReferences(references);
         
         var packageAnalyzerAssemblies = Config.Instance.ConfigureAnalyzers();
-        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(SdkAnalyzerAssemblies.All);
+        var sdkAnalyzers = SdkAnalyzerAssemblies.All;
+        
+        // A #:package can ship the same generator as the ref pack, e.g. System.Text.Json.
+        // Keep the ref-pack copy so the versions do not conflict.
+        var sdkNames = new HashSet<string>(
+            sdkAnalyzers.Select(static a => a.Name),
+            StringComparer.OrdinalIgnoreCase);
+        
+        packageAnalyzerAssemblies = packageAnalyzerAssemblies
+            .RemoveAll(a => sdkNames.Contains(a.Name));
+        
+        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
 
         var packageGenerators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
         
