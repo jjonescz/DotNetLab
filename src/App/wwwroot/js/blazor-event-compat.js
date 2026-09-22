@@ -13,6 +13,8 @@
         // Skip those registrations. Re-registering overflowchange without an
         // alias makes Blazor listen for Chrome's native overflowchange and can
         // loop with Fluent layout.
+        // Flag first: assigning registerCustomEventType re-enters this setter.
+        blazor.__net11CustomEventPatch = true;
         blazor.registerCustomEventType = function (name, options) {
             if (options && name === options.browserEventName) {
                 return;
@@ -20,7 +22,6 @@
 
             return original.call(this, name, options);
         };
-        blazor.__net11CustomEventPatch = true;
         return true;
     }
 

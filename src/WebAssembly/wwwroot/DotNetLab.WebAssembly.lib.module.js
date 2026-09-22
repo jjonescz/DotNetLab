@@ -7,13 +7,19 @@ export async function afterStarted(blazor) {
     // When a new service worker version is activated
     // (after user clicks "Refresh" which sends 'skipWaiting' message to the worker),
     // reload the page so the new service worker is used to load all the assets.
-    // Skip the first controller — registering during splash would otherwise
-    // reload the page and flicker the tab title.
-    const hadController = !!navigator.serviceWorker.controller;
+    // Skip the first controllerchange when we registered without a controller —
+    // splash registration would otherwise reload and flicker the tab title —
+    // but still reload on later updates.
+    let skipNextControllerChange = !navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         // Prevent infinite refresh loop when "Update on Reload" is enabled in DevTools.
-        if (refreshing || !hadController) {
+        if (refreshing) {
+            return;
+        }
+
+        if (skipNextControllerChange) {
+            skipNextControllerChange = false;
             return;
         }
 

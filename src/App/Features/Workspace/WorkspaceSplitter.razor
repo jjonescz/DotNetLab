@@ -10,6 +10,9 @@
      tabindex="0"
      aria-label="Resize source and output panes"
      aria-orientation="@(Prefs.Value.Stacked ? "horizontal" : "vertical")"
+     aria-valuemin="25"
+     aria-valuemax="75"
+     aria-valuenow="@((int)Math.Round(Layout.Value.Split))"
      @onpointerdown="OnPointerDown"
      @onpointerdown:preventDefault
      @onpointerup="OnPointerUp"
