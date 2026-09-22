@@ -55,6 +55,11 @@
 
     .lab-workspace:not(.stacked) .lab-pane.primary {
         width: 100%;
-        height: 50%;
+        height: var(--pane-split, 50%);
+    }
+
+    .lab-workspace:not(.stacked).resizing,
+    .lab-workspace:not(.stacked).resizing ::deep * {
+        cursor: row-resize !important;
     }
 }

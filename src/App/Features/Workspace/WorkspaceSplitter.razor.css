@@ -58,3 +58,24 @@
 .lab-splitter.is-resizing::after {
     background: var(--lab-primary);
 }
+
+@media (max-width: 767px) {
+    .lab-splitter:not(.is-stacked) {
+        width: auto;
+        height: 7px;
+        cursor: row-resize;
+        border-left: none;
+        border-right: none;
+        border-top: 1px solid var(--lab-hairline);
+        border-bottom: 1px solid var(--lab-hairline);
+    }
+
+    .lab-splitter:not(.is-stacked)::before {
+        inset: -5px 0;
+    }
+
+    .lab-splitter:not(.is-stacked)::after {
+        width: 100%;
+        height: 1px;
+    }
+}

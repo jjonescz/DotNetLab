@@ -26,7 +26,7 @@ window.netLabLayout = {
                 return;
             }
 
-            const stacked = workspace.classList.contains("stacked");
+            const stacked = getComputedStyle(workspace).flexDirection === "column";
             let percent = stacked
                 ? ((y - rect.top) / rect.height) * 100
                 : ((x - rect.left) / rect.width) * 100;
