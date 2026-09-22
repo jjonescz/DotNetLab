@@ -57,7 +57,17 @@ internal static class SourceGeneratorLoader
         {
             try
             {
-                loaded.Add(GetOrLoadAssembly(alc, analyzer));
+                var assembly = GetOrLoadAssembly(alc, analyzer);
+
+                // A #:package analyzer can match a built-in analyzer by name and version,
+                // e.g. #:package System.Text.Json. Skip it so the generator runs once.
+                if (loaded.Contains(assembly))
+                {
+                    logger.LogWarning("Analyzer '{Name}' was already loaded, skipping duplicate.", analyzer.Name);
+                    continue;
+                }
+                
+                loaded.Add(assembly);
             }
             catch (Exception ex)
             {

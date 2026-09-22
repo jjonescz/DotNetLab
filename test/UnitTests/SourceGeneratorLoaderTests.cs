@@ -58,6 +58,41 @@ public sealed class SourceGeneratorLoaderTests
             alc.Unload();
         }
     }
+    
+    [TestMethod]
+    public void Load_SameNameAndVersion_InstantiatesGeneratorOnce()
+    {
+        var generatorBytes = Emit("SampleGenerator", """
+             using Microsoft.CodeAnalysis;
+
+             [Generator]
+             public class SampleGenerator : IIncrementalGenerator
+             {
+                 public void Initialize(IncrementalGeneratorInitializationContext context) { }
+             }
+             """, extraRefs:
+            [
+                MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
+            ]);
+
+        // Same assembly twice: a #:package copy followed by the embedded BCL copy.
+        var analyzers = ImmutableArray.Create(
+            ToRef("SampleGenerator", generatorBytes),
+            ToRef("SampleGenerator", generatorBytes));
+
+        var alc = new AssemblyLoadContext(nameof(Load_SameNameAndVersion_InstantiatesGeneratorOnce), isCollectible: true);
+        try
+        {
+            var generators = SourceGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+
+            diagnostics.Should().BeEmpty();
+            generators.Should().ContainSingle();
+        }
+        finally
+        {
+            alc.Unload();
+        }
+    }
 
     /// <summary>
     /// Emits a C# assembly with the given name and source code, returning the bytes of the resulting DLL.
