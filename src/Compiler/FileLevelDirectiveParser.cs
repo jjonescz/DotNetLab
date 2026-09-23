@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -1121,6 +1122,39 @@ internal sealed class FileLevelDirectiveCompletionProvider(
                 CharacterSetModificationKind.Remove,
                 ImmutableArray.Create('.')),
         ]);
+
+    // Completion providers do not react to typed characters by default. Opt into `@`
+    // (FileLevelDirective.Package.Descriptor.Separator) on package
+    // directives so typing the version separator automatically shows version completions.
+    public override bool ShouldTriggerCompletion(
+        SourceText text,
+        int caretPosition,
+        CompletionTrigger trigger,
+        OptionSet options)
+    {
+        if (trigger.Kind != CompletionTriggerKind.Insertion ||
+            caretPosition == 0 ||
+            text[caretPosition - 1] != FileLevelDirective.Package.Descriptor.Separator)
+        {
+            return false;
+        }
+
+        var line = text.Lines.GetLineFromPosition(caretPosition);
+        var directive = text.ToString(TextSpan.FromBounds(line.Start, caretPosition - 1))
+            .AsSpan()
+            .TrimStart();
+        if (!directive.StartsWith("#:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        directive = directive[2..].TrimStart();
+        var packageKind = FileLevelDirective.Package.Descriptor.DirectiveKind;
+        return directive.StartsWith(packageKind, StringComparison.Ordinal) &&
+            directive.Length > packageKind.Length &&
+            char.IsWhiteSpace(directive[packageKind.Length]) &&
+            !directive[(packageKind.Length + 1)..].Trim().IsEmpty;
+    }
 
     public override async Task ProvideCompletionsAsync(CompletionContext context)
     {

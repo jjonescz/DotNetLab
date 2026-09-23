@@ -453,6 +453,21 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Completion_PackageVersions_TriggeredBySeparator()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0", "4.13.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis@";
+
+        var completion = await GetCompletionsAsync(code, downloader, triggerCharacter: "@");
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", ""));
+        completion.Suggestions.Select(static item => item.Label).Should().Equal("4.14.0", "4.13.0");
+    }
+
+    [TestMethod]
     public async Task Completion_PackageVersions_MidToken()
     {
         var downloader = new TestNuGetDownloader
@@ -544,7 +559,8 @@ public sealed class LanguageServiceTests
     private async Task<MonacoCompletionList> GetCompletionsAsync(
         string code,
         TestNuGetDownloader downloader,
-        int? position = null)
+        int? position = null,
+        string? triggerCharacter = null)
     {
         const string file = "test.cs";
         var services = WorkerServices.CreateTest(
@@ -559,7 +575,10 @@ public sealed class LanguageServiceTests
             new Position { LineNumber = 1, Column = (position ?? code.Length) + 1 },
             new BlazorMonaco.Languages.CompletionContext
             {
-                TriggerKind = BlazorMonaco.Languages.CompletionTriggerKind.Invoke,
+                TriggerKind = triggerCharacter is null
+                    ? BlazorMonaco.Languages.CompletionTriggerKind.Invoke
+                    : BlazorMonaco.Languages.CompletionTriggerKind.TriggerCharacter,
+                TriggerCharacter = triggerCharacter,
             },
             TestContext.CancellationToken);
 
