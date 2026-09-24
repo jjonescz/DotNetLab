@@ -8,9 +8,16 @@ using System.Runtime.Loader;
 namespace DotNetLab;
 
 [TestClass]
-public sealed class PackageGeneratorLoaderTests
+public sealed class SourceGeneratorLoaderTests
 {
     public required TestContext TestContext { get; set; }
+
+    [TestMethod]
+    public void SdkAnalyzerAssemblies_IncludesRegexGenerator()
+    {
+        SdkAnalyzerAssemblies.All.Should().Contain(static a =>
+            a.Name == "System.Text.RegularExpressions.Generator");
+    }
 
     [TestMethod]
     public void Load_DiscoversGeneratorWhenDependencyIsListedAfterIt()
@@ -41,7 +48,42 @@ public sealed class PackageGeneratorLoaderTests
         var alc = new AssemblyLoadContext(nameof(Load_DiscoversGeneratorWhenDependencyIsListedAfterIt), isCollectible: true);
         try
         {
-            var generators = PackageGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+            var generators = SourceGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+
+            diagnostics.Should().BeEmpty();
+            generators.Should().ContainSingle();
+        }
+        finally
+        {
+            alc.Unload();
+        }
+    }
+    
+    [TestMethod]
+    public void Load_SameNameAndVersion_InstantiatesGeneratorOnce()
+    {
+        var generatorBytes = Emit("SampleGenerator", """
+             using Microsoft.CodeAnalysis;
+
+             [Generator]
+             public class SampleGenerator : IIncrementalGenerator
+             {
+                 public void Initialize(IncrementalGeneratorInitializationContext context) { }
+             }
+             """, extraRefs:
+            [
+                MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
+            ]);
+
+        // Same assembly twice: a #:package copy followed by the embedded BCL copy.
+        var analyzers = ImmutableArray.Create(
+            ToRef("SampleGenerator", generatorBytes),
+            ToRef("SampleGenerator", generatorBytes));
+
+        var alc = new AssemblyLoadContext(nameof(Load_SameNameAndVersion_InstantiatesGeneratorOnce), isCollectible: true);
+        try
+        {
+            var generators = SourceGeneratorLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
 
             diagnostics.Should().BeEmpty();
             generators.Should().ContainSingle();

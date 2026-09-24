@@ -608,7 +608,7 @@ internal sealed class LanguageServices : ILanguageServices
                 {
                     var alc = AssemblyLoadContext.GetLoadContext(typeof(LanguageServices).Assembly)
                         ?? AssemblyLoadContext.Default;
-                    var generators = PackageGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+                    var generators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
                     if (generatorLoadDiagnostics.Length > 0)
                     {
                         logger.LogWarning("Failed to load {Count} package source generator(s).", generatorLoadDiagnostics.Length);
