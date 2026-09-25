@@ -42,6 +42,9 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
+    const packagePrefixPattern = /^\s*#:\s*package\s+([^@\s]*)\s*(?:@\s*([^\s]*))?$/;
+    const packageCompletionResults = new WeakMap();
+
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
     return monaco.languages.registerCompletionItemProvider(JSON.parse(language), {
         triggerCharacters: triggerCharacters,
@@ -49,12 +52,72 @@ export function registerCompletionProvider(language, triggerCharacters, completi
             const versionId = model.getAlternativeVersionId();
             const tokenRef = wrapToken(token);
             try {
-                /** @type {monaco.languages.CompletionList} */
-                const result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
-                    completionItemProvider, decodeURI(model.uri.toString()), JSON.stringify(position), JSON.stringify(context), tokenRef));
+                const modelUri = decodeURI(model.uri.toString());
+                const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+                const packageMatch = packagePrefixPattern.exec(linePrefix);
+                const packagePrefix = packageMatch
+                    ? packageMatch[2] === undefined
+                        ? packageMatch[1]
+                        : `${packageMatch[1]}@${packageMatch[2]}`
+                    : undefined;
+                const cachedPackageCompletion = packageCompletionResults.get(model);
+
+                // Monaco requests `.` completions before Blazor forwards the corresponding model change.
+                // Reuse the visible package results so the stale worker response does not close the suggestion widget.
+                // Characters between periods are filtered locally, so the current prefix can extend the cached one.
+                const reusePackageCompletions =
+                    context.triggerCharacter === "." &&
+                    packagePrefix?.endsWith(".") &&
+                    cachedPackageCompletion !== undefined &&
+                    packagePrefix.slice(0, -1).startsWith(cachedPackageCompletion.prefix);
+
+                /** @type {monaco.languages.CompletionList | undefined} */
+                let result;
+                if (reusePackageCompletions) {
+                    result = structuredClone(cachedPackageCompletion.result);
+                    if (result?.range) {
+                        // The cached range was computed before the period was inserted.
+                        result.range.endLineNumber = position.lineNumber;
+                        result.range.endColumn = position.column;
+                    }
+
+                    packageCompletionResults.set(model, {
+                        prefix: packagePrefix,
+                        result: structuredClone(result),
+                    });
+                } else if (cachedPackageCompletion?.prefix !== packagePrefix) {
+                    packageCompletionResults.delete(model);
+                }
+
+                if (result === undefined) {
+                    result = JSON.parse(await DotNet.invokeMethodAsync('DotNetLab.App', 'ProvideCompletionItemsAsync',
+                        completionItemProvider, modelUri, JSON.stringify(position), JSON.stringify(context), tokenRef));
+                    if (packagePrefix !== undefined && result.suggestions.length > 0) {
+                        packageCompletionResults.set(model, {
+                            prefix: packagePrefix,
+                            result: structuredClone(result),
+                        });
+                    } else {
+                        packageCompletionResults.delete(model);
+                    }
+                }
 
                 if (versionId != model.getAlternativeVersionId()) {
-                    throw new Error('busy');
+                    // Package completion results can become stale while the request is in flight.
+                    // Once model updates catch up, retrigger completion for the current prefix instead of discarding it.
+                    const editor = window.blazorMonaco.editors
+                        .map(item => item.editor)
+                        .find(item => item.getModel() === model);
+                    const currentPosition = editor?.getPosition();
+                    const currentLinePrefix = currentPosition
+                        ? model.getLineContent(currentPosition.lineNumber).slice(0, currentPosition.column - 1)
+                        : "";
+
+                    if (packagePrefixPattern.test(currentLinePrefix)) {
+                        setTimeout(() => editor.trigger("package-completion-refresh", "editor.action.triggerSuggest", {}));
+                    } else {
+                        throw new Error('busy');
+                    }
                 }
 
                 for (const item of result.suggestions) {

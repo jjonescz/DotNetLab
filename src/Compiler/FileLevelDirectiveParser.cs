@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Tags;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -1108,11 +1109,52 @@ internal sealed class NamedDirectiveComparer : IEqualityComparer<FileLevelDirect
 [ExportCompletionProvider(nameof(FileLevelDirectiveCompletionProvider), LanguageNames.CSharp), Shared]
 [method: ImportingConstructor]
 [method: Obsolete("This exported object must be obtained through the MEF export provider.", error: true)]
-internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvider
+internal sealed class FileLevelDirectiveCompletionProvider(
+    INuGetDownloader nuGetDownloader) : CompletionProvider
 {
     private static readonly ImmutableArray<string> keywordTags = [WellKnownTags.Keyword];
     private static readonly ImmutableArray<string> propertyTags = [WellKnownTags.Property];
     private static readonly ImmutableArray<string> constantTags = [WellKnownTags.Constant];
+    private static readonly CompletionItemRules packageRules = CompletionItemRules.Create(
+        commitCharacterRules:
+        [
+            CharacterSetModificationRule.Create(
+                CharacterSetModificationKind.Remove,
+                ImmutableArray.Create('.')),
+        ]);
+
+    // Completion providers do not react to typed characters by default. Opt into `@`
+    // (FileLevelDirective.Package.Descriptor.Separator) on package
+    // directives so typing the version separator automatically shows version completions.
+    public override bool ShouldTriggerCompletion(
+        SourceText text,
+        int caretPosition,
+        CompletionTrigger trigger,
+        OptionSet options)
+    {
+        if (trigger.Kind != CompletionTriggerKind.Insertion ||
+            caretPosition == 0 ||
+            text[caretPosition - 1] != FileLevelDirective.Package.Descriptor.Separator)
+        {
+            return false;
+        }
+
+        var line = text.Lines.GetLineFromPosition(caretPosition);
+        var directive = text.ToString(TextSpan.FromBounds(line.Start, caretPosition - 1))
+            .AsSpan()
+            .TrimStart();
+        if (!directive.StartsWith("#:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        directive = directive[2..].TrimStart();
+        var packageKind = FileLevelDirective.Package.Descriptor.DirectiveKind;
+        return directive.StartsWith(packageKind, StringComparison.Ordinal) &&
+            directive.Length > packageKind.Length &&
+            char.IsWhiteSpace(directive[packageKind.Length]) &&
+            !directive[(packageKind.Length + 1)..].Trim().IsEmpty;
+    }
 
     public override async Task ProvideCompletionsAsync(CompletionContext context)
     {
@@ -1123,46 +1165,37 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
         }
 
         // Only continue if we are somewhere inside a `#:` directive.
-        var token = syntaxRoot.FindToken(context.CompletionListSpan.Start, findInsideTrivia: true);
-        if (token.Parent is not IgnoredDirectiveTriviaSyntax syntax)
+        var token = syntaxRoot.FindToken(Math.Max(0, context.Position - 1), findInsideTrivia: true);
+        var syntax = token.Parent?
+            .AncestorsAndSelf()
+            .OfType<IgnoredDirectiveTriviaSyntax>()
+            .FirstOrDefault();
+        if (syntax is null)
         {
             return;
         }
 
         // Ignore requests before the colon token.
-        if (context.CompletionListSpan.Start <= syntax.ColonToken.SpanStart)
+        if (context.Position <= syntax.ColonToken.SpanStart)
         {
             return;
         }
 
         var parser = FileLevelDirectiveParser.Instance;
-
-        // If we are at the end, move back to find the string literal token if there is any.
-        if (token.IsKind(SyntaxKind.EndOfDirectiveToken) && context.CompletionListSpan.Start > 0)
-        {
-            token = token.GetPreviousToken();
-        }
-
-        if (!token.IsKind(SyntaxKind.StringLiteralToken))
-        {
-            // We are just after `#:` and there is no text yet.
-            suggestKinds();
-            return;
-        }
-
-        var caretIndex = context.CompletionListSpan.Start - token.SpanStart;
-        var whitespaceIndex = getFirstWhitespaceIndex(token.Text);
-        if (caretIndex < whitespaceIndex)
+        var sourceText = await context.Document.GetTextAsync(context.CancellationToken);
+        var directiveContent = sourceText.ToString(TextSpan.FromBounds(
+            syntax.ColonToken.Span.End,
+            context.Position)).TrimStart();
+        var whitespaceIndex = getFirstWhitespaceIndex(directiveContent);
+        if (whitespaceIndex == directiveContent.Length)
         {
             // We are in directive kind territory.
             suggestKinds();
             return;
         }
-
         // We are in directive text territory.
-        var directiveKind = token.Text.AsSpan(0, whitespaceIndex);
-        var directiveText = token.Text.AsSpan(whitespaceIndex).TrimStart();
-        var directiveTextStart = token.Text.Length - directiveText.Length;
+        var directiveKind = directiveContent.AsSpan(0, whitespaceIndex);
+        var directiveText = directiveContent.AsSpan(whitespaceIndex).TrimStart();
 
         var lookup = parser.Descriptors.GetAlternateLookup<ReadOnlySpan<char>>();
         if (lookup.TryGetValue(directiveKind, out var descriptor))
@@ -1172,11 +1205,35 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
             if (descriptor is FileLevelDirective.IPairDescriptor pairDescriptor)
             {
                 var separatorIndex = directiveText.IndexOf(pairDescriptor.Separator);
-                if (separatorIndex >= 0 && caretIndex > directiveTextStart + separatorIndex)
+                if (separatorIndex >= 0)
                 {
                     // We are in directive value territory.
-                    var directiveName = directiveText[..separatorIndex];
-                    var directiveValue = directiveText[(separatorIndex + 1)..];
+                    var directiveName = directiveText[..separatorIndex].Trim();
+                    var directiveValue = directiveText[(separatorIndex + 1)..].Trim();
+
+                    if (descriptor.DirectiveKind == FileLevelDirective.Package.Descriptor.DirectiveKind)
+                    {
+                        var separatorPosition = context.Position - directiveText.Length + separatorIndex;
+                        var replacementStart = getDirectiveTokenStart(separatorPosition + 1);
+                        context.CompletionListSpan = TextSpan.FromBounds(
+                            replacementStart,
+                            getDirectiveTokenEnd(replacementStart));
+                        var versions = await nuGetDownloader.GetPackageVersionsAsync(
+                            directiveName.ToString(),
+                            directiveValue.ToString(),
+                            context.CancellationToken);
+                        foreach (var (index, version) in versions.Index())
+                        {
+                            context.AddItem(CompletionItem.Create(
+                                version,
+                                sortText: $"{index:D10}",
+                                rules: packageRules,
+                                tags: constantTags)
+                                .WithCompletionListSpan());
+                        }
+
+                        return;
+                    }
 
                     // Suggest values, preserving their original order via `sortText`.
                     foreach (var (index, value) in pairDescriptor.SuggestValues(directiveName, directiveValue).Index())
@@ -1192,6 +1249,25 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
             else
             {
                 suffix = null;
+            }
+
+            if (descriptor.DirectiveKind == FileLevelDirective.Package.Descriptor.DirectiveKind)
+            {
+                var replacementStart = context.Position - directiveText.Length;
+                context.CompletionListSpan = TextSpan.FromBounds(
+                    replacementStart,
+                    getDirectiveTokenEnd(replacementStart, FileLevelDirective.Package.Descriptor.Separator));
+                var packageIds = await nuGetDownloader.SearchPackageIdsAsync(
+                    directiveText.ToString(),
+                    context.CancellationToken);
+                foreach (var packageId in packageIds)
+                {
+                    context.AddItem(CompletionItem.Create(packageId, rules: packageRules, tags: propertyTags)
+                        .WithCompletionListSpan()
+                        .WithIncompleteResult());
+                }
+
+                return;
             }
 
             // Suggest names.
@@ -1221,6 +1297,31 @@ internal sealed class FileLevelDirectiveCompletionProvider() : CompletionProvide
             }
 
             return text.Length;
+        }
+
+        int getDirectiveTokenStart(int start)
+        {
+            while (start < context.Position && char.IsWhiteSpace(sourceText[start]))
+            {
+                start++;
+            }
+
+            return start;
+        }
+
+        int getDirectiveTokenEnd(int start, char? separator = null)
+        {
+            int end = syntax.EndOfDirectiveToken.SpanStart;
+            for (int position = start; position < end; position++)
+            {
+                char c = sourceText[position];
+                if (char.IsWhiteSpace(c) || c == separator)
+                {
+                    return position;
+                }
+            }
+
+            return end;
         }
 
         void suggestKinds()

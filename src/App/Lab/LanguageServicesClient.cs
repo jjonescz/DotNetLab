@@ -163,13 +163,13 @@ internal sealed class LanguageServicesClient(
 
         completionProvider = await blazorMonacoInterop.RegisterCompletionProviderAsync(cSharpLanguageSelector, new(loggerFactory)
         {
-            TriggerCharacters = [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~"],
+            TriggerCharacters = [" ", "(", "=", "#", ".", "<", "[", "{", "\"", "/", ":", ">", "~", "@"],
             ProvideCompletionItemsFunc = (modelUri, position, context, cancellationToken) =>
             {
                 return DebounceAsync(
                     ref completionDebounce,
                     (worker, modelUri, position, context),
-                    """{"suggestions":[],"isIncomplete":true}""",
+                    """{"suggestions":[],"incomplete":true}""",
                     static (args, cancellationToken) => args.worker.ProvideCompletionItemsAsync(args.modelUri, args.position, args.context, cancellationToken),
                     cancellationToken: cancellationToken);
             },
