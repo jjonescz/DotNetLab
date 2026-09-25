@@ -64,10 +64,12 @@ export function registerCompletionProvider(language, triggerCharacters, completi
 
                 // Monaco requests `.` completions before Blazor forwards the corresponding model change.
                 // Reuse the visible package results so the stale worker response does not close the suggestion widget.
+                // Characters between periods are filtered locally, so the current prefix can extend the cached one.
                 const reusePackageCompletions =
                     context.triggerCharacter === "." &&
                     packagePrefix?.endsWith(".") &&
-                    cachedPackageCompletion?.prefix === packagePrefix.slice(0, -1);
+                    cachedPackageCompletion !== undefined &&
+                    packagePrefix.slice(0, -1).startsWith(cachedPackageCompletion.prefix);
 
                 /** @type {monaco.languages.CompletionList | undefined} */
                 let result;
@@ -78,6 +80,11 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                         result.range.endLineNumber = position.lineNumber;
                         result.range.endColumn = position.column;
                     }
+
+                    packageCompletionResults.set(model, {
+                        prefix: packagePrefix,
+                        result: structuredClone(result),
+                    });
                 } else if (cachedPackageCompletion?.prefix !== packagePrefix) {
                     packageCompletionResults.delete(model);
                 }
