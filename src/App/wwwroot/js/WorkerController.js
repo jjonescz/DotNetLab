@@ -49,10 +49,21 @@ export function postMessage(setup, message) {
 
 /**
  * @param {WorkerSetup} setup
- * @param {string} message
+ * @param {string} type
  */
-export function postSideMessage(setup, message) {
-    setup.sideChannel.port2.postMessage(message);
+export function postSideMessage(setup, type) {
+    setup.sideChannel.port2.postMessage({ type });
+}
+
+/**
+ * @param {WorkerSetup} setup
+ * @param {string} directoryId
+ */
+export async function transferDirectory(setup, directoryId) {
+    const FileSystem = await import('../../../js/FileSystem.js');
+    const directory = FileSystem.getDirectory(directoryId);
+    // Use the compiler-request channel so the selection is registered before requests that use it.
+    setup.worker.postMessage({ type: 'transfer-directory', directoryId, directory });
 }
 
 /**

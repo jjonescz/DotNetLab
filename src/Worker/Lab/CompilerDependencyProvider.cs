@@ -1,4 +1,6 @@
-﻿namespace DotNetLab.Lab;
+﻿using Microsoft.Extensions.Logging;
+
+namespace DotNetLab.Lab;
 
 /// <summary>
 /// Provides compiler dependencies into the <see cref="DependencyRegistry"/>.
@@ -8,6 +10,7 @@
 /// Each plugin can handle one or more <see cref="CompilerVersionSpecifier"/>s.
 /// </remarks>
 internal sealed class CompilerDependencyProvider(
+    ILogger<CompilerDependencyProvider> logger,
     DependencyRegistry dependencyRegistry,
     BuiltInCompilerProvider builtInProvider,
     IEnumerable<ICompilerDependencyResolver> resolvers)
@@ -72,7 +75,33 @@ internal sealed class CompilerDependencyProvider(
             {
                 bool any = false;
                 List<string>? errors = null;
-                PackageDependency? found = await findAsync();
+                PackageDependency? found = null;
+
+                var specifiers = CompilerVersionSpecifier.Parse(version);
+                specifierLoop: foreach (var specifier in specifiers)
+                {
+                    any = true;
+                    foreach (var plugin in resolvers)
+                    {
+                        try
+                        {
+                            if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
+                            {
+                                found = dependency;
+                                break specifierLoop;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            var pluginName = plugin.GetType().Name;
+
+                            errors ??= new();
+                            errors.Add($"{pluginName}: {ex.Message}");
+
+                            logger.LogError(ex, "Plugin {Name} produced error.", pluginName);
+                        }
+                    }
+                }
 
                 if (!any)
                 {
@@ -81,37 +110,12 @@ internal sealed class CompilerDependencyProvider(
 
                 if (found is null)
                 {
-                    throw new InvalidOperationException($"Specified version was not found.\n{errors?.JoinToString("\n")}");
+                    throw new InvalidOperationException($"Specified version could not be resolved.\n{errors?.JoinToString("\n") ?? $"Tried:\n- {specifiers.JoinToString("\n- ")}"}");
                 }
 
                 loaded[compilerKind] = (userInput, found);
 
                 return found;
-
-                async Task<PackageDependency?> findAsync()
-                {
-                    foreach (var specifier in CompilerVersionSpecifier.Parse(version))
-                    {
-                        any = true;
-                        foreach (var plugin in resolvers)
-                        {
-                            try
-                            {
-                                if (await plugin.TryResolveCompilerAsync(info, specifier, configuration) is { } dependency)
-                                {
-                                    return dependency;
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                errors ??= new();
-                                errors.Add($"{plugin.GetType().Name}: {ex.Message}");
-                            }
-                        }
-                    }
-
-                    return null;
-                }
             }
             catch
             {
@@ -125,7 +129,7 @@ internal sealed class CompilerDependencyProvider(
     }
 }
 
-internal interface ICompilerDependencyResolver
+public interface ICompilerDependencyResolver
 {
     /// <returns>
     /// <see langword="null"/> if the <paramref name="specifier"/> is not supported by this resolver.
@@ -189,7 +193,7 @@ internal sealed class CompilerDependencyUserInput
     public required BuildConfiguration Configuration { get; init; }
 }
 
-internal sealed class PackageDependency
+public sealed class PackageDependency
 {
     public required Lazy<Task<PackageDependencyInfo>> Info { get; init; }
     public required Lazy<Task<ImmutableArray<LoadedAssembly>>> Assemblies { get; init; }
