@@ -145,9 +145,8 @@ fluent-option {
 
 fluent-menu-item {
     height: 2em !important;
-    /* Icon | label | leftover | end. max-content on the label so the popover
-       shrink-wraps to the longest item instead of clipping it in a 1fr column. */
-    grid-template-columns: 24px max-content 1fr 8px !important;
+    /* Fluent UI 5 places the start icon and label on a menu-list subgrid.
+       Replacing those tracks puts the icon in the leftover column. */
     justify-items: start !important;
     width: max-content !important;
     min-width: 100%;
@@ -176,7 +175,6 @@ fluent-option:focus-visible {
 }
 
 fluent-menu-item::part(content) {
-    grid-column: 2 !important;
     min-width: max-content;
     width: auto;
     justify-self: start;
