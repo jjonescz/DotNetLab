@@ -7,8 +7,6 @@
       when converted to WebCIL. Serve the original DLLs so Mono can resolve them.
     -->
     <WasmEnableWebcil>false</WasmEnableWebcil>
-    <!-- Separate .pdb files are listed in blazor.boot.json with SRI; a 404 is empty and fails integrity, which aborts boot. -->
-    <DebugType>embedded</DebugType>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>

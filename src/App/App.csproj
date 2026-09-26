@@ -1,9 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" />
     <PackageReference Include="Fluxor.Blazor.Web" />
