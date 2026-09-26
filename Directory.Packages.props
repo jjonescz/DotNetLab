@@ -11,14 +11,15 @@
     <RoslynVersion>5.12.0-1.$(RoslynBuild)</RoslynVersion>
     <RazorVersion>11.1.0-preview.$(RoslynBuild)</RazorVersion>
     <FluentUIVersion>5.0.0-rc.5-26219.1</FluentUIVersion>
+    <FluxorVersion>6.11.0</FluxorVersion>
     <NuGetVersion>7.9.0</NuGetVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.5.0" />
-    <PackageVersion Include="Fluxor.Blazor.Web" Version="6.11.0" />
-    <PackageVersion Include="Fluxor.Blazor.Web.ReduxDevTools" Version="6.11.0" />
+    <PackageVersion Include="Fluxor.Blazor.Web" Version="$(FluxorVersion)" />
+    <PackageVersion Include="Fluxor.Blazor.Web.ReduxDevTools" Version="$(FluxorVersion)" />
     <PackageVersion Include="Combinatorial.MSTest" Version="2.0.0" />
     <PackageVersion Include="Humanizer.Core" Version="3.0.10" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="11.0.0.9375" />

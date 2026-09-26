@@ -56,7 +56,7 @@ public sealed class CompressorTests
     {
         var actual = Compressor.Uncompress("%%%not-a-slug%%%");
         Assert.AreEqual("(error)", actual.Inputs.Single().FileName);
-        StringAssert.Contains(actual.Inputs.Single().Text, "Error when parsing");
+        Assert.Contains("Error when parsing", actual.Inputs.Single().Text);
     }
 
     [TestMethod]

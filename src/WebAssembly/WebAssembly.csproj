@@ -11,7 +11,6 @@
     <DebugType>embedded</DebugType>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
-    <IndexHtmlTemplatePath>$(MSBuildProjectDirectory)\..\..\eng\index.template.html</IndexHtmlTemplatePath>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
     <IndexHtmlHead><link href="manifest.webmanifest" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
