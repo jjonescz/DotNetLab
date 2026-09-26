@@ -1,0 +1,45 @@
+@if (Outputs is { } outputs)
+{
+    var output = outputs.Get(Id);
+    <CascadingValue Value="output">
+        @if (Slot == OutputHostSlot.Toolbar)
+        {
+            @if (output.Toolbar is { } toolbar)
+            {
+                <div class="lab-toolbar">
+                    <DynamicComponent Type="toolbar" />
+                </div>
+            }
+        }
+        else if (Slot == OutputHostSlot.Tab)
+        {
+            @if (output.Tab is { } tab)
+            {
+                <DynamicComponent Type="tab" />
+            }
+            else
+            {
+                <span title="@($"{output.Label} ({output.Id})")">@output.Label</span>
+            }
+        }
+        else if (output.View is { } view)
+        {
+            <DynamicComponent Type="view" />
+        }
+        else
+        {
+            <TextOutputView />
+        }
+    </CascadingValue>
+}
+
+@code {
+    [CascadingParameter]
+    public OutputWorkspace? Outputs { get; set; }
+
+    [Parameter]
+    public string Id { get; set; } = "";
+
+    [Parameter]
+    public OutputHostSlot Slot { get; set; } = OutputHostSlot.View;
+}

@@ -1,0 +1,108 @@
+@inject IJSRuntime JS
+@inject DocumentWorkspace Documents
+@inject AppPersistence Persist
+@inject LabEditorSnapshots Snapshots
+@inject LabLanguageSession LanguageSession
+@inject IDispatcher Dispatcher
+@inject IState<PreferencesState> Prefs
+@inject ILogger<LabCodeEditorSession> Logger
+@implements IAsyncDisposable
+
+<div class="lab-editor">
+    <StandaloneCodeEditor @ref="_editor"
+                          Id="@_session.EditorId"
+                          ConstructionOptions="ConstructionOptions"
+                          OnDidInit="OnInitAsync"
+                          OnDidChangeModelContent="OnModelChangedAsync"
+                          OnDidChangeCursorPosition="OnCursorChangedAsync"
+                          OnDidFocusEditorText="OnFocusedAsync"
+                          OnDidBlurEditorText="OnBlurredAsync"
+                          OnKeyDown="OnKeyDownAsync" />
+    <div id="@_session.VimStatusId" class="lab-vim-status" aria-live="polite"></div>
+</div>
+
+@code {
+    private StandaloneCodeEditor? _editor;
+    private LabCodeEditorSession _session = default!;
+
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string Language { get; set; } = "csharp";
+    [Parameter] public string? FileName { get; set; }
+    [Parameter] public string? ModelUri { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool WordWrap { get; set; }
+    [Parameter] public EventCallback<string> OnValueChanged { get; set; }
+    [Parameter] public EventCallback<CursorPositionChangedEvent> OnCursorChanged { get; set; }
+    [Parameter] public EventCallback OnFocused { get; set; }
+
+    protected override void OnInitialized()
+        => _session = new LabCodeEditorSession(JS, Documents, Persist, Snapshots, LanguageSession, Dispatcher, Prefs, Logger);
+
+    public ValueTask DisposeAsync() => _session.DisposeAsync();
+
+    // Parent panes re-render on tab, cursor, compile, and Fluxor updates.
+    // Re-diffing StandaloneCodeEditor remounts Monaco; after init, content
+    // and options go through the session APIs instead.
+    protected override bool ShouldRender() => _session.ShouldRender();
+
+    protected override Task OnParametersSetAsync()
+    {
+        Bind();
+        return _session.OnParametersSetAsync();
+    }
+
+    private StandaloneEditorConstructionOptions ConstructionOptions(StandaloneCodeEditor _)
+    {
+        Bind();
+        return _session.ConstructionOptions();
+    }
+
+    private Task OnInitAsync()
+    {
+        Bind();
+        return _session.OnInitAsync();
+    }
+
+    private Task OnModelChangedAsync(ModelContentChangedEvent args)
+    {
+        Bind();
+        return _session.OnModelChangedAsync(args);
+    }
+
+    private Task OnFocusedAsync()
+    {
+        Bind();
+        return _session.OnFocusedAsync();
+    }
+
+    private Task OnBlurredAsync()
+    {
+        Bind();
+        return _session.OnBlurredAsync();
+    }
+
+    private Task OnCursorChangedAsync(CursorPositionChangedEvent args)
+    {
+        Bind();
+        return _session.OnCursorChangedAsync(args);
+    }
+
+    private Task OnKeyDownAsync(KeyboardEvent keyboardEvent)
+    {
+        Bind();
+        return _session.OnKeyDownAsync(keyboardEvent);
+    }
+
+    private void Bind()
+        => _session.View = new LabCodeEditorView(
+            _editor,
+            Value,
+            Language,
+            FileName,
+            ModelUri,
+            ReadOnly,
+            WordWrap,
+            OnValueChanged,
+            OnCursorChanged,
+            OnFocused);
+}

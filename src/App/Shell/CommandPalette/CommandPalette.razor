@@ -1,0 +1,343 @@
+@inherits FluxorComponent
+@inject DocumentFormatter Formatter
+@inject AppThemeService Theme
+@inject ShareService Share
+@inject ShareUrlSync Urls
+@inject LabPlatform Platform
+@inject IJSRuntime JS
+@inject IState<PreferencesState> Prefs
+@inject IState<CommandPaletteState> Palette
+@inject IDispatcher Dispatcher
+
+@{ Rebuild(); }
+<div @ref="_host"
+     id="lab-palette-host"
+     popover="manual"
+     class="lab-palette-host">
+    <button type="button"
+            class="lab-palette-scrim"
+            tabindex="-1"
+            aria-label="Close command palette"
+            @onclick="OnScrimClickAsync"></button>
+    <div class="lab-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <input @ref="_input"
+               class="lab-palette-search"
+               type="text"
+               role="combobox"
+               aria-autocomplete="list"
+               aria-expanded="@(Palette.Value.IsOpen ? "true" : "false")"
+               aria-controls="lab-palette-list"
+               aria-activedescendant="@ActiveOptionId"
+               autocomplete="off"
+               autocorrect="off"
+               spellcheck="false"
+               placeholder="Run a command…"
+               value="@_query"
+               @oninput="OnQueryInput"
+               @onkeydown="OnSearchKeyAsync" />
+        <ul id="lab-palette-list" class="lab-palette-list" role="listbox" aria-label="Commands">
+            @if (Filtered.Count == 0)
+            {
+                <li class="lab-palette-empty" role="presentation">No matching commands</li>
+            }
+            else
+            {
+                @for (var i = 0; i < Filtered.Count; i++)
+                {
+                    var index = i;
+                    var item = Filtered[index];
+                    <li role="presentation">
+                        <button type="button"
+                                id="@OptionId(index)"
+                                class="lab-palette-item @(index == _active ? "is-active" : null)"
+                                role="option"
+                                aria-selected="@(index == _active ? "true" : "false")"
+                                @onmousedown:preventDefault
+                                @onclick="() => RunAsync(item)">
+                            <span class="lab-palette-item-label">@item.Label</span>
+                            @if (!string.IsNullOrEmpty(item.Shortcut))
+                            {
+                                <span class="lab-kbd">@item.Shortcut</span>
+                            }
+                        </button>
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+    private readonly List<CommandItem> _filtered = [];
+    private ElementReference _host;
+    private ElementReference _input;
+    private DotNetObjectReference<CommandPalette>? _self;
+    private bool _shown;
+    private bool _bound;
+    private string _query = "";
+    private int _active;
+
+    private IReadOnlyList<CommandItem> Filtered => _filtered;
+
+    private string? ActiveOptionId => Filtered.Count == 0 ? null : OptionId(_active);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Rebuild();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _self = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("netLabPalette.bind", _self);
+                _bound = true;
+                Rebuild();
+                StateHasChanged();
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        await SyncPaletteAsync();
+    }
+
+    private async Task SyncPaletteAsync()
+    {
+        var open = Palette.Value.IsOpen;
+        if (open && !_shown)
+        {
+            _query = "";
+            _active = 0;
+            _shown = true;
+            Rebuild();
+            try
+            {
+                await JS.InvokeVoidAsync("netLabPalette.show", _host);
+                await _input.FocusAsync();
+            }
+            catch (JSException)
+            {
+                _shown = false;
+            }
+
+            return;
+        }
+
+        if (open || !_shown)
+        {
+            return;
+        }
+
+        _shown = false;
+        _query = "";
+        _active = 0;
+        try
+        {
+            await JS.InvokeVoidAsync("netLabPalette.hide", _host);
+        }
+        catch (JSException)
+        {
+        }
+
+        Rebuild();
+    }
+
+    private void RequestClose() => Dispatcher.Dispatch(new CloseCommandPaletteAction());
+
+    private Task OnScrimClickAsync()
+    {
+        RequestClose();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task ToggleFromKeyboard()
+        => InvokeAsync(() =>
+        {
+            Dispatcher.Dispatch(new ToggleCommandPaletteAction());
+            return Task.CompletedTask;
+        });
+
+    [JSInvokable]
+    public Task HideFromKeyboard()
+        => InvokeAsync(() =>
+        {
+            Dispatcher.Dispatch(new CloseCommandPaletteAction());
+            return Task.CompletedTask;
+        });
+
+    [JSInvokable]
+    public Task ToggleWordWrapFromKeyboard()
+        => InvokeAsync(() =>
+        {
+            Dispatcher.Dispatch(new ToggleWordWrapAction());
+            Dispatcher.Dispatch(new PersistPreferencesAction());
+            return Task.CompletedTask;
+        });
+
+    private void OnQueryInput(ChangeEventArgs args)
+    {
+        _query = args.Value as string ?? "";
+        _active = 0;
+        Rebuild();
+    }
+
+    private async Task OnSearchKeyAsync(KeyboardEventArgs args)
+    {
+        if (args.Key is "Escape")
+        {
+            RequestClose();
+            return;
+        }
+
+        if (Filtered.Count == 0)
+        {
+            return;
+        }
+
+        if (args.Key is "ArrowDown")
+        {
+            _active = (_active + 1) % Filtered.Count;
+            return;
+        }
+
+        if (args.Key is "ArrowUp")
+        {
+            _active = (_active - 1 + Filtered.Count) % Filtered.Count;
+            return;
+        }
+
+        if (args.Key is "Enter")
+        {
+            await RunAsync(Filtered[_active]);
+        }
+    }
+
+    private async Task RunAsync(CommandItem item)
+    {
+        await item.Run();
+        RequestClose();
+    }
+
+    private Task RequestCompile()
+    {
+        Dispatcher.Dispatch(new CompileRequestedAction());
+        return Task.CompletedTask;
+    }
+
+    private async Task PasteUrlAsync()
+        => await Urls.TryApplyFromClipboardAsync();
+
+    private Task OpenSettings()
+    {
+        Dispatcher.Dispatch(new OpenSettingsAction());
+        return Task.CompletedTask;
+    }
+
+    private void Rebuild()
+    {
+        _filtered.Clear();
+        foreach (var item in Commands())
+        {
+            if (Matches(item))
+            {
+                _filtered.Add(item);
+            }
+        }
+
+        if (_filtered.Count == 0)
+        {
+            _active = 0;
+            return;
+        }
+
+        _active = Math.Clamp(_active, 0, _filtered.Count - 1);
+    }
+
+    private bool Matches(CommandItem item)
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            return true;
+        }
+
+        var query = _query.Trim();
+        return item.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+               || item.Aliases.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IEnumerable<CommandItem> Commands()
+    {
+        yield return new("Compile", "compile run build", Platform.SaveChord, RequestCompile);
+        yield return new("Format document", "format indent", "", () => Formatter.FormatActiveDocument());
+        yield return new("Copy link", "copy share url link", "", Share.CopyLinkAsync);
+        yield return new("Paste URL", "paste share url load", "", PasteUrlAsync);
+        yield return new("Settings", "settings preferences options", "", OpenSettings);
+        yield return new("Toggle word wrap", "wrap word-wrap", "Alt+Z", () =>
+        {
+            Dispatcher.Dispatch(new ToggleWordWrapAction());
+            Dispatcher.Dispatch(new PersistPreferencesAction());
+            return Task.CompletedTask;
+        });
+        yield return new("Toggle VIM keybindings", "vim vi keybindings", "", () =>
+        {
+            Dispatcher.Dispatch(new ToggleVimAction());
+            Dispatcher.Dispatch(new PersistPreferencesAction());
+            return Task.CompletedTask;
+        });
+        yield return new("Toggle hint squiggles", "squiggly hint hidden diagnostic decoration", "", () =>
+        {
+            Dispatcher.Dispatch(new ToggleHintSquigglesAction());
+            Dispatcher.Dispatch(new PersistPreferencesAction());
+            return Task.CompletedTask;
+        });
+        yield return new(
+            Prefs.Value.Stacked ? "Show panes side by side" : "Stack panes vertically",
+            "stack layout panes split",
+            "",
+            () =>
+            {
+                Dispatcher.Dispatch(new ToggleStackedAction());
+                return Task.CompletedTask;
+            });
+        yield return new(
+            Prefs.Value.ResolvedDark ? "Switch to light theme" : "Switch to dark theme",
+            "theme dark light appearance",
+            "",
+            () => Theme.SetPreferenceAsync(Prefs.Value.ResolvedDark ? "light" : "dark"));
+    }
+
+    private static string OptionId(int index) => $"lab-palette-option-{index}";
+
+    protected override async ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            if (_bound)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("netLabPalette.unbind");
+                }
+                catch (JSException)
+                {
+                }
+
+                _bound = false;
+            }
+
+            _self?.Dispose();
+            _self = null;
+        }
+
+        await base.DisposeAsyncCore(disposing);
+    }
+
+    private sealed record CommandItem(string Label, string Aliases, string Shortcut, Func<Task> Run);
+}

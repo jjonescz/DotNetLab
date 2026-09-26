@@ -1,5 +1,73 @@
 ﻿@inherits LayoutComponentBase
+@inject AppThemeService Theme
+@inject AppPersistence Persist
+@inject ShareUrlSync Urls
+@inject LabPlatform Platform
+@inject LabEnvironment Environment
+@inject IDispatcher Dispatcher
+@implements IDisposable
 
-@Body
+<div class="lab-shell">
+    <div class="lab-app">
+        <header aria-label="Application commands">
+            <LabBrandBar />
+            <LabCommandBar />
+        </header>
+        @if (_invalidShareUrl)
+        {
+            <div class="lab-share-url-error" role="status">
+                <div>
+                    <div class="lab-share-url-error-title">Could not open this share link.</div>
+                    <div>The link was invalid. Loaded the C# template instead.</div>
+                </div>
+                <button type="button" class="lab-share-url-error-dismiss" @onclick="DismissInvalidShareUrl">Dismiss</button>
+            </div>
+        }
+        @Body
+        <SettingsDialog />
+        <CommandPalette />
+    </div>
+</div>
 
-<FluentMenuProvider />
+<FluentProviders />
+
+@code {
+    private bool _invalidShareUrl;
+
+    protected override void OnInitialized()
+    {
+        Urls.InvalidShareUrl += OnInvalidShareUrl;
+        Urls.ApplyFromNavigationUri();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        Dispatcher.Dispatch(new SeedPreferencesAction(Environment.IsDevelopment));
+        await Theme.InitializeAsync();
+        await Platform.InitializeAsync();
+        Dispatcher.Dispatch(new InitializeUpdatesAction());
+        await Persist.LoadSettingsAsync();
+        await Urls.LoadFromUriAsync();
+    }
+
+    private void OnInvalidShareUrl()
+    {
+        _invalidShareUrl = true;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissInvalidShareUrl()
+    {
+        _invalidShareUrl = false;
+    }
+
+    public void Dispose()
+    {
+        Urls.InvalidShareUrl -= OnInvalidShareUrl;
+    }
+}

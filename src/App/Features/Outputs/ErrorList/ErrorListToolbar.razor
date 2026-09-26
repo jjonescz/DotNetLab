@@ -1,0 +1,13 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+
+<FluentCheckbox
+    Label="Exclude single file name"
+    Value="Options.Value.ExcludeSingleFileNameInDiagnostics"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetExcludeSingleFileNameInDiagnosticsAction(value)))" />
+<FluentCheckbox
+    Label="Include hidden diagnostics"
+    Value="Options.Value.IncludeHiddenDiagnostics"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetIncludeHiddenDiagnosticsAction(value)))" />

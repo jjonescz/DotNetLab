@@ -7,10 +7,19 @@ export async function afterStarted(blazor) {
     // When a new service worker version is activated
     // (after user clicks "Refresh" which sends 'skipWaiting' message to the worker),
     // reload the page so the new service worker is used to load all the assets.
+    // Skip the first controllerchange when we registered without a controller —
+    // splash registration would otherwise reload and flicker the tab title —
+    // but still reload on later updates.
+    let skipNextControllerChange = !navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         // Prevent infinite refresh loop when "Update on Reload" is enabled in DevTools.
         if (refreshing) {
+            return;
+        }
+
+        if (skipNextControllerChange) {
+            skipNextControllerChange = false;
             return;
         }
 
@@ -61,20 +70,6 @@ export async function afterStarted(blazor) {
             dotNetExports.DotNetLab.UpdateInterop.UpdateAvailable(() => {
                 registration.waiting.postMessage('skipWaiting');
             });
-        }
-    })();
-
-    // Notify the app when the screen is narrow or wide.
-    (async () => {
-        const mediaQuery = window.matchMedia("(max-width: 600px)");
-        mediaQuery.addEventListener('change', reportMediaQuery);
-        reportMediaQuery(mediaQuery);
-
-        /**
-         * @param {MediaQueryList | MediaQueryListEvent} e
-         */
-        function reportMediaQuery(e) {
-            dotNetExports.DotNetLab.ScreenInfoInterop.SetNarrowScreen(e.matches);
         }
     })();
 }

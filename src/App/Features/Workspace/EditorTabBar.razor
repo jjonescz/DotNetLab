@@ -1,0 +1,180 @@
+<div class="lab-tabbar">
+    <div class="lab-tab-list"
+         @ondragover:preventDefault
+         @ondrop:preventDefault
+         @ondrop="DroppedOnList">
+        @foreach (var (item, index) in Layout.UserTabs(Group))
+        {
+            @if (Renaming == item)
+            {
+                <div @key="item"
+                     class="@Layout.TabClass(Group, item, PaneActive, editing: true)"
+                     data-lab-tab="@item"
+                     data-lab-group="@Group.Id"
+                     data-lab-pane="@PaneId">
+                    @if (Icon is not null && PaneId == "source")
+                    {
+                        <FluentIcon Value="@Icon" Width="16px" />
+                    }
+                    <input @ref="_renameInput"
+                           class="lab-tab-rename"
+                           value="@RenameDraft"
+                           size="@Math.Max(6, RenameDraft.Length + 1)"
+                           spellcheck="false"
+                           autocomplete="off"
+                           aria-label="Rename file"
+                           onfocus="this.select()"
+                           @oninput="RenameInput"
+                           @onkeydown="RenameKey"
+                           @onblur="RenameBlur"
+                           @onclick:stopPropagation
+                           @onmousedown:stopPropagation />
+                </div>
+            }
+            else
+            {
+                <button type="button"
+                        @key="item"
+                        class="@Layout.TabClass(Group, item, PaneActive)"
+                        draggable="true"
+                        data-lab-tab="@item"
+                        data-lab-group="@Group.Id"
+                        data-lab-pane="@PaneId"
+                        onmousedown="if (event.detail > 1) { this.draggable = false; event.preventDefault(); }"
+                        @onclick="@(() => Selected.InvokeAsync(item))"
+                        @ondblclick="@(() => RenameRequested.InvokeAsync(item))"
+                        @ondblclick:preventDefault
+                        @ondragstart="args => OnDragStart(args, item)"
+                        @ondragend="DragEnded"
+                        @ondragover:preventDefault
+                        @ondrop:preventDefault
+                        @ondrop="@(() => DroppedOnTab.InvokeAsync(index))">
+                    @if (Icon is not null && PaneId == "source")
+                    {
+                        <FluentIcon Value="@Icon" Width="16px" />
+                    }
+                    @if (ItemLabel is not null)
+                    {
+                        @ItemLabel(item)
+                    }
+                    else
+                    {
+                        @item
+                    }
+                    @if (Layout.CanCloseItem(item))
+                    {
+                        <span class="lab-tab-close"
+                              title="@($"Close {item}")"
+                              role="presentation"
+                              @onclick:stopPropagation
+                              @ondblclick:stopPropagation
+                              @onmousedown:stopPropagation
+                              @onclick="@(() => Closed.InvokeAsync(item))">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Dismiss())" Width="12px" />
+                        </span>
+                    }
+                </button>
+            }
+        }
+    </div>
+    @{
+        var pins = Layout.PinnedTabs(Group).ToList();
+    }
+    @if (pins.Count > 0)
+    {
+        <div class="lab-tab-pins">
+            @foreach (var item in pins)
+            {
+                <button type="button"
+                        @key="item"
+                        class="@Layout.TabClass(Group, item, PaneActive, pin: true)"
+                        data-lab-tab="@item"
+                        data-lab-group="@Group.Id"
+                        data-lab-pane="@PaneId"
+                        @onclick="@(() => Selected.InvokeAsync(item))">
+                    @if (ItemLabel is not null)
+                    {
+                        @ItemLabel(item)
+                    }
+                    else
+                    {
+                        @item
+                    }
+                    @if (Layout.CanCloseItem(item))
+                    {
+                        <span class="lab-tab-close"
+                              title="@($"Close {item}")"
+                              role="presentation"
+                              @onclick:stopPropagation
+                              @onmousedown:stopPropagation
+                              @onclick="@(() => Closed.InvokeAsync(item))">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Dismiss())" Width="12px" />
+                        </span>
+                    }
+                </button>
+            }
+        </div>
+    }
+    @if (Actions is not null && ShowActions)
+    {
+        <div class="lab-tab-actions" @onclick:stopPropagation>
+            @Actions
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference _renameInput;
+    private string? _focusedRename;
+
+    [Parameter, EditorRequired] public EditorGroupLayout Layout { get; set; } = default!;
+    [Parameter, EditorRequired] public EditorGroup Group { get; set; } = default!;
+    [Parameter] public string PaneId { get; set; } = "";
+    [Parameter] public string PaneActive { get; set; } = "";
+    [Parameter] public Icon? Icon { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public bool ShowActions { get; set; }
+    [Parameter] public RenderFragment<string>? ItemLabel { get; set; }
+    [Parameter] public string? Renaming { get; set; }
+    [Parameter] public string RenameDraft { get; set; } = "";
+    [Parameter] public EventCallback<ChangeEventArgs> RenameInput { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> RenameKey { get; set; }
+    [Parameter] public EventCallback RenameBlur { get; set; }
+    [Parameter] public EventCallback<string> Selected { get; set; }
+    [Parameter] public EventCallback<string> RenameRequested { get; set; }
+    [Parameter] public EventCallback<string> Closed { get; set; }
+    [Parameter] public EventCallback<(DragEventArgs Args, string Item)> DragStarted { get; set; }
+    [Parameter] public EventCallback DragEnded { get; set; }
+    [Parameter] public EventCallback<int> DroppedOnTab { get; set; }
+    [Parameter] public EventCallback DroppedOnList { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Renaming is null)
+        {
+            _focusedRename = null;
+            return;
+        }
+
+        if (_focusedRename == Renaming || _renameInput.Context is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _renameInput.FocusAsync();
+            _focusedRename = Renaming;
+        }
+        catch (JSException)
+        {
+            _focusedRename = Renaming;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private Task OnDragStart(DragEventArgs args, string item)
+        => DragStarted.InvokeAsync((args, item));
+}

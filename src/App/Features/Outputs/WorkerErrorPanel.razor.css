@@ -1,0 +1,20 @@
+.lab-worker-error {
+    flex-shrink: 0;
+    margin: 0.5rem 0.75rem 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 8px;
+    background: var(--lab-error-bar);
+    color: var(--lab-foreground);
+    font-size: 12px;
+}
+
+.lab-worker-error-title {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.lab-worker-error-body {
+    white-space: pre-wrap;
+    margin: 0 0 0.6rem;
+}
