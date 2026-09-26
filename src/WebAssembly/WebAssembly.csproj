@@ -2,11 +2,6 @@
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!--
-      Fluent UI 5 RC5 (net10 assets on net11 WASM) loses enum/interface typedefs
-      when converted to WebCIL. Serve the original DLLs so Mono can resolve them.
-    -->
-    <WasmEnableWebcil>false</WasmEnableWebcil>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>

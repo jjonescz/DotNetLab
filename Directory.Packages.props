@@ -10,7 +10,7 @@
     <RoslynBuild>26459.1</RoslynBuild>
     <RoslynVersion>5.12.0-1.$(RoslynBuild)</RoslynVersion>
     <RazorVersion>11.1.0-preview.$(RoslynBuild)</RazorVersion>
-    <FluentUIVersion>5.0.0-rc.5-26219.1</FluentUIVersion>
+    <FluentUIVersion>5.0.0</FluentUIVersion>
     <FluxorVersion>6.11.0</FluxorVersion>
     <NuGetVersion>7.9.0</NuGetVersion>
   </PropertyGroup>
