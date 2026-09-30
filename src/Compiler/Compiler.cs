@@ -143,6 +143,7 @@ public sealed class Compiler(
             Assemblies = RefAssemblies.All,
         };
         var analyzerAssemblies = ImmutableArray<RefAssembly>.Empty;
+        var razorLanguageVersion = RazorUtil.DefaultLanguageVersion;
 
         Config.Instance.Reset();
 
@@ -227,7 +228,9 @@ public sealed class Compiler(
             {
                 ["build_property.RazorConfiguration"] = "Default",
                 ["build_property.RootNamespace"] = "TestNamespace",
-                ["build_property.RazorLangVersion"] = "Latest",
+                ["build_property.RazorLangVersion"] = ReferenceEquals(razorLanguageVersion, RazorLanguageVersion.Experimental)
+                    ? "Experimental"
+                    : razorLanguageVersion.ToString(),
                 ["build_property.GenerateRazorMetadataSourceChecksumAttributes"] = "false",
             },
         };
@@ -705,7 +708,7 @@ public sealed class Compiler(
                 .Select(static s => s.SyntaxTree)
                 .Concat(additionalSyntaxTrees);
 
-            var config = RazorConfiguration.Default;
+            var config = RazorConfiguration.Default.WithLanguageVersionSafe(razorLanguageVersion);
 
             // Phase 1: Declaration only (to be used as a reference from which tag helpers will be discovered).
             RazorProjectEngine declarationProjectEngine = createProjectEngine([]);
@@ -1110,6 +1113,7 @@ public sealed class Compiler(
                 };
 
                 await context.ConsumeAsync();
+                razorLanguageVersion = context.RazorLanguageVersion ?? razorLanguageVersion;
 
                 foreach (var directive in directives)
                 {
