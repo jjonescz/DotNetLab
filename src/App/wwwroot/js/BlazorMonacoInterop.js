@@ -42,7 +42,7 @@ export function setModelValueUndoable(editorId, modelUri, text) {
  * @param {string[] | undefined} triggerCharacters
  */
 export function registerCompletionProvider(language, triggerCharacters, completionItemProvider) {
-    const packagePrefixPattern = /^\s*#:\s*package\s+([^@\s]*)\s*(?:@\s*([^\s]*))?$/;
+    const packagePrefixPattern = /^(\s*#:\s*package\s+)([^@\s]*)(?:(\s*@\s*)([^\s]*))?\s*$/;
     const packageCompletionResults = new WeakMap();
 
     // https://microsoft.github.io/monaco-editor/docs.html#functions/editor_editor_api.languages.registerCompletionItemProvider.html
@@ -56,9 +56,14 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
                 const packageMatch = packagePrefixPattern.exec(linePrefix);
                 const packagePrefix = packageMatch
-                    ? packageMatch[2] === undefined
-                        ? packageMatch[1]
-                        : `${packageMatch[1]}@${packageMatch[2]}`
+                    ? packageMatch[4] === undefined
+                        ? packageMatch[2]
+                        : `${packageMatch[2]}@${packageMatch[4]}`
+                    : undefined;
+                const packageReplacementStartColumn = packageMatch
+                    ? packageMatch[1].length + (packageMatch[3] === undefined
+                        ? 1
+                        : packageMatch[2].length + packageMatch[3].length + 1)
                     : undefined;
                 const cachedPackageCompletion = packageCompletionResults.get(model);
 
@@ -76,7 +81,9 @@ export function registerCompletionProvider(language, triggerCharacters, completi
                 if (reusePackageCompletions) {
                     result = structuredClone(cachedPackageCompletion.result);
                     if (result?.range) {
-                        // The cached range was computed before the period was inserted.
+                        // The cached range may belong to another directive, and was computed before the period was inserted.
+                        result.range.startLineNumber = position.lineNumber;
+                        result.range.startColumn = packageReplacementStartColumn;
                         result.range.endLineNumber = position.lineNumber;
                         result.range.endColumn = position.column;
                     }
