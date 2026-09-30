@@ -1,0 +1,12 @@
+using System.Collections.Immutable;
+
+namespace DotNetLab.Features.Documents;
+
+public sealed record SetDocumentStateAction(
+    string Template,
+    string ActiveDocument,
+    ImmutableArray<string> OpenDocuments);
+
+public sealed record DocumentsChangedAction(IReadOnlyList<string> PreviousUris);
+
+public sealed record ActiveDocumentChangedAction;

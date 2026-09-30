@@ -1,0 +1,137 @@
+@inherits FluxorComponent
+@inject OutputWorkspace Outputs
+@inject AppPersistence Persist
+@inject IState<DocumentState> DocumentsUi
+@inject IDispatcher Dispatcher
+
+<CascadingValue Value="Outputs" IsFixed="true">
+    <WorkerErrorPanel />
+    <EditorGroups @ref="_outputGroups"
+                  PaneId="output"
+                  Items="Outputs.OpenIds"
+                  Active="@Outputs.DisplayType"
+                  ActiveChanged="OnOutputSelected"
+                  ItemClosed="OnOutputClosed"
+                  LockedItems="_lockedOutputTabs"
+                  LayoutRevision="Outputs.Revision"
+                  TabsChanged="OnOutputTabsChanged">
+        <Actions>
+            @{
+                var stripIds = OutputStripIds();
+                var addableTabs = Outputs.AddableOutputTabsFor(stripIds);
+            }
+            <FluentMenu>
+                <FluentMenuButton Appearance="ButtonAppearance.Subtle"
+                                  Size="ButtonSize.Small"
+                                  IconOnly="true"
+                                  Title="Output tabs"
+                                  IconStart="@(new Icons.Regular.Size20.Add())" />
+                <FluentMenuList>
+                    @if (addableTabs.Count == 0)
+                    {
+                        <FluentMenuItem Label="All tabs open" Disabled="true" />
+                    }
+                    else
+                    {
+                        @foreach (var tab in addableTabs)
+                        {
+                            <FluentMenuItem Label="@($"Add {tab.Label}")"
+                                            OnClick="@(() => AddOutputTab(tab.Id))" />
+                        }
+                    }
+                    <FluentDivider />
+                    <FluentMenuItem Label="Restore tab order"
+                                    Disabled="@(!Outputs.OutputTabOrderDiffers(stripIds))"
+                                    OnClick="RestoreOutputTabOrder" />
+                    <FluentMenuItem Label="Restore closed tabs"
+                                    Disabled="@(!Outputs.HasClosedOutputTabs(stripIds))"
+                                    OnClick="RestoreClosedOutputTabs" />
+                    <FluentDivider />
+                    <FluentMenuItem Label="@($"Save for {DocumentTypes.KindLabel(OutputCatalog.KindFor(DocumentsUi.Value.ActiveDocument))}")"
+                                    OnClick="SaveOutputTabsAsync" />
+                </FluentMenuList>
+            </FluentMenu>
+        </Actions>
+        <ItemLabel>
+            <OutputHost Id="@context" Slot="@OutputHostSlot.Tab" />
+        </ItemLabel>
+        <Toolbar>
+            <OutputHost Id="@context" Slot="@OutputHostSlot.Toolbar" />
+        </Toolbar>
+        <ItemContent>
+            <OutputHost Id="@context" Slot="@OutputHostSlot.View" />
+        </ItemContent>
+    </EditorGroups>
+    <StatusBar Side="output" />
+</CascadingValue>
+
+@code {
+    private static readonly string[] _lockedOutputTabs = [OutputCatalog.ErrorsId];
+
+    private EditorGroups? _outputGroups;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void FlushStrip() => CaptureOutputStrip();
+
+    private void OnOutputClosed(string _)
+    {
+        CaptureOutputStrip();
+        Outputs.EnsureActiveOutput();
+    }
+
+    private IReadOnlyList<string> OutputStripIds()
+        => _outputGroups?.CurrentTabIds() is { Count: > 0 } ids
+            ? ids
+            : Outputs.OpenIds;
+
+    private void CaptureOutputStrip()
+        => Outputs.CaptureOpenOutputTabs(OutputStripIds());
+
+    private void OnOutputTabsChanged(IReadOnlyList<string> ids)
+        => Outputs.CaptureOpenOutputTabs(ids);
+
+    private void AddOutputTab(string type)
+    {
+        CaptureOutputStrip();
+        Outputs.AddOutputTab(type);
+    }
+
+    private void RestoreOutputTabOrder()
+    {
+        CaptureOutputStrip();
+        Outputs.RestoreOutputTabOrder();
+    }
+
+    private void RestoreClosedOutputTabs()
+    {
+        CaptureOutputStrip();
+        Outputs.RestoreClosedOutputTabs();
+    }
+
+    private async Task SaveOutputTabsAsync()
+    {
+        CaptureOutputStrip();
+        Outputs.SaveOpenOutputTabsAsSettings();
+        await Persist.PersistOutputTabsAsync();
+    }
+
+    private void OnOutputSelected(string tab)
+        => Dispatcher.Dispatch(new SetActiveOutputAction(tab));
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

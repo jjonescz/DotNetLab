@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
+using DotNetLab.Features.Updates;
 
 namespace DotNetLab;
 

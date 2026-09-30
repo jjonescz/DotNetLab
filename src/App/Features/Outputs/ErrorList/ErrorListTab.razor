@@ -1,0 +1,14 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<CompilationState> Compilation
+
+<span title="@($"{OutputCatalog.Errors.Label} ({OutputCatalog.Errors.Id})")" style="display:inline-flex;align-items:center;gap:6px;">
+    Error List
+    @if (Compilation.Value.HasDiagnosticCounts)
+    {
+        <FluentBadge Appearance="BadgeAppearance.Filled"
+                     Color="@(Compilation.Value.ErrorCount > 0 ? BadgeColor.Danger : BadgeColor.Warning)"
+                     Size="BadgeSize.Tiny"
+                     Content="@((Compilation.Value.ErrorCount > 0 ? Compilation.Value.ErrorCount : Compilation.Value.WarningCount).ToString())" />
+    }
+</span>

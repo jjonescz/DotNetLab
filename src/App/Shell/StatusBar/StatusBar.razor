@@ -1,0 +1,49 @@
+@inherits FluxorComponent
+@inject EditorCursor Cursor
+@inject IState<DocumentState> Documents
+@inject IState<CompilationState> Compilation
+@inject IState<CompilerState> Compiler
+
+<div class="lab-statusbar">
+    @foreach (var (item, index) in Left.Select((value, i) => (value, i)))
+    {
+        <span class="@(index == 0 ? "primary" : null)">@item</span>
+    }
+    <span class="lab-spacer"></span>
+    <span class="lab-status-pill">
+        <span class="lab-dot @(Ready ? null : "stale")"></span>
+        @Right
+    </span>
+</div>
+
+@code {
+    [Parameter] public string Side { get; set; } = "source";
+
+    private IReadOnlyList<string> Left => StatusSelectors.Left(
+        Side,
+        Documents.Value.Template,
+        Documents.Value.ActiveDocument,
+        Cursor.Line,
+        Cursor.Column,
+        Compilation.Value);
+    private string Right => StatusSelectors.Right(Side, Compilation.Value, Compiler.Value);
+    private bool Ready => StatusSelectors.Ready(Side, Compilation.Value);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Cursor.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Cursor.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

@@ -1,0 +1,393 @@
+@inject IJSRuntime JS
+@inject EditorDrag Drag
+@implements IDisposable
+@implements IHandleEvent
+
+<div class="lab-groups @(_layout.Orientation == "vertical" ? "vertical" : "horizontal")"
+     data-lab-pane="@PaneId">
+    @foreach (var group in _layout.Groups)
+    {
+        <div @key="group.Id" class="lab-group @(IsGroupFocused(group) ? "lab-group-focused" : null)">
+            <EditorTabBar Layout="_layout"
+                          Group="group"
+                          PaneId="@PaneId"
+                          PaneActive="@Active"
+                          Icon="Icon"
+                          Actions="Actions"
+                          ShowActions="_layout.IsFirst(group)"
+                          ItemLabel="ItemLabel"
+                          Renaming="@(OwnsRename(group) ? _renaming : null)"
+                          RenameDraft="@_renameDraft"
+                          RenameInput="OnRenameInput"
+                          RenameKey="OnRenameKeyAsync"
+                          RenameBlur="CommitRenameAsync"
+                          Selected="item => SelectAsync(group.Id, item)"
+                          RenameRequested="item => BeginRenameAsync(group.Id, item)"
+                          Closed="item => CloseTabAsync(group.Id, item)"
+                          DragStarted="payload => StartTabDrag(payload.Args, group.Id, payload.Item)"
+                          DragEnded="EndDrag"
+                          DroppedOnTab="index => DropOnTab(group.Id, index)"
+                          DroppedOnList="@(() => DropOnList(group))" />
+
+            @if (Toolbar is not null)
+            {
+                @Toolbar(group.Active)
+            }
+
+            <div class="lab-group-body" @onpointerdown="@(() => ActivateGroupAsync(group))">
+                @if (ItemContent is not null)
+                {
+                    @ItemContent(group.Active)
+                }
+                <div class="lab-drop-overlay"
+                     @ondragover:preventDefault
+                     @ondrop:preventDefault
+                     @ondrop="args => DropOnBody(args, group)">
+                    <div class="lab-drop-zone"></div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private sealed class JsDrag
+    {
+        public string? Kind { get; set; }
+        public string? Pane { get; set; }
+        public string? Group { get; set; }
+        public string? Value { get; set; }
+    }
+
+    [Parameter] public string PaneId { get; set; } = "";
+    [Parameter] public IReadOnlyList<string> Items { get; set; } = [];
+    [Parameter] public string Active { get; set; } = "";
+    [Parameter] public EventCallback<string> ActiveChanged { get; set; }
+    [Parameter] public Icon? Icon { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public RenderFragment<string>? ItemLabel { get; set; }
+    [Parameter] public RenderFragment<string>? ItemContent { get; set; }
+    [Parameter] public RenderFragment<string>? Toolbar { get; set; }
+    [Parameter] public EventCallback<string> ItemClosed { get; set; }
+    [Parameter] public EventCallback<TabRename> ItemRenamed { get; set; }
+    [Parameter] public IReadOnlyList<string> PinnedOrder { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> LockedItems { get; set; } = [];
+    [Parameter] public int LayoutRevision { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<string>> TabsChanged { get; set; }
+
+    private EditorGroupLayout _layout = default!;
+    private string? _renaming;
+    private string _renameDraft = "";
+    private bool _committingRename;
+    private string? _dragKind;
+    private string? _dragPane;
+    private string? _dragGroup;
+    private string? _dragValue;
+    private int _appliedLayoutRevision;
+
+    protected override void OnInitialized()
+    {
+        _layout = new EditorGroupLayout(PaneId);
+        Drag.Changed += OnSharedDrag;
+    }
+
+    private void OnSharedDrag() => InvokeAsync(StateHasChanged);
+
+    protected override void OnParametersSet()
+    {
+        _layout.PinnedOrder = PinnedOrder;
+        _layout.LockedItems = LockedItems;
+        _layout.AllowClose = ItemClosed.HasDelegate;
+
+        if (_layout.TryInitialize(Items, Active))
+        {
+            return;
+        }
+
+        if (!_layout.IsInitialized)
+        {
+            return;
+        }
+
+        if (LayoutRevision > _appliedLayoutRevision)
+        {
+            _appliedLayoutRevision = LayoutRevision;
+            _layout.ReplaceFromItems(Items, Active);
+            return;
+        }
+
+        _layout.SyncFromItems(Items, Active);
+    }
+
+    public IReadOnlyList<string> CurrentTabIds() => _layout.CurrentTabIds();
+
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg)
+    {
+        var task = callback.InvokeAsync(arg);
+        if (arg is DragEventArgs or PointerEventArgs)
+        {
+            return task.Status is TaskStatus.RanToCompletion or TaskStatus.Canceled
+                ? Task.CompletedTask
+                : AwaitDragAsync(task);
+        }
+
+        var shouldAwait = task.Status is not TaskStatus.RanToCompletion and not TaskStatus.Canceled;
+        StateHasChanged();
+        return shouldAwait ? AwaitRenderAsync(task) : Task.CompletedTask;
+    }
+
+    private static async Task AwaitDragAsync(Task task) => await task;
+
+    private async Task AwaitRenderAsync(Task task)
+    {
+        await task;
+        StateHasChanged();
+    }
+
+    private void StartTabDrag(DragEventArgs args, string groupId, string value)
+    {
+        if (_layout.IsPinnedItem(value))
+        {
+            return;
+        }
+
+        args.DataTransfer.EffectAllowed = "move";
+        _dragKind = "tab";
+        _dragPane = PaneId;
+        _dragGroup = groupId;
+        _dragValue = value;
+        Drag.Begin("tab", PaneId, groupId, value);
+    }
+
+    private void EndDrag()
+    {
+        _dragKind = null;
+        _dragPane = null;
+        _dragGroup = null;
+        _dragValue = null;
+        _ = EndDropVisualAsync();
+        Drag.Clear();
+    }
+
+    private async Task EndDropVisualAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("netLabLayout.endDrop");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task<(string Kind, string? Pane, string? Group, string? Value)> ReadDragAsync()
+    {
+        try
+        {
+            var js = await JS.InvokeAsync<JsDrag>("netLabLayout.currentDrag");
+            if (js?.Kind is { Length: > 0 } kind)
+            {
+                return (kind, js.Pane, js.Group, js.Value);
+            }
+        }
+        catch (JSException)
+        {
+        }
+
+        return (
+            Drag.Kind ?? _dragKind ?? "",
+            Drag.Pane ?? _dragPane,
+            Drag.Group ?? _dragGroup,
+            Drag.Value ?? _dragValue);
+    }
+
+    private async Task<DropZone> ZoneAtAsync(double clientX, double clientY)
+    {
+        try
+        {
+            var name = await JS.InvokeAsync<string>("netLabLayout.dropZone", clientX, clientY);
+            return name switch
+            {
+                "left" => DropZone.Left,
+                "right" => DropZone.Right,
+                "top" => DropZone.Top,
+                "bottom" => DropZone.Bottom,
+                _ => DropZone.Center
+            };
+        }
+        catch (JSException)
+        {
+            return DropZone.Center;
+        }
+    }
+
+    private async Task CloseTabAsync(string groupId, string value)
+    {
+        var result = _layout.Close(groupId, value);
+        if (!result.Closed)
+        {
+            return;
+        }
+
+        await ItemClosed.InvokeAsync(value);
+        if (result.WasActive && result.NextActive is not null)
+        {
+            await ActiveChanged.InvokeAsync(result.NextActive);
+        }
+    }
+
+    private Task NotifyTabsAsync()
+        => TabsChanged.HasDelegate
+            ? TabsChanged.InvokeAsync(CurrentTabIds())
+            : Task.CompletedTask;
+
+    private bool IsGroupFocused(EditorGroup group)
+        => string.Equals(Active, group.Active, StringComparison.Ordinal);
+
+    private bool OwnsRename(EditorGroup group)
+        => _renaming is not null
+           && group.Items.Contains(_renaming)
+           && !_layout.IsPinnedItem(_renaming);
+
+    private Task ActivateGroupAsync(EditorGroup group)
+        => string.Equals(Active, group.Active, StringComparison.Ordinal)
+            ? Task.CompletedTask
+            : ActiveChanged.InvokeAsync(group.Active);
+
+    private async Task SelectAsync(string groupId, string value)
+    {
+        _layout.Select(groupId, value);
+        await ActiveChanged.InvokeAsync(value);
+    }
+
+    private async Task BeginRenameAsync(string groupId, string item)
+    {
+        if (!ItemRenamed.HasDelegate || _layout.IsPinnedItem(item) || _renaming == item)
+        {
+            return;
+        }
+
+        await SelectAsync(groupId, item);
+        _renaming = item;
+        _renameDraft = item;
+    }
+
+    private void OnRenameInput(ChangeEventArgs args)
+        => _renameDraft = args.Value?.ToString() ?? "";
+
+    private async Task OnRenameKeyAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await CommitRenameAsync();
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelRename();
+        }
+    }
+
+    private void CancelRename()
+    {
+        _renaming = null;
+        _renameDraft = "";
+    }
+
+    private async Task CommitRenameAsync()
+    {
+        if (_committingRename || _renaming is null)
+        {
+            return;
+        }
+
+        _committingRename = true;
+        var from = _renaming;
+        var to = _renameDraft.Trim();
+        _renaming = null;
+        _renameDraft = "";
+
+        try
+        {
+            if (!_layout.TryApplyRename(from, to, Items))
+            {
+                return;
+            }
+
+            await ItemRenamed.InvokeAsync(new TabRename(from, to));
+        }
+        finally
+        {
+            _committingRename = false;
+        }
+    }
+
+    private async Task DropOnTab(string groupId, int index)
+    {
+        var (kind, pane, fromGroup, value) = await ReadDragAsync();
+        if (kind != "tab" || pane != PaneId || value is null || fromGroup is null)
+        {
+            EndDrag();
+            return;
+        }
+
+        var at = index;
+        try
+        {
+            if (await JS.InvokeAsync<bool>("netLabLayout.tabDropAfter"))
+            {
+                at = index + 1;
+            }
+        }
+        catch (JSException)
+        {
+        }
+
+        _layout.MoveTab(fromGroup, value, groupId, at);
+        await SelectAsync(groupId, value);
+        await NotifyTabsAsync();
+        EndDrag();
+    }
+
+    private async Task DropOnList(EditorGroup group)
+    {
+        var (kind, pane, fromGroup, value) = await ReadDragAsync();
+        if (kind != "tab" || pane != PaneId || value is null || fromGroup is null)
+        {
+            EndDrag();
+            return;
+        }
+
+        _layout.MoveTab(fromGroup, value, group.Id, _layout.LastUserInsertIndex(group));
+        await SelectAsync(group.Id, value);
+        await NotifyTabsAsync();
+        EndDrag();
+    }
+
+    private async Task DropOnBody(DragEventArgs args, EditorGroup group)
+    {
+        var (kind, pane, fromGroup, value) = await ReadDragAsync();
+        var zone = await ZoneAtAsync(args.ClientX, args.ClientY);
+
+        if (kind != "tab" || pane != PaneId || value is null || fromGroup is null)
+        {
+            EndDrag();
+            return;
+        }
+
+        if (zone == DropZone.Center)
+        {
+            _layout.MoveTab(fromGroup, value, group.Id, _layout.LastUserInsertIndex(group));
+            await SelectAsync(group.Id, value);
+        }
+        else
+        {
+            _layout.SplitTab(zone, value, fromGroup, group.Id);
+            await ActiveChanged.InvokeAsync(value);
+        }
+
+        await NotifyTabsAsync();
+        EndDrag();
+    }
+
+    public void Dispose() => Drag.Changed -= OnSharedDrag;
+}
