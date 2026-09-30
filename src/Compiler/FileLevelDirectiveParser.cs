@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Microsoft.AspNetCore.Razor.Language;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -155,6 +156,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public ILogger<FileLevelDirectiveParser> Logger => field ??= Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>();
 
         public ReadOnlyMemory<char>? TargetFramework { get; set; }
+        public RazorLanguageVersion? RazorLanguageVersion { get; set; }
         public bool? Prefer32Bit { get; set; }
         public OptimizationLevel? OptimizationLevel { get; set; }
         public bool SawDefineConstants { get; set; }
@@ -815,6 +817,17 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(b ? OptimizationLevel.Release : OptimizationLevel.Debug));
                         }
                     }),
+                Create<RazorLanguageVersion?>(
+                    "RazorLangVersion",
+                    static (value, out result) => RazorLanguageVersion.TryParse(value.ToString(), out result),
+                    static (context, result) => context.RazorLanguageVersion = result,
+                    Constant(() => typeof(RazorLanguageVersion)
+                        .GetFields(BindingFlags.Public | BindingFlags.Static)
+                        .Where(static versionField => versionField.FieldType == typeof(RazorLanguageVersion))
+                        .Reverse()
+                        .SelectAsArray(static versionField => versionField.Name.StartsWith("Version_", StringComparison.Ordinal)
+                            ? ((RazorLanguageVersion)versionField.GetValue(null)!).ToString()
+                            : versionField.Name.ToLowerInvariant()))),
                 Create<OutputKind>(
                     "OutputType",
                     static (value, out result) =>
