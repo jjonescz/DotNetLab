@@ -2,6 +2,15 @@
 
 public interface INuGetDownloader
 {
+    Task<ImmutableArray<string>> SearchPackageIdsAsync(
+        string prefix,
+        CancellationToken cancellationToken);
+
+    Task<ImmutableArray<string>> GetPackageVersionsAsync(
+        string packageId,
+        string prefix,
+        CancellationToken cancellationToken);
+
     Task<NuGetResults> DownloadAsync(
         Set<NuGetDependency> dependencies,
         string targetFramework,

@@ -346,7 +346,7 @@ public static class MonacoConversions
         return range is null ? "[..)" : $"[{range.StartLineNumber}:{range.StartColumn}..{range.EndLineNumber}:{range.EndColumn})";
     }
 
-    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions)
+    public static MonacoCompletionList ToCompletionList(this RoslynCompletionList completions, TextLineCollection lines)
     {
         // VS implements a "soft" vs "hard" suggestion mode. The "soft" suggestion mode is when the completion list is shown,
         // but the user has to press enter to insert the completion. The "hard" suggestion mode is when the completion list is
@@ -370,11 +370,19 @@ public static class MonacoConversions
             completionItemsBuilder.Add(item);
         }
 
-        // Range is intentionally left blank, so Monaco properly applies "insert" suggestion mode,
-        // i.e., in a case like `[Obs$$class C` the `class` suffix is preserved and we get `[Obsolete$$class C` after the completion is applied.
+        var completionListSpan = completions.ItemsList.FirstOrDefault(
+            static item => item.Properties.ContainsKey(RoslynCompletionItem.UseCompletionListSpanPropertyName))?.Span;
+
+        // Range is normally left blank, so Monaco properly applies "insert" suggestion mode,
+        // i.e., in a case like `[Obs$$class C` the `class` suffix is preserved and we get
+        // `[Obsolete$$class C` after the completion is applied. Package completion explicitly
+        // replaces the full package ID or version because Monaco treats periods as word boundaries.
         return new MonacoCompletionList
         {
             Suggestions = completionItemsBuilder.DrainToImmutable(),
+            Range = completionListSpan?.ToRange(lines),
+            IsIncomplete = completions.ItemsList.Any(
+                static item => item.Properties.ContainsKey(RoslynCompletionItem.IncompletePropertyName)),
         };
     }
 

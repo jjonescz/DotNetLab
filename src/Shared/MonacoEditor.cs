@@ -14,17 +14,18 @@ namespace DotNetLab;
 /// just for <see cref="CompletionItem.Label"/>.
 /// </summary>
 /// <remarks>
-/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CompletionList&lt;T&gt;"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.CompletionList.html"/>.
 /// </remarks>
 public sealed class MonacoCompletionList
 {
     public required ImmutableArray<MonacoCompletionItem> Suggestions { get; init; }
     public BlazorMonaco.Range? Range { get; init; }
+    [JsonPropertyName("incomplete")]
     public bool IsIncomplete { get; init; }
 }
 
 /// <remarks>
-/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CompletionItem"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.CompletionItem.html"/>.
 /// </remarks>
 public sealed class MonacoCompletionItem
 {
@@ -42,7 +43,6 @@ public sealed class MonacoCompletionItem
 
 /// <remarks>
 /// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.CodeAction.html"/>.
-/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#CodeAction"/>.
 /// </remarks>
 public sealed class MonacoCodeAction
 {
@@ -66,7 +66,7 @@ public sealed class MonacoWorkspaceEdit
 }
 
 /// <remarks>
-/// VSCode docs: <see href="https://code.visualstudio.com/api/references/vscode-api#SemanticTokensLegend"/>.
+/// Monaco docs: <see href="https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor_editor_api.languages.SemanticTokensLegend.html"/>.
 /// </remarks>
 public sealed class SemanticTokensLegend
 {

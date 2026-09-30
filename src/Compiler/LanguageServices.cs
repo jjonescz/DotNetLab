@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using System.Composition.Hosting;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text.Json;
@@ -43,7 +44,8 @@ internal sealed class LanguageServices : ILanguageServices
     public LanguageServices(
         ILogger<LanguageServices> logger,
         Compiler compiler,
-        ICompilerAssemblyLoader compilerAssemblyLoader)
+        ICompilerAssemblyLoader compilerAssemblyLoader,
+        INuGetDownloader nuGetDownloader)
     {
         this.logger = logger;
         this.compiler = compiler;
@@ -54,12 +56,16 @@ internal sealed class LanguageServices : ILanguageServices
             roslynLoggerRegistration = RoslynWorkspaceAccessors.RegisterLogger(message => logger.LogTrace("Roslyn: {Message}", message));
         }
 
-        workspace = new(MefHostServices.Create(
+        var container = new ContainerConfiguration()
+            .WithAssemblies(
             [
                 .. MefHostServices.DefaultAssemblies,
                 typeof(FileLevelDirectiveCompletionProvider).Assembly,
                 typeof(RoslynWorkspaceAccessors).Assembly,
-            ]));
+            ])
+            .WithExport<INuGetDownloader>(nuGetDownloader)
+            .CreateContainer();
+        workspace = new(MefHostServices.Create(container));
 
         builtInAnalyzerReferences =
         [
@@ -149,7 +155,7 @@ internal sealed class LanguageServices : ILanguageServices
             lastCompletions = (document.Id, completions);
             var time1 = sw.ElapsedMilliseconds;
             sw.Restart();
-            var result = completions.ToCompletionList();
+            var result = completions.ToCompletionList(text.Lines);
             var time2 = sw.ElapsedMilliseconds;
             logger.LogDebug("Got completions ({Count}) for {Position} in {Milliseconds1} + {Milliseconds2} ms", completions.ItemsList.Count, position.Stringify(), time1.SeparateThousands(), time2.SeparateThousands());
             return JsonSerializer.Serialize(result, BlazorMonacoJsonContext.Default.MonacoCompletionList);
@@ -157,7 +163,7 @@ internal sealed class LanguageServices : ILanguageServices
         catch (OperationCanceledException)
         {
             logger.LogDebug("Canceled completions for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
-            return """{"suggestions":[],"isIncomplete":true}""";
+            return """{"suggestions":[],"incomplete":true}""";
         }
     }
 
