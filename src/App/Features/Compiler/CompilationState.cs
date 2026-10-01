@@ -10,6 +10,10 @@ public sealed record CompilationState
     public int ErrorCount { get; init; }
     public int WarningCount { get; init; }
 
+    /// <summary>SDK and Roslyn that produced the output currently on screen.</summary>
+    public string? CompiledSdk { get; init; }
+    public string? CompiledRoslyn { get; init; }
+
     public CompilationState()
     {
     }

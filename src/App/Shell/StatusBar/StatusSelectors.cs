@@ -11,17 +11,21 @@ public static class StatusSelectors
     public static bool SourceReady(CompilationState compilation)
         => !compilation.Stale && !compilation.Running;
 
-    public static string OutputRight(CompilerState compiler)
-        => $".NET {compiler.Resolved.Value} · Roslyn {compiler.Roslyn}";
+    public static string OutputRight(CompilerState compiler, CompilationState compilation)
+    {
+        var sdk = compilation.CompiledSdk ?? compiler.Resolved.Value;
+        var roslyn = compilation.CompiledRoslyn ?? compiler.Roslyn;
+        return $".NET {sdk} · Roslyn {roslyn}";
+    }
 
-    public static bool OutputReady(CompilationState compilation)
-        => !compilation.Running;
+    public static bool OutputReady(CompilationState compilation, CompilerState compiler)
+        => !compilation.Running && !compilation.Stale && !OutputCompilerDiffers(compilation, compiler);
 
     public static string Right(string side, CompilationState compilation, CompilerState compiler)
-        => IsOutput(side) ? OutputRight(compiler) : SourceRight(compilation);
+        => IsOutput(side) ? OutputRight(compiler, compilation) : SourceRight(compilation);
 
-    public static bool Ready(string side, CompilationState compilation)
-        => IsOutput(side) ? OutputReady(compilation) : SourceReady(compilation);
+    public static bool Ready(string side, CompilationState compilation, CompilerState compiler)
+        => IsOutput(side) ? OutputReady(compilation, compiler) : SourceReady(compilation);
 
     public static IReadOnlyList<string> Left(
         string side,
@@ -58,6 +62,12 @@ public static class StatusSelectors
 
         return parts;
     }
+
+    private static bool OutputCompilerDiffers(CompilationState compilation, CompilerState compiler)
+        => compilation.CompiledSdk is not null
+           && compilation.CompiledRoslyn is not null
+           && (!string.Equals(compilation.CompiledSdk, compiler.Sdk, StringComparison.Ordinal)
+               || !string.Equals(compilation.CompiledRoslyn, compiler.Roslyn, StringComparison.Ordinal));
 
     private static bool IsOutput(string side)
         => string.Equals(side, "output", StringComparison.Ordinal);

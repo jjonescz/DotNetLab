@@ -17,6 +17,10 @@ public static class CompilationReducers
         => state with { ErrorCount = action.ErrorCount, WarningCount = action.WarningCount };
 
     [ReducerMethod]
+    public static CompilationState Reduce(CompilationState state, SetCompiledCompilerAction action)
+        => state with { CompiledSdk = action.Sdk, CompiledRoslyn = action.Roslyn };
+
+    [ReducerMethod]
     public static CompilationState Reduce(CompilationState state, ApplySdkAction _)
         => MarkStale(state);
 

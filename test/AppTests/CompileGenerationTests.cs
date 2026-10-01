@@ -117,10 +117,16 @@ public sealed class CompileGenerationTests
         StatusSelectors.SourceRight(stale).Should().Contain("Modified");
         StatusSelectors.SourceReady(stale).Should().BeFalse();
         StatusSelectors.SourceReady(new CompilationState { Stale = false }).Should().BeTrue();
-        StatusSelectors.OutputReady(new CompilationState { Running = true }).Should().BeFalse();
-
         var compiler = new CompilerState { Sdk = "built-in", Roslyn = "built-in" };
-        StatusSelectors.OutputRight(compiler).Should().Contain(".NET");
+        StatusSelectors.OutputReady(new CompilationState { Running = true }, compiler).Should().BeFalse();
+        StatusSelectors.OutputRight(compiler, new CompilationState()).Should().Contain(".NET built-in");
+
+        var compiled = new CompilationState { Stale = false, CompiledSdk = "8.0", CompiledRoslyn = "4.11.0" };
+        var selected = new CompilerState { Sdk = "9.0", Roslyn = "latest" };
+        StatusSelectors.OutputRight(selected, compiled).Should().Be(".NET 8.0 · Roslyn 4.11.0");
+        StatusSelectors.OutputReady(compiled, selected).Should().BeFalse();
+        StatusSelectors.OutputReady(compiled, new CompilerState { Sdk = "8.0", Roslyn = "4.11.0" }).Should().BeTrue();
+        StatusSelectors.OutputReady(compiled with { Stale = true }, new CompilerState { Sdk = "8.0", Roslyn = "4.11.0" }).Should().BeFalse();
 
         StatusSelectors.Left("source", "C#", "Program.cs", 3, 5, new CompilationState { ErrorCount = 1, WarningCount = 2 }).Should().Equal(
             "Ln 3, Col 5", "Spaces: 4", "UTF-8", "C#", "1 error", "2 warnings");

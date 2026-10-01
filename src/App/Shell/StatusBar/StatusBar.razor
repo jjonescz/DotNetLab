@@ -27,7 +27,7 @@
         Cursor.Column,
         Compilation.Value);
     private string Right => StatusSelectors.Right(Side, Compilation.Value, Compiler.Value);
-    private bool Ready => StatusSelectors.Ready(Side, Compilation.Value);
+    private bool Ready => StatusSelectors.Ready(Side, Compilation.Value, Compiler.Value);
 
     protected override void OnInitialized()
     {

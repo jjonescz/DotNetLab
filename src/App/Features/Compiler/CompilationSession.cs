@@ -127,6 +127,8 @@ public sealed class CompilationSession : IAsyncDisposable
         var storeInCache = request.StoreInCache;
         var updateDisplayedOutput = request.UpdateDisplayedOutput;
         var appliedToDisplay = false;
+        var displayedSdk = Compiler.Sdk;
+        var displayedRoslyn = Compiler.Roslyn;
         var input = CreateCompilationInput();
         var showBusy = storeInCache || (updateDisplayedOutput && Compiled is null);
         try
@@ -170,6 +172,7 @@ public sealed class CompilationSession : IAsyncDisposable
                 Compiled = compiled;
                 _storeInCache = storeInCache;
                 _dispatcher.Dispatch(new SetStaleAction(false));
+                _dispatcher.Dispatch(new SetCompiledCompilerAction(displayedSdk, displayedRoslyn));
                 appliedToDisplay = true;
                 if (!sameAssembly)
                 {
@@ -386,6 +389,7 @@ public sealed class CompilationSession : IAsyncDisposable
         LastInput = input;
         Compiled = output;
         _dispatcher.Dispatch(new SetStaleAction(stale));
+        _dispatcher.Dispatch(new SetCompiledCompilerAction(Compiler.Sdk, Compiler.Roslyn));
         BeginNewOutputGeneration();
         _dispatcher.Dispatch(new CachedCompilationLoadedAction(output));
     }
