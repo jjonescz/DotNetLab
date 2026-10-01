@@ -115,6 +115,9 @@ public sealed class LabCodeEditorSession
             TabSize = 4,
             WordWrap = view.WordWrap ? "on" : "off",
             GlyphMargin = false,
+            // Hover and suggest widgets sit inside the editor, and .lab-editor
+            // clips overflow, so a diagnostic near the top is cut off by the tabs.
+            FixedOverflowWidgets = true,
             Contextmenu = true,
             RenderLineHighlight = view.ReadOnly ? "none" : "line",
             Scrollbar = new EditorScrollbarOptions
