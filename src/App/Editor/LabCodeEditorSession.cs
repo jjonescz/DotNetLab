@@ -43,6 +43,7 @@ public sealed class LabCodeEditorSession
     private int _lastCursorLine;
     private int _lastCursorColumn;
     private bool _ready;
+    private bool _suppressRender;
     private bool _disposed;
     private bool _suppressChange;
     private Task _init = Task.CompletedTask;
@@ -86,7 +87,7 @@ public sealed class LabCodeEditorSession
 
     // First paint only. Tab switches change Value/Language/ModelUri; applying
     // those through a re-render remounts Monaco instead of swapping the model.
-    public bool ShouldRender() => !_ready;
+    public bool ShouldRender() => !_suppressRender;
 
     public StandaloneEditorConstructionOptions ConstructionOptions()
     {
@@ -131,12 +132,15 @@ public sealed class LabCodeEditorSession
             return Task.CompletedTask;
         }
 
-        _applyQueue = ApplyParametersAsync(_applyQueue);
-        return _applyQueue;
+        return EnqueueApplyAsync();
     }
 
     public Task OnInitAsync()
     {
+        // Further renders remount Monaco. Text that arrives while the model is
+        // attaching stays on the view and is written once the model exists.
+        // Language-service startup stays off this queue so it cannot delay that write.
+        _suppressRender = true;
         _init = InitializeEditorAsync();
         return _init;
     }
@@ -226,6 +230,17 @@ public sealed class LabCodeEditorSession
             // Prior apply already logged; keep the queue alive.
         }
 
+        await ApplyCurrentParametersAsync();
+    }
+
+    private Task EnqueueApplyAsync()
+    {
+        _applyQueue = ApplyParametersAsync(_applyQueue);
+        return _applyQueue;
+    }
+
+    private async Task ApplyCurrentParametersAsync()
+    {
         var editor = _view.Editor;
         if (_disposed || !_ready || editor is null)
         {
@@ -303,11 +318,17 @@ public sealed class LabCodeEditorSession
             return;
         }
 
-        _lastValue = _view.Value;
-        _lastLanguage = _view.Language;
         _lastModelUri = _view.ModelUri;
-        _ready = true;
         await AttachNamedModelAsync();
+        if (_disposed)
+        {
+            return;
+        }
+
+        // The model can show text now. Later compiles must not wait for theme
+        // or language-service startup.
+        _ready = true;
+        await EnqueueApplyAsync();
         if (_disposed)
         {
             return;
@@ -364,6 +385,10 @@ public sealed class LabCodeEditorSession
             return;
         }
 
+        // Snapshot first. The view can change while these JS calls are in flight;
+        // recording the later view as applied left Monaco on the placeholder.
+        var value = _view.Value;
+        var language = _view.Language;
         try
         {
             _suppressChange = true;
@@ -371,20 +396,21 @@ public sealed class LabCodeEditorSession
             TextModel model;
             if (existing is null)
             {
-                model = await Global.CreateModel(_js, _view.Value, _view.Language, modelUri);
+                model = await Global.CreateModel(_js, value, language, modelUri);
             }
             else
             {
                 model = existing;
                 var text = await model.GetValue(EndOfLinePreference.TextDefined, preserveBOM: true);
-                if (!string.Equals(text, _view.Value, StringComparison.Ordinal))
+                if (!string.Equals(text, value, StringComparison.Ordinal))
                 {
-                    await model.SetValue(_view.Value);
+                    await model.SetValue(value);
                 }
             }
 
             await editor.SetModel(model);
-            _lastValue = _view.Value;
+            _lastValue = value;
+            _lastLanguage = language;
         }
         catch (JSException ex)
         {
