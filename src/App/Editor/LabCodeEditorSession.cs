@@ -412,6 +412,9 @@ public sealed class LabCodeEditorSession
             }
 
             await editor.SetModel(model);
+            // An existing model keeps the language it was created with. The editor
+            // default used to be C#, so a status string reused that model and stayed highlighted.
+            await Global.SetModelLanguage(_js, model, language);
             _lastValue = value;
             _lastLanguage = language;
         }

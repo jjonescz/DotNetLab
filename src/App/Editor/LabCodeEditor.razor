@@ -26,7 +26,9 @@
     private LabCodeEditorSession _session = default!;
 
     [Parameter] public string Value { get; set; } = "";
-    [Parameter] public string Language { get; set; } = "csharp";
+    // Plain until a caller sets one. The output pane shows status text before any
+    // compile, and the C# default was tokenizing that text.
+    [Parameter] public string Language { get; set; } = "plaintext";
     [Parameter] public string? FileName { get; set; }
     [Parameter] public string? ModelUri { get; set; }
     [Parameter] public bool ReadOnly { get; set; }

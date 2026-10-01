@@ -142,6 +142,27 @@ public sealed class OutputWorkspaceTests
     }
 
     [TestMethod]
+    public void OutputLanguage_StatusTextStaysPlain()
+    {
+        var (session, host) = Create();
+        session.GetOutput("cs").Should().Be("(press Compile to load this)");
+        session.OutputLanguage("cs").Should().Be("plaintext");
+
+        host.Running = true;
+        session.GetOutput("cs").Should().Be("Compiling…");
+        session.OutputLanguage("cs").Should().Be("plaintext");
+
+        host.Running = false;
+        host.Compiled = CompiledAssembly.Fail("boom");
+        session.GetOutput("cs").Should().Be("boom");
+        session.OutputLanguage("cs").Should().Be("plaintext");
+
+        host.Compiled = AssemblyWithEager("il", ".class", "il");
+        session.GetOutput("tree").Should().Be("(no Tree output for this file)");
+        session.OutputLanguage("tree").Should().Be("plaintext");
+    }
+
+    [TestMethod]
     public void OutputLanguage_OutputDefinitionMatchesIdUntilSnapshotExists()
     {
         var (session, _) = Create();
