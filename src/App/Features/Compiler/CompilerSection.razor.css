@@ -1,0 +1,111 @@
+.lab-compiler-card {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.65rem 0.75rem 0.6rem;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--lab-panel-raised) 88%, transparent);
+    border: 1px solid var(--lab-hairline);
+}
+
+.lab-compiler-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.lab-setting-title {
+    font-size: 14px;
+}
+
+.lab-settings-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.35rem;
+    padding: 0 0.7rem;
+    box-sizing: border-box;
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    background: var(--lab-panel-raised);
+    color: var(--lab-muted);
+}
+
+.lab-settings-field:focus-within {
+    border-color: var(--lab-primary);
+}
+
+.lab-settings-input {
+    appearance: none;
+    flex: 1;
+    min-width: 0;
+    height: 2.35rem;
+    border: 0;
+    background: transparent;
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+    font-size: 13px;
+    border-radius: 0;
+    outline: none;
+}
+
+.lab-settings-input::placeholder {
+    color: var(--lab-muted);
+}
+
+.lab-compiler-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.lab-compiler-presets .lab-seg-item {
+    border: 1px solid var(--lab-hairline);
+    padding: 0.16rem 0.48rem;
+}
+
+.lab-compiler-presets .lab-seg-item.active {
+    border-color: var(--lab-primary);
+}
+
+.lab-compiler-lookups {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.65rem;
+    font-size: 11px;
+    color: var(--lab-muted);
+}
+
+.lab-compiler-lookups-label {
+    font-weight: 600;
+}
+
+.lab-compiler-lookups a {
+    color: var(--lab-muted);
+    text-decoration: none;
+}
+
+.lab-compiler-lookups a:hover {
+    color: var(--lab-foreground);
+    text-decoration: underline;
+}
+
+.lab-mono-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--lab-muted);
+    margin: 0;
+}
+
+.lab-mono-hint a {
+    color: var(--lab-muted);
+    text-decoration: none;
+}
+
+.lab-mono-hint a:hover {
+    color: var(--lab-foreground);
+    text-decoration: underline;
+}

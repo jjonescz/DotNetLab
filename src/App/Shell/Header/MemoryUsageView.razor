@@ -1,0 +1,73 @@
+@inject WorkerHost Worker
+@implements IDisposable
+
+<div class="lab-memory-usage" title="@_tooltip">
+    <button type="button" class="lab-memory-usage-text" @onclick="Refresh">@_text</button>
+    <FluentButton Appearance="ButtonAppearance.Subtle"
+                  Size="ButtonSize.Small"
+                  IconOnly="true"
+                  Title="Download .nettrace file"
+                  AriaLabel="Download .nettrace file"
+                  IconStart="@(new Icons.Regular.Size20.ArrowDownload())"
+                  OnClick="DownloadProfileAsync" />
+</div>
+
+@code {
+    private readonly System.Timers.Timer _timer = new(TimeSpan.FromSeconds(1)) { AutoReset = true };
+    private string _text = "…";
+    private string? _tooltip;
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+        _timer.Elapsed += (_, _) => InvokeAsync(() =>
+        {
+            Refresh();
+            StateHasChanged();
+        });
+        _timer.Start();
+    }
+
+    public void Dispose() => _timer.Dispose();
+
+    private void Refresh()
+    {
+        var appInfo = MemoryUsage.Capture();
+        var workerInfo = Worker.LastPingResult?.MemoryUsage;
+        var total = appInfo.TotalMemory + (workerInfo?.TotalMemory ?? 0);
+        _text = FormatSize(total);
+        _tooltip = $"App: {appInfo.Info} (click to refresh)\nWorker: {(workerInfo?.Info ?? "N/A")}";
+    }
+
+    private async Task DownloadProfileAsync()
+    {
+        try
+        {
+            await Worker.CollectAndDownloadGcDumpAsync();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        var abs = Math.Abs(bytes);
+        if (abs >= 1_073_741_824)
+        {
+            return $"{bytes / 1_073_741_824.0:0.##} GB";
+        }
+
+        if (abs >= 1_048_576)
+        {
+            return $"{bytes / 1_048_576.0:0.##} MB";
+        }
+
+        if (abs >= 1024)
+        {
+            return $"{bytes / 1024.0:0.##} KB";
+        }
+
+        return $"{bytes} B";
+    }
+}

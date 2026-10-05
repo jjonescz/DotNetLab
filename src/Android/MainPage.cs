@@ -15,7 +15,7 @@ public sealed class MainPage : ContentPage
             args.WebView.AddJavascriptInterface(new AndroidClipboardBridge(), AndroidClipboardBridge.Name);
         };
 
-        App.RegisterRootComponents((componentType, selector) =>
+        AppBuilder.RegisterRootComponents((componentType, selector) =>
         {
             blazorWebView.RootComponents.Add(new RootComponent
             {

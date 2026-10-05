@@ -1,0 +1,11 @@
+@namespace DotNetLab.Features.Outputs
+
+<FluentCheckbox Label="Rendered" Value="Outputs.ShowRenderedHtml" ValueChanged="OnShowRenderedHtmlChanged" />
+
+@code {
+    [CascadingParameter]
+    public OutputWorkspace Outputs { get; set; } = default!;
+
+    private void OnShowRenderedHtmlChanged(bool value)
+        => Outputs.SetShowRenderedHtml(value);
+}

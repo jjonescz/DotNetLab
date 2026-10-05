@@ -1,0 +1,18 @@
+<div class="lab-setting-row">
+    <div>
+        <div class="lab-setting-title">@Title</div>
+        @if (!string.IsNullOrWhiteSpace(Hint))
+        {
+            <p class="lab-setting-hint">@Hint</p>
+        }
+    </div>
+    <div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

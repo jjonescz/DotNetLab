@@ -100,8 +100,8 @@ async function onFetch(event) {
             const request = shouldServeIndexHtml ? 'index.html' : event.request;
 
             const cache = await caches.open(cacheName);
-            // We ignore search query (so our pre-cached `app.css` matches request `app.css?v=2`),
-            // we have pre-cached the latest versions of all static assets anyway.
+            // Ignore search so a cached asset still matches if a request has a query string.
+            // Pre-cached files are already the latest versions.
             cachedResponse = await cache.match(request, { ignoreSearch: true });
         }
 
