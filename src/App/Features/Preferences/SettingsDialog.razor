@@ -1,0 +1,271 @@
+@inherits FluxorComponent
+@inject AppPersistence Persist
+@inject AppThemeService Theme
+@inject IUpdateChecker Updates
+@inject IState<UpdateState> UpdateStore
+@inject IState<PreferencesState> Prefs
+@inject IState<CompilationOptionsState> Options
+@inject IState<SettingsDialogState> Ui
+@inject IDispatcher Dispatcher
+@inject IJSRuntime JS
+@inject IServiceProvider Services
+@implements IDisposable
+
+<FluentDialog @ref="_dialog" Class="lab-settings-dialog" Modal="false" OnStateChange="OnDialogStateChange">
+    <FluentDialogBody>
+        <TitleTemplate>Settings</TitleTemplate>
+        <TitleActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          Size="ButtonSize.Small"
+                          IconOnly="true"
+                          Title="Close"
+                          IconStart="@(new Icons.Regular.Size20.Dismiss())"
+                          OnClick="RequestClose" />
+        </TitleActionTemplate>
+        <ActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RequestClose">Done</FluentButton>
+        </ActionTemplate>
+        <ChildContent>
+        <div class="lab-settings-stack">
+        <div class="lab-settings-top">
+            <PreferenceSettings>
+                    <SettingRow Title="Razor Toolchain">
+                        <FluentSelect TOption="RazorToolchain"
+                                      TValue="RazorToolchain"
+                                      Items="CompilerCatalog.RazorToolchainOptions"
+                                      OptionText="@(static (RazorToolchain value) => CompilerCatalog.RazorToolchainLabel(value))"
+                                      Value="Options.Value.RazorToolchain"
+                                      ValueChanged="SetRazorToolchain" />
+                    </SettingRow>
+                    <SettingRow Title="Razor Strategy">
+                        <FluentSelect TOption="RazorStrategy"
+                                      TValue="RazorStrategy"
+                                      Items="CompilerCatalog.RazorStrategyOptions"
+                                      OptionText="@(static (RazorStrategy value) => CompilerCatalog.RazorStrategyLabel(value))"
+                                      Value="Options.Value.RazorStrategy"
+                                      ValueChanged="SetRazorStrategy" />
+                    </SettingRow>
+            </PreferenceSettings>
+
+            <OutputSettings />
+        </div>
+
+        <CompilerSettings />
+
+        <div class="lab-settings-about">
+            <div>
+                <p class="lab-settings-kicker">App theme</p>
+                <div class="lab-seg lab-seg-wide" role="radiogroup" aria-label="App theme">
+                    @foreach (var theme in _themes)
+                    {
+                        <button type="button"
+                                class="lab-seg-item @(Prefs.Value.AppTheme == theme.Value ? "active" : null)"
+                                @onclick="@(() => OnThemeChangedAsync(theme.Value))">
+                            @theme.Label
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <p class="lab-settings-identity">
+                @if (!string.IsNullOrEmpty(VersionUtil.CurrentCommit.Hash))
+                {
+                    <CommitHashView CssClass="lab-sdk-summary-versions"
+                                    Enabled="Ui.Value.IsOpen"
+                                    ShowDate="true"
+                                    Commit="VersionUtil.CurrentCommit" />
+                    <span aria-hidden="true"> · </span>
+                }
+                <a href="@AppLinks.Repository" target="_blank" rel="noopener noreferrer">GitHub</a>
+                @if (UpdateStore.Value.Enabled && !UpdateStore.Value.Checking)
+                {
+                    <span aria-hidden="true"> · </span>
+                    <button type="button" @onclick="CheckForUpdates">Check for updates</button>
+                }
+                else if (UpdateStore.Value.Checking)
+                {
+                    <span aria-hidden="true"> · </span>
+                    <span>Checking…</span>
+                }
+            </p>
+
+            @if (Updates.LoadUpdate is { } loadUpdate)
+            {
+                <div class="lab-update">
+                    <span>Update available</span>
+                    <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" OnClick="() => LoadUpdateAsync(loadUpdate)">Reload</FluentButton>
+                    <a href="@AppLinks.Releases" target="_blank" rel="noopener noreferrer">Release notes</a>
+                </div>
+            }
+            else if (UpdateStore.Value.Downloading)
+            {
+                <div class="lab-update">
+                    <span>An update is being downloaded in the background.</span>
+                </div>
+            }
+            else if (UpdateStore.Value.CheckCompleted)
+            {
+                <div class="lab-update">
+                    <span>No update found.</span>
+                </div>
+            }
+
+            <a class="lab-native-apps"
+               href="@(Store?.Url ?? AppLinks.NativeApps)"
+               target="_blank"
+               rel="noopener noreferrer"
+               @onclick="OnStoreClick"
+               @onclick:preventDefault="Store?.OnClick is not null">
+                <span>
+                    <span class="lab-setting-title">@(Store?.Title ?? "Native apps")</span>
+                    <p class="lab-setting-hint">@(Store?.Description ?? "Faster .NET Lab running on full .NET.")</p>
+                </span>
+                <span class="lab-native-apps-chevron" aria-hidden="true">›</span>
+            </a>
+        </div>
+        </div>
+        </ChildContent>
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private static readonly (string Value, string Label)[] _themes =
+    [
+        ("system", "System"),
+        ("light", "Light"),
+        ("dark", "Dark")
+    ];
+
+    private FluentDialog? _dialog;
+    private bool _shown;
+    private bool _hiding;
+    private bool _opening;
+    private DotNetObjectReference<SettingsDialog>? _self;
+    private IStoreLink? Store => Services.GetService<IStoreLink>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        await SyncDialogAsync();
+    }
+
+    private async Task SyncDialogAsync()
+    {
+        var shouldOpen = Ui.Value.IsOpen;
+        if (shouldOpen && !_shown)
+        {
+            await ShowAsync();
+        }
+        else if (!shouldOpen && _shown)
+        {
+            await HideAsync();
+        }
+    }
+
+    private void RequestClose() => Dispatcher.Dispatch(new CloseSettingsAction());
+
+    private void SetRazorToolchain(RazorToolchain value)
+        => Dispatcher.Dispatch(new SetRazorToolchainAction(value));
+
+    private void SetRazorStrategy(RazorStrategy value)
+        => Dispatcher.Dispatch(new SetRazorStrategyAction(value));
+
+    private async Task ShowAsync()
+    {
+        if (_dialog is null || _shown)
+        {
+            return;
+        }
+
+        _shown = true;
+        _opening = true;
+        try
+        {
+            await _dialog.ShowAsync();
+            _self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("netLabDialog.bindClose", ".lab-settings-dialog", _self);
+        }
+        catch (JSException)
+        {
+            _shown = false;
+        }
+        finally
+        {
+            _opening = false;
+        }
+    }
+
+    private async Task HideAsync()
+    {
+        if (_dialog is null || _hiding || !_shown)
+        {
+            return;
+        }
+
+        _hiding = true;
+        try
+        {
+            await _dialog.HideAsync();
+        }
+        catch (JSException)
+        {
+        }
+        finally
+        {
+            _shown = false;
+            _hiding = false;
+        }
+    }
+
+    private void OnDialogStateChange(DialogEventArgs args)
+    {
+        if (args.State != DialogState.Closed)
+        {
+            return;
+        }
+
+        if (_hiding || _opening)
+        {
+            return;
+        }
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
+        {
+            Dispatcher.Dispatch(new CloseSettingsAction());
+        }
+    }
+
+    [JSInvokable]
+    public void OnNativeClosed()
+    {
+        if (_hiding || _opening)
+        {
+            return;
+        }
+
+        _shown = false;
+        if (Ui.Value.IsOpen)
+        {
+            Dispatcher.Dispatch(new CloseSettingsAction());
+        }
+    }
+
+    public void Dispose()
+    {
+        _self?.Dispose();
+        _self = null;
+    }
+
+    private Task OnThemeChangedAsync(string theme) => Theme.SetPreferenceAsync(theme);
+
+    private void CheckForUpdates() => Dispatcher.Dispatch(new CheckUpdatesAction());
+
+    private void OnStoreClick() => Store?.OnClick?.Invoke();
+
+    private async Task LoadUpdateAsync(Action loadUpdate)
+    {
+        await Persist.PersistUrlAsync();
+        loadUpdate();
+    }
+}

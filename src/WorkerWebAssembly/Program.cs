@@ -19,6 +19,11 @@ var services = WorkerServices.Create(
     logLevel: Enum.Parse<LogLevel>(args[1]),
     configureServices: (services) =>
     {
+        services.Configure<CompilerProxyOptions>(static options =>
+        {
+            // Host WebAssembly.csproj sets WasmEnableWebcil=false, so _framework serves DLLs.
+            options.AssembliesAreAlwaysInDllFormat = true;
+        });
         services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () =>
         {
             string json = WorkerInterop.GetDotNetConfig();

@@ -5,7 +5,7 @@
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
     <IndexHtmlScriptPath>_framework/blazor.webassembly.js</IndexHtmlScriptPath>
-    <IndexHtmlHead><link href="manifest.webmanifest?v=2" rel="manifest" /></IndexHtmlHead>
+    <IndexHtmlHead><link href="manifest.webmanifest" rel="manifest" /></IndexHtmlHead>
     <IndexHtmlScripts><script>navigator.serviceWorker.register('service-worker.js');</script></IndexHtmlScripts>
     <!-- Microsoft Store SVG source: https://upload.wikimedia.org/wikipedia/commons/a/a7/Microsoft_Store.svg -->
     <!-- Google Play SVG source: https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_Play_2022_icon.svg -->

@@ -1,0 +1,42 @@
+@inherits FluxorComponent
+@inject IState<PreferencesState> Prefs
+
+@if (Outputs.GetDisclaimer(Output) == OutputDisclaimer.JitAsmUnavailableUsingCached)
+{
+    <div class="lab-output-disclaimer" role="status">
+        JIT disassembler is not available on this platform
+        (it's only available in a <a href="@AppLinks.NativeApps" target="_blank" rel="noopener noreferrer">native app</a>).
+        Displaying cached output.
+    </div>
+}
+<LabCodeEditor Value="@Outputs.GetOutput(Output)"
+               Language="@Outputs.OutputLanguage(Output)"
+               ModelUri="@Outputs.OutputUriFor(Output)"
+               ReadOnly="true"
+               WordWrap="Prefs.Value.WordWrap" />
+
+@code {
+    [CascadingParameter]
+    public OutputWorkspace Outputs { get; set; } = default!;
+
+    [CascadingParameter]
+    public OutputDefinition Output { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

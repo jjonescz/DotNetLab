@@ -1,0 +1,81 @@
+.lab-splitter {
+    flex-shrink: 0;
+    background: var(--lab-background);
+    position: relative;
+    z-index: 2;
+    touch-action: none;
+    user-select: none;
+}
+
+.lab-splitter:not(.is-stacked) {
+    width: 7px;
+    cursor: col-resize;
+    border-left: 1px solid var(--lab-hairline);
+    border-right: 1px solid var(--lab-hairline);
+}
+
+.lab-splitter.is-stacked {
+    height: 7px;
+    cursor: row-resize;
+    border-top: 1px solid var(--lab-hairline);
+    border-bottom: 1px solid var(--lab-hairline);
+}
+
+.lab-splitter::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+}
+
+.lab-splitter:not(.is-stacked)::before {
+    inset: 0 -5px;
+}
+
+.lab-splitter.is-stacked::before {
+    inset: -5px 0;
+}
+
+.lab-splitter::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background: var(--lab-hairline);
+}
+
+.lab-splitter:not(.is-stacked)::after {
+    width: 1px;
+    height: 100%;
+}
+
+.lab-splitter.is-stacked::after {
+    height: 1px;
+    width: 100%;
+}
+
+.lab-splitter:hover::after,
+.lab-splitter:focus-visible::after,
+.lab-splitter.is-resizing::after {
+    background: var(--lab-primary);
+}
+
+@media (max-width: 767px) {
+    .lab-splitter:not(.is-stacked) {
+        width: auto;
+        height: 7px;
+        cursor: row-resize;
+        border-left: none;
+        border-right: none;
+        border-top: 1px solid var(--lab-hairline);
+        border-bottom: 1px solid var(--lab-hairline);
+    }
+
+    .lab-splitter:not(.is-stacked)::before {
+        inset: -5px 0;
+    }
+
+    .lab-splitter:not(.is-stacked)::after {
+        width: 100%;
+        height: 1px;
+    }
+}

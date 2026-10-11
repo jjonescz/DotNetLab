@@ -1,0 +1,42 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<DocumentState> DocumentsUi
+
+@if (Outputs.ShowRenderedHtml && !DocumentsUi.Value.ActiveDocument.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
+{
+    <iframe @key="@("html-preview")"
+            class="lab-html-preview"
+            title="Rendered HTML"
+            sandbox=""
+            srcdoc="@Outputs.GetOutput(Output)"></iframe>
+}
+else
+{
+    <TextOutputView />
+}
+
+@code {
+    [CascadingParameter]
+    public OutputWorkspace Outputs { get; set; } = default!;
+
+    [CascadingParameter]
+    public OutputDefinition Output { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Outputs.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override ValueTask DisposeAsyncCore(bool disposing)
+    {
+        if (disposing)
+        {
+            Outputs.Changed -= OnChanged;
+        }
+
+        return base.DisposeAsyncCore(disposing);
+    }
+}

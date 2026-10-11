@@ -1,0 +1,9 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+
+<FluentCheckbox
+    Label="Declaration document"
+    Value="Options.Value.ShowDeclarationDocument"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetShowDeclarationDocumentAction(value)))" />

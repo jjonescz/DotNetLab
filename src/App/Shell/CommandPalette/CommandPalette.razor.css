@@ -1,0 +1,128 @@
+.lab-palette-host {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-width: 100vw;
+    min-height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: hidden;
+    color: inherit;
+    box-sizing: border-box;
+}
+
+.lab-palette-host:popover-open,
+.lab-palette-host[data-open="true"] {
+    display: block;
+}
+
+.lab-palette-host::backdrop {
+    background: color-mix(in srgb, black 55%, transparent);
+}
+
+.lab-palette-scrim {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: color-mix(in srgb, black 55%, transparent);
+    cursor: default;
+}
+
+.lab-palette {
+    position: relative;
+    z-index: 1;
+    width: min(36rem, calc(100vw - 2rem));
+    margin: 4.75rem auto 0;
+    background: var(--lab-panel-raised);
+    color: var(--lab-foreground);
+    border: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    box-shadow: var(--lab-shadow);
+}
+
+.lab-palette-search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--lab-hairline);
+    border-radius: 0;
+    background: transparent;
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 0.7rem 0.85rem;
+    outline: none;
+}
+
+.lab-palette-search::placeholder {
+    color: var(--lab-muted);
+}
+
+.lab-palette-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: min(22rem, 50vh);
+    overflow: auto;
+}
+
+.lab-palette-list li {
+    margin: 0;
+}
+
+.lab-palette-empty {
+    margin: 0;
+    padding: 0.55rem 0.7rem;
+    font-size: 12px;
+    color: var(--lab-muted);
+}
+
+.lab-palette-item {
+    appearance: none;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--lab-foreground);
+    font-family: var(--font-body);
+    font-size: 13px;
+    text-align: start;
+    padding: 0.45rem 0.65rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lab-palette-item-label {
+    min-width: 0;
+}
+
+.lab-palette-item:hover,
+.lab-palette-item.is-active {
+    background: color-mix(in srgb, var(--lab-primary) 22%, transparent);
+}
+
+.lab-kbd {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: var(--lab-panel-raised);
+    border: 1px solid var(--lab-hairline);
+}

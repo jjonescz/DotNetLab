@@ -1,0 +1,5 @@
+.lab-compiler-picker {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}

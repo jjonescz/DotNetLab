@@ -1,0 +1,464 @@
+using DotNetLab.Features.Compiler;
+using DotNetLab.Features.Outputs;
+using DotNetLab.Features.Sharing;
+using DotNetLab.Lab;
+using Fluxor;
+
+namespace DotNetLab.Features.Documents;
+
+public sealed class DocumentWorkspace
+{
+    private readonly IDispatcher _dispatcher;
+    private readonly IState<CompilationState> _compilation;
+    private readonly Dictionary<string, string> _modelUris = new(StringComparer.Ordinal);
+
+    public DocumentWorkspace(
+        IDispatcher dispatcher,
+        IState<CompilationState> compilation)
+    {
+        _dispatcher = dispatcher;
+        _compilation = compilation;
+        EnsureUri(InitialCode.CSharp.SuggestedFileName);
+    }
+
+    public event Action? Changed;
+
+    public string Template { get; private set; } = "C#";
+    public string ActiveDocument { get; set; } = InitialCode.CSharp.SuggestedFileName;
+
+    public IReadOnlyDictionary<string, string> Sources => _sources;
+    public IReadOnlyList<string> SourceFiles => _sourceFiles;
+
+    private readonly Dictionary<string, string> _sources = new(StringComparer.Ordinal)
+    {
+        [InitialCode.CSharp.SuggestedFileName] = InitialCode.CSharp.TextTemplate,
+    };
+
+    private readonly List<string> _sourceFiles = [InitialCode.CSharp.SuggestedFileName];
+
+    public string UriFor(string fileName)
+    {
+        if (!_modelUris.TryGetValue(fileName, out var uri))
+        {
+            uri = CompiledAssembly.GetInputModelUri(fileName);
+            _modelUris[fileName] = uri;
+        }
+
+        return uri;
+    }
+
+    public IReadOnlyList<string> ModelUris => _modelUris.Values.ToArray();
+
+    public string? RemoveUri(string fileName)
+    {
+        _modelUris.Remove(fileName, out var uri);
+        return uri;
+    }
+
+    public IReadOnlyList<string> ResetUris()
+    {
+        var uris = _modelUris.Values.ToArray();
+        _modelUris.Clear();
+        return uris;
+    }
+
+    public ImmutableArray<ModelInfo> CreateModelInfos()
+        => SourceFiles
+            .Select(file => new ModelInfo(UriFor(file), file)
+            {
+                NewContent = _sources.GetValueOrDefault(file) ?? "",
+                IsConfiguration = file == SpecialDocuments.Configuration,
+            })
+            .ToImmutableArray();
+
+    private void EnsureUri(string fileName) => UriFor(fileName);
+
+    public static bool IsSpecialSource(string fileName)
+        => fileName is SpecialDocuments.Directives or SpecialDocuments.Configuration;
+
+    public void SetTemplate(string template)
+    {
+        var before = ModelUris;
+        Template = template;
+
+        foreach (var file in _sourceFiles.Where(name => !IsSpecialSource(name)).ToArray())
+        {
+            _sourceFiles.Remove(file);
+            _sources.Remove(file);
+            RemoveUri(file);
+        }
+
+        var files = FilesFor(template);
+        foreach (var (name, contents) in files)
+        {
+            InsertUserFile(name);
+            _sources[name] = contents;
+            EnsureUri(name);
+        }
+
+        ActiveDocument = files[0].Name;
+        SetActiveOutput(template is "Razor" or "CSHTML" ? OutputCatalog.Gcs.Id : OutputCatalog.Cs.Id);
+        Stale = true;
+        Notify();
+        AfterChanged(before);
+    }
+
+    private void AfterChanged(IReadOnlyList<string> before)
+    {
+        _dispatcher.Dispatch(new DocumentsChangedAction(before));
+        _dispatcher.Dispatch(new PersistUrlAction());
+    }
+
+    private static (string Name, string Contents)[] FilesFor(string template)
+        => template switch
+        {
+            "Razor" =>
+            [
+                (InitialCode.Razor.SuggestedFileName, InitialCode.Razor.TextTemplate),
+                (InitialCode.RazorImports.SuggestedFileName, InitialCode.RazorImports.TextTemplate),
+            ],
+            "CSHTML" =>
+            [
+                (InitialCode.Cshtml.SuggestedFileName, InitialCode.Cshtml.TextTemplate),
+            ],
+            _ =>
+            [
+                (InitialCode.CSharp.SuggestedFileName, InitialCode.CSharp.TextTemplate),
+            ],
+        };
+
+    public void SetSource(string file, string contents)
+    {
+        _sources[file] = contents;
+        if (Stale)
+        {
+            return;
+        }
+
+        Stale = true;
+    }
+
+    public void RenameFile(string oldName, string newName)
+    {
+        if (!TryNormalizeRename(oldName, newName, out var normalized))
+        {
+            return;
+        }
+
+        var index = _sourceFiles.IndexOf(oldName);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var before = ModelUris;
+        _sourceFiles[index] = normalized;
+        if (_sources.Remove(oldName, out var contents))
+        {
+            _sources[normalized] = contents;
+        }
+
+        RemoveUri(oldName);
+        EnsureUri(normalized);
+
+        if (string.Equals(ActiveDocument, oldName, StringComparison.Ordinal))
+        {
+            ActiveDocument = normalized;
+        }
+
+        Stale = true;
+        Notify();
+        AfterChanged(before);
+    }
+
+    private bool TryNormalizeRename(string oldName, string newName, out string normalized)
+    {
+        normalized = (newName ?? "").Trim();
+        if (string.IsNullOrEmpty(normalized) ||
+            string.Equals(oldName, normalized, StringComparison.Ordinal) ||
+            IsSpecialSource(oldName) ||
+            IsSpecialSource(normalized) ||
+            normalized is "." or ".." ||
+            normalized.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            !string.Equals(Path.GetFileName(normalized), normalized, StringComparison.Ordinal) ||
+            !_sourceFiles.Contains(oldName) ||
+            _sourceFiles.Contains(normalized))
+        {
+            normalized = "";
+            return false;
+        }
+
+        return true;
+    }
+
+    public void CloseFile(string file)
+    {
+        if (_sourceFiles.Count <= 1 || !_sourceFiles.Remove(file))
+        {
+            return;
+        }
+
+        var before = ModelUris;
+        _sources.Remove(file);
+        RemoveUri(file);
+        if (ActiveDocument == file)
+        {
+            ActiveDocument = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
+        }
+
+        Stale = true;
+        Notify();
+        AfterChanged(before);
+    }
+
+    public void AddFile(string extension)
+    {
+        var index = 1;
+        string name;
+        do
+        {
+            name = extension switch
+            {
+                ".razor" => $"Component{index}.razor",
+                ".cshtml" => $"Page{index}.cshtml",
+                _ => $"File{index}.cs"
+            };
+            index++;
+        } while (_sourceFiles.Contains(name));
+
+        var contents = extension switch
+        {
+            ".razor" => $"<h1>{name}</h1>\n",
+            ".cshtml" => $"@page \"/{Path.GetFileNameWithoutExtension(name).ToLowerInvariant()}\"\n\n<h1>{name}</h1>\n",
+            _ => $"public class {Path.GetFileNameWithoutExtension(name)}\n{{\n}}\n"
+        };
+
+        var before = ModelUris;
+        InsertUserFile(name);
+        _sources[name] = contents;
+        EnsureUri(name);
+        ActiveDocument = name;
+        Stale = true;
+        Notify();
+        AfterChanged(before);
+    }
+
+    public void OpenDirectives() => OpenSpecialSource(InitialCode.Directives.SuggestedFileName, InitialCode.Directives.TextTemplate);
+
+    public void OpenConfiguration() => OpenSpecialSource(InitialCode.Configuration.SuggestedFileName, InitialCode.Configuration.TextTemplate);
+
+    private static bool IsUserCsharpFile(string fileName)
+        => fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && !IsSpecialSource(fileName);
+
+    private void OpenSpecialSource(string fileName, string contents)
+    {
+        var before = ModelUris;
+        if (!_sourceFiles.Contains(fileName))
+        {
+            InsertSpecialFile(fileName);
+            _sources[fileName] = contents;
+            EnsureUri(fileName);
+            Stale = true;
+        }
+
+        ActiveDocument = fileName;
+        Notify();
+        AfterChanged(before);
+    }
+
+    private void InsertUserFile(string name)
+    {
+        var at = _sourceFiles.FindIndex(IsSpecialSource);
+        if (at < 0)
+        {
+            _sourceFiles.Add(name);
+            return;
+        }
+
+        _sourceFiles.Insert(at, name);
+    }
+
+    private void InsertSpecialFile(string fileName)
+    {
+        var userCount = _sourceFiles.FindIndex(IsSpecialSource);
+        if (userCount < 0)
+        {
+            userCount = _sourceFiles.Count;
+        }
+
+        var slot = Array.IndexOf(SpecialDocuments.Order, fileName);
+        var at = userCount;
+        for (var i = 0; i < slot; i++)
+        {
+            if (_sourceFiles.Contains(SpecialDocuments.Order[i]))
+            {
+                at++;
+            }
+        }
+
+        _sourceFiles.Insert(at, fileName);
+    }
+
+    public void LoadImportedFiles(IReadOnlyDictionary<string, string> files)
+    {
+        var incoming = files
+            .Select(pair => (Name: Path.GetFileName(pair.Key.Trim()), Contents: pair.Value ?? ""))
+            .Where(pair =>
+                !string.IsNullOrWhiteSpace(pair.Name) &&
+                pair.Name is not "." and not ".." &&
+                pair.Name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0)
+            .GroupBy(pair => pair.Name, StringComparer.Ordinal)
+            .Select(group => group.Last())
+            .ToArray();
+
+        if (incoming.Length == 0)
+        {
+            return;
+        }
+
+        var before = ModelUris;
+        foreach (var file in _sourceFiles.Where(name => !IsSpecialSource(name)).ToArray())
+        {
+            _sourceFiles.Remove(file);
+            _sources.Remove(file);
+            RemoveUri(file);
+        }
+
+        foreach (var (name, contents) in incoming)
+        {
+            if (IsSpecialSource(name))
+            {
+                if (!_sourceFiles.Contains(name))
+                {
+                    InsertSpecialFile(name);
+                }
+
+                _sources[name] = contents;
+                EnsureUri(name);
+                continue;
+            }
+
+            InsertUserFile(name);
+            _sources[name] = contents;
+            EnsureUri(name);
+        }
+
+        ActiveDocument = _sourceFiles.FirstOrDefault(name => !IsSpecialSource(name)) ?? _sourceFiles[0];
+        Stale = true;
+        Notify();
+        AfterChanged(before);
+    }
+
+    public void SetActiveDocument(string file)
+    {
+        if (string.Equals(ActiveDocument, file, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ActiveDocument = file;
+        Notify();
+        _dispatcher.Dispatch(new ActiveDocumentChangedAction());
+        _dispatcher.Dispatch(new PersistUrlAction());
+    }
+
+    public void LoadFromSavedState(SavedState state)
+    {
+        var before = ModelUris;
+        var userFiles = new List<(string Name, string Contents)>();
+        var specialFiles = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var input in state.Inputs)
+        {
+            var name = string.IsNullOrWhiteSpace(input.FileName)
+                ? InitialCode.CSharp.SuggestedFileName
+                : Path.GetFileName(input.FileName);
+            if (string.IsNullOrWhiteSpace(name) ||
+                name is "." or ".." ||
+                name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                continue;
+            }
+
+            var text = input.Text ?? "";
+            if (IsSpecialSource(name))
+            {
+                specialFiles[name] = text;
+            }
+            else
+            {
+                userFiles.Add((name, text));
+            }
+        }
+
+        if (state.Configuration is { } configuration)
+        {
+            specialFiles[SpecialDocuments.Configuration] = configuration;
+        }
+
+        _sourceFiles.Clear();
+        _sources.Clear();
+        ResetUris();
+
+        if (userFiles.Count == 0)
+        {
+            userFiles.Add((InitialCode.CSharp.SuggestedFileName, InitialCode.CSharp.TextTemplate));
+        }
+
+        foreach (var (name, contents) in userFiles)
+        {
+            if (!_sourceFiles.Contains(name))
+            {
+                InsertUserFile(name);
+            }
+
+            _sources[name] = contents;
+        }
+
+        foreach (var fileName in SpecialDocuments.Order)
+        {
+            if (specialFiles.TryGetValue(fileName, out var contents))
+            {
+                InsertSpecialFile(fileName);
+                _sources[fileName] = contents;
+            }
+        }
+
+        var selectable = _sourceFiles.Where(name => name != SpecialDocuments.Configuration).ToList();
+        if (selectable.Count == 0)
+        {
+            selectable = _sourceFiles.ToList();
+        }
+
+        ActiveDocument = state.SelectedInputIndex >= 0 && state.SelectedInputIndex < selectable.Count
+            ? selectable[state.SelectedInputIndex]
+            : selectable[0];
+
+        Template = selectable.Any(file => file.EndsWith(".razor", StringComparison.OrdinalIgnoreCase))
+            ? "Razor"
+            : selectable.Any(file => file.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
+                ? "CSHTML"
+                : "C#";
+
+        Notify();
+        _dispatcher.Dispatch(new DocumentsChangedAction(before));
+    }
+
+    private void Notify()
+    {
+        _dispatcher.Dispatch(new SetDocumentStateAction(
+            Template,
+            ActiveDocument,
+            [.. SourceFiles]));
+        Changed?.Invoke();
+    }
+
+    private bool Stale
+    {
+        get => _compilation.Value.Stale;
+        set => _dispatcher.Dispatch(new SetStaleAction(value));
+    }
+
+    private void SetActiveOutput(string type) =>
+        _dispatcher.Dispatch(new SetActiveOutputAction(type));
+}

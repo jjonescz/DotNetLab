@@ -1,0 +1,65 @@
+.lab-workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+}
+
+.lab-workspace.stacked {
+    flex-direction: column;
+}
+
+.lab-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.lab-pane.primary {
+    width: var(--pane-split, 50%);
+}
+
+.lab-workspace.stacked .lab-pane.primary {
+    width: 100%;
+    height: var(--pane-split, 50%);
+}
+
+.lab-pane.secondary {
+    flex: 1;
+}
+
+.lab-workspace.resizing,
+.lab-workspace.resizing ::deep * {
+    user-select: none !important;
+}
+
+.lab-workspace:not(.stacked).resizing,
+.lab-workspace:not(.stacked).resizing ::deep * {
+    cursor: col-resize !important;
+}
+
+.lab-workspace.stacked.resizing,
+.lab-workspace.stacked.resizing ::deep * {
+    cursor: row-resize !important;
+}
+
+.lab-workspace.resizing ::deep .lab-splitter::after {
+    background: var(--lab-primary);
+}
+
+@media (max-width: 767px) {
+    .lab-workspace:not(.stacked) {
+        flex-direction: column;
+    }
+
+    .lab-workspace:not(.stacked) .lab-pane.primary {
+        width: 100%;
+        height: var(--pane-split, 50%);
+    }
+
+    .lab-workspace:not(.stacked).resizing,
+    .lab-workspace:not(.stacked).resizing ::deep * {
+        cursor: row-resize !important;
+    }
+}

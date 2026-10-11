@@ -1,0 +1,55 @@
+.lab-command-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    height: 2.75rem;
+    min-height: 2.5rem;
+    min-width: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lab-hairline) transparent;
+    background: var(--lab-panel-raised);
+    border-bottom: 1px solid var(--lab-hairline);
+}
+
+.lab-command-bar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.lab-command-bar::-webkit-scrollbar-thumb {
+    background: var(--lab-hairline);
+}
+
+.lab-command-bar ::deep > * {
+    flex-shrink: 0;
+}
+
+.lab-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.lab-vsep {
+    width: 1px;
+    height: 1.5rem;
+    margin: 0 0.25rem;
+    background: var(--lab-hairline);
+    flex-shrink: 0;
+}
+
+::deep .lab-compile {
+    color: var(--lab-success) !important;
+    --colorNeutralForeground1: var(--lab-success);
+    --colorNeutralForeground2: var(--lab-success);
+    --colorNeutralForeground3: var(--lab-success);
+}
+
+::deep fluent-button.lab-toolbar-toggle-on {
+    background-color: var(--lab-hairline) !important;
+    color: var(--lab-foreground);
+}

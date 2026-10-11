@@ -1,0 +1,58 @@
+<div class="lab-compiler-picker">
+    <FluentButton Id="@Id"
+                  Appearance="ButtonAppearance.Subtle"
+                  Size="ButtonSize.Small"
+                  IconStart="@IconStart"
+                  IconEnd="@(new Icons.Regular.Size16.ChevronDown())">
+        @Label: @Value
+    </FluentButton>
+    <FluentMenu @ref="_menu" Trigger="@Id">
+        <FluentMenuList>
+            @foreach (var option in Options)
+            {
+                @if (option.DividerBefore)
+                {
+                    <FluentDivider />
+                }
+                <FluentMenuItem Role="MenuItemRole.Radio"
+                                Checked="@(string.Equals(Value, option.Value, StringComparison.Ordinal))"
+                                Label="@option.Label"
+                                CheckedChanged="@(on => SelectIfChecked(on, () => Selected.InvokeAsync(option.Value)))" />
+            }
+            @if (Trailing is not null)
+            {
+                <FluentDivider />
+                @Trailing
+            }
+        </FluentMenuList>
+    </FluentMenu>
+</div>
+
+@code {
+    private FluentMenu? _menu;
+
+    [Parameter] public required string Id { get; set; }
+    [Parameter] public required string Label { get; set; }
+    [Parameter] public required string Value { get; set; }
+    [Parameter] public Icon? IconStart { get; set; }
+    [Parameter] public IReadOnlyList<CompilerPickerOption> Options { get; set; } = [];
+    [Parameter] public EventCallback<string> Selected { get; set; }
+    [Parameter] public RenderFragment? Trailing { get; set; }
+
+    // Fluent UI 5 radio items emit CheckedChanged, not OnClick. Close first so the
+    // popover is not left anchored to a trigger that re-renders during compiler load.
+    private async Task SelectIfChecked(bool? on, Func<Task> apply)
+    {
+        if (on != true)
+        {
+            return;
+        }
+
+        if (_menu is not null)
+        {
+            await _menu.CloseMenuAsync();
+        }
+
+        await apply();
+    }
+}

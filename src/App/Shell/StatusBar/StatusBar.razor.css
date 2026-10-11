@@ -1,0 +1,62 @@
+.lab-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+    min-width: 0;
+    padding: 0 0.75rem;
+    background: var(--lab-panel);
+    border-top: 1px solid var(--lab-hairline);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--lab-muted);
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lab-hairline) transparent;
+}
+
+.lab-statusbar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.lab-statusbar::-webkit-scrollbar-thumb {
+    background: var(--lab-hairline);
+}
+
+.lab-statusbar > span {
+    flex-shrink: 0;
+}
+
+.lab-spacer {
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.primary {
+    color: var(--lab-foreground);
+}
+
+.lab-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--lab-muted);
+}
+
+.lab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lab-success);
+    flex-shrink: 0;
+}
+
+.lab-dot.stale {
+    background: var(--lab-warning);
+}

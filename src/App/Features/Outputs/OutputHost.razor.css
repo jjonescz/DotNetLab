@@ -1,0 +1,10 @@
+.lab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    min-height: 2.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--lab-panel-raised);
+    border-bottom: 1px solid var(--lab-hairline);
+}

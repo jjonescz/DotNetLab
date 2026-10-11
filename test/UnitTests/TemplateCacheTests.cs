@@ -1,4 +1,5 @@
 ﻿using AwesomeAssertions;
+using DotNetLab.Infrastructure.Caching.Template;
 using DotNetLab.Lab;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;

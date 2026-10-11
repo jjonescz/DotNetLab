@@ -1,0 +1,32 @@
+﻿using BlazorMonaco;
+using BlazorMonaco.Languages;
+
+namespace DotNetLab.Editor.Monaco;
+
+/// <summary>
+/// <see href="https://github.com/serdarciplak/BlazorMonaco/issues/124"/>
+/// </summary>
+public sealed class CompletionItemProviderAsync(ILoggerFactory loggerFactory)
+{
+    public delegate Task<string> ProvideCompletionItemsDelegate(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken);
+
+    public delegate Task<string?> ResolveCompletionItemDelegate(MonacoCompletionItem completionItem, CancellationToken cancellationToken);
+
+    public ILogger<CompletionItemProviderAsync> Logger { get; } = loggerFactory.CreateLogger<CompletionItemProviderAsync>();
+
+    public string[]? TriggerCharacters { get; init; }
+
+    public required ProvideCompletionItemsDelegate ProvideCompletionItemsFunc { get; init; }
+
+    public required ResolveCompletionItemDelegate ResolveCompletionItemFunc { get; init; }
+
+    public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
+    {
+        return ProvideCompletionItemsFunc(modelUri, position, context, cancellationToken);
+    }
+
+    public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem completionItem, CancellationToken cancellationToken)
+    {
+        return ResolveCompletionItemFunc.Invoke(completionItem, cancellationToken);
+    }
+}

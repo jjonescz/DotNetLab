@@ -1,0 +1,27 @@
+@inherits FluxorComponent
+@inject IState<PreferencesState> Prefs
+@inject IState<WorkspaceLayoutState> Layout
+
+<main @ref="_workspace"
+      class="lab-workspace @(Prefs.Value.Stacked ? "stacked" : null) @(Prefs.Value.DisplayHintSquiggles ? null : "no-squiggly-hint") @(_resizing ? "resizing" : null)"
+      style="@($"--pane-split: {Layout.Value.Split.ToString(System.Globalization.CultureInfo.InvariantCulture)}%")">
+    <section class="lab-pane primary">
+        <SourcePane StripChanging="FlushOutputStrip" />
+    </section>
+    <WorkspaceSplitter Workspace="_workspace" ResizingChanged="OnResizing" />
+    <section class="lab-pane secondary">
+        <OutputPane @ref="_output" />
+    </section>
+</main>
+
+@code {
+    private ElementReference _workspace;
+    private OutputPane? _output;
+    private bool _resizing;
+
+    protected override bool ShouldRender() => !_resizing;
+
+    private void OnResizing(bool resizing) => _resizing = resizing;
+
+    private void FlushOutputStrip() => _output?.FlushStrip();
+}

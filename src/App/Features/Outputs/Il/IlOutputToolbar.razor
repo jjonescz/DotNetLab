@@ -1,0 +1,17 @@
+@namespace DotNetLab.Features.Outputs
+@inherits FluxorComponent
+@inject IState<CompilationOptionsState> Options
+@inject IDispatcher Dispatcher
+
+<FluentCheckbox
+    Label="Decode custom attribute blobs"
+    Value="Options.Value.DecodeCustomAttributeBlobs"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetDecodeCustomAttributeBlobsAction(value)))" />
+<FluentCheckbox
+    Label="Sequence points"
+    Value="Options.Value.ShowSequencePoints"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetShowSequencePointsAction(value)))" />
+<FluentCheckbox
+    Label="Full IL"
+    Value="Options.Value.FullIl"
+    ValueChanged="@(value => Dispatcher.Dispatch(new SetFullIlAction(value)))" />

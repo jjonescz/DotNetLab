@@ -1,0 +1,23 @@
+.lab-memory-usage {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--lab-muted);
+    flex-shrink: 0;
+}
+
+.lab-memory-usage-text {
+    margin: 0;
+    padding: 0 0.35rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.lab-memory-usage-text:hover {
+    color: var(--lab-foreground);
+}
