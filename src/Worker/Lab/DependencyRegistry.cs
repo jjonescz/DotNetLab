@@ -59,13 +59,13 @@ internal sealed class DependencyRegistry
     }
 }
 
-internal enum AssemblyDataFormat
+public enum AssemblyDataFormat
 {
     Dll,
     Webcil,
 }
 
-internal sealed class LoadedAssembly
+public sealed class LoadedAssembly
 {
     private bool convertedToDll;
 
@@ -81,7 +81,11 @@ internal sealed class LoadedAssembly
 
     public required AssemblyDataFormat Format { get; init; }
 
-    public string DiskPath => Util.GetAssemblyDiskPath(Name);
+    public string DiskPath
+    {
+        get => field ??= Util.GetAssemblyDiskPath(Name);
+        init;
+    }
 
     public ImmutableArray<byte> DataAsDll
     {
