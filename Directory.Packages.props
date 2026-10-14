@@ -4,8 +4,8 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <!-- We are not using package source mapping. -->
     <NoWarn>$(NoWarn);NU1507</NoWarn>
-    <NetCoreVersion>11.0.0-rc.1.26425.128</NetCoreVersion>
-    <MauiVersion>11.0.0-rc.1.26451.6</MauiVersion>
+    <NetCoreVersion>11.0.0-rc.2.26504.105</NetCoreVersion>
+    <MauiVersion>11.0.0-rc.2.26505.5</MauiVersion>
     <AspNetCoreVersion>$(NetCoreVersion)</AspNetCoreVersion>
     <RoslynBuild>26459.1</RoslynBuild>
     <RoslynVersion>5.12.0-1.$(RoslynBuild)</RoslynVersion>
