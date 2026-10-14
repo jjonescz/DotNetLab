@@ -135,7 +135,7 @@ namespace AspNetCoreGeneratedDocument
 						IModelExpressionProvider modelExpressionProvider = <>4__this.ModelExpressionProvider;
 						ViewDataDictionary<PageModel> viewData = <>4__this.ViewData;
 						ParameterExpression parameterExpression = Expression.Parameter(typeof(PageModel), "__model");
-						MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/)), (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/));
+						MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle(__ldtoken(PageModel.get_Customer()))), (MethodInfo)MethodBase.GetMethodFromHandle(__ldtoken(Customer.get_Name())));
 						ParameterExpression[] array = new ParameterExpression[1];
 						array[0] = parameterExpression;
 						_Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For = modelExpressionProvider.CreateModelExpression(viewData, Expression.Lambda<Func<PageModel, string>>(body, array));
@@ -429,7 +429,7 @@ namespace AspNetCoreGeneratedDocument
 			{
 				if (__backed__tagHelperScopeManager == null)
 				{
-					__backed__tagHelperScopeManager = new TagHelperScopeManager(new Action<HtmlEncoder>(base.StartTagHelperWritingScope), new Func<TagHelperContent>(base.EndTagHelperWritingScope));
+					__backed__tagHelperScopeManager = new TagHelperScopeManager(new Action<HtmlEncoder>(StartTagHelperWritingScope), new Func<TagHelperContent>(EndTagHelperWritingScope));
 				}
 				return __backed__tagHelperScopeManager;
 			}
@@ -514,7 +514,7 @@ namespace AspNetCoreGeneratedDocument
 		{
 			get
 			{
-				PageContext pageContext = base.PageContext;
+				PageContext pageContext = PageContext;
 				return (ViewDataDictionary<PageModel>)((pageContext != null) ? pageContext.ViewData : null);
 			}
 		}
