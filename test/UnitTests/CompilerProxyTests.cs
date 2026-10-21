@@ -911,6 +911,48 @@ public class C
     }
 
     [TestMethod]
+    [DataRow(null)]
+    [DataRow("1")]
+    [DataRow("2")]
+    [DataRow("3")]
+    public async Task Directives_MemorySafetyRulesVersion_OlderCompiler(string? version)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var dependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await dependencyProvider.UseAsync(CompilerKind.Razor, "10.0.0-preview.25429.2", BuildConfiguration.Release);
+        await dependencyProvider.UseAsync(CompilerKind.Roslyn, "5.0.0", BuildConfiguration.Release);
+
+        var source = $$"""
+            #:property OutputType=Library
+            {{(version is null ? "" : $"#:property MemorySafetyRulesVersion={version}")}}
+            #:property AllowUnsafeBlocks=true
+            public unsafe class C { public int* P; }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(version is null ? 0 : 1, compiled.NumWarnings);
+        if (version is null)
+        {
+            Assert.IsEmpty(compiled.Diagnostics);
+        }
+        else
+        {
+            var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+            Assert.AreEqual("LAB", diagnostic.Id);
+            Assert.AreEqual("Property 'MemorySafetyRulesVersion' is not supported by the selected compiler.", diagnostic.Message);
+            Assert.AreEqual("/Input.cs", diagnostic.FilePath);
+            Assert.AreEqual(2, diagnostic.StartLineNumber);
+        }
+
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        Assert.Contains("int32* P", ilText);
+    }
+
+    [TestMethod]
     [DataRow(RazorToolchain.SourceGenerator)]
     [DataRow(RazorToolchain.InternalApi)]
     public async Task Directives_RazorLangVersion(RazorToolchain toolchain)

@@ -793,17 +793,28 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
-                Create<int>(
+                Create(
                     "MemorySafetyRulesVersion",
-                    static (value, out result) => int.TryParse(value.Span, NumberStyles.Integer, CultureInfo.InvariantCulture, out result),
-                    static (context, result) =>
+                    static (context, info, value) =>
                     {
-#pragma warning disable RSEXPERIMENTAL006 // 'MemorySafetyRulesVersion' is experimental
-                        context.Config.CSharpCompilationOptions(options => options.WithMemorySafetyRulesVersion((MemorySafetyRulesVersion)result));
-#pragma warning restore RSEXPERIMENTAL006
+                        if (!int.TryParse(value.Span, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version))
+                        {
+                            info.Errors.Add($"Invalid property value '{value}'. Expected one of '1', '2'.");
+                            return default;
+                        }
+
+                        var method = typeof(CSharpCompilationOptions).GetMethod("WithMemorySafetyRulesVersion", BindingFlags.Instance | BindingFlags.Public);
+                        if (method is null)
+                        {
+                            info.Errors.Add("Property 'MemorySafetyRulesVersion' is not supported by the selected compiler.");
+                            return default;
+                        }
+
+                        var result = Enum.ToObject(method.GetParameters()[0].ParameterType, version);
+                        context.Config.CSharpCompilationOptions(options => (CSharpCompilationOptions)method.Invoke(options, [result])!);
+                        return default;
                     },
-                    Constant(["1", "2"]),
-                    useSuggestValuesInError: true),
+                    Constant(["1", "2"])),
                 Create(
                     "ModuleAssemblyName",
                     static (context, info, value) =>
