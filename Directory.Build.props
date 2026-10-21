@@ -17,6 +17,11 @@
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <CustomAfterBlazorWebAssemblySdkTargets>$(MSBuildThisFileDirectory)eng\BlazorWasmIncrementalWorkaround.targets</CustomAfterBlazorWebAssemblySdkTargets>
 
+    <CreateHardLinksForCopyFilesToOutputDirectoryIfPossible>true</CreateHardLinksForCopyFilesToOutputDirectoryIfPossible>
+    <CreateHardLinksForCopyAdditionalFilesIfPossible>true</CreateHardLinksForCopyAdditionalFilesIfPossible>
+    <CreateHardLinksForCopyLocalIfPossible>true</CreateHardLinksForCopyLocalIfPossible>
+    <CreateHardLinksForPublishFilesIfPossible>true</CreateHardLinksForPublishFilesIfPossible>
+
     <!--
       Needed to get diagnostics inside XML doc comments.
     -->

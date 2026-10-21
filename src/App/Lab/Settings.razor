@@ -5,6 +5,7 @@
 @inject WorkerController Worker
 @inject IUpdateChecker UpdateChecker
 @inject IAppHostEnvironment HostEnvironment
+@inject IFilePicker FilePicker
 
 <FluentDesignTheme StorageName="theme" @bind-Mode="theme" CustomColor="@AppColors.CustomDark"
                    OnLoaded="(e) => SetLuminanceAsync(e.IsDark)" OnLuminanceChanged="(e) => SetLuminanceAsync(e.IsDark)" />
@@ -298,7 +299,7 @@
                         }
                         @if (sdkError != null)
                         {
-                            <FluentLabel Color="Color.Error" Style="margin-top: 8px">
+                            <FluentLabel Color="Color.Error" Style="margin-top: 8px; white-space: pre-wrap">
                                 @sdkError
                             </FluentLabel>
                         }
@@ -329,6 +330,13 @@
                             }
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRoslynVersionAsync("main"))">main</a>
+                        }
+                        @if (FilePicker.SupportsDirectoryPicker)
+                        {
+                            @(" or ")
+                            <a href="javascript:void" @onclick:preventDefault
+                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
+                               @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Roslyn))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(roslynVersion))
                         {
@@ -376,6 +384,13 @@
                             }
                             <a href="javascript:void" @onclick:preventDefault
                                @onclick="@(() => UseRazorVersionAsync("main"))">main</a>
+                        }
+                        @if (FilePicker.SupportsDirectoryPicker)
+                        {
+                            @(" or ")
+                            <a href="javascript:void" @onclick:preventDefault
+                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
+                               @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Razor))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(razorVersion))
                         {
@@ -505,8 +520,14 @@
     private List<SdkVersionInfo>? sdkVersions;
     private SdkInfo? sdkInfo;
     private PackageDependencyInfo? roslynInfo, razorInfo;
-    private string? sdkError, roslynError, razorError;
+    private Error? sdkError, roslynError, razorError;
     private bool checkedForUpdates;
+
+    public readonly record struct Error(string Short, string Long)
+    {
+        private Error((string Short, string Long) tuple) : this(tuple.Short, tuple.Long) { }
+        public Error(Exception ex) : this(ex is WorkerException w ? (w.Failure.Message, w.Failure.FullString) : (ex.Message, ex.ToString())) { }
+    }
 
     [CascadingParameter] public required Page Page { get; set; }
 
@@ -644,7 +665,15 @@
 
     private async Task LoadSdkVersionsAsync()
     {
-        sdkVersions = await Worker.GetSdkVersionsAsync();
+        try
+        {
+            sdkVersions = await Worker.GetSdkVersionsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load SDK versions.");
+        }
+
         await RefreshAsync();
     }
 
@@ -666,7 +695,7 @@
         await RefreshAsync();
 
         SdkInfo? info;
-        string? error;
+        Error? error;
         try
         {
             if (string.IsNullOrEmpty(versionToLoad))
@@ -690,7 +719,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load SDK info.");
-            error = ex is WorkerException w ? w.Failure.Message : ex.Message;
+            error = new(ex);
             info = null;
         }
 
@@ -710,7 +739,7 @@
         await LoadSdkInfoAsync();
     }
 
-    private async Task<(PackageDependencyInfo? Info, string? Error)> LoadCompilerInfoAsync(
+    private async Task<(PackageDependencyInfo? Info, Error? Error)?> LoadCompilerInfoAsync(
         CompilerKind compilerKind,
         string? versionToLoad,
         BuildConfiguration configuration,
@@ -723,9 +752,14 @@
                 version: versionToLoad,
                 configuration: configuration);
 
+            if (!changed)
+            {
+                return null;
+            }
+
             // `saveState` is `false` during initial load where we don't want to
             // display "output outdated" which would override the "cached" info.
-            if (changed && saveState)
+            if (saveState)
             {
                 Page.OnSettingsInputChanged();
             }
@@ -740,7 +774,7 @@
         {
             Logger.LogError(ex, $"Failed to load {compilerKind} info.");
 
-            return (null, ex is WorkerException w ? w.Failure.Message : ex.Message);
+            return (null, new(ex));
         }
     }
 
@@ -765,9 +799,9 @@
         loadingRoslynVersion = versionToLoad;
         await RefreshAsync();
 
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
+        var result = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
 
-        if (roslynVersion == versionToLoad)
+        if (result is var (info, error) && roslynVersion == versionToLoad)
         {
             roslynInfo = info;
             roslynError = error;
@@ -777,10 +811,10 @@
         await RefreshAsync();
     }
 
-    private async Task UseRoslynVersionAsync(string? version)
+    private async Task UseRoslynVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
     {
         roslynVersion = version;
-        roslynConfiguration = BuildConfiguration.Release;
+        roslynConfiguration = configuration;
         await LoadRoslynInfoAsync();
     }
 
@@ -805,9 +839,9 @@
         loadingRazorVersion = versionToLoad;
         await RefreshAsync();
 
-        var (info, error) = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
+        var result = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
 
-        if (razorVersion == versionToLoad)
+        if (result is var (info, error) && razorVersion == versionToLoad)
         {
             razorInfo = info;
             razorError = error;
@@ -817,11 +851,68 @@
         await RefreshAsync();
     }
 
-    private async Task UseRazorVersionAsync(string? version)
+    private async Task UseRazorVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
     {
         razorVersion = version;
-        razorConfiguration = BuildConfiguration.Release;
+        razorConfiguration = configuration;
         await LoadRazorInfoAsync();
+    }
+
+    private async Task PickLocalCompilerAsync(CompilerKind compilerKind)
+    {
+        var pickerId = compilerKind switch
+        {
+            CompilerKind.Roslyn => "roslyn-compiler",
+            CompilerKind.Razor => "razor-compiler",
+            _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
+        };
+
+        SetLoadingVersion(compilerKind, "local");
+        await RefreshAsync();
+
+        try
+        {
+            if (await FilePicker.PickDirectoryAsync(pickerId) is { } dir)
+            {
+                if (dir.DirectoryId is { } dirId)
+                {
+                    await Worker.TransferDirectoryAsync(dirId);
+                }
+
+                switch (compilerKind)
+                {
+                    case CompilerKind.Roslyn:
+                        await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        break;
+                    case CompilerKind.Razor:
+                        await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        break;
+                }
+            }
+            else
+            {
+                SetLoadingVersion(compilerKind, null);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to select a local {CompilerKind} compiler.", compilerKind);
+            if (compilerKind == CompilerKind.Roslyn)
+            {
+                roslynError = new(ex);
+            }
+            else
+            {
+                razorError = new(ex);
+            }
+            SetLoadingVersion(compilerKind, null);
+        }
+    }
+
+    private void SetLoadingVersion(CompilerKind compilerKind, string? version)
+    {
+        Debug.Assert(compilerKind is CompilerKind.Roslyn or CompilerKind.Razor);
+        (compilerKind == CompilerKind.Roslyn ? ref loadingRoslynVersion : ref loadingRazorVersion) = version;
     }
 
     private async Task SetLuminanceAsync(bool dark)

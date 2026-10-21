@@ -221,9 +221,8 @@ internal sealed class WorkerController : IAsyncDisposable
             dispatcher.InvokeAsync(async () =>
             {
                 pingTimer.Enabled = false;
-                LastPingResult = await PostAndReceiveMessageAsync(
-                    new WorkerInputMessage.Ping { Id = messageId++ },
-                    deserializeAs: default(PingResult));
+                LastPingResult = await PostAndReceiveMessageAsync<WorkerInputMessage.Ping, PingResult>(
+                    new() { Id = messageId++ });
                 pingTimer.Enabled = true;
             });
         };
@@ -326,6 +325,23 @@ internal sealed class WorkerController : IAsyncDisposable
         }
     }
 
+    [SupportedOSPlatform("browser")]
+    public async Task TransferDirectoryAsync(string directoryId)
+    {
+        if (!await GetIsEnabledAsync())
+        {
+            return;
+        }
+
+        JSObject? worker = (await GetWorkerAsync())?.Handle;
+        if (worker == null)
+        {
+            return;
+        }
+
+        await WorkerControllerInterop.TransferDirectoryAsync(worker, directoryId);
+    }
+
     private void LogOutgoingMessage(IWorkerInputMessage message, string details)
     {
         logger.Log(
@@ -414,12 +430,9 @@ internal sealed class WorkerController : IAsyncDisposable
     private async Task<TIn> PostAndReceiveMessageAsync<TOut, TIn>(
         TOut message,
         Func<string, TIn>? fallback = null,
-        TIn? deserializeAs = default,
         CancellationToken cancellationToken = default)
         where TOut : IWorkerInputMessage<TIn>
     {
-        _ = deserializeAs; // unused, just to help type inference
-
         if (cancellationToken.CanBeCanceled)
         {
             cancellationToken.Register(() =>
@@ -459,16 +472,14 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public Task<string> FormatCodeAsync(string code, bool isScript)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.FormatCode(code, isScript) { Id = messageId++ },
-            deserializeAs: default(string));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.FormatCode, string>(
+            new(code, isScript) { Id = messageId++ });
     }
 
     public Task<CompiledFileLazyResult> GetOutputAsync(CompilationInput input, string? file, string outputType)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetOutput(input, file, outputType) { Id = messageId++ },
-            deserializeAs: default(CompiledFileLazyResult));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.GetOutput, CompiledFileLazyResult>(
+            new(input, file, outputType) { Id = messageId++ });
     }
 
     /// <summary>
@@ -476,89 +487,78 @@ internal sealed class WorkerController : IAsyncDisposable
     /// </summary>
     public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
     {
-        return PostAndReceiveMessageAsync(new WorkerInputMessage.UseCompilerVersion(
+        return PostAndReceiveMessageAsync<WorkerInputMessage.UseCompilerVersion, bool>(new(
             CompilerKind: compilerKind,
             Version: version,
             Configuration: configuration)
         {
             Id = messageId++,
-        },
-        deserializeAs: default(bool));
+        });
     }
 
     public Task<PackageDependencyInfo?> GetCompilerDependencyInfoAsync(CompilerKind compilerKind)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetCompilerDependencyInfo(compilerKind) { Id = messageId++ },
-            deserializeAs: default(PackageDependencyInfo));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.GetCompilerDependencyInfo, PackageDependencyInfo?>(
+            new(compilerKind) { Id = messageId++ });
     }
 
     public Task<List<SdkVersionInfo>> GetSdkVersionsAsync()
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetSdkVersions() { Id = messageId++ },
-            deserializeAs: default(List<SdkVersionInfo>));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.GetSdkVersions, List<SdkVersionInfo>>(
+            new() { Id = messageId++ });
     }
 
     public Task<SdkInfo> GetSdkInfoAsync(string versionToLoad)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetSdkInfo(versionToLoad) { Id = messageId++ },
-            deserializeAs: default(SdkInfo));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.GetSdkInfo, SdkInfo>(
+            new(versionToLoad) { Id = messageId++ });
     }
 
     public Task<string?> TryGetSubRepoCommitHashAsync(string monoRepoCommitHash, string subRepoUrl)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.TryGetSubRepoCommitHash(monoRepoCommitHash, subRepoUrl) { Id = messageId++ },
-            deserializeAs: default(string?));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.TryGetSubRepoCommitHash, string?>(
+            new(monoRepoCommitHash, subRepoUrl) { Id = messageId++ });
     }
 
     public Task<string> ProvideCompletionItemsAsync(string modelUri, Position position, CompletionContext context, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideCompletionItems(modelUri, position, context) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ProvideCompletionItems, string>(
+            new(modelUri, position, context) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
     public Task<string?> ResolveCompletionItemAsync(MonacoCompletionItem item, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ResolveCompletionItem(item) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ResolveCompletionItem, string?>(
+            new(item) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
     public Task<string?> ProvideSemanticTokensAsync(string modelUri, string? rangeJson, bool debug, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideSemanticTokens(modelUri, rangeJson, debug) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ProvideSemanticTokens, string?>(
+            new(modelUri, rangeJson, debug) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
     public Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideCodeActions(modelUri, rangeJson) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ProvideCodeActions, string?>(
+            new(modelUri, rangeJson) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
     public Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideHover(modelUri, positionJson) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ProvideHover, string?>(
+            new(modelUri, positionJson) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
     public Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.ProvideSignatureHelp(modelUri, positionJson, contextJson) { Id = messageId++ },
-            deserializeAs: default(string),
+        return PostAndReceiveMessageAsync<WorkerInputMessage.ProvideSignatureHelp, string?>(
+            new(modelUri, positionJson, contextJson) { Id = messageId++ },
             cancellationToken: cancellationToken);
     }
 
@@ -582,9 +582,8 @@ internal sealed class WorkerController : IAsyncDisposable
 
     public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.GetDiagnostics(modelUri) { Id = messageId++ },
-            deserializeAs: default(ImmutableArray<MarkerData>));
+        return PostAndReceiveMessageAsync<WorkerInputMessage.GetDiagnostics, ImmutableArray<MarkerData>>(
+            new(modelUri) { Id = messageId++ });
     }
 }
 
@@ -611,7 +610,10 @@ internal static partial class WorkerControllerInterop
     public static partial void PostMessage(JSObject workerSetup, string message);
 
     [JSImport("postSideMessage", nameof(WorkerController))]
-    public static partial void PostSideMessage(JSObject workerSetup, string message);
+    public static partial void PostSideMessage(JSObject workerSetup, string type);
+
+    [JSImport("transferDirectory", nameof(WorkerController))]
+    public static partial Task TransferDirectoryAsync(JSObject workerSetup, string directoryId);
 
     [JSImport("disposeWorker", nameof(WorkerController))]
     public static partial void DisposeWorker(JSObject workerSetup);
