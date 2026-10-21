@@ -820,6 +820,97 @@ public class C
     }
 
     [TestMethod]
+    [DataRow(null, false)]
+    [DataRow("1", false)]
+    [DataRow("2", true)]
+    [DataRow("+2", true)]
+    [DataRow("02", true)]
+    public async Task Directives_MemorySafetyRulesVersion(string? version, bool updatedRules)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            {{(version is null ? "" : $"#:property memorysafetyrulesversion={version}")}}
+            #:property LangVersion=preview
+            #:property AllowUnsafeBlocks=true
+            class C
+            {
+                public static unsafe void M() { }
+                public static void Main() { M(); }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        TestContext.WriteLine(diagnostics);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        Assert.AreEqual(updatedRules ? 1 : 0, compiled.NumErrors);
+        if (updatedRules)
+        {
+            var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+            Assert.AreEqual("CS9362", diagnostic.Id);
+            Assert.AreEqual("'C.M()' must be used in an unsafe context because it is marked as 'unsafe'", diagnostic.Message);
+        }
+        else
+        {
+            Assert.AreEqual(string.Empty, diagnostics);
+        }
+    }
+
+    [TestMethod]
+    [DataRow("1")]
+    [DataRow("2")]
+    public async Task Directives_MemorySafetyRulesVersion_UnsafeContext(string version)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            #:property MemorySafetyRulesVersion={{version}}
+            #:property LangVersion=preview
+            #:property AllowUnsafeBlocks=true
+            class C
+            {
+                public static unsafe void M() { }
+                public static void Main() { unsafe { M(); } }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        Assert.AreEqual(string.Empty, compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        TestContext.WriteLine(ilText);
+        Assert.AreEqual(version == "2", ilText.Contains("System.Diagnostics.CodeAnalysis.RequiresUnsafeAttribute"));
+    }
+
+    [TestMethod]
+    [DataRow("0", "CS9400")]
+    [DataRow("3", "CS9400")]
+    [DataRow("-1", "CS9400")]
+    [DataRow("invalid", "LAB")]
+    [DataRow("2147483648", "LAB")]
+    public async Task Directives_MemorySafetyRulesVersion_Invalid(string value, string expectedDiagnosticId)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            #:property MemorySafetyRulesVersion={{value}}
+            class C { public static void Main() { } }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+        Assert.AreEqual(expectedDiagnosticId, diagnostic.Id);
+        Assert.AreEqual(expectedDiagnosticId == "LAB" ? 0 : 1, compiled.NumErrors);
+        Assert.AreEqual(expectedDiagnosticId == "LAB" ? 1 : 0, compiled.NumWarnings);
+        Assert.AreEqual(expectedDiagnosticId == "LAB"
+            ? $"Invalid property value '{value}'. Expected one of '1', '2'."
+            : $"Invalid 'MemorySafetyRulesVersion' value: '{value}'. Accepted values are: 1, 2", diagnostic.Message);
+    }
+
+    [TestMethod]
     [DataRow(RazorToolchain.SourceGenerator)]
     [DataRow(RazorToolchain.InternalApi)]
     public async Task Directives_RazorLangVersion(RazorToolchain toolchain)

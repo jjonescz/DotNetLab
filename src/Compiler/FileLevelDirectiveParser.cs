@@ -793,6 +793,17 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                         context.Config.CSharpParseOptions(options => options.WithLanguageVersion(result));
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
+                Create<int>(
+                    "MemorySafetyRulesVersion",
+                    static (value, out result) => int.TryParse(value.Span, NumberStyles.Integer, CultureInfo.InvariantCulture, out result),
+                    static (context, result) =>
+                    {
+#pragma warning disable RSEXPERIMENTAL006 // 'MemorySafetyRulesVersion' is experimental
+                        context.Config.CSharpCompilationOptions(options => options.WithMemorySafetyRulesVersion((MemorySafetyRulesVersion)result));
+#pragma warning restore RSEXPERIMENTAL006
+                    },
+                    Constant(["1", "2"]),
+                    useSuggestValuesInError: true),
                 Create(
                     "ModuleAssemblyName",
                     static (context, info, value) =>
