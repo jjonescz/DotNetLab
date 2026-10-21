@@ -63,7 +63,7 @@ internal sealed class InputOutputCache(HttpClient client, ILogger<InputOutputCac
     private static string SlugToCacheKey(string slug)
     {
         Span<byte> hash = stackalloc byte[sizeof(ulong) * 2];
-        int bytesWritten = XxHash128.Hash(MemoryMarshal.AsBytes(slug.AsSpan()), hash);
+        int bytesWritten = XxHash128.Hash(unsafe(MemoryMarshal.AsBytes(slug.AsSpan())), hash);
         Debug.Assert(bytesWritten == hash.Length);
         return string.Create(hash.Length * 2, hash, static (destination, hash) => toHex(hash, destination));
 

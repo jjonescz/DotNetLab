@@ -79,7 +79,7 @@ internal sealed class JitCodeDisassembler(Dictionary<ulong, string> symbols) : I
     public void Write(TextWriter writer, JitCode code)
     {
         var bytes = new byte[code.Size];
-        Marshal.Copy((nint)code.Address, bytes, 0, bytes.Length);
+        unsafe { Marshal.Copy((nint)code.Address, bytes, 0, bytes.Length); }
         Write(writer, code.Address, bytes, RuntimeInformation.ProcessArchitecture);
     }
 
@@ -180,7 +180,7 @@ internal sealed class JitCodeDisassembler(Dictionary<ulong, string> symbols) : I
         // CoreCLR's RIP-relative indirect calls use runtime-owned entry-point cells.
         if (instruction.IsIPRelativeMemoryOperand && address == instruction.IPRelativeMemoryAddress &&
             instruction.FlowControl is FlowControl.IndirectCall or FlowControl.IndirectBranch &&
-            symbols.TryGetValue((ulong)(nuint)Marshal.ReadIntPtr((nint)address), out name))
+            symbols.TryGetValue((ulong)(nuint)unsafe(Marshal.ReadIntPtr((nint)address)), out name))
         {
             symbol = new(address, name);
             return true;

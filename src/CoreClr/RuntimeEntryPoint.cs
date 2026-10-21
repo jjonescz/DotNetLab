@@ -59,10 +59,10 @@ internal static class RuntimeEntryPoint
         {
             // CoreCLR fixup precode: ldr x11; br x11; dmb ishld; ldr x12; ldr x11; br x11.
             return LiteralAddress(0, 11) is { } cell &&
-                (uint)Marshal.ReadInt32((nint)(entry + 4)) == 0xd61f0160 &&
-                (uint)Marshal.ReadInt32((nint)(entry + 8)) == 0xd50339bf &&
+                (uint)unsafe(Marshal.ReadInt32((nint)(entry + 4))) == 0xd61f0160 &&
+                (uint)unsafe(Marshal.ReadInt32((nint)(entry + 8))) == 0xd50339bf &&
                 LiteralAddress(12, 12) == cell + 8 && LiteralAddress(16, 11) == cell + 16 &&
-                (uint)Marshal.ReadInt32((nint)(entry + 20)) == 0xd61f0160;
+                (uint)unsafe(Marshal.ReadInt32((nint)(entry + 20))) == 0xd61f0160;
         }
 
         return false;
@@ -77,7 +77,7 @@ internal static class RuntimeEntryPoint
 
         ulong? LiteralAddress(uint offset, int register)
         {
-            var instruction = Arm64Instruction.Decode((uint)Marshal.ReadInt32((nint)(entry + offset)));
+            var instruction = Arm64Instruction.Decode((uint)unsafe(Marshal.ReadInt32((nint)(entry + offset))));
             return instruction.Mnemonic == Arm64Mnemonic.LDR &&
                 instruction.GetOperand(0).Kind == Arm64OperandKind.Register &&
                 ((Arm64RegisterOperand)instruction.GetOperand(0)).Value.Index == register &&
@@ -112,7 +112,7 @@ internal static class RuntimeEntryPoint
                         ulong cell = instruction.IsIPRelativeMemoryOperand
                             ? instruction.IPRelativeMemoryAddress : instruction.MemoryDisplacement64;
                         onEntryCell?.Invoke(cell);
-                        return (ulong)(nuint)Marshal.ReadIntPtr((nint)cell);
+                        return (ulong)(nuint)unsafe(Marshal.ReadIntPtr((nint)cell));
                     }
 
                     return instruction.Op0Kind switch
@@ -135,7 +135,7 @@ internal static class RuntimeEntryPoint
                     OpKind.Register => registers.GetValueOrDefault((int)instruction.Op1Register),
                     OpKind.Memory when foundContext && instruction.MemoryIndex == Register.None &&
                         registers.TryGetValue((int)instruction.MemoryBase, out var cell) =>
-                        (ulong)(nuint)Marshal.ReadIntPtr((nint)(cell + instruction.MemoryDisplacement64)),
+                        (ulong)(nuint)unsafe(Marshal.ReadIntPtr((nint)(cell + instruction.MemoryDisplacement64))),
                     _ => 0,
                 };
                 registers[(int)instruction.Op0Register] = immediate;
@@ -144,7 +144,7 @@ internal static class RuntimeEntryPoint
             }
             else if (architecture == Architecture.Arm64)
             {
-                var instruction = Arm64Instruction.Decode((uint)Marshal.ReadInt32((nint)address));
+                var instruction = Arm64Instruction.Decode((uint)unsafe(Marshal.ReadInt32((nint)address)));
                 if (instruction.Mnemonic == Arm64Mnemonic.BR)
                 {
                     int register = ((Arm64RegisterOperand)instruction.GetOperand(0)).Value.Index;
@@ -167,7 +167,7 @@ internal static class RuntimeEntryPoint
                         return null;
                     }
 
-                    immediate = (ulong)Marshal.ReadInt64((nint)(address + (ulong)offset));
+                    immediate = (ulong)unsafe(Marshal.ReadInt64((nint)(address + (ulong)offset)));
                     if (context == 0)
                     {
                         onEntryCell?.Invoke(address + (ulong)offset);
@@ -181,7 +181,7 @@ internal static class RuntimeEntryPoint
                         return null;
                     }
 
-                    immediate = (ulong)Marshal.ReadInt64((nint)(cell + (ulong)memory.Immediate));
+                    immediate = (ulong)unsafe(Marshal.ReadInt64((nint)(cell + (ulong)memory.Immediate)));
                 }
                 else
                 {
@@ -204,6 +204,6 @@ internal static class RuntimeEntryPoint
     private sealed class NativeCodeReader(ulong address) : CodeReader
     {
         private int offset;
-        public override int ReadByte() => offset < 15 ? Marshal.ReadByte((nint)address, offset++) : -1;
+        public override int ReadByte() => offset < 15 ? unsafe(Marshal.ReadByte((nint)address, offset++)) : -1;
     }
 }

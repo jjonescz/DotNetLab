@@ -51,7 +51,7 @@
     <PackageVersion Include="NuGet.Versioning" Version="$(NuGetVersion)" />
     <PackageVersion Include="Photino.Blazor" Version="4.0.13" />
     <PackageVersion Include="Photino.Native" Version="4.0.24" />
-    <PackageVersion Include="PolyType" Version="1.4.1" />
+    <PackageVersion Include="PolyType" Version="2.0.0-rc.4" />
     <PackageVersion Include="protobuf-net" Version="3.4.40" />
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.3.8" />
     <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="$(RoslynVersion)" />

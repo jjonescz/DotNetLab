@@ -54,7 +54,7 @@ internal sealed class NativeMethods(ILogger<NativeMethods> logger)
     }
 
     [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint GetRawInputDeviceList(
+    private static unsafe extern uint GetRawInputDeviceList(
         [Out] RawInputDeviceList* rawInputDeviceList,
         ref uint deviceCount,
         uint size);

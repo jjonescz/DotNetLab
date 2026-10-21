@@ -89,7 +89,7 @@ internal sealed class RuntimeJitCodeProvider : EventListener
         {
             // Reflection normalizes a body's native handle to its ordinary method instantiation.
             var reflected = MethodBase.GetMethodFromHandle(
-                RuntimeMethodHandle.FromIntPtr((nint)code.MethodId), declaringType.TypeHandle)
+                unsafe(RuntimeMethodHandle.FromIntPtr((nint)code.MethodId)), declaringType.TypeHandle)
                 ?? throw new InvalidOperationException($"Cannot resolve runtime method 0x{code.MethodId:x}.");
             return reflected.GetGenericArguments();
         }

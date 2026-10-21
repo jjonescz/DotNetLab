@@ -36,7 +36,7 @@ public sealed class WorkerJsonContext
     public new static WorkerJsonContext Default { get; } = new(new(DefaultOptions));
 
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "global::System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver.GetTypeInfo")]
-    private static extern JsonTypeInfo? GetTypeInfoBase(
+    private static safe extern JsonTypeInfo? GetTypeInfoBase(
 #pragma warning disable CS0618 // Type or member is obsolete
         WorkerJsonContextBase @this,
 #pragma warning restore CS0618
