@@ -1223,6 +1223,12 @@ public sealed class Compiler(
 
 internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
 {
+    public IDisposable? BeginSnapshot()
+    {
+        // References are immutable and in-memory, so there is no file-system state to snapshot.
+        return null;
+    }
+
     public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
     {
         return Task.FromResult(Resolve(reference));

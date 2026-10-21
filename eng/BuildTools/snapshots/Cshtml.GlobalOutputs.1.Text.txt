@@ -20,7 +20,7 @@ MoveNext(IL_00a4-IL_00b0 134:7-134:139): InputTagHelper _Microsoft_AspNetCore_Mv
 MoveNext(IL_00b0-IL_00bb 135:7-135:92): IModelExpressionProvider modelExpressionProvider = <>4__this.ModelExpressionProvider;
 MoveNext(IL_00bb-IL_00c6 136:7-136:67): ViewDataDictionary<PageModel> viewData = <>4__this.ViewData;
 MoveNext(IL_00c6-IL_00db 137:7-137:100): ParameterExpression parameterExpression = Expression.Parameter(typeof(PageModel), "__model");
-MoveNext(IL_00db-IL_0104 138:7-138:305): MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/)), (MethodInfo)MethodBase.GetMethodFromHandle((RuntimeMethodHandle)/*OpCode not supported: LdMemberToken*/));
+MoveNext(IL_00db-IL_0104 138:7-138:250): MemberExpression body = Expression.Property(Expression.Property(parameterExpression, (MethodInfo)MethodBase.GetMethodFromHandle(__ldtoken(PageModel.get_Customer()))), (MethodInfo)MethodBase.GetMethodFromHandle(__ldtoken(Customer.get_Name())));
 MoveNext(IL_0104-IL_010a 139:7-139:64): ParameterExpression[] array = new ParameterExpression[1];
 MoveNext(IL_010a-IL_010e 140:7-140:38): array[0] = parameterExpression;
 MoveNext(IL_010e-IL_011d 141:7-141:178): _Microsoft_AspNetCore_Mvc_TagHelpers_InputTagHelper.For = modelExpressionProvider.CreateModelExpression(viewData, Expression.Lambda<Func<PageModel, string>>(body, array));

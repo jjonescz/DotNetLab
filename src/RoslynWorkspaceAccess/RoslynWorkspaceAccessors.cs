@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.ExternalAccess.Pythia.Api;
 using Microsoft.CodeAnalysis.ExtractClass;
 using Microsoft.CodeAnalysis.ExtractInterface;
@@ -170,7 +171,7 @@ public static class RoslynWorkspaceAccessors
 
     public static IDisposable RegisterLogger(Action<string> logger)
     {
-        return RoslynTelemetry.AddEventSink(new RoslynLogger(logger));
+        return RoslynTelemetry.Current.AddEventSink(new RoslynLogger(logger));
     }
 
     public static Task<Solution> WithMergedLinkedFileChangesAsync(
@@ -188,6 +189,11 @@ internal sealed class RoslynLogger(Action<string> logger) : IEventSink
     public bool IsEnabled(FunctionId functionId)
     {
         return true;
+    }
+
+    public void ReportFault(Exception exception, ErrorSeverity severity, bool forceDump)
+    {
+        logger($"{severity} fault(forceDump: {forceDump}) {exception}");
     }
 
     public void Log(FunctionId functionId, LogMessage logMessage)
