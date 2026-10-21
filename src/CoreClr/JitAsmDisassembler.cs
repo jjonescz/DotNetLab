@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
-internal sealed class JitAsmDisassembler : IJitAsmDisassembler
+public sealed class JitAsmDisassembler : IJitAsmDisassembler
 {
     public string Disassemble(MemoryStream emitStream, ImmutableArray<RefAssembly> references)
     {
