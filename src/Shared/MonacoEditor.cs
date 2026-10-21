@@ -141,7 +141,7 @@ public sealed class BlazorMonacoJsonContext
     public new static BlazorMonacoJsonContext Default { get; } = new(new(DefaultOptions));
 
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "global::System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver.GetTypeInfo")]
-    private static extern JsonTypeInfo? GetTypeInfoBase(
+    private static safe extern JsonTypeInfo? GetTypeInfoBase(
 #pragma warning disable CS0618 // Type or member is obsolete
         BlazorMonacoJsonContextBase @this,
 #pragma warning restore CS0618

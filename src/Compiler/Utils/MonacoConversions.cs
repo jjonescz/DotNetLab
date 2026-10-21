@@ -178,7 +178,7 @@ public static class MonacoConversions
                 data.Add(tokenModifiers);
             }
 
-            return MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data));
+            return unsafe(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(data)));
         }
     }
 

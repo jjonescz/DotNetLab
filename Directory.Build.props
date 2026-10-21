@@ -7,7 +7,7 @@
     <RootNamespace>DotNetLab</RootNamespace>
     <AssemblyName>DotNetLab.$([System.IO.Path]::GetFileName(`$(MSBuildProjectDirectory)`))</AssemblyName>
     <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
-    <Features>$(Features);use-roslyn-tokenizer=true</Features>
+    <Features>$(Features);use-roslyn-tokenizer=true;updated-memory-safety-rules</Features>
     <CompressionEnabled>false</CompressionEnabled>
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
