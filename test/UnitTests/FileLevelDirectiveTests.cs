@@ -1,4 +1,7 @@
 ﻿using AwesomeAssertions;
+using Microsoft.AspNetCore.Razor.Language;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetLab;
 
@@ -55,5 +58,93 @@ public sealed class FileLevelDirectiveTests
             .Select(f => f.Split('=')[0]);
         var expectedSuggestedValues = Enumerable.Range(0, Environment.Version.Major + 1).Concat([9999]).Select(i => i.ToString());
         actualSuggestedValues.Should().Equal(expectedSuggestedValues);
+    }
+
+    [TestMethod]
+    public void RazorLangVersion_Suggestions()
+    {
+        FileLevelDirective.Property.Descriptor.SuggestNames("").Should().Contain("RazorLangVersion");
+
+        var values = FileLevelDirective.Property.Descriptor.SuggestValues("razorlangversion", "");
+        values.Should().Contain(["preview", "latest", "experimental", "11.0", "1.0"]);
+        foreach (var value in values)
+        {
+            Assert.IsTrue(RazorLanguageVersion.TryParse(value, out _), value);
+        }
+    }
+
+    [TestMethod]
+    public void RazorLangVersion_Default()
+    {
+        Assert.AreEqual(RazorLanguageVersion.Preview, RazorUtil.DefaultLanguageVersion);
+    }
+
+    [TestMethod]
+    public void RazorLangVersion_Configuration()
+    {
+        var original = RazorConfiguration.Default with
+        {
+            ConfigurationName = "Test",
+            CSharpLanguageVersion = LanguageVersion.CSharp12,
+            UseRoslynTokenizer = true,
+        };
+
+        var modified = original.WithLanguageVersionSafe(RazorLanguageVersion.Version_7_0);
+
+        Assert.AreEqual(original with { LanguageVersion = RazorLanguageVersion.Version_7_0 }, modified);
+        Assert.AreEqual(RazorConfiguration.Default.LanguageVersion, original.LanguageVersion);
+    }
+
+    [TestMethod]
+    [DataRow("Preview", null)]
+    [DataRow("pReViEw", null)]
+    [DataRow("11.0", "11.0")]
+    [DataRow("Latest", null)]
+    [DataRow("5.0", "5.0")]
+    [DataRow("Experimental", null)]
+    public async Task RazorLangVersion_Valid(string value, string? expectedVersion)
+    {
+        var directives = FileLevelDirectiveParser.Instance.Parse(
+            [new() { FileName = "Input.cs", Text = $"#:property RazorLangVersion={value}" }]);
+        var context = new FileLevelDirective.ConsumerContext
+        {
+            Directives = directives,
+            Services = new ServiceCollection().BuildServiceProvider(),
+            Config = new ConfigCollector(),
+        };
+
+        await context.ConsumeAsync();
+
+        expectedVersion ??= value.ToLowerInvariant() switch
+        {
+            "preview" => RazorLanguageVersion.Preview.ToString(),
+            "latest" => RazorLanguageVersion.Latest.ToString(),
+            "experimental" => RazorLanguageVersion.Experimental.ToString(),
+            _ => throw new InvalidOperationException($"Missing expected version for '{value}'."),
+        };
+        Assert.AreEqual(expectedVersion, context.RazorLanguageVersion?.ToString());
+        Assert.IsEmpty(directives.Single().Info.Errors);
+    }
+
+    [TestMethod]
+    [DataRow("")]
+    [DataRow("invalid")]
+    [DataRow("13.0")]
+    [DataRow("8")]
+    public async Task RazorLangVersion_Invalid(string value)
+    {
+        var directives = FileLevelDirectiveParser.Instance.Parse(
+            [new() { FileName = "Input.cs", Text = $"#:property RazorLangVersion={value}" }]);
+        var context = new FileLevelDirective.ConsumerContext
+        {
+            Directives = directives,
+            Services = new ServiceCollection().BuildServiceProvider(),
+            Config = new ConfigCollector(),
+        };
+
+        await context.ConsumeAsync();
+
+        Assert.IsNull(context.RazorLanguageVersion);
+        directives.Single().Info.Errors.Should().Equal($"Invalid property value '{value}'.");
     }
 }

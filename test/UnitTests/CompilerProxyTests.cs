@@ -819,6 +819,89 @@ public class C
         }
     }
 
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion(RazorToolchain toolchain)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var old = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "5.0"));
+        var oldDiagnostics = old.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(oldDiagnostics);
+        TestContext.WriteLine(oldDiagnostics);
+        Assert.AreEqual(1, old.NumErrors);
+        Assert.Contains("error RZ1017: Unexpected literal following the 'typeparam' directive. Expected 'line break'.", oldDiagnostics);
+
+        foreach (var version in new[] { "6.0", "Preview", "Latest", "Experimental" })
+        {
+            var compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, version));
+            var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+            TestContext.WriteLine(diagnostics);
+            Assert.AreEqual(string.Empty, diagnostics, version);
+            var generated = (await compiled.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text;
+            Assert.Contains("where T : class", generated, version);
+        }
+
+        var reset = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "5.0"));
+        Assert.AreEqual(1, reset.NumErrors);
+        var defaultVersion = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, null));
+        Assert.AreEqual(string.Empty, defaultVersion.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        Assert.Contains("where T : class", (await defaultVersion.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion_Invalid(RazorToolchain toolchain)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(CreateRazorLangVersionInput(toolchain, "invalid"));
+
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(1, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(static d => d.Id == "LAB"));
+        Assert.AreEqual("LAB", diagnostic.Id);
+        Assert.AreEqual("Invalid property value 'invalid'.", diagnostic.Message);
+        Assert.AreEqual("/Options.cs", diagnostic.FilePath);
+        Assert.AreEqual(1, diagnostic.StartLineNumber);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion_OlderCompiler(RazorToolchain toolchain)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        await services.GetRequiredService<CompilerDependencyProvider>()
+            .UseAsync(CompilerKind.Razor, "9.0.0-preview.25128.1", BuildConfiguration.Release);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, null));
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        TestContext.WriteLine(diagnostics);
+        Assert.AreEqual(string.Empty, diagnostics);
+        Assert.Contains("where T : class", (await compiled.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text);
+
+        compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "Preview"));
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(1, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(static d => d.Id == "LAB"));
+        Assert.AreEqual("LAB", diagnostic.Id);
+        Assert.AreEqual("Invalid property value 'Preview'.", diagnostic.Message);
+    }
+
+    private static CompilationInput CreateRazorLangVersionInput(RazorToolchain toolchain, string? version) => new(new([
+        new() { FileName = "Options.cs", Text = version is null ? "" : $"#:property RazorLangVersion={version}" },
+        new() { FileName = "TestComponent.razor", Text = "@typeparam T where T : class" },
+    ]))
+    {
+        RazorToolchain = toolchain,
+    };
+
     [TestMethod, CombinatorialData]
     public async Task Directives_TargetFramework(bool fx)
     {
@@ -855,6 +938,52 @@ public class C
         {
             Assert.AreEqual(string.Empty, diagnosticsText);
         }
+    }
+
+    [TestMethod]
+    public async Task BclSourceGenerator_GeneratedRegex()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var source = """
+            using System.Text.RegularExpressions;
+            using System;
+
+            Console.Write(EmailValidator.IsValid("a@b.co"));
+
+            public static partial class EmailValidator
+            {
+                [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase)]
+                private static partial Regex EmailRegex();
+
+                public static bool IsValid(string input) => EmailRegex().IsMatch(input);
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
+        TestContext.WriteLine(cSharpText);
+        Assert.Contains("EmailRegex", cSharpText);
+
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        TestContext.WriteLine(ilText);
+        Assert.Contains("EmailRegex", ilText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            True
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
     }
 
     [TestMethod]
@@ -1066,7 +1195,7 @@ public class C
         Assert.AreEqual(string.Empty, diagnosticsText);
 
         var languageServices = await compiler.GetLanguageServicesAsync();
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");

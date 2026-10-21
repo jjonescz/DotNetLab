@@ -19252,7 +19252,7 @@
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134235293
+                                                          .MetadataToken = 134235299
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -19289,14 +19289,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolNonGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolNonGeneric "IList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100675378
+                                                        .MetadataToken = 100675384
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134235292
+                                                            .MetadataToken = 134235298
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19349,7 +19349,7 @@
                                                         .ContainingSymbol = PENamedTypeSymbolNonGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolNonGeneric "IList"
                                                         .Name = "set_Item"
-                                                        .MetadataToken = 100675379
+                                                        .MetadataToken = 100675385
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .ReturnsVoid = true
@@ -19357,7 +19357,7 @@
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134235293
+                                                            .MetadataToken = 134235299
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19383,7 +19383,7 @@
                                                           PEParameterSymbol "value"
                                                             .Name = "value"
                                                             .MetadataName = "value"
-                                                            .MetadataToken = 134235294
+                                                            .MetadataToken = 134235300
                                                             .Ordinal = 1
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
@@ -19613,7 +19613,7 @@
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134235434
+                                                          .MetadataToken = 134235440
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -19647,14 +19647,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100675548
+                                                        .MetadataToken = 100675554
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134235433
+                                                            .MetadataToken = 134235439
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19704,7 +19704,7 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IList"
                                                         .Name = "set_Item"
-                                                        .MetadataToken = 100675549
+                                                        .MetadataToken = 100675555
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .ReturnsVoid = true
@@ -19712,7 +19712,7 @@
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134235434
+                                                            .MetadataToken = 134235440
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -19738,7 +19738,7 @@
                                                           PEParameterSymbol "value"
                                                             .Name = "value"
                                                             .MetadataName = "value"
-                                                            .MetadataToken = 134235435
+                                                            .MetadataToken = 134235441
                                                             .Ordinal = 1
                                                             .ContainingSymbol = PEMethodSymbol "set_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
@@ -20459,7 +20459,7 @@
                                                         PEParameterSymbol "index"
                                                           .Name = "index"
                                                           .MetadataName = "index"
-                                                          .MetadataToken = 134235444
+                                                          .MetadataToken = 134235450
                                                           .ContainingSymbol = PEPropertySymbol "this[]"
                                                           .TypeWithAnnotations = TypeWithAnnotations
                                                             .IsResolved = true
@@ -20493,14 +20493,14 @@
                                                         .ContainingSymbol = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                         .ContainingType = PENamedTypeSymbolGeneric "IReadOnlyList"
                                                         .Name = "get_Item"
-                                                        .MetadataToken = 100675559
+                                                        .MetadataToken = 100675565
                                                         .DeclaredAccessibility = Public
                                                         .IsAbstract = true
                                                         .Parameters = [1]
                                                           PEParameterSymbol "index"
                                                             .Name = "index"
                                                             .MetadataName = "index"
-                                                            .MetadataToken = 134235444
+                                                            .MetadataToken = 134235450
                                                             .ContainingSymbol = PEMethodSymbol "get_Item"
                                                             .TypeWithAnnotations = TypeWithAnnotations
                                                               .IsResolved = true
@@ -69026,13 +69026,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554655
+                            .MetadataToken = 33554656
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554655
+                            .MetadataToken = 33554656
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -69923,13 +69923,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554745
+                            .MetadataToken = 33554743
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554745
+                            .MetadataToken = 33554743
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -70118,13 +70118,13 @@
                             .DeclaredAccessibility = Internal
                             .IsSealed = true
                             .IsDefinition = true
-                            .MetadataToken = 33554463
+                            .MetadataToken = 33554464
                             .MetadataName = "<PrivateImplementationDetails>"
                             .Name = "<PrivateImplementationDetails>"
                             .Language = "C#"
                             .Kind = NamedType
                           .UnderlyingSymbol = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
-                            .MetadataToken = 33554463
+                            .MetadataToken = 33554464
                             .ConstructedFrom = PENamedTypeSymbolNonGeneric "<PrivateImplementationDetails>"
                             .ContainingSymbol = PEGlobalNamespaceSymbol ""
                             .DeclaredAccessibility = Internal
@@ -88400,7 +88400,7 @@
                                             .ContainingSymbol = PENamedTypeSymbolNonGeneric "Stream"
                                             .ContainingType = PENamedTypeSymbolNonGeneric "Stream"
                                             .Name = ".ctor"
-                                            .MetadataToken = 100673871
+                                            .MetadataToken = 100673877
                                             .DeclaredAccessibility = Protected
                                             .ReturnsVoid = true
                                             .ReturnTypeWithAnnotations = TypeWithAnnotations
@@ -89385,7 +89385,7 @@
                                   .MethodKind = Constructor
                                   .DeclaredAccessibility = Protected
                                   .IsDefinition = true
-                                  .MetadataToken = 100673871
+                                  .MetadataToken = 100673877
                                   .MetadataName = ".ctor"
                                   .Name = ".ctor"
                                   .Language = "C#"

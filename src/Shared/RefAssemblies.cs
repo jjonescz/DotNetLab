@@ -13,6 +13,12 @@ public static class RefAssemblies
 
         foreach (var name in names)
         {
+            if (name.StartsWith(SdkAnalyzerAssemblies.Prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                // Skip analyzers, they are loaded separately.
+                continue;
+            }
+            
             var stream = typeof(RefAssemblies).Assembly.GetManifestResourceStream(name)
                 ?? throw new InvalidOperationException($"Did not find resource '{name}'.");
             var bytes = new byte[stream.Length];

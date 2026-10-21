@@ -51,6 +51,7 @@ public sealed class Compiler(
     /// Reused for incremental source generation.
     /// </summary>
     private GeneratorDriver? generatorDriver;
+    private int lastPackageAnalyzerAssembliesCount;
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
 
@@ -141,6 +142,8 @@ public sealed class Compiler(
             Metadata = RefAssemblyMetadata.All,
             Assemblies = RefAssemblies.All,
         };
+        var analyzerAssemblies = ImmutableArray<RefAssembly>.Empty;
+        var razorLanguageVersion = RazorUtil.DefaultLanguageVersion;
 
         Config.Instance.Reset();
 
@@ -195,7 +198,23 @@ public sealed class Compiler(
         parseOptions = Config.Instance.ConfigureCSharpParseOptions(parseOptions);
         emitOptions = Config.Instance.ConfigureEmitOptions(emitOptions);
         references = Config.Instance.ConfigureReferences(references);
+        
+        var packageAnalyzerAssemblies = Config.Instance.ConfigureAnalyzers();
+        var sdkAnalyzers = SdkAnalyzerAssemblies.All;
+        
+        // A #:package can ship the same generator as the ref pack, e.g. System.Text.Json.
+        // Keep the ref-pack copy so the versions do not conflict.
+        var sdkNames = new HashSet<string>(
+            sdkAnalyzers.Select(static a => a.Name),
+            StringComparer.OrdinalIgnoreCase);
+        
+        packageAnalyzerAssemblies = packageAnalyzerAssemblies
+            .RemoveAll(a => sdkNames.Contains(a.Name));
+        
+        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
 
+        var packageGenerators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+        
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
             logger.LogDebug("Using references:\n{References}", references.Assemblies
@@ -209,7 +228,9 @@ public sealed class Compiler(
             {
                 ["build_property.RazorConfiguration"] = "Default",
                 ["build_property.RootNamespace"] = "TestNamespace",
-                ["build_property.RazorLangVersion"] = "Latest",
+                ["build_property.RazorLangVersion"] = ReferenceEquals(razorLanguageVersion, RazorLanguageVersion.Experimental)
+                    ? "Experimental"
+                    : razorLanguageVersion.ToString(),
                 ["build_property.GenerateRazorMetadataSourceChecksumAttributes"] = "false",
             },
         };
@@ -275,7 +296,8 @@ public sealed class Compiler(
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
-            .Concat(additionalDiagnostics);
+            .Concat(additionalDiagnostics)
+            .Concat(generatorLoadDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
@@ -504,6 +526,7 @@ public sealed class Compiler(
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
                 AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
+                AnalyzerAssemblies = analyzerAssemblies,
             };
         }
 
@@ -625,10 +648,18 @@ public sealed class Compiler(
                 references: references.Metadata,
                 options: options);
 
-            if (generatorDriver is null)
+            ISourceGenerator[] generators =
+            [
+                new RazorSourceGenerator().AsSourceGenerator(),
+                .. packageGenerators,
+            ];
+
+            if (generatorDriver is null || 
+                packageAnalyzerAssemblies.Length > 0 ||
+                lastPackageAnalyzerAssembliesCount > 0)
             {
                 generatorDriver = CSharpGeneratorDriver.Create(
-                    generators: [new RazorSourceGenerator().AsSourceGenerator()],
+                    generators: generators,
                     additionalTexts: additionalTextsBuilder.ToImmutable(),
                     parseOptions: parseOptions,
                     optionsProvider: optionsProvider);
@@ -640,6 +671,8 @@ public sealed class Compiler(
                     .WithUpdatedParseOptions(parseOptions)
                     .WithUpdatedAnalyzerConfigOptions(optionsProvider);
             }
+
+            lastPackageAnalyzerAssembliesCount = packageAnalyzerAssemblies.Length;
 
             generatorDriver = (CSharpGeneratorDriver)generatorDriver.RunGeneratorsAndUpdateCompilation(
                 initialCompilation,
@@ -675,7 +708,7 @@ public sealed class Compiler(
                 .Select(static s => s.SyntaxTree)
                 .Concat(additionalSyntaxTrees);
 
-            var config = RazorConfiguration.Default;
+            var config = RazorConfiguration.Default.WithLanguageVersionSafe(razorLanguageVersion);
 
             // Phase 1: Declaration only (to be used as a reference from which tag helpers will be discovered).
             RazorProjectEngine declarationProjectEngine = createProjectEngine([]);
@@ -1080,6 +1113,7 @@ public sealed class Compiler(
                 };
 
                 await context.ConsumeAsync();
+                razorLanguageVersion = context.RazorLanguageVersion ?? razorLanguageVersion;
 
                 foreach (var directive in directives)
                 {
@@ -1189,6 +1223,12 @@ public sealed class Compiler(
 
 internal sealed class DecompilerAssemblyResolver(ILogger<DecompilerAssemblyResolver> logger, ImmutableArray<RefAssembly> references) : ICSharpCode.Decompiler.Metadata.IAssemblyResolver
 {
+    public IDisposable? BeginSnapshot()
+    {
+        // References are immutable and in-memory, so there is no file-system state to snapshot.
+        return null;
+    }
+
     public Task<ICSharpCode.Decompiler.Metadata.MetadataFile?> ResolveAsync(ICSharpCode.Decompiler.Metadata.IAssemblyReference reference)
     {
         return Task.FromResult(Resolve(reference));
@@ -1633,6 +1673,12 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     /// Set to <see langword="default"/> if the default reference assemblies were used.
     /// </summary>
     public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
+
+    /// <summary>
+    /// Analyzer / source-generator assemblies from <c>#:package</c>.
+    /// This is never <see langword="default"/>.
+    /// </summary>
+    public required ImmutableArray<RefAssembly> AnalyzerAssemblies { get; init; }
 
     public void Dispose() => dispose();
 }
