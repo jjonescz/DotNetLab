@@ -794,6 +794,28 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
                 Create(
+                    "MemorySafetyRulesVersion",
+                    static (context, info, value) =>
+                    {
+                        if (!int.TryParse(value.Span, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version))
+                        {
+                            info.Errors.Add($"Invalid property value '{value}'. Expected one of '1', '2'.");
+                            return default;
+                        }
+
+                        var method = typeof(CSharpCompilationOptions).GetMethod("WithMemorySafetyRulesVersion", BindingFlags.Instance | BindingFlags.Public);
+                        if (method is null)
+                        {
+                            info.Errors.Add("Property 'MemorySafetyRulesVersion' is not supported by the selected compiler.");
+                            return default;
+                        }
+
+                        var result = Enum.ToObject(method.GetParameters()[0].ParameterType, version);
+                        context.Config.CSharpCompilationOptions(options => (CSharpCompilationOptions)method.Invoke(options, [result])!);
+                        return default;
+                    },
+                    Constant(["1", "2"])),
+                Create(
                     "ModuleAssemblyName",
                     static (context, info, value) =>
                     {
