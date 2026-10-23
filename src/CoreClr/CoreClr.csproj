@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="JitInspect" />
+    <PackageReference Include="AsmArm64" />
+    <PackageReference Include="Iced" />
   </ItemGroup>
 
   <ItemGroup>
