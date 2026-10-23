@@ -48,9 +48,7 @@ internal sealed class RuntimeJitCodeProvider : EventListener
                         return code;
                     }
 
-                    // Reflection exposes the Task adapter, not the runtime-async body.
-                    var body = methods.Values.FirstOrDefault(m =>
-                        m.ModuleId == code.ModuleId && m.Token == code.Token && m.MethodId != code.MethodId);
+                    var body = FindAsyncBody(method, code);
                     if (body is not null)
                     {
                         return body;
@@ -65,6 +63,35 @@ internal sealed class RuntimeJitCodeProvider : EventListener
 
                 Monitor.Wait(methods, remaining);
             }
+        }
+    }
+
+    private JitCode? FindAsyncBody(MethodBase method, JitCode adapter)
+    {
+        var declaringType = method.DeclaringType
+            ?? throw new InvalidOperationException($"Cannot determine the declaring type of '{method}'.");
+        var arguments = GetMethodArguments(adapter);
+        foreach (var candidate in methods.Values)
+        {
+            // The facade returns Task/ValueTask; the async body has a different return signature.
+            // Events use canonical types for shared generics, not the requested reflection types.
+            if (candidate.ModuleId == adapter.ModuleId && candidate.Token == adapter.Token &&
+                candidate.DeclaringType == adapter.DeclaringType && candidate.Signature != adapter.Signature &&
+                GetMethodArguments(candidate).SequenceEqual(arguments))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+
+        Type[] GetMethodArguments(JitCode code)
+        {
+            // Reflection normalizes a body's native handle to its ordinary method instantiation.
+            var reflected = MethodBase.GetMethodFromHandle(
+                RuntimeMethodHandle.FromIntPtr((nint)code.MethodId), declaringType.TypeHandle)
+                ?? throw new InvalidOperationException($"Cannot resolve runtime method 0x{code.MethodId:x}.");
+            return reflected.GetGenericArguments();
         }
     }
 
@@ -92,15 +119,18 @@ internal sealed class RuntimeJitCodeProvider : EventListener
             GetPayload(eventData, "ModuleID") is not ulong module ||
             GetPayload(eventData, "MethodToken") is not uint token ||
             GetPayload(eventData, "MethodStartAddress") is not ulong address ||
-            GetPayload(eventData, "MethodSize") is not uint size || address == 0 || size == 0)
+            GetPayload(eventData, "MethodSize") is not uint size || address == 0 || size == 0 ||
+            GetPayload(eventData, "MethodNamespace") is not string declaringType ||
+            GetPayload(eventData, "MethodName") is not string methodName ||
+            GetPayload(eventData, "MethodSignature") is not string signature)
         {
             return;
         }
 
-        var name = $"{GetPayload(eventData, "MethodNamespace")}.{GetPayload(eventData, "MethodName")}";
+        var name = $"{declaringType}.{methodName}";
         lock (methods)
         {
-            methods[address] = new(id, module, token, address, checked((int)size), name);
+            methods[address] = new(id, module, token, address, checked((int)size), name, declaringType, signature);
             Monitor.PulseAll(methods);
         }
     }
@@ -112,4 +142,5 @@ internal sealed class RuntimeJitCodeProvider : EventListener
     }
 }
 
-internal sealed record JitCode(ulong MethodId, ulong ModuleId, uint Token, ulong Address, int Size, string Name);
+internal sealed record JitCode(ulong MethodId, ulong ModuleId, uint Token, ulong Address, int Size, string Name,
+    string DeclaringType, string Signature);

@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -22,9 +23,11 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
         {
             var assembly = alc.LoadFromStream(emitStream);
 
+            using var writer = new StringWriter();
+            writer.WriteLine($"; {RuntimeInformation.FrameworkDescription}, {RuntimeInformation.OSDescription}, {RuntimeInformation.ProcessArchitecture}");
             using var provider = new RuntimeJitCodeProvider();
             var prepared = new List<(MethodBase Method, JitCode? Code, string? Comment, Exception? Error)>();
-            foreach (var method in GetMethods(assembly))
+            foreach (var method in GetMethods(assembly, writer))
             {
                 var comment = method switch
                 {
@@ -54,8 +57,6 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
                 }
             }
 
-            using var writer = new StringWriter();
-            writer.WriteLine($"; {RuntimeInformation.FrameworkDescription}, {RuntimeInformation.OSDescription}, {RuntimeInformation.ProcessArchitecture}");
             foreach (var (method, code, comment, error) in prepared)
             {
                 writer.WriteLine();
@@ -101,7 +102,7 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
         }
     }
 
-    private static IEnumerable<MethodBase> GetMethods(Assembly assembly)
+    private static IEnumerable<MethodBase> GetMethods(Assembly assembly, TextWriter writer)
     {
         var methods = new HashSet<MethodBase>();
         var types = new HashSet<Type>();
@@ -110,16 +111,18 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
             AddType(type);
             if (type.IsGenericTypeDefinition)
             {
-                foreach (var attribute in type.GetCustomAttributes<GenericArgumentsAttribute>())
+                foreach (var attribute in type.GetCustomAttributesData().Where(a => a.AttributeType == typeof(GenericArgumentsAttribute)))
                 {
-                    AddType(type.MakeGenericType(attribute.GenericArguments));
+                    TryAdd($"type '{type}' from {nameof(GenericArgumentsAttribute)}",
+                        () => AddType(type.MakeGenericType(ReadTypeArguments(attribute.ConstructorArguments[0]))));
                 }
             }
         }
 
-        foreach (var attribute in assembly.GetCustomAttributes<MethodInstantiationAttribute>())
+        foreach (var attribute in assembly.GetCustomAttributesData().Where(a => a.AttributeType == typeof(MethodInstantiationAttribute)))
         {
-            AddInstantiation(null, attribute);
+            TryAdd($"assembly-level {nameof(MethodInstantiationAttribute)}",
+                () => AddInstantiation(null, attribute));
         }
 
         return methods;
@@ -138,21 +141,23 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
 
             foreach (var method in type.GetTypeInfo().DeclaredMethods)
             {
-                AddMethod(method);
+                TryAdd($"method '{method}'", () => AddMethod(method));
                 if (method.IsGenericMethodDefinition && !type.ContainsGenericParameters)
                 {
-                    foreach (var attribute in method.GetCustomAttributes<GenericArgumentsAttribute>())
+                    foreach (var attribute in method.GetCustomAttributesData().Where(a => a.AttributeType == typeof(GenericArgumentsAttribute)))
                     {
-                        AddMethod(method.MakeGenericMethod(attribute.GenericArguments));
+                        TryAdd($"method '{method}' from {nameof(GenericArgumentsAttribute)}",
+                            () => AddMethod(method.MakeGenericMethod(ReadTypeArguments(attribute.ConstructorArguments[0]))));
                     }
                 }
             }
 
             if (!type.ContainsGenericParameters)
             {
-                foreach (var attribute in type.GetCustomAttributes<MethodInstantiationAttribute>())
+                foreach (var attribute in type.GetCustomAttributesData().Where(a => a.AttributeType == typeof(MethodInstantiationAttribute)))
                 {
-                    AddInstantiation(type, attribute);
+                    TryAdd($"type '{type}' from {nameof(MethodInstantiationAttribute)}",
+                        () => AddInstantiation(type, attribute));
                 }
             }
         }
@@ -164,9 +169,20 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
                 return;
             }
 
-            var stateMachine = method.GetCustomAttribute<System.Runtime.CompilerServices.StateMachineAttribute>()?.StateMachineType;
-            if (stateMachine is not null)
+            foreach (var attribute in method.GetCustomAttributesData())
             {
+                if (attribute.AttributeType != typeof(AsyncStateMachineAttribute) &&
+                    attribute.AttributeType != typeof(IteratorStateMachineAttribute) &&
+                    attribute.AttributeType != typeof(AsyncIteratorStateMachineAttribute))
+                {
+                    continue;
+                }
+
+                if (attribute.ConstructorArguments is not [{ Value: Type stateMachine }])
+                {
+                    throw new ArgumentException($"Invalid state-machine attribute on '{method}'.");
+                }
+
                 if (stateMachine.ContainsGenericParameters)
                 {
                     stateMachine = stateMachine.MakeGenericType(
@@ -178,26 +194,68 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
             }
         }
 
-        void AddInstantiation(Type? containingType, MethodInstantiationAttribute attribute)
+        void AddInstantiation(Type? containingType, CustomAttributeData attribute)
         {
-            var type = attribute.TypeName is { } name
+            var arguments = attribute.ConstructorArguments;
+            int offset = arguments.Count == 4 ? 1 : 0;
+            var typeName = offset == 1 ? (string?)arguments[0].Value : null;
+            var methodName = (string?)arguments[offset].Value;
+            var genericTypeArguments = offset == 1 ? ReadTypeArguments(arguments[2]) : Type.EmptyTypes;
+            var genericMethodArguments = ReadTypeArguments(arguments[^1]);
+            var type = typeName is { } name
                 ? assembly.GetType(name, throwOnError: true)!
                 : containingType ?? throw new ArgumentException("An assembly-level method instantiation must specify a type name.");
             if (type.ContainsGenericParameters)
             {
-                type = type.MakeGenericType(attribute.GenericTypeArguments);
+                type = type.MakeGenericType(genericTypeArguments);
             }
 
-            foreach (var method in type.GetTypeInfo().DeclaredMethods.Where(m => m.Name == attribute.MethodName))
+            bool matched = false;
+            foreach (var method in type.GetTypeInfo().DeclaredMethods.Where(m => m.Name == methodName))
             {
-                if (method.IsGenericMethodDefinition && method.GetGenericArguments().Length == attribute.GenericMethodArguments.Length)
+                if (method.IsGenericMethodDefinition && method.GetGenericArguments().Length == genericMethodArguments.Length)
                 {
-                    AddMethod(method.MakeGenericMethod(attribute.GenericMethodArguments));
+                    matched = true;
+                    TryAdd($"overload '{method}' from {nameof(MethodInstantiationAttribute)}",
+                        () => AddMethod(method.MakeGenericMethod(genericMethodArguments)));
                 }
-                else if (!method.IsGenericMethodDefinition && attribute.GenericMethodArguments.Length == 0)
+                else if (!method.IsGenericMethodDefinition && genericMethodArguments.Length == 0)
                 {
-                    AddMethod(method);
+                    matched = true;
+                    TryAdd($"overload '{method}' from {nameof(MethodInstantiationAttribute)}", () => AddMethod(method));
                 }
+            }
+
+            if (!matched)
+            {
+                throw new ArgumentException($"No matching overload of '{type}.{methodName}' accepts {genericMethodArguments.Length} generic method arguments.");
+            }
+        }
+
+        static Type[] ReadTypeArguments(CustomAttributeTypedArgument argument)
+        {
+            if (argument.Value is null)
+            {
+                return [];
+            }
+
+            var values = (IReadOnlyCollection<CustomAttributeTypedArgument>)argument.Value;
+            return argument.ArgumentType == typeof(string[])
+                ? values.Select(value => Type.GetType((string)value.Value!)).OfType<Type>().ToArray()
+                : values.Select(value => (Type)value.Value!).ToArray();
+        }
+
+        void TryAdd(string description, Action add)
+        {
+            try
+            {
+                add();
+            }
+            catch (Exception ex) when (ex is ArgumentException or TypeLoadException or FileNotFoundException or FileLoadException)
+            {
+                writer.WriteLine();
+                writer.WriteLine($"; Cannot instantiate {description}.");
+                WriteError(writer, ex);
             }
         }
     }
