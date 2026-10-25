@@ -10,8 +10,8 @@ internal static class RuntimeEntryPoint
     public static ulong Resolve(MethodBase method, ulong entry, Action<ulong>? onEntryCell = null)
     {
         ulong context = method.IsGenericMethod
-            ? (ulong)method.MethodHandle.Value
-            : (ulong)(method.DeclaringType?.TypeHandle.Value ?? 0);
+            ? (ulong)(nuint)method.MethodHandle.Value
+            : (ulong)(nuint)(method.DeclaringType?.TypeHandle.Value ?? 0);
         bool generic = method.IsGenericMethod || method.DeclaringType?.IsGenericType == true;
         return Resolve(entry, context, generic, RuntimeInformation.ProcessArchitecture, onEntryCell);
     }
@@ -53,7 +53,7 @@ internal static class RuntimeEntryPoint
                         ulong cell = instruction.IsIPRelativeMemoryOperand
                             ? instruction.IPRelativeMemoryAddress : instruction.MemoryDisplacement64;
                         onEntryCell?.Invoke(cell);
-                        return (ulong)Marshal.ReadIntPtr((nint)cell);
+                        return (ulong)(nuint)Marshal.ReadIntPtr((nint)cell);
                     }
 
                     return instruction.Op0Kind switch
@@ -76,7 +76,7 @@ internal static class RuntimeEntryPoint
                     OpKind.Register => registers.GetValueOrDefault((int)instruction.Op1Register),
                     OpKind.Memory when foundContext && instruction.MemoryIndex == Register.None &&
                         registers.TryGetValue((int)instruction.MemoryBase, out var cell) =>
-                        (ulong)Marshal.ReadIntPtr((nint)(cell + instruction.MemoryDisplacement64)),
+                        (ulong)(nuint)Marshal.ReadIntPtr((nint)(cell + instruction.MemoryDisplacement64)),
                     _ => 0,
                 };
                 registers[(int)instruction.Op0Register] = immediate;

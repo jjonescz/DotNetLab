@@ -53,7 +53,16 @@ public sealed class JitAsmDisassembler : IJitAsmDisassembler
             {
                 if (code is not null)
                 {
-                    disassembler.AddMethod(method, code);
+                    try
+                    {
+                        disassembler.AddMethod(method, code);
+                    }
+                    catch (Exception ex)
+                    {
+                        writer.WriteLine();
+                        writer.WriteLine($"; Failed to discover symbols for '{JitCodeDisassembler.FormatMethod(method)}'.");
+                        WriteError(writer, ex);
+                    }
                 }
             }
 

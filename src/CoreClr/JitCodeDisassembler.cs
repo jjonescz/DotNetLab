@@ -64,7 +64,7 @@ internal sealed class JitCodeDisassembler(Dictionary<ulong, string> symbols) : I
     private void AddEntryPoint(MethodBase method)
     {
         var name = FormatMethod(method);
-        ulong entry = (ulong)method.MethodHandle.GetFunctionPointer();
+        ulong entry = (ulong)(nuint)method.MethodHandle.GetFunctionPointer();
         symbols[entry] = name;
         if (method.GetMethodBody() is null)
         {
@@ -180,7 +180,7 @@ internal sealed class JitCodeDisassembler(Dictionary<ulong, string> symbols) : I
         // CoreCLR's RIP-relative indirect calls use runtime-owned entry-point cells.
         if (instruction.IsIPRelativeMemoryOperand && address == instruction.IPRelativeMemoryAddress &&
             instruction.FlowControl is FlowControl.IndirectCall or FlowControl.IndirectBranch &&
-            symbols.TryGetValue((ulong)Marshal.ReadIntPtr((nint)address), out name))
+            symbols.TryGetValue((ulong)(nuint)Marshal.ReadIntPtr((nint)address), out name))
         {
             symbol = new(address, name);
             return true;

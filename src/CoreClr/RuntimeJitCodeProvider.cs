@@ -20,7 +20,7 @@ internal sealed class RuntimeJitCodeProvider : EventListener
     {
         var handle = method.MethodHandle;
         RuntimeHelpers.PrepareMethod(handle);
-        ulong entry = RuntimeEntryPoint.Resolve(method, (ulong)handle.GetFunctionPointer());
+        ulong entry = RuntimeEntryPoint.Resolve(method, (ulong)(nuint)handle.GetFunctionPointer());
         if (method is MethodInfo { IsVirtual: true, DeclaringType.IsValueType: true } info)
         {
             // ldftn resolves the non-unboxing entry without calling the user's method.
@@ -28,10 +28,10 @@ internal sealed class RuntimeJitCodeProvider : EventListener
             var il = pointer.GetILGenerator();
             il.Emit(OpCodes.Ldftn, info);
             il.Emit(OpCodes.Ret);
-            entry = (ulong)pointer.CreateDelegate<Func<nint>>()();
+            entry = (ulong)(nuint)pointer.CreateDelegate<Func<nint>>()();
         }
 
-        ulong id = (ulong)handle.Value;
+        ulong id = (ulong)(nuint)handle.Value;
         bool runtimeAsync = method.MethodImplementationFlags.HasFlag(MethodImplAttributes.Async);
         long start = Stopwatch.GetTimestamp();
         var timeout = TimeSpan.FromSeconds(10);

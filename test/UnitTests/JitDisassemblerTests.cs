@@ -2,6 +2,8 @@ using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 
 namespace DotNetLab;
@@ -37,6 +39,50 @@ public sealed class JitDisassemblerTests
         AssertMethodBody(text, "Program..cctor()");
         AssertMethodBody(text, "Program..ctor()");
         Assert.Contains("ret", AssertMethodBody(text, "Program.M()"));
+    }
+
+    [TestMethod]
+    public void SymbolDiscoveryFailuresPreservePreparedDisassembly()
+    {
+        var text = DisassembleSource("""
+            using DotNetLab;
+            using System.Runtime.CompilerServices;
+            using System.Runtime.InteropServices;
+            [GenericArguments(typeof(string))]
+            class G<T> where T : struct { }
+            class Program
+            {
+                public static int FirstCaller() => InvalidHelper();
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static int InvalidHelper() => 0;
+                public static int SecondCaller() => InvalidHelper();
+                public static int Healthy() => 42;
+                [DllImport("not-loaded")]
+                public static extern void PInvoke();
+            }
+            """, allowDisassemblyErrors: true, editAssembly: stream =>
+            {
+                using var pe = new PEReader(stream, PEStreamOptions.LeaveOpen);
+                var metadata = pe.GetMetadataReader();
+                var method = metadata.MethodDefinitions.Select(metadata.GetMethodDefinition)
+                    .Single(m => metadata.GetString(m.Name) == "InvalidHelper");
+                int rva = method.RelativeVirtualAddress;
+                var section = pe.PEHeaders.SectionHeaders[pe.PEHeaders.GetContainingSectionIndex(rva)];
+                int offset = section.PointerToRawData + rva - section.VirtualAddress;
+                var bytes = stream.GetBuffer();
+                Assert.AreEqual(2, bytes[offset] & 3, "The test helper must have a tiny IL header.");
+                // Removing the return value makes the non-inlined helper fail JIT compilation.
+                bytes[offset + 1] = 0x00; // nop
+            });
+
+        Assert.Contains("; Cannot instantiate", text);
+        Assert.Contains("; P/Invoke methods cannot be JIT-compiled.", text);
+        Assert.Contains("; Failed to discover symbols for 'Program.FirstCaller()'.", text);
+        Assert.Contains("; Failed to discover symbols for 'Program.SecondCaller()'.", text);
+        Assert.Contains("; System.InvalidProgramException:", text);
+        AssertMethodBody(text, "Program.FirstCaller()");
+        AssertMethodBody(text, "Program.SecondCaller()");
+        AssertMethodBody(text, "Program.Healthy()");
     }
 
     [TestMethod]
@@ -287,6 +333,70 @@ public sealed class JitDisassemblerTests
     }
 
     [TestMethod]
+    [DataRow(0x7fff_ffffu)]
+    [DataRow(0x8000_0000u)]
+    [DataRow(0xffff_ffffu)]
+    public void EntryPointPointerCellsPreserveUnsignedAddresses(uint target)
+    {
+        if (RuntimeInformation.ProcessArchitecture is not (Architecture.X86 or Architecture.X64))
+        {
+            Assert.Inconclusive("This test exercises x86/x64 entry stubs.");
+        }
+
+        var memory = Marshal.AllocHGlobal(32);
+        try
+        {
+            ulong entry = (ulong)(nuint)memory;
+            ulong cell = (ulong)(nuint)(memory + 16);
+            var bytes = new byte[32];
+            bytes[0] = 0xff;
+            bytes[1] = 0x25;
+            BitConverter.GetBytes(IntPtr.Size == 4 ? (uint)cell : 10u).CopyTo(bytes, 2);
+            Marshal.Copy(bytes, 0, memory, bytes.Length);
+            Marshal.WriteIntPtr(memory + 16, unchecked((nint)(nuint)target));
+
+            ulong reportedCell = 0;
+            var resolved = RuntimeEntryPoint.Resolve(entry, 0, generic: false,
+                RuntimeInformation.ProcessArchitecture, address => reportedCell = address);
+
+            Assert.AreEqual((ulong)target, resolved);
+            Assert.AreEqual(cell, reportedCell);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(memory);
+        }
+    }
+
+    [TestMethod]
+    [DataRow(0x7fff_ffffu)]
+    [DataRow(0x8000_0000u)]
+    [DataRow(0xffff_ffffu)]
+    public void SymbolPointerCellsPreserveUnsignedAddresses(uint target)
+    {
+        var memory = Marshal.AllocHGlobal(IntPtr.Size);
+        try
+        {
+            ulong cell = (ulong)(nuint)memory;
+            Marshal.WriteIntPtr(memory, unchecked((nint)(nuint)target));
+            var decoder = Iced.Intel.Decoder.Create(64,
+                new Iced.Intel.ByteArrayCodeReader([0xff, 0x15, 0, 0, 0, 0]), cell - 6);
+            var instruction = decoder.Decode();
+            Iced.Intel.ISymbolResolver resolver = new JitCodeDisassembler(new() { [target] = "Target()" });
+
+            bool found = resolver.TryGetSymbol(in instruction, 0, 0, cell, IntPtr.Size, out var symbol);
+
+            Assert.IsTrue(found, $"Symbol not found for native pointer 0x{target:x}.");
+            Assert.AreEqual(cell, symbol.Address);
+            Assert.AreEqual("Target()", symbol.Text.Text.Text);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(memory);
+        }
+    }
+
+    [TestMethod]
     [DataRow(Architecture.X64)]
     [DataRow(Architecture.Arm64)]
     public void SharedGenericEntryStubs(Architecture architecture)
@@ -301,29 +411,29 @@ public sealed class JitDisassemblerTests
                 new byte[] { 0x48, 0xb9 }.CopyTo(bytes, 32);
                 BitConverter.GetBytes(0x1234UL).CopyTo(bytes, 34);
                 new byte[] { 0x48, 0xb8 }.CopyTo(bytes, 42);
-                BitConverter.GetBytes((ulong)(memory + 80)).CopyTo(bytes, 44);
+                BitConverter.GetBytes((ulong)(nuint)(memory + 80)).CopyTo(bytes, 44);
                 new byte[] { 0x48, 0x8b, 0x00, 0xff, 0xe0 }.CopyTo(bytes, 52);
-                BitConverter.GetBytes((ulong)(memory + 32)).CopyTo(bytes, 16);
+                BitConverter.GetBytes((ulong)(nuint)(memory + 32)).CopyTo(bytes, 16);
                 bytes[100] = 0xc3;
             }
             else
             {
                 BitConverter.GetBytes(0x58000050u).CopyTo(bytes, 0); // ldr x16, #8
                 BitConverter.GetBytes(0xd61f0200u).CopyTo(bytes, 4); // br x16
-                BitConverter.GetBytes((ulong)(memory + 32)).CopyTo(bytes, 8);
+                BitConverter.GetBytes((ulong)(nuint)(memory + 32)).CopyTo(bytes, 8);
                 BitConverter.GetBytes(0x5800008bu).CopyTo(bytes, 32); // ldr x11, #16
                 BitConverter.GetBytes(0x580000b0u).CopyTo(bytes, 36); // ldr x16, #20
                 BitConverter.GetBytes(0xf9400210u).CopyTo(bytes, 40); // ldr x16, [x16]
                 BitConverter.GetBytes(0xd61f0200u).CopyTo(bytes, 44); // br x16
                 BitConverter.GetBytes(0x1234UL).CopyTo(bytes, 48);
-                BitConverter.GetBytes((ulong)(memory + 80)).CopyTo(bytes, 56);
+                BitConverter.GetBytes((ulong)(nuint)(memory + 80)).CopyTo(bytes, 56);
                 BitConverter.GetBytes(0xd65f03c0u).CopyTo(bytes, 100); // ret
             }
 
-            BitConverter.GetBytes((ulong)(memory + 100)).CopyTo(bytes, 80);
+            BitConverter.GetBytes((ulong)(nuint)(memory + 100)).CopyTo(bytes, 80);
             Marshal.Copy(bytes, 0, memory, bytes.Length);
-            Assert.AreEqual((ulong)(memory + 100), RuntimeEntryPoint.Resolve((ulong)memory, 0x1234, generic: true, architecture));
-            Assert.AreEqual((ulong)(memory + 32), RuntimeEntryPoint.Resolve((ulong)memory, 0x5678, generic: true, architecture));
+            Assert.AreEqual((ulong)(nuint)(memory + 100), RuntimeEntryPoint.Resolve((ulong)(nuint)memory, 0x1234, generic: true, architecture));
+            Assert.AreEqual((ulong)(nuint)(memory + 32), RuntimeEntryPoint.Resolve((ulong)(nuint)memory, 0x5678, generic: true, architecture));
         }
         finally
         {
@@ -541,7 +651,8 @@ public sealed class JitDisassemblerTests
         }
     }
 
-    private string DisassembleSource(string code, bool runtimeAsync = false, bool allowDisassemblyErrors = false)
+    private string DisassembleSource(string code, bool runtimeAsync = false, bool allowDisassemblyErrors = false,
+        Action<MemoryStream>? editAssembly = null)
     {
         var options = new CSharpParseOptions(LanguageVersion.Preview)
             .WithFeatures([new("runtime-async", runtimeAsync ? "on" : "off")]);
@@ -553,6 +664,8 @@ public sealed class JitDisassemblerTests
         using var stream = new MemoryStream();
         var emitted = compilation.Emit(stream);
         Assert.IsTrue(emitted.Success, string.Join(Environment.NewLine, emitted.Diagnostics));
+        stream.Position = 0;
+        editAssembly?.Invoke(stream);
         stream.Position = 0;
         var text = new JitAsmDisassembler().Disassemble(stream, []);
         TestContext.WriteLine(text);
