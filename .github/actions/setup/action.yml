@@ -15,4 +15,6 @@ runs:
 
     - name: Install workloads
       shell: pwsh
+      env:
+        TMPDIR: ${{ runner.temp }}
       run: dotnet workload install wasm-tools wasm-experimental maui-android

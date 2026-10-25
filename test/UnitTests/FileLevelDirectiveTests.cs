@@ -61,6 +61,39 @@ public sealed class FileLevelDirectiveTests
     }
 
     [TestMethod]
+    public void MemorySafetyRulesVersion_Suggestions()
+    {
+        FileLevelDirective.Property.Descriptor.SuggestNames("").Should().Contain("MemorySafetyRulesVersion");
+        FileLevelDirective.Property.Descriptor.SuggestValues("memorysafetyrulesversion", "").Should().Equal("1", "2");
+    }
+
+    [TestMethod]
+    [DataRow("")]
+    [DataRow("invalid")]
+    [DataRow("Version2")]
+    [DataRow("1.5")]
+    [DataRow("0x2")]
+    [DataRow("2147483648")]
+    [DataRow("-2147483649")]
+    public async Task MemorySafetyRulesVersion_Invalid(string value)
+    {
+        var directives = FileLevelDirectiveParser.Instance.Parse(
+            [new() { FileName = "Input.cs", Text = $"#:property MemorySafetyRulesVersion={value}" }]);
+        var config = new ConfigCollector();
+        var context = new FileLevelDirective.ConsumerContext
+        {
+            Directives = directives,
+            Services = new ServiceCollection().BuildServiceProvider(),
+            Config = config,
+        };
+
+        await context.ConsumeAsync();
+
+        Assert.IsFalse(config.HasCompilationOptions);
+        directives.Single().Info.Errors.Should().Equal($"Invalid property value '{value}'. Expected one of '1', '2'.");
+    }
+
+    [TestMethod]
     public void RazorLangVersion_Suggestions()
     {
         FileLevelDirective.Property.Descriptor.SuggestNames("").Should().Contain("RazorLangVersion");
