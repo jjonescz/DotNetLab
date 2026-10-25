@@ -16,6 +16,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace DotNetLab.Lab;
 
@@ -102,6 +103,21 @@ internal sealed class NuGetDownloaderPlugin(
     Lazy<NuGetDownloader> nuGetDownloader)
     : ICompilerDependencyResolver, INuGetDownloader
 {
+    public Task<ImmutableArray<string>> SearchPackageIdsAsync(
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        return nuGetDownloader.Value.SearchPackageIdsAsync(prefix, cancellationToken);
+    }
+
+    public Task<ImmutableArray<string>> GetPackageVersionsAsync(
+        string packageId,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        return nuGetDownloader.Value.GetPackageVersionsAsync(packageId, prefix, cancellationToken);
+    }
+
     public Task<PackageDependency?> TryResolveCompilerAsync(
         CompilerInfo info,
         CompilerVersionSpecifier specifier,
@@ -179,6 +195,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
         providers =
         [
+            new(() => new AutoCompleteResourceV3Provider()),
             new(() => new RegistrationResourceV3Provider()),
             new(() => new DependencyInfoResourceV3Provider()),
             new(() => new CustomHttpHandlerResourceV3Provider(corsClientHandler)),
@@ -214,6 +231,57 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         redirectedNuGetOrgRepository = new(TryCreateRedirectedNuGetOrgRepositoryAsync);
     }
 
+    public async Task<ImmutableArray<string>> SearchPackageIdsAsync(
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return [];
+        }
+
+        var repositories = await GetAutocompleteRepositoriesAsync();
+        foreach (var repository in repositories)
+        {
+            var results = await SearchPackageIdsAsync(repository, prefix, cancellationToken);
+            if (results.Length > 0)
+            {
+                return results;
+            }
+        }
+
+        return [];
+    }
+
+    public async Task<ImmutableArray<string>> GetPackageVersionsAsync(
+        string packageId,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(packageId))
+        {
+            return [];
+        }
+
+        var repositories = await GetAutocompleteRepositoriesAsync();
+        bool includePrerelease = prefix.Contains('-', StringComparison.Ordinal);
+        foreach (var repository in repositories)
+        {
+            var results = await GetPackageVersionsAsync(
+                repository,
+                packageId,
+                prefix,
+                includePrerelease,
+                cancellationToken);
+            if (results.Length > 0)
+            {
+                return results;
+            }
+        }
+
+        return [];
+    }
+
     private async Task<ImmutableArray<SourceRepository>> GetRepositoriesAsync()
     {
         var redirectedRepository = await redirectedNuGetOrgRepository.Value;
@@ -233,6 +301,97 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         }
 
         return builder.ToImmutable();
+    }
+
+    private async Task<ImmutableArray<SourceRepository>> GetAutocompleteRepositoriesAsync()
+    {
+        return (await GetRepositoriesAsync())
+            .Where(static repository => repository.PackageSource.IsNuGetOrg)
+            .ToImmutableArray();
+    }
+
+    private async Task<ImmutableArray<string>> SearchPackageIdsAsync(
+        SourceRepository repository,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // AutoCompleteResource only supports IdStartsWith, which does additional local StartsWith filtering.
+            // We don't want that, so we go lower-level.
+            var serviceIndex = await repository.GetResourceAsync<ServiceIndexResourceV3>(cancellationToken);
+            var autocompleteUri = serviceIndex?.GetServiceEntryUri(ServiceTypes.SearchAutocompleteService);
+            if (autocompleteUri == null)
+            {
+                throw new FatalProtocolException("The source does not have an autocomplete service.");
+            }
+
+            var queryUri = new UriBuilder(autocompleteUri)
+            {
+                Query = $"q={Uri.EscapeDataString(prefix)}&prerelease=false&semVerLevel=2.0.0",
+            }.Uri;
+            using var response = await httpClient.GetAsync(
+                queryUri,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(
+                stream,
+                cancellationToken: cancellationToken);
+            if (!document.RootElement.TryGetProperty("data", out var data))
+            {
+                return [];
+            }
+
+            var results = ImmutableArray.CreateBuilder<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in data.EnumerateArray())
+            {
+                if (item.GetString() is { } packageId && seen.Add(packageId))
+                {
+                    results.Add(packageId);
+                }
+            }
+
+            return results.ToImmutable();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogSourceFailure(repository, ex, $"autocomplete package IDs starting with '{prefix}'");
+            return [];
+        }
+    }
+
+    private async Task<ImmutableArray<string>> GetPackageVersionsAsync(
+        SourceRepository repository,
+        string packageId,
+        string prefix,
+        bool includePrerelease,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var autocomplete = await repository.GetResourceAsync<AutoCompleteResource>(cancellationToken);
+            var results = await autocomplete!.VersionStartsWith(
+                packageId,
+                prefix,
+                includePrerelease,
+                cacheContext,
+                NullLogger.Instance,
+                cancellationToken);
+            return results
+                .Distinct()
+                .OrderDescending()
+                .Select(static version => version.ToNormalizedString())
+                .ToImmutableArray();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogSourceFailure(repository, ex, $"autocomplete versions for package '{packageId}'");
+            return [];
+        }
     }
 
     private async Task<SourceRepository?> TryCreateRedirectedNuGetOrgRepositoryAsync()

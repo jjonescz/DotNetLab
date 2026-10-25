@@ -381,6 +381,124 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Completion_PackageIds()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageIds = ["Microsoft.CodeAnalysis", "Microsoft.CodeAnalysis.CSharp"],
+        };
+        const string code = "#:package Microsoft.C";
+
+        var completion = await GetCompletionsAsync(code, downloader);
+
+        downloader.PackageIdPrefix.Should().Be("Microsoft.C");
+        completion.IsIncomplete.Should().BeTrue();
+        completion.Suggestions.Select(static item => item.Label).Should().Equal(
+            "Microsoft.CodeAnalysis",
+            "Microsoft.CodeAnalysis.CSharp");
+        getReplacedText(code, completion).Should().Be("Microsoft.C");
+        completion.Suggestions.Select(static item => item.InsertText).Should().OnlyContain(static text => text == null);
+        completion.Suggestions.SelectMany(static item => item.CommitCharacters!).Should().NotContain(".");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageIds_AfterPeriod()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageIds = ["Microsoft.Extensions.Logging"],
+        };
+        const string code = "#: package Microsoft.";
+
+        var completion = await GetCompletionsAsync(code, downloader);
+
+        downloader.PackageIdPrefix.Should().Be("Microsoft.");
+        completion.Suggestions.Select(static item => item.Label).Should().Equal(
+            "Microsoft.Extensions.Logging");
+        getReplacedText(code, completion).Should().Be("Microsoft.");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageIds_MidToken()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageIds = ["Microsoft.CodeAnalysis.CSharp"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis";
+        int position = code.IndexOf("odeAnalysis", StringComparison.Ordinal);
+
+        var completion = await GetCompletionsAsync(code, downloader, position);
+
+        downloader.PackageIdPrefix.Should().Be("Microsoft.C");
+        getReplacedText(code, completion).Should().Be("Microsoft.CodeAnalysis");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageVersions()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0", "4.13.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis@4.1";
+
+        var completion = await GetCompletionsAsync(code, downloader);
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", "4.1"));
+        completion.IsIncomplete.Should().BeFalse();
+        completion.Suggestions.Select(static item => item.Label).Should().Equal("4.14.0", "4.13.0");
+        getReplacedText(code, completion).Should().Be("4.1");
+        completion.Suggestions.SelectMany(static item => item.CommitCharacters!).Should().NotContain(".");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageVersions_TriggeredBySeparator()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0", "4.13.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis@";
+
+        var completion = await GetCompletionsAsync(code, downloader, triggerCharacter: "@");
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", ""));
+        completion.Suggestions.Select(static item => item.Label).Should().Equal("4.14.0", "4.13.0");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageVersions_MidToken()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis@4.14.0";
+        int position = code.IndexOf("4.1", StringComparison.Ordinal) + "4.1".Length;
+
+        var completion = await GetCompletionsAsync(code, downloader, position);
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", "4.1"));
+        getReplacedText(code, completion).Should().Be("4.14.0");
+    }
+
+    [TestMethod]
+    public async Task Completion_PackageVersions_WhitespaceAroundSeparator()
+    {
+        var downloader = new TestNuGetDownloader
+        {
+            PackageVersions = ["4.14.0"],
+        };
+        const string code = "#:package Microsoft.CodeAnalysis @ 4.1";
+
+        var completion = await GetCompletionsAsync(code, downloader);
+
+        downloader.VersionQuery.Should().Be(("Microsoft.CodeAnalysis", "4.1"));
+        getReplacedText(code, completion).Should().Be("4.1");
+    }
+
+    [TestMethod]
     public async Task Diagnostics_PackageSourceGenerator()
     {
         var input = new CompilationInput(new(
@@ -476,5 +594,74 @@ public sealed class LanguageServiceTests
 
         signatureHelp!.Signatures.Should().ContainSingle()
             .Which.Label.Should().Be("void C.M(int x)");
+    }
+
+    private async Task<MonacoCompletionList> GetCompletionsAsync(
+        string code,
+        TestNuGetDownloader downloader,
+        int? position = null,
+        string? triggerCharacter = null)
+    {
+        const string file = "test.cs";
+        var services = WorkerServices.CreateTest(
+            TestContext,
+            configureServices: services => services.AddScoped<INuGetDownloader>(_ => downloader));
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync([new(file, file) { NewContent = code }]);
+
+        var json = await languageServices.ProvideCompletionItemsAsync(
+            file,
+            new Position { LineNumber = 1, Column = (position ?? code.Length) + 1 },
+            new BlazorMonaco.Languages.CompletionContext
+            {
+                TriggerKind = triggerCharacter is null
+                    ? BlazorMonaco.Languages.CompletionTriggerKind.Invoke
+                    : BlazorMonaco.Languages.CompletionTriggerKind.TriggerCharacter,
+                TriggerCharacter = triggerCharacter,
+            },
+            TestContext.CancellationToken);
+
+        return JsonSerializer.Deserialize(json, BlazorMonacoJsonContext.Default.MonacoCompletionList)!;
+    }
+
+    private static string getReplacedText(string code, MonacoCompletionList completion)
+    {
+        var range = completion.Range!;
+        return code[(range.StartColumn - 1)..(range.EndColumn - 1)];
+    }
+}
+
+internal sealed class TestNuGetDownloader : INuGetDownloader
+{
+    public ImmutableArray<string> PackageIds { get; init; } = [];
+    public ImmutableArray<string> PackageVersions { get; init; } = [];
+    public string? PackageIdPrefix { get; private set; }
+    public (string PackageId, string Prefix)? VersionQuery { get; private set; }
+
+    public Task<ImmutableArray<string>> SearchPackageIdsAsync(
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        PackageIdPrefix = prefix;
+        return Task.FromResult(PackageIds);
+    }
+
+    public Task<ImmutableArray<string>> GetPackageVersionsAsync(
+        string packageId,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        VersionQuery = (packageId, prefix);
+        return Task.FromResult(PackageVersions);
+    }
+
+    public Task<NuGetResults> DownloadAsync(
+        Set<NuGetDependency> dependencies,
+        string targetFramework,
+        bool loadForExecution,
+        Version? compilerRoslynVersion = null)
+    {
+        throw new NotSupportedException();
     }
 }
