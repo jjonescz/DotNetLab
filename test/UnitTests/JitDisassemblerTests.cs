@@ -397,14 +397,22 @@ public sealed class JitDisassemblerTests
     }
 
     [TestMethod]
-    [DataRow(Architecture.X64)]
-    [DataRow(Architecture.Arm64)]
-    public void SharedGenericEntryStubs(Architecture architecture)
+    [DataRow(Architecture.X64, "return")]
+    [DataRow(Architecture.X64, "direct-tail-call")]
+    [DataRow(Architecture.X64, "indirect-tail-call")]
+    [DataRow(Architecture.X64, "precode-lookalike")]
+    [DataRow(Architecture.X64, "fixup-precode")]
+    [DataRow(Architecture.Arm64, "return")]
+    [DataRow(Architecture.Arm64, "direct-tail-call")]
+    [DataRow(Architecture.Arm64, "indirect-tail-call")]
+    [DataRow(Architecture.Arm64, "precode-lookalike")]
+    [DataRow(Architecture.Arm64, "fixup-precode")]
+    public void SharedGenericEntryStubs(Architecture architecture, string body)
     {
-        var memory = Marshal.AllocHGlobal(128);
+        var memory = Marshal.AllocHGlobal(256);
         try
         {
-            var bytes = new byte[128];
+            var bytes = new byte[256];
             if (architecture == Architecture.X64)
             {
                 new byte[] { 0xff, 0x25, 10, 0, 0, 0 }.CopyTo(bytes, 0);
@@ -414,7 +422,30 @@ public sealed class JitDisassemblerTests
                 BitConverter.GetBytes((ulong)(nuint)(memory + 80)).CopyTo(bytes, 44);
                 new byte[] { 0x48, 0x8b, 0x00, 0xff, 0xe0 }.CopyTo(bytes, 52);
                 BitConverter.GetBytes((ulong)(nuint)(memory + 32)).CopyTo(bytes, 16);
-                bytes[100] = 0xc3;
+                switch (body)
+                {
+                    case "direct-tail-call":
+                        bytes[100] = 0xe9; // jmp callee
+                        BitConverter.GetBytes(192 - 105).CopyTo(bytes, 101);
+                        break;
+                    case "indirect-tail-call":
+                    case "precode-lookalike":
+                    case "fixup-precode":
+                        new byte[] { 0xff, 0x25 }.CopyTo(bytes, 100);
+                        BitConverter.GetBytes(144 - 106).CopyTo(bytes, 102);
+                        if (body != "indirect-tail-call")
+                        {
+                            new byte[] { 0x4c, 0x8b, 0x15 }.CopyTo(bytes, 106);
+                            BitConverter.GetBytes(152 - 113).CopyTo(bytes, 109);
+                            new byte[] { 0xff, 0x25 }.CopyTo(bytes, 113);
+                            BitConverter.GetBytes((body == "fixup-precode" ? 160 : 168) - 119).CopyTo(bytes, 115);
+                        }
+                        break;
+                    default:
+                        bytes[100] = 0xc3;
+                        break;
+                }
+                bytes[192] = 0xc3;
             }
             else
             {
@@ -427,17 +458,92 @@ public sealed class JitDisassemblerTests
                 BitConverter.GetBytes(0xd61f0200u).CopyTo(bytes, 44); // br x16
                 BitConverter.GetBytes(0x1234UL).CopyTo(bytes, 48);
                 BitConverter.GetBytes((ulong)(nuint)(memory + 80)).CopyTo(bytes, 56);
-                BitConverter.GetBytes(0xd65f03c0u).CopyTo(bytes, 100); // ret
+                switch (body)
+                {
+                    case "direct-tail-call":
+                        BitConverter.GetBytes(0x14000000u | (192 - 100) / 4).CopyTo(bytes, 100);
+                        break;
+                    case "indirect-tail-call":
+                    case "precode-lookalike":
+                    case "fixup-precode":
+                        BitConverter.GetBytes(0x5800000bu | ((144 - 100) / 4) << 5).CopyTo(bytes, 100);
+                        BitConverter.GetBytes(0xd61f0160u).CopyTo(bytes, 104); // br x11
+                        if (body != "indirect-tail-call")
+                        {
+                            BitConverter.GetBytes(0xd50339bfu).CopyTo(bytes, 108); // dmb ishld
+                            BitConverter.GetBytes(0x5800000cu | ((152 - 112) / 4) << 5).CopyTo(bytes, 112);
+                            BitConverter.GetBytes(0x5800000bu | (((body == "fixup-precode" ? 160 : 168) - 116) / 4) << 5).CopyTo(bytes, 116);
+                            BitConverter.GetBytes(0xd61f0160u).CopyTo(bytes, 120);
+                        }
+                        break;
+                    default:
+                        BitConverter.GetBytes(0xd65f03c0u).CopyTo(bytes, 100);
+                        break;
+                }
+                BitConverter.GetBytes(0xd65f03c0u).CopyTo(bytes, 192); // ret
             }
 
             BitConverter.GetBytes((ulong)(nuint)(memory + 100)).CopyTo(bytes, 80);
+            BitConverter.GetBytes((ulong)(nuint)(memory + 192)).CopyTo(bytes, 144);
             Marshal.Copy(bytes, 0, memory, bytes.Length);
-            Assert.AreEqual((ulong)(nuint)(memory + 100), RuntimeEntryPoint.Resolve((ulong)(nuint)memory, 0x1234, generic: true, architecture));
+            var cells = new List<ulong>();
+            ulong expected = (ulong)(nuint)(memory + (body == "fixup-precode" ? 192 : 100));
+            Assert.AreEqual(expected, RuntimeEntryPoint.Resolve((ulong)(nuint)memory, 0x1234, generic: true, architecture, cells.Add));
+            Assert.AreEqual(body == "fixup-precode", cells.Contains((ulong)(nuint)(memory + 144)),
+                "Only runtime precode cells should acquire the requested method's symbol.");
             Assert.AreEqual((ulong)(nuint)(memory + 32), RuntimeEntryPoint.Resolve((ulong)(nuint)memory, 0x5678, generic: true, architecture));
         }
         finally
         {
             Marshal.FreeHGlobal(memory);
+        }
+    }
+
+    [TestMethod]
+    public void SharedGenericTailCallsPreserveMethodIdentity()
+    {
+        var text = DisassembleSource("""
+            using DotNetLab;
+            using System.Runtime.CompilerServices;
+            class Program
+            {
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                public static int Target() => 42;
+                [GenericArguments(typeof(string))]
+                [GenericArguments(typeof(object))]
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                public static int TailCall<T>() { Target(); return Target(); }
+            }
+            """, editAssembly: stream =>
+            {
+                using var pe = new PEReader(stream, PEStreamOptions.LeaveOpen);
+                var metadata = pe.GetMetadataReader();
+                var method = metadata.MethodDefinitions.Select(metadata.GetMethodDefinition)
+                    .Single(m => metadata.GetString(m.Name) == "TailCall");
+                int rva = method.RelativeVirtualAddress;
+                var section = pe.PEHeaders.SectionHeaders[pe.PEHeaders.GetContainingSectionIndex(rva)];
+                int offset = section.PointerToRawData + rva - section.VirtualAddress;
+                var bytes = stream.GetBuffer();
+                Assert.AreEqual(2, bytes[offset] & 3, "The test method must have a tiny IL header.");
+                Assert.AreEqual(0x28, (int)bytes[offset + 1], "The method must start with an IL call.");
+                Assert.IsGreaterThanOrEqualTo(8, bytes[offset] >> 2);
+                int token = BitConverter.ToInt32(bytes, offset + 2);
+                bytes[offset] = (8 << 2) | 2;
+                // An explicit tail. call; ret avoids depending on optional tail-call optimization.
+                new byte[] { 0xfe, 0x14, 0x28 }.CopyTo(bytes, offset + 1);
+                BitConverter.GetBytes(token).CopyTo(bytes, offset + 4);
+                bytes[offset + 8] = 0x2a;
+            });
+
+        var target = AssertMethodBody(text, "Program.Target()");
+        Assert.Contains("ret", target);
+        foreach (var argument in new[] { "String", "Object" })
+        {
+            var body = AssertMethodBody(text, $"Program.TailCall<{argument}>()");
+            Assert.IsTrue(Regex.IsMatch(body, @"(?m)^\s+(?:jmp|b|br)\s+"), $"Missing native tail jump.\n{body}");
+            Assert.Contains("Program.Target()", body);
+            Assert.DoesNotContain("ret", body);
+            Assert.AreNotEqual(target, body);
         }
     }
 

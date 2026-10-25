@@ -22,10 +22,69 @@ internal static class RuntimeEntryPoint
         // Shared generics add an instantiation stub that loads the method/type context.
         if (generic && ReadStub(target, context, architecture) is { } shared)
         {
-            target = ReadStub(shared, context: 0, architecture) ?? shared;
+            // A real JIT body can start with a tail jump. Only unwrap confirmed fixup precode.
+            target = IsFixupPrecode(shared, architecture)
+                ? ReadStub(shared, context: 0, architecture, onEntryCell) ?? shared
+                : shared;
         }
 
         return target;
+    }
+
+    private static bool IsFixupPrecode(ulong entry, Architecture architecture)
+    {
+        if (architecture is Architecture.X64 or Architecture.X86)
+        {
+            var target = Decode(entry);
+            if (target.Mnemonic != Mnemonic.Jmp || target.Op0Kind != OpKind.Memory ||
+                MemoryAddress(target) is not { } cell)
+            {
+                return false;
+            }
+
+            var method = Decode(target.NextIP);
+            int pointerSize = architecture == Architecture.X64 ? 8 : 4;
+            if (method.Mnemonic != Mnemonic.Mov || method.Op0Register != (architecture == Architecture.X64 ? Register.R10 : Register.EAX) ||
+                method.Op1Kind != OpKind.Memory || MemoryAddress(method) != cell + (uint)pointerSize)
+            {
+                return false;
+            }
+
+            var thunk = Decode(method.NextIP);
+            return thunk.Mnemonic == Mnemonic.Jmp && thunk.Op0Kind == OpKind.Memory &&
+                MemoryAddress(thunk) == cell + 2 * (uint)pointerSize;
+        }
+
+        if (architecture == Architecture.Arm64)
+        {
+            // CoreCLR fixup precode: ldr x11; br x11; dmb ishld; ldr x12; ldr x11; br x11.
+            return LiteralAddress(0, 11) is { } cell &&
+                (uint)Marshal.ReadInt32((nint)(entry + 4)) == 0xd61f0160 &&
+                (uint)Marshal.ReadInt32((nint)(entry + 8)) == 0xd50339bf &&
+                LiteralAddress(12, 12) == cell + 8 && LiteralAddress(16, 11) == cell + 16 &&
+                (uint)Marshal.ReadInt32((nint)(entry + 20)) == 0xd61f0160;
+        }
+
+        return false;
+
+        static ulong? MemoryAddress(Instruction instruction) => instruction.IsIPRelativeMemoryOperand
+            ? instruction.IPRelativeMemoryAddress
+            : instruction.MemoryBase == Register.None && instruction.MemoryIndex == Register.None
+                ? instruction.MemoryDisplacement64 : null;
+
+        Instruction Decode(ulong address) =>
+            Decoder.Create(architecture == Architecture.X64 ? 64 : 32, new NativeCodeReader(address), address).Decode();
+
+        ulong? LiteralAddress(uint offset, int register)
+        {
+            var instruction = Arm64Instruction.Decode((uint)Marshal.ReadInt32((nint)(entry + offset)));
+            return instruction.Mnemonic == Arm64Mnemonic.LDR &&
+                instruction.GetOperand(0).Kind == Arm64OperandKind.Register &&
+                ((Arm64RegisterOperand)instruction.GetOperand(0)).Value.Index == register &&
+                instruction.GetOperand(1).Kind == Arm64OperandKind.Label
+                ? entry + offset + (ulong)((Arm64LabelOperand)instruction.GetOperand(1)).Offset
+                : null;
+        }
     }
 
     private static ulong? ReadStub(ulong entry, ulong context, Architecture architecture, Action<ulong>? onEntryCell = null)
