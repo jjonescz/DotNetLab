@@ -16,10 +16,6 @@
     <MauiAndroidSystemBarsUseMauiChrome>true</MauiAndroidSystemBarsUseMauiChrome>
 
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">android-x64</RuntimeIdentifier>
-
-    <!-- Need to use Mono runtime for now due to https://github.com/dotnet/android/issues/11025. -->
-    <UseMonoRuntime>true</UseMonoRuntime>
-    <_DisableCheckForUnsupportedMonoMobileRuntime>true</_DisableCheckForUnsupportedMonoMobileRuntime>
   
     <PublishAot>false</PublishAot>
     <RunAOTCompilation>false</RunAOTCompilation>
@@ -32,7 +28,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Iced" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Microsoft.Maui.Controls" />
@@ -40,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\App\App.csproj" />
+    <ProjectReference Include="..\CoreClr\CoreClr.csproj" />
   </ItemGroup>
 
   <!-- Android's inner build must not delete shared satellite assemblies needed by other apps. -->

@@ -20,12 +20,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="JitInspect" />
     <PackageReference Include="Photino.Blazor" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\App\App.csproj" />
+    <ProjectReference Include="..\CoreClr\CoreClr.csproj" />
   </ItemGroup>
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />

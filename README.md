@@ -48,6 +48,7 @@ To hit breakpoints, it is recommended to turn off the worker (in app settings).
   It's reloaded at runtime with a user-chosen version of Roslyn/Razor.
   It should be small (for best reloading perf). It can reference shared code
   which does not depend on Roslyn/Razor from elsewhere (e.g., `Shared.csproj`).
+- `src/CoreClr`: code that can be only used by CoreCLR-based (not Mono-based) endpoints.
 - `src/Desktop`: desktop host of the `App`.
 - `src/RazorAccess`: `internal` access to Razor DLLs (via fake assembly name).
 - `src/RoslynAccess`: `internal` access to Roslyn Compiler DLLs (via fake assembly name).
