@@ -297,10 +297,10 @@
                                 and razor @(sdkInfo.RazorVersion).
                             </FluentLabel>
                         }
-                        @if (sdkError != null)
+                        @if (sdkError is { } error)
                         {
-                            <FluentLabel Color="Color.Error" Style="margin-top: 8px; white-space: pre-wrap">
-                                @sdkError
+                            <FluentLabel Color="Color.Error" Style="margin-top: 8px; white-space: pre-wrap" title="@(error.Long)">
+                                @(error.Short)
                             </FluentLabel>
                         }
                     </ActionContent>
