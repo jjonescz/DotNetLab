@@ -758,20 +758,14 @@
                 configuration: configuration,
                 forceReload: forceReload);
 
-            if (!changed)
+            if (!changed && modalHidden)
             {
-                if (!modalHidden && CompilerVersionSpecifier.Parse(versionToLoad)
-                    .Any(static specifier => specifier is CompilerVersionSpecifier.Local or CompilerVersionSpecifier.LocalId))
-                {
-                    return (await Worker.GetCompilerDependencyInfoAsync(compilerKind), null);
-                }
-
                 return null;
             }
 
             // `saveState` is `false` during initial load where we don't want to
             // display "output outdated" which would override the "cached" info.
-            if (saveState)
+            if (changed && saveState)
             {
                 Page.OnSettingsInputChanged();
             }
