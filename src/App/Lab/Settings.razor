@@ -743,14 +743,16 @@
         CompilerKind compilerKind,
         string? versionToLoad,
         BuildConfiguration configuration,
-        bool saveState)
+        bool saveState,
+        bool forceReload)
     {
         try
         {
             var changed = await Worker.UseCompilerVersionAsync(
                 compilerKind,
                 version: versionToLoad,
-                configuration: configuration);
+                configuration: configuration,
+                forceReload: forceReload);
 
             if (!changed)
             {
@@ -778,7 +780,7 @@
         }
     }
 
-    private async Task LoadRoslynInfoAsync(bool saveState = true)
+    private async Task LoadRoslynInfoAsync(bool saveState = true, bool forceReload = false)
     {
         var versionToLoad = roslynVersion;
 
@@ -791,7 +793,7 @@
             });
         }
 
-        if (loadingRoslynVersion != null && loadingRoslynVersion == versionToLoad)
+        if (!forceReload && loadingRoslynVersion != null && loadingRoslynVersion == versionToLoad)
         {
             return;
         }
@@ -799,7 +801,7 @@
         loadingRoslynVersion = versionToLoad;
         await RefreshAsync();
 
-        var result = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState);
+        var result = await LoadCompilerInfoAsync(CompilerKind.Roslyn, versionToLoad, roslynConfiguration, saveState, forceReload);
 
         if (result is var (info, error) && roslynVersion == versionToLoad)
         {
@@ -811,14 +813,14 @@
         await RefreshAsync();
     }
 
-    private async Task UseRoslynVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
+    private async Task UseRoslynVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release, bool forceReload = false)
     {
         roslynVersion = version;
         roslynConfiguration = configuration;
-        await LoadRoslynInfoAsync();
+        await LoadRoslynInfoAsync(forceReload: forceReload);
     }
 
-    private async Task LoadRazorInfoAsync(bool saveState = true)
+    private async Task LoadRazorInfoAsync(bool saveState = true, bool forceReload = false)
     {
         var versionToLoad = razorVersion;
 
@@ -831,7 +833,7 @@
             });
         }
 
-        if (loadingRazorVersion != null && loadingRazorVersion == versionToLoad)
+        if (!forceReload && loadingRazorVersion != null && loadingRazorVersion == versionToLoad)
         {
             return;
         }
@@ -839,7 +841,7 @@
         loadingRazorVersion = versionToLoad;
         await RefreshAsync();
 
-        var result = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState);
+        var result = await LoadCompilerInfoAsync(CompilerKind.Razor, versionToLoad, razorConfiguration, saveState, forceReload);
 
         if (result is var (info, error) && razorVersion == versionToLoad)
         {
@@ -851,11 +853,11 @@
         await RefreshAsync();
     }
 
-    private async Task UseRazorVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release)
+    private async Task UseRazorVersionAsync(string? version, BuildConfiguration configuration = BuildConfiguration.Release, bool forceReload = false)
     {
         razorVersion = version;
         razorConfiguration = configuration;
-        await LoadRazorInfoAsync();
+        await LoadRazorInfoAsync(forceReload: forceReload);
     }
 
     private async Task PickLocalCompilerAsync(CompilerKind compilerKind)
@@ -882,10 +884,10 @@
                 switch (compilerKind)
                 {
                     case CompilerKind.Roslyn:
-                        await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug, forceReload: true);
                         break;
                     case CompilerKind.Razor:
-                        await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug);
+                        await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug, forceReload: true);
                         break;
                 }
             }

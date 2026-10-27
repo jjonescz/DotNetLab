@@ -485,12 +485,13 @@ internal sealed class WorkerController : IAsyncDisposable
     /// <summary>
     /// Instructs the <see cref="DependencyRegistry"/> to use this package.
     /// </summary>
-    public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
+    public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration, bool forceReload = false)
     {
         return PostAndReceiveMessageAsync<WorkerInputMessage.UseCompilerVersion, bool>(new(
             CompilerKind: compilerKind,
             Version: version,
-            Configuration: configuration)
+            Configuration: configuration,
+            ForceReload: forceReload)
         {
             Id = messageId++,
         });

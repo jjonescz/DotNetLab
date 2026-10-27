@@ -35,21 +35,24 @@ internal sealed class CompilerDependencyProvider(
     }
 
     /// <returns>
-    /// <see langword="false"/> if the same version is already used.
+    /// <see langword="false"/> if the same version is already used and <paramref name="forceReload"/> is <see langword="false"/>.
     /// </returns>
-    public async Task<bool> UseAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration)
+    public async Task<bool> UseAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration, bool forceReload = false)
     {
-        if (loaded.TryGetValue(compilerKind, out var dependency))
+        if (!forceReload)
         {
-            if (dependency.UserInput.Version == version &&
-                dependency.UserInput.Configuration == configuration)
+            if (loaded.TryGetValue(compilerKind, out var dependency))
+            {
+                if (dependency.UserInput.Version == version &&
+                    dependency.UserInput.Configuration == configuration)
+                {
+                    return false;
+                }
+            }
+            else if (version == null && configuration == default)
             {
                 return false;
             }
-        }
-        else if (version == null && configuration == default)
-        {
-            return false;
         }
 
         var info = CompilerInfo.For(compilerKind);
