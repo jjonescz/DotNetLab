@@ -19,6 +19,7 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
         }
 
         var assemblyFiles = new List<IFileInfo>(capacity: info.AssemblyNames.Length);
+        var runtimeFramework = new NuGetFramework(".NETCoreApp", new Version(Environment.Version.Major, Environment.Version.Minor));
 
         foreach (var assemblyName in info.AssemblyNames)
         {
@@ -51,12 +52,14 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
 
                     return (dir, framework);
                 })
-                .Where(tuple => tuple.framework?.Framework == ".NETCoreApp")
-                .Select(tuple => (tuple.dir, framework: tuple.framework!));
+                .Where(tuple => tuple.framework is { Framework: ".NETCoreApp" } framework &&
+                    DefaultCompatibilityProvider.Instance.IsCompatible(runtimeFramework, framework))
+                .Select(tuple => (tuple.dir, framework: tuple.framework!))
+                .ToArray();
 
-            if (!coreDirs.Any())
+            if (coreDirs.Length == 0)
             {
-                throw new InvalidOperationException($"No .NETCoreApp target framework directories found in: {assemblyDir.FullName}");
+                throw new InvalidOperationException($"No .NETCoreApp target framework directories compatible with {runtimeFramework.GetShortFolderName()} found in: {assemblyDir.FullName}");
             }
 
             var bestDir = coreDirs.MaxBy(tuple => tuple.framework.Version);
