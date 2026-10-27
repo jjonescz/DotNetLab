@@ -69,31 +69,34 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
             assemblyFiles.Add(assemblyFile);
         }
 
+        var assemblies = await assemblyFiles.SelectAsArrayAsync(async file =>
+        {
+            return await file.GetPathOrDataAsync() switch
+            {
+                string path => new LoadedAssembly
+                {
+                    Data = default,
+                    Name = Path.GetFileNameWithoutExtension(path),
+                    DiskPath = path,
+                    Format = AssemblyDataFormat.Dll,
+                },
+                ImmutableArray<byte> data => new LoadedAssembly
+                {
+                    Data = data,
+                    Name = Path.GetFileNameWithoutExtension(file.FullName),
+                    Format = AssemblyDataFormat.Dll,
+                },
+            };
+        });
+
         return new PackageDependency
         {
             Info = new(Task.FromResult(new PackageDependencyInfo(info.AssemblyNames[0])
             {
                 Configuration = configuration,
+                SnapshotLoadedAt = DateTimeOffset.UtcNow,
             })),
-            Assemblies = new(assemblyFiles.SelectAsArrayAsync(async file =>
-            {
-                return await file.GetPathOrDataAsync() switch
-                {
-                    string path => new LoadedAssembly
-                    {
-                        Data = default,
-                        Name = Path.GetFileNameWithoutExtension(path),
-                        DiskPath = path,
-                        Format = AssemblyDataFormat.Dll,
-                    },
-                    ImmutableArray<byte> data => new LoadedAssembly
-                    {
-                        Data = data,
-                        Name = Path.GetFileNameWithoutExtension(file.FullName),
-                        Format = AssemblyDataFormat.Dll,
-                    },
-                };
-            })),
+            Assemblies = new(Task.FromResult(assemblies)),
         };
     }
 }

@@ -31,6 +31,7 @@ public sealed record PackageDependencyInfo
     public string? AdditionalCommitHash { get; init; }
     public required BuildConfiguration Configuration { get; init; }
     public bool CanChangeBuildConfiguration { get; init; }
+    public DateTimeOffset? SnapshotLoadedAt { get; init; }
 
     private static (string Version, CommitLink Commit) FromAssembly(string assemblyName)
     {

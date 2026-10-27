@@ -21,6 +21,23 @@
         }
         @("),")
         <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.
+        @if (Info.SnapshotLoadedAt is { } snapshotLoadedAt)
+        {
+            <br />
+            @("Snapshot loaded ")
+            <time datetime="@snapshotLoadedAt.ToString("O")" title="@snapshotLoadedAt.ToLocalTime().ToString("O")">@snapshotLoadedAt.ToLocalTime().ToString("G")</time>
+            @(" (")
+            @if (IsLoading)
+            {
+                @("loading...")
+            }
+            else
+            {
+                <a href="javascript:void" @onclick:preventDefault @onclick="OnReload"
+                   title="Reload the local compiler snapshot. In the browser, select the folder again to read rebuilt files.">reload</a>
+            }
+            @(").")
+        }
     </FluentLabel>
 }
 @if (Error is { } error)
@@ -35,5 +52,7 @@
     [Parameter, EditorRequired] public CompilerInfo Compiler { get; set; }
     [Parameter] public PackageDependencyInfo? Info { get; set; }
     [Parameter] public Settings.Error? Error { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnReload { get; set; }
     [Parameter, EditorRequired] public string Style { get; set; }
 }

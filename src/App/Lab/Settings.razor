@@ -335,7 +335,7 @@
                         {
                             @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
-                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
+                               title="Select a local compiler repository folder."
                                @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Roslyn))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(roslynVersion))
@@ -356,7 +356,9 @@
                                           @bind-SelectedOption="roslynConfiguration" @bind-SelectedOption:after="() => LoadRoslynInfoAsync()"
                                           Style="min-width: 7em" />
                         </FluentStack>
-                        <CompilerVersionInfo Settings="this" Compiler="CompilerInfo.Roslyn" Info="roslynInfo" Error="@roslynError" Style="margin-top: 8px" />
+                        <CompilerVersionInfo Settings="this" Compiler="CompilerInfo.Roslyn" Info="roslynInfo" Error="@roslynError"
+                                             IsLoading="@(loadingRoslynVersion != null)" OnReload="@(() => ReloadLocalCompilerAsync(CompilerKind.Roslyn))"
+                                             Style="margin-top: 8px" />
                     </ActionContent>
                 </SettingsCard>
 
@@ -389,7 +391,7 @@
                         {
                             @(" or ")
                             <a href="javascript:void" @onclick:preventDefault
-                               title="Select a local compiler repository folder. Select it again after rebuilding or reloading the page."
+                               title="Select a local compiler repository folder."
                                @onclick="@(() => PickLocalCompilerAsync(CompilerKind.Razor))">local</a>
                         }
                         @if (!string.IsNullOrWhiteSpace(razorVersion))
@@ -410,7 +412,9 @@
                                           @bind-SelectedOption="razorConfiguration" @bind-SelectedOption:after="() => LoadRazorInfoAsync()"
                                           Style="min-width: 7em" />
                         </FluentStack>
-                        <CompilerVersionInfo Settings="this" Compiler="CompilerInfo.Razor" Info="razorInfo" Error="@razorError" Style="margin-top: 8px" />
+                        <CompilerVersionInfo Settings="this" Compiler="CompilerInfo.Razor" Info="razorInfo" Error="@razorError"
+                                             IsLoading="@(loadingRazorVersion != null)" OnReload="@(() => ReloadLocalCompilerAsync(CompilerKind.Razor))"
+                                             Style="margin-top: 8px" />
                     </ActionContent>
                 </SettingsCard>
             </ChildContent>
@@ -756,6 +760,12 @@
 
             if (!changed)
             {
+                if (!modalHidden && CompilerVersionSpecifier.Parse(versionToLoad)
+                    .Any(static specifier => specifier is CompilerVersionSpecifier.Local or CompilerVersionSpecifier.LocalId))
+                {
+                    return (await Worker.GetCompilerDependencyInfoAsync(compilerKind), null);
+                }
+
                 return null;
             }
 
@@ -860,13 +870,35 @@
         await LoadRazorInfoAsync(forceReload: forceReload);
     }
 
-    private async Task PickLocalCompilerAsync(CompilerKind compilerKind)
+    private Task ReloadLocalCompilerAsync(CompilerKind compilerKind)
+    {
+        var (version, configuration) = compilerKind switch
+        {
+            CompilerKind.Roslyn => (roslynVersion, roslynConfiguration),
+            CompilerKind.Razor => (razorVersion, razorConfiguration),
+            _ => throw new ArgumentOutOfRangeException(paramName: nameof(compilerKind), actualValue: compilerKind, message: null),
+        };
+
+        if (CompilerVersionSpecifier.Parse(version).Any(static specifier => specifier is CompilerVersionSpecifier.LocalId))
+        {
+            return PickLocalCompilerAsync(compilerKind, configuration);
+        }
+
+        return compilerKind switch
+        {
+            CompilerKind.Roslyn => LoadRoslynInfoAsync(forceReload: true),
+            CompilerKind.Razor => LoadRazorInfoAsync(forceReload: true),
+            _ => throw new ArgumentOutOfRangeException(paramName: nameof(compilerKind), actualValue: compilerKind, message: null),
+        };
+    }
+
+    private async Task PickLocalCompilerAsync(CompilerKind compilerKind, BuildConfiguration configuration = BuildConfiguration.Debug)
     {
         var pickerId = compilerKind switch
         {
             CompilerKind.Roslyn => "roslyn-compiler",
             CompilerKind.Razor => "razor-compiler",
-            _ => throw new ArgumentOutOfRangeException(nameof(compilerKind), compilerKind, null)
+            _ => throw new ArgumentOutOfRangeException(paramName: nameof(compilerKind), actualValue: compilerKind, message: null)
         };
 
         SetLoadingVersion(compilerKind, "local");
@@ -884,10 +916,10 @@
                 switch (compilerKind)
                 {
                     case CompilerKind.Roslyn:
-                        await UseRoslynVersionAsync(dir.Specifier, BuildConfiguration.Debug, forceReload: true);
+                        await UseRoslynVersionAsync(dir.Specifier, configuration, forceReload: true);
                         break;
                     case CompilerKind.Razor:
-                        await UseRazorVersionAsync(dir.Specifier, BuildConfiguration.Debug, forceReload: true);
+                        await UseRazorVersionAsync(dir.Specifier, configuration, forceReload: true);
                         break;
                 }
             }
