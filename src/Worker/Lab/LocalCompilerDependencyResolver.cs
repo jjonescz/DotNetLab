@@ -1,4 +1,6 @@
 using NuGet.Frameworks;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 
 namespace DotNetLab.Lab;
 
@@ -91,12 +93,71 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
 
         return new PackageDependency
         {
-            Info = new(Task.FromResult(new PackageDependencyInfo(info.AssemblyNames[0])
-            {
-                Configuration = configuration,
-                SnapshotLoadedAt = DateTimeOffset.UtcNow,
-            })),
+            Info = new(Task.FromResult(ReadInfo(assemblies[0], configuration))),
             Assemblies = new(Task.FromResult(assemblies)),
+        };
+    }
+
+    private static PackageDependencyInfo ReadInfo(LoadedAssembly assembly, BuildConfiguration configuration)
+    {
+        using var peReader = assembly.Data.IsDefault
+            ? new PEReader(File.OpenRead(assembly.DiskPath))
+            : new PEReader(assembly.Data);
+        var metadata = peReader.GetMetadataReader();
+        var definition = metadata.GetAssemblyDefinition();
+        var version = definition.Version.ToString();
+        var hash = "";
+        var repositoryUrl = "";
+
+        foreach (var handle in definition.GetCustomAttributes())
+        {
+            var attribute = metadata.GetCustomAttribute(handle);
+            if (attribute.Constructor.Kind != HandleKind.MemberReference)
+            {
+                continue;
+            }
+
+            var constructor = metadata.GetMemberReference((MemberReferenceHandle)attribute.Constructor);
+            if (constructor.Parent.Kind != HandleKind.TypeReference)
+            {
+                continue;
+            }
+
+            var type = metadata.GetTypeReference((TypeReferenceHandle)constructor.Parent);
+            if (!metadata.StringComparer.Equals(type.Namespace, "System.Reflection"))
+            {
+                continue;
+            }
+
+            var name = metadata.GetString(type.Name);
+            if (name is not (nameof(AssemblyInformationalVersionAttribute) or nameof(AssemblyMetadataAttribute)))
+            {
+                continue;
+            }
+
+            var value = metadata.GetBlobReader(attribute.Value);
+            if (value.ReadUInt16() != 1)
+            {
+                throw new BadImageFormatException($"Invalid assembly attribute in '{assembly.Name}'.");
+            }
+
+            if (name == nameof(AssemblyInformationalVersionAttribute) && value.ReadSerializedString() is { } informationalVersion)
+            {
+                VersionUtil.TryParseInformationalVersion(informationalVersion, out version, out var commitHash);
+                hash = commitHash ?? "";
+            }
+            else if (name == nameof(AssemblyMetadataAttribute) &&
+                value.ReadSerializedString() == "RepositoryUrl" &&
+                value.ReadSerializedString() is { } repoUrl)
+            {
+                repositoryUrl = repoUrl;
+            }
+        }
+
+        return new(version, new CommitLink { Hash = hash, RepoUrl = repositoryUrl })
+        {
+            Configuration = configuration,
+            SnapshotLoadedAt = DateTimeOffset.UtcNow,
         };
     }
 }
