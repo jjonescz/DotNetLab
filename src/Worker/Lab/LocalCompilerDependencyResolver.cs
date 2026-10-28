@@ -181,6 +181,7 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
         return new(version, new CommitLink { Hash = hash, RepoUrl = repositoryUrl })
         {
             Configuration = configuration,
+            CanChangeBuildConfiguration = true,
             SnapshotLoadedAt = DateTimeOffset.UtcNow,
         };
     }
