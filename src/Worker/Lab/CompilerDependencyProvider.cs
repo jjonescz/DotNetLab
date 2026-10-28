@@ -43,7 +43,8 @@ internal sealed class CompilerDependencyProvider(
         {
             if (loaded.TryGetValue(compilerKind, out var dependency))
             {
-                if (dependency.UserInput.Version == version &&
+                if (dependency.Loaded is not null &&
+                    dependency.UserInput.Version == version &&
                     dependency.UserInput.Configuration == configuration)
                 {
                     return false;
