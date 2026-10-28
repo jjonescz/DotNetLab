@@ -325,23 +325,6 @@ internal sealed class WorkerController : IAsyncDisposable
         }
     }
 
-    [SupportedOSPlatform("browser")]
-    public async Task TransferDirectoryAsync(string directoryId)
-    {
-        if (!await GetIsEnabledAsync())
-        {
-            return;
-        }
-
-        JSObject? worker = (await GetWorkerAsync())?.Handle;
-        if (worker == null)
-        {
-            return;
-        }
-
-        await WorkerControllerInterop.TransferDirectoryAsync(worker, directoryId);
-    }
-
     private void LogOutgoingMessage(IWorkerInputMessage message, string details)
     {
         logger.Log(
@@ -386,6 +369,14 @@ internal sealed class WorkerController : IAsyncDisposable
         try
         {
             Debug.Assert(OperatingSystem.IsBrowser());
+
+            if (message is WorkerInputMessage.UseCompilerVersion useCompilerVersion &&
+                CompilerVersionSpecifier.Parse(useCompilerVersion.Version)
+                    .OfType<CompilerVersionSpecifier.LocalId>().FirstOrDefault() is { } local)
+            {
+                await WorkerControllerInterop.TransferDirectoryAsync(workerInstance.Handle, local.Id);
+            }
+
             WorkerControllerInterop.PostMessage(workerInstance.Handle, serialized);
         }
         catch (Exception ex)
