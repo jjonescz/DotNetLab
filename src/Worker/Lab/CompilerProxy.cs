@@ -60,10 +60,10 @@ internal sealed class CompilerProxy(
             if (input.Configuration is not null && loaded.DllAssemblies is null)
             {
                 var assemblies = loaded.Assemblies ?? await LoadAssembliesAsync();
-                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
+                loaded.DllAssemblies = assemblies.ToImmutableDictionary(p => p.Key, p => p.Value.PathOrDataAsDll);
 
                 var builtInAssemblies = await LoadAssembliesAsync(builtInOnly: true);
-                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.DataAsDll);
+                loaded.BuiltInDllAssemblies = builtInAssemblies.ToImmutableDictionary(p => p.Key, p => p.Value.PathOrDataAsDll);
             }
 
             CompiledAssembly result;
@@ -109,12 +109,12 @@ internal sealed class CompilerProxy(
         }
     }
 
-    async Task<ImmutableDictionary<string, ImmutableArray<byte>>> ICompilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync()
+    async Task<ImmutableDictionary<string, PathOrData>> ICompilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync()
     {
         var assemblies = await LoadAssembliesAsync(builtInOnly: true);
         return assemblies.ToImmutableDictionary(
             static p => p.Key,
-            static p => p.Value.DataAsDll);
+            static p => p.Value.PathOrDataAsDll);
     }
 
     private async Task<ImmutableDictionary<string, LoadedAssembly>> LoadAssembliesAsync(bool builtInOnly = false)
@@ -232,11 +232,11 @@ internal sealed class CompilerProxy(
 
         /// <summary>
         /// If Configuration is provided, the compiler needs Roslyn DLLs to compile the Configuration against.
-        /// This property is used to cache the loaded DLL bytes.
+        /// This property is used to cache the DLL paths or bytes.
         /// It is computed from <see cref="Assemblies"/> (if a custom compiler is used)
         /// or from <see cref="LoadAssembliesAsync"/> (if the built-in compiler is used).
         /// </summary>
-        public ImmutableDictionary<string, ImmutableArray<byte>>? DllAssemblies { get; set; }
+        public ImmutableDictionary<string, PathOrData>? DllAssemblies { get; set; }
 
         /// <summary>
         /// Similar to <see cref="DllAssemblies"/>, but always contains the built-in Roslyn DLLs.
@@ -244,7 +244,7 @@ internal sealed class CompilerProxy(
         /// (in which case using the custom DLLs would fail). Currently, we don't check the compiler version,
         /// we just try these built-in ones when compilation with <see cref="DllAssemblies"/> fails.
         /// </summary>
-        public ImmutableDictionary<string, ImmutableArray<byte>>? BuiltInDllAssemblies { get; set; }
+        public ImmutableDictionary<string, PathOrData>? BuiltInDllAssemblies { get; set; }
 
         public void Dispose()
         {

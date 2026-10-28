@@ -83,11 +83,13 @@ public static class CodeAnalysisUtil
 
     extension(MetadataReference)
     {
-        public static PortableExecutableReference LoadFromBytesOrDisk(string name, ImmutableArray<byte> bytes)
+        public static PortableExecutableReference LoadFromBytesOrDisk(PathOrData source)
         {
-            return bytes.IsDefault
-                ? MetadataReference.CreateFromFile(Util.GetAssemblyDiskPath(name))
-                : MetadataReference.CreateFromImage(bytes);
+            return source switch
+            {
+                string path => MetadataReference.CreateFromFile(path),
+                ImmutableArray<byte> bytes => MetadataReference.CreateFromImage(bytes),
+            };
         }
     }
 

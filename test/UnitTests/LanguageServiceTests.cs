@@ -2,6 +2,7 @@
 using BlazorMonaco;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -196,8 +197,8 @@ public sealed class LanguageServiceTests
         ]);
     }
 
-    [TestMethod]
-    public async Task Diagnostics_Configuration()
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_Configuration(bool loadAssembliesFromDisk)
     {
         var input = new CompilationInput(new(
         [
@@ -209,7 +210,8 @@ public sealed class LanguageServiceTests
         };
 
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
-        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler, services =>
+            services.Configure<CompilerProxyOptions>(options => options.LoadAssembliesFromDisk = loadAssembliesFromDisk));
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
 

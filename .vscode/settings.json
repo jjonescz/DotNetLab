@@ -8,5 +8,11 @@
         "configurer",
         "Photino",
         "wwwroot"
-    ]
+    ],
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#8967aa",
+        "statusBar.inactiveBackground": "#554466",
+        "statusBar.foreground": "#eeeeee",
+        "statusBarItem.remoteBackground": "#8967aa",
+    },
 }

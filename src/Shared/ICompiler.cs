@@ -10,12 +10,14 @@ public interface ICompiler : IDisposable
 {
     ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
-        ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
-        ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
+        ImmutableDictionary<string, PathOrData>? assemblies,
+        ImmutableDictionary<string, PathOrData>? builtInAssemblies,
         AssemblyLoadContext alc);
 
     string FormatCode(string code, bool isScript);
 }
+
+public readonly union PathOrData(string, ImmutableArray<byte>);
 
 public sealed record CompilationInput
 {

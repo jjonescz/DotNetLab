@@ -19,6 +19,12 @@
             "type": "blazorwasm",
             "request": "launch",
             "cwd": "${workspaceFolder}/src/WebAssembly"
+        },
+        {
+            "name": "Desktop",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/Desktop/Desktop.csproj"
         }
     ]
 }

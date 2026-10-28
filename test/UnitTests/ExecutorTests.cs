@@ -1,7 +1,7 @@
-﻿using Combinatorial.MSTest;
-using DotNetLab.Lab;
+﻿using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 
 namespace DotNetLab;
 

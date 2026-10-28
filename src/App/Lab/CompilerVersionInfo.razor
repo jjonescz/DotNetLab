@@ -1,5 +1,8 @@
 ﻿@if (Info != null)
 {
+    var commit = Info.CheckoutCommit ?? Info.Commit;
+    var hasCommit = !string.IsNullOrWhiteSpace(commit.Hash);
+
     <FluentLabel Style="@Style">
         Using
         @if (Info.VersionLink != null)
@@ -10,23 +13,55 @@
         {
             @(Info.Version)
         }
-        (<CommitHashView Enabled="!Settings.ModalHidden" Commit="Info.Commit"
-                         SaveKey="@(Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(Compiler.RepositoryUrl)"
-                         AlternativeCommitHash="@(Info.AdditionalCommitHash)" />
-        @if (Info.AdditionalLink != null)
+        @if (hasCommit || Info.AdditionalLink != null)
         {
-            @(", ")
-            <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
-               target="_blank" rel="noopener noreferrer">@Info.AdditionalLink.Text</a>
+            @(" (")
+            @if (hasCommit)
+            {
+                @if (Info.CheckoutCommit != null)
+                {
+                    <span title="Current Git checkout commit, not necessarily the commit used to build these DLLs. Uncommitted changes are not represented.">checkout </span>
+                }
+                <CommitHashView Enabled="!Settings.ModalHidden" Commit="commit"
+                               SaveKey="@(Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(Compiler.RepositoryUrl)"
+                               AlternativeCommitHash="@(Info.AdditionalCommitHash)" />
+            }
+            @if (Info.AdditionalLink != null)
+            {
+                @if (hasCommit)
+                {
+                    @(", ")
+                }
+                <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
+                   target="_blank" rel="noopener noreferrer">@Info.AdditionalLink.Text</a>
+            }
+            @(")")
         }
-        @("),")
+        @(",")
         <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.
+        @if (Info.SnapshotLoadedAt is { } snapshotLoadedAt)
+        {
+            <br />
+            @("Snapshot loaded ")
+            <time datetime="@snapshotLoadedAt.ToString("O")" title="@snapshotLoadedAt.ToLocalTime().ToString("O")">@snapshotLoadedAt.ToLocalTime().ToString("G")</time>
+            @(" (")
+            @if (IsLoading)
+            {
+                @("loading...")
+            }
+            else
+            {
+                <a href="javascript:void" @onclick:preventDefault @onclick="OnReload"
+                   title="Reload the local compiler snapshot. In the browser, select the folder again to read rebuilt files.">reload</a>
+            }
+            @(").")
+        }
     </FluentLabel>
 }
-@if (Error != null)
+@if (Error is { } error)
 {
-    <FluentLabel Color="Color.Error" Style="@Style">
-        @Error
+    <FluentLabel Color="Color.Error" Style="@($"{Style}; white-space: pre-wrap; overflow-wrap: anywhere")" title="@(error.Long)">
+        @(error.Short)
     </FluentLabel>
 }
 
@@ -34,6 +69,8 @@
     [Parameter, EditorRequired] public Settings Settings { get; set; }
     [Parameter, EditorRequired] public CompilerInfo Compiler { get; set; }
     [Parameter] public PackageDependencyInfo? Info { get; set; }
-    [Parameter] public string? Error { get; set; }
+    [Parameter] public Settings.Error? Error { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnReload { get; set; }
     [Parameter, EditorRequired] public string Style { get; set; }
 }
