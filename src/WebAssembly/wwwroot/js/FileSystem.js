@@ -7,6 +7,8 @@
 
 /** @type {Map<string, SelectedDirectory>} */
 const directories = new Map();
+const selectedDirectories = new Map();
+const pendingDirectoryUses = new Map();
 
 function trackDirectory(directory) {
     const id = crypto.randomUUID();
@@ -15,7 +17,11 @@ function trackDirectory(directory) {
 }
 
 export function getDirectory(id) {
-    const directory = directories.get(id);
+    const [rootId, ...segments] = id.split('/');
+    let directory = directories.get(rootId);
+    for (const segment of segments) {
+        directory = directory?.directories.get(segment);
+    }
     if (directory === undefined) {
         throw new Error(`The selected folder is no longer available, please select it again (${id}).`);
     }
@@ -26,13 +32,39 @@ export function setDirectory(id, directory) {
     directories.set(id, directory);
 }
 
-/** @type {Map<string, File>} */
-const files = new Map();
+export function releaseDirectory(id) {
+    directories.delete(id);
+}
 
-function trackFile(file) {
-    const id = crypto.randomUUID();
-    files.set(id, file);
-    return id;
+export function beginDirectoryUse(compilerKind, requestId, directoryId) {
+    if (directoryId !== null) {
+        getDirectory(directoryId);
+        pendingDirectoryUses.set(requestId, directoryId);
+    }
+
+    const previousId = selectedDirectories.get(compilerKind);
+    if (directoryId === null) {
+        selectedDirectories.delete(compilerKind);
+    } else {
+        selectedDirectories.set(compilerKind, directoryId);
+    }
+    return releaseUnusedDirectory(previousId);
+}
+
+export function endDirectoryUse(requestId) {
+    const directoryId = pendingDirectoryUses.get(requestId);
+    pendingDirectoryUses.delete(requestId);
+    return releaseUnusedDirectory(directoryId);
+}
+
+function releaseUnusedDirectory(id) {
+    if (id !== undefined &&
+        ![...selectedDirectories.values()].includes(id) &&
+        ![...pendingDirectoryUses.values()].includes(id)) {
+        releaseDirectory(id);
+        return id;
+    }
+    return null;
 }
 
 export async function pickDirectory(pickerId) {
@@ -112,9 +144,10 @@ export async function getSubdirectory(directoryId, segments) {
         if (directory === undefined) {
             return null;
         }
+        directoryId += `/${segment}`;
     }
 
-    return trackDirectory(directory);
+    return directoryId;
 }
 
 export async function getDirectories(directoryId) {
@@ -122,7 +155,7 @@ export async function getDirectories(directoryId) {
 
     const result = [];
     for (const entry of directory.directories.values()) {
-        const id = trackDirectory(entry);
+        const id = `${directoryId}/${entry.name}`;
         result.push({ id, name: entry.name });
     }
 
@@ -135,11 +168,12 @@ export function unwrapObject(obj) {
 
 export async function getFileAsync(directoryId, fileName) {
     const file = getDirectory(directoryId).files.get(fileName);
-    return file === undefined ? null : trackFile(file);
+    return file === undefined ? null : `${directoryId}/${fileName}`;
 }
 
 export async function getFileDataAsync(id) {
-    const file = files.get(id);
+    const lastSlash = id.lastIndexOf('/');
+    const file = getDirectory(id.slice(0, lastSlash)).files.get(id.slice(lastSlash + 1));
     if (file === undefined) {
         throw new Error(`The selected file is no longer available, please select the folder again (${id}).`);
     }

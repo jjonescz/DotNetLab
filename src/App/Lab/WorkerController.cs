@@ -476,16 +476,34 @@ internal sealed class WorkerController : IAsyncDisposable
     /// <summary>
     /// Instructs the <see cref="DependencyRegistry"/> to use this package.
     /// </summary>
-    public Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration, bool forceReload = false)
+    public async Task<bool> UseCompilerVersionAsync(CompilerKind compilerKind, string? version, BuildConfiguration configuration, bool forceReload = false)
     {
-        return PostAndReceiveMessageAsync<WorkerInputMessage.UseCompilerVersion, bool>(new(
+        var message = new WorkerInputMessage.UseCompilerVersion(
             CompilerKind: compilerKind,
             Version: version,
             Configuration: configuration,
             ForceReload: forceReload)
         {
             Id = messageId++,
-        });
+        };
+
+        if (!OperatingSystem.IsBrowser())
+        {
+            return await PostAndReceiveMessageAsync<WorkerInputMessage.UseCompilerVersion, bool>(message);
+        }
+
+        await EnsureInteropScriptInitializedAsync();
+        var directoryId = CompilerVersionSpecifier.Parse(version)
+            .OfType<CompilerVersionSpecifier.LocalId>().FirstOrDefault()?.Id;
+        await WorkerControllerInterop.BeginDirectoryUseAsync(compilerKind.ToString(), message.Id, directoryId);
+        try
+        {
+            return await PostAndReceiveMessageAsync<WorkerInputMessage.UseCompilerVersion, bool>(message);
+        }
+        finally
+        {
+            await WorkerControllerInterop.EndDirectoryUseAsync(message.Id);
+        }
     }
 
     public Task<PackageDependencyInfo?> GetCompilerDependencyInfoAsync(CompilerKind compilerKind)
@@ -606,6 +624,12 @@ internal static partial class WorkerControllerInterop
 
     [JSImport("transferDirectory", nameof(WorkerController))]
     public static partial Task TransferDirectoryAsync(JSObject workerSetup, string directoryId);
+
+    [JSImport("beginDirectoryUse", nameof(WorkerController))]
+    public static partial Task BeginDirectoryUseAsync(string compilerKind, int requestId, string? directoryId);
+
+    [JSImport("endDirectoryUse", nameof(WorkerController))]
+    public static partial Task EndDirectoryUseAsync(int requestId);
 
     [JSImport("disposeWorker", nameof(WorkerController))]
     public static partial void DisposeWorker(JSObject workerSetup);

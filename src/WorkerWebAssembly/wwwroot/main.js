@@ -45,6 +45,8 @@ instance.setModuleImports('worker-imports.js', {
             side.start();
         } else if (ev.data?.type === 'transfer-directory') {
             FileSystem.setDirectory(ev.data.directoryId, ev.data.directory);
+        } else if (ev.data?.type === 'release-directory') {
+            FileSystem.releaseDirectory(ev.data.directoryId);
         } else {
             handler(ev.data ?? '');
         }
