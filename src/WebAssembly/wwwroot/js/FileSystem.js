@@ -16,12 +16,17 @@ function trackDirectory(directory) {
     return id;
 }
 
-export function getDirectory(id) {
+export function tryGetDirectory(id) {
     const [rootId, ...segments] = id.split('/');
     let directory = directories.get(rootId);
     for (const segment of segments) {
         directory = directory?.directories.get(segment);
     }
+    return directory;
+}
+
+export function getDirectory(id) {
+    const directory = tryGetDirectory(id);
     if (directory === undefined) {
         throw new Error(`The selected folder is no longer available, please select it again (${id}).`);
     }
@@ -38,7 +43,6 @@ export function releaseDirectory(id) {
 
 export function beginDirectoryUse(compilerKind, requestId, directoryId) {
     if (directoryId !== null) {
-        getDirectory(directoryId);
         pendingDirectoryUses.set(requestId, directoryId);
     }
 

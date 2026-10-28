@@ -69,7 +69,12 @@ export async function transferDirectory(setup, directoryId) {
         return;
     }
 
-    const directory = FileSystem.getDirectory(directoryId);
+    const directory = FileSystem.tryGetDirectory(directoryId);
+    if (directory === undefined) {
+        // Let the compiler resolver report the missing selection and register a failing dependency.
+        return;
+    }
+
     // Use the compiler-request channel so the selection is registered before requests that use it.
     setup.worker.postMessage({ type: 'transfer-directory', directoryId, directory });
     if (workers === undefined) {
