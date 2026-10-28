@@ -27,6 +27,13 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
 
             if (!assemblyDir.Exists)
             {
+                // Only require the primary compiler assembly to be loaded from disk.
+                // Some dependencies like razor's Microsoft.Extensions.ObjectPool aren't in the artifacts directory.
+                if (assemblyName != info.AssemblyNames[0])
+                {
+                    continue;
+                }
+
                 throw new InvalidOperationException($"Directory not found: {assemblyDir.FullName}");
             }
 
