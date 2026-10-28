@@ -18,7 +18,6 @@
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <!-- When updating BlazorMonaco, check that VIM mode works. See https://github.com/jjonescz/DotNetLab/pull/57. -->
     <PackageVersion Include="BlazorMonaco" Version="3.5.0" />
-    <PackageVersion Include="Combinatorial.MSTest" Version="2.0.0" />
     <PackageVersion Include="Humanizer.Core" Version="3.0.10" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="11.1.0.9782" />
     <PackageVersion Include="Iced" Version="1.21.0" />

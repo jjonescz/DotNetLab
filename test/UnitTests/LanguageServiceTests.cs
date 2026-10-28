@@ -1,8 +1,8 @@
 ﻿using AwesomeAssertions;
 using BlazorMonaco;
-using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Text.Json;
 
 namespace DotNetLab;

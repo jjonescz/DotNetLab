@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
