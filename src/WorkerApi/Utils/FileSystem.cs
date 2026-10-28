@@ -47,8 +47,6 @@ public interface IDirectoryInfo
     ValueTask<IFileInfo> GetFileAsync(string name);
 }
 
-public readonly union PathOrData(string, ImmutableArray<byte>);
-
 public interface IFileInfo
 {
     bool Exists { get; }

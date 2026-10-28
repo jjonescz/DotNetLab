@@ -81,8 +81,8 @@ public sealed class Compiler(
 
     public async ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
-        ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
-        ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
+        ImmutableDictionary<string, PathOrData>? assemblies,
+        ImmutableDictionary<string, PathOrData>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
         if (LastResult is { } cached)
@@ -124,8 +124,8 @@ public sealed class Compiler(
 
     private async ValueTask<LiveCompilationResult> CompileNoCacheAsync(
         CompilationInput compilationInput,
-        ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
-        ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
+        ImmutableDictionary<string, PathOrData>? assemblies,
+        ImmutableDictionary<string, PathOrData>? builtInAssemblies,
         AssemblyLoadContext alc)
     {
         const string projectName = "TestProject";
@@ -152,7 +152,7 @@ public sealed class Compiler(
 
         // If we have a configuration, compile and execute it.
         ImmutableArray<Diagnostic> configDiagnostics;
-        ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies = null;
+        ImmutableDictionary<string, PathOrData>? compilerAssemblies = null;
         if (compilationInput.Configuration is { } configuration)
         {
             (bool configExecutionSuccess, configDiagnostics) = await executeConfigurationAsync(configuration);
@@ -592,11 +592,11 @@ public sealed class Compiler(
             return (true, diagnostics);
         }
 
-        MetadataReference[] getConfigurationReferences(ImmutableDictionary<string, ImmutableArray<byte>> assemblies)
+        MetadataReference[] getConfigurationReferences(ImmutableDictionary<string, PathOrData> assemblies)
         {
             return [
                 ..references.Metadata,
-                ..assemblies.Select(p => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value)),
+                ..assemblies.Values.Select(MetadataReference.LoadFromBytesOrDisk),
             ];
         }
 
@@ -1650,7 +1650,7 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     /// <summary>
     /// Assemblies used to compile <see cref="CompilationInput.Configuration"/>.
     /// </summary>
-    public required ImmutableDictionary<string, ImmutableArray<byte>>? CompilerAssemblies { get; init; }
+    public required ImmutableDictionary<string, PathOrData>? CompilerAssemblies { get; init; }
 
     /// <summary>
     /// Set to <see langword="null"/> if the default options were used.

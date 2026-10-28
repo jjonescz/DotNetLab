@@ -630,7 +630,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    private void UseCompilerAssemblies(ImmutableDictionary<string, ImmutableArray<byte>>? compilerAssemblies)
+    private void UseCompilerAssemblies(ImmutableDictionary<string, PathOrData>? compilerAssemblies)
     {
         var project = GetProject(configuration: true);
 
@@ -648,8 +648,8 @@ internal sealed class LanguageServices : ILanguageServices
         }
         else
         {
-            additionalConfigurationReferences = compilerAssemblies
-                .SelectAsArray(MetadataReference (p) => MetadataReference.LoadFromBytesOrDisk(p.Key, p.Value));
+            additionalConfigurationReferences = compilerAssemblies.Values
+                .SelectAsArray(MetadataReference (source) => MetadataReference.LoadFromBytesOrDisk(source));
             project = project.AddMetadataReferences(additionalConfigurationReferences);
         }
 

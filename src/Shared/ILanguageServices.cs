@@ -32,5 +32,5 @@ public sealed record ModelInfo(string Uri, string FileName)
 
 public interface ICompilerAssemblyLoader
 {
-    public Task<ImmutableDictionary<string, ImmutableArray<byte>>> LoadBuiltInCompilerAssembliesAsync();
+    public Task<ImmutableDictionary<string, PathOrData>> LoadBuiltInCompilerAssembliesAsync();
 }

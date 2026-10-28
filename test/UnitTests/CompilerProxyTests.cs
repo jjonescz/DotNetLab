@@ -457,11 +457,12 @@ public sealed class CompilerProxyTests
         Assert.AreEqual(string.Empty, diagnosticsText);
     }
 
-    [TestMethod]
-    public async Task ConfigurationFile()
+    [TestMethod, CombinatorialData]
+    public async Task ConfigurationFile(bool loadAssembliesFromDisk)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
-        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler, services =>
+            services.Configure<CompilerProxyOptions>(options => options.LoadAssembliesFromDisk = loadAssembliesFromDisk));
 
         var source = "unsafe { int* p = null; }";
 

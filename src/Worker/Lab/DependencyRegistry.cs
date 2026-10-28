@@ -87,6 +87,8 @@ public sealed class LoadedAssembly
         init;
     }
 
+    public PathOrData PathOrDataAsDll => Data.IsDefault ? DiskPath : DataAsDll;
+
     public ImmutableArray<byte> DataAsDll
     {
         get
