@@ -47,7 +47,7 @@
 }
 @if (Error is { } error)
 {
-    <FluentLabel Color="Color.Error" Style="@($"{Style}; white-space: pre-wrap")" title="@(error.Long)">
+    <FluentLabel Color="Color.Error" Style="@($"{Style}; white-space: pre-wrap; overflow-wrap: anywhere")" title="@(error.Long)">
         @(error.Short)
     </FluentLabel>
 }
