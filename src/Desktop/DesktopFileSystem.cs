@@ -1,21 +1,39 @@
 using DotNetLab.Lab;
+using Microsoft.JSInterop;
 using Photino.NET;
 
 namespace DotNetLab;
 
-public sealed class DesktopFilePicker(PhotinoWindow window) : IFilePicker
+public sealed class DesktopFilePicker : IFilePicker
 {
+    private readonly Func<string?, Task<string[]>> showOpenFolder;
+    private readonly IJSRuntime jsRuntime;
+
+    public DesktopFilePicker(PhotinoWindow window, IJSRuntime jsRuntime)
+        : this(path => window.ShowOpenFolderAsync(title: "Choose roslyn repo", defaultPath: path), jsRuntime)
+    {
+    }
+
+    internal DesktopFilePicker(Func<string?, Task<string[]>> showOpenFolder, IJSRuntime jsRuntime)
+    {
+        this.showOpenFolder = showOpenFolder;
+        this.jsRuntime = jsRuntime;
+    }
+
     public bool SupportsDirectoryPicker => true;
 
     public async Task<PickedDirectory?> PickDirectoryAsync(string pickerId)
     {
-        var result = await window.ShowOpenFolderAsync(
-            title: "Choose roslyn repo");
+        var storageKey = $"{nameof(DesktopFilePicker)}.{pickerId}.LastDirectory";
+        var lastDirectory = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", storageKey);
+        var result = await showOpenFolder(Directory.Exists(lastDirectory) ? lastDirectory : null);
 
         if (result is not [{ } path])
         {
             return null;
         }
+
+        await jsRuntime.InvokeVoidAsync("localStorage.setItem", storageKey, path);
 
         return new(Specifier: path, DirectoryId: null);
     }
