@@ -1,5 +1,8 @@
 ﻿@if (Info != null)
 {
+    var commit = Info.CheckoutCommit ?? Info.Commit;
+    var hasCommit = !string.IsNullOrWhiteSpace(commit.Hash);
+
     <FluentLabel Style="@Style">
         Using
         @if (Info.VersionLink != null)
@@ -10,21 +13,31 @@
         {
             @(Info.Version)
         }
-        @(" (")
-        @if (Info.CheckoutCommit != null)
+        @if (hasCommit || Info.AdditionalLink != null)
         {
-            <span title="Current Git checkout commit, not necessarily the commit used to build these DLLs. Uncommitted changes are not represented.">checkout </span>
+            @(" (")
+            @if (hasCommit)
+            {
+                @if (Info.CheckoutCommit != null)
+                {
+                    <span title="Current Git checkout commit, not necessarily the commit used to build these DLLs. Uncommitted changes are not represented.">checkout </span>
+                }
+                <CommitHashView Enabled="!Settings.ModalHidden" Commit="commit"
+                               SaveKey="@(Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(Compiler.RepositoryUrl)"
+                               AlternativeCommitHash="@(Info.AdditionalCommitHash)" />
+            }
+            @if (Info.AdditionalLink != null)
+            {
+                @if (hasCommit)
+                {
+                    @(", ")
+                }
+                <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
+                   target="_blank" rel="noopener noreferrer">@Info.AdditionalLink.Text</a>
+            }
+            @(")")
         }
-        <CommitHashView Enabled="!Settings.ModalHidden" Commit="@(Info.CheckoutCommit ?? Info.Commit)"
-                         SaveKey="@(Compiler.CommitInfoSaveKey)" AlternativeRepoUrl="@(Compiler.RepositoryUrl)"
-                         AlternativeCommitHash="@(Info.AdditionalCommitHash)" />
-        @if (Info.AdditionalLink != null)
-        {
-            @(", ")
-            <a href="@Info.AdditionalLink.Url" title="@Info.AdditionalLink.Description"
-               target="_blank" rel="noopener noreferrer">@Info.AdditionalLink.Text</a>
-        }
-        @("),")
+        @(",")
         <span title="@(Info.CanChangeBuildConfiguration ? "" : Settings.ConfigurationTip)">@Info.Configuration</span>.
         @if (Info.SnapshotLoadedAt is { } snapshotLoadedAt)
         {
