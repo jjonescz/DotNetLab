@@ -27,6 +27,7 @@ public sealed record PackageDependencyInfo
     public string Version { get; }
     public string? VersionLink { get; init; }
     public CommitLink Commit { get; }
+    public CommitLink? CheckoutCommit { get; init; }
     public DisplayLink? AdditionalLink { get; init; }
     public string? AdditionalCommitHash { get; init; }
     public required BuildConfiguration Configuration { get; init; }

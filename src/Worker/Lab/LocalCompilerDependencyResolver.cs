@@ -94,9 +94,23 @@ internal sealed class LocalCompilerDependencyResolver(IFileSystem fileSystem) : 
             };
         });
 
+        var packageInfo = ReadInfo(assemblies[0], configuration);
+        if (string.IsNullOrWhiteSpace(packageInfo.Commit.Hash) &&
+            await fileSystem.TryGetGitCommitAsync(repoDir) is { } checkoutCommit)
+        {
+            packageInfo = packageInfo with
+            {
+                CheckoutCommit = new CommitLink
+                {
+                    Hash = checkoutCommit,
+                    RepoUrl = string.IsNullOrEmpty(packageInfo.Commit.RepoUrl) ? info.RepositoryUrl : packageInfo.Commit.RepoUrl,
+                },
+            };
+        }
+
         return new PackageDependency
         {
-            Info = new(Task.FromResult(ReadInfo(assemblies[0], configuration))),
+            Info = new(Task.FromResult(packageInfo)),
             Assemblies = new(Task.FromResult(assemblies)),
         };
     }

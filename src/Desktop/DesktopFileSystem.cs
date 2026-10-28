@@ -1,6 +1,7 @@
 using DotNetLab.Lab;
 using Microsoft.JSInterop;
 using Photino.NET;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace DotNetLab;
@@ -40,13 +41,52 @@ public sealed class DesktopFilePicker : IFilePicker
     }
 }
 
-public sealed class DesktopFileSystem : IFileSystem
+public sealed class DesktopFileSystem(ILogger<DesktopFileSystem> logger) : IFileSystem
 {
     public IDirectoryInfo? TryGetDirectoryFromSpecifier(CompilerVersionSpecifier specifier)
     {
         return specifier is CompilerVersionSpecifier.Local local
             ? new DesktopDirectoryInfo(new DirectoryInfo(local.Path))
             : null;
+    }
+
+    public async ValueTask<string?> TryGetGitCommitAsync(IDirectoryInfo directory)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            ArgumentList = { "-C", directory.FullName, "rev-parse", "--verify", "HEAD^{commit}" },
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        ProcessTextOutput result;
+        try
+        {
+            result = await Process.RunAndCaptureTextAsync(startInfo);
+        }
+        catch (Win32Exception ex)
+        {
+            logger.LogWarning(ex, "Cannot start Git to determine the checkout commit in {Directory}.", directory.FullName);
+            return null;
+        }
+
+        var output = result.StandardOutput.Trim();
+        if (result.ExitStatus.ExitCode != 0)
+        {
+            logger.LogWarning("Cannot determine the Git checkout commit in {Directory} (exit code {ExitCode}): {Error}",
+                directory.FullName, result.ExitStatus.ExitCode, result.StandardError.Trim());
+            return null;
+        }
+
+        if (output.Length is not (40 or 64) || !output.All(char.IsAsciiHexDigit))
+        {
+            logger.LogWarning("Git returned an invalid checkout commit in {Directory}: {Output}", directory.FullName, output);
+            return null;
+        }
+
+        return output;
     }
 }
 

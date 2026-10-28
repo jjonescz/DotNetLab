@@ -24,6 +24,8 @@ public sealed class DefaultFilePicker : IFilePicker
 public interface IFileSystem
 {
     IDirectoryInfo? TryGetDirectoryFromSpecifier(CompilerVersionSpecifier specifier);
+
+    ValueTask<string?> TryGetGitCommitAsync(IDirectoryInfo directory) => new((string?)null);
 }
 
 public sealed class DefaultFileSystem : IFileSystem
