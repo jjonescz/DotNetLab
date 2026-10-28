@@ -1,6 +1,7 @@
 using DotNetLab.Lab;
 using Microsoft.JSInterop;
 using Photino.NET;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -76,8 +77,14 @@ public sealed class DesktopFileInfo(FileInfo inner) : IFileInfo
     public bool Exists => inner.Exists;
     public string FullName => inner.FullName;
 
-    public ValueTask<PathOrData> GetPathOrDataAsync()
+    public async ValueTask<PathOrData> GetPathOrDataAsync()
     {
-        return new(FullName);
+        if (OperatingSystem.IsWindows())
+        {
+            // Loading from the original path would lock the compiler's build output.
+            return ImmutableCollectionsMarshal.AsImmutableArray(await File.ReadAllBytesAsync(FullName));
+        }
+
+        return FullName;
     }
 }
