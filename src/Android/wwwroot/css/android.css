@@ -1,0 +1,7 @@
+.loading-progress .filling {
+    transform: scaleY(100%);
+}
+
+.loading-progress-text:after {
+    content: "";
+}

@@ -83,11 +83,13 @@ public static class CodeAnalysisUtil
 
     extension(MetadataReference)
     {
-        public static PortableExecutableReference LoadFromBytesOrDisk(string name, ImmutableArray<byte> bytes)
+        public static PortableExecutableReference LoadFromBytesOrDisk(PathOrData source)
         {
-            return bytes.IsDefault
-                ? MetadataReference.CreateFromFile(Util.GetAssemblyDiskPath(name))
-                : MetadataReference.CreateFromImage(bytes);
+            return source switch
+            {
+                string path => MetadataReference.CreateFromFile(path),
+                ImmutableArray<byte> bytes => MetadataReference.CreateFromImage(bytes),
+            };
         }
     }
 
@@ -185,6 +187,31 @@ public static class CodeAnalysisUtil
 
 internal static class RazorUtil
 {
+    // Older compiler versions do not recognize Preview.
+    public static RazorLanguageVersion DefaultLanguageVersion =>
+        RazorLanguageVersion.TryParse("preview", out var preview) ? preview : RazorLanguageVersion.Latest;
+
+    public static RazorConfiguration WithLanguageVersionSafe(
+        this RazorConfiguration configuration,
+        RazorLanguageVersion languageVersion)
+    {
+        // Constructor signatures and init-only setter modifiers vary across compiler builds.
+        var type = typeof(RazorConfiguration);
+        var constructor = type.GetConstructors().Single();
+        var arguments = constructor.GetParameters().Select(parameter =>
+        {
+            if (string.Equals(parameter.Name, nameof(RazorConfiguration.LanguageVersion), StringComparison.OrdinalIgnoreCase))
+            {
+                return languageVersion;
+            }
+
+            var property = type.GetProperty(parameter.Name!, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                ?? throw new InvalidOperationException($"No Razor configuration property for constructor parameter '{parameter.Name}'.");
+            return property.GetValue(configuration);
+        }).ToArray();
+        return (RazorConfiguration)constructor.Invoke(arguments);
+    }
+
     private static readonly Lazy<Func<Action<object>, IRazorFeature>> configureRazorParserOptionsFactory = new(CreateConfigureRazorParserOptionsFactory);
 
     private static Func<Action<object>, IRazorFeature> CreateConfigureRazorParserOptionsFactory()

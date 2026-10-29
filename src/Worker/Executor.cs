@@ -62,7 +62,7 @@ public sealed class WorkerExecutor(
             try
             {
                 var languageServices = await compiler.GetLanguageServicesAsync();
-                languageServices.OnCompilationFinished();
+                await languageServices.OnCompilationFinishedAsync();
             }
             catch (Exception ex)
             {
@@ -88,7 +88,7 @@ public sealed class WorkerExecutor(
     public Task<bool> HandleAsync(WorkerInputMessage.UseCompilerVersion message)
     {
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
-        return compilerDependencyProvider.UseAsync(message.CompilerKind, message.Version, message.Configuration);
+        return compilerDependencyProvider.UseAsync(message.CompilerKind, message.Version, message.Configuration, message.ForceReload);
     }
 
     public Task<PackageDependencyInfo?> HandleAsync(WorkerInputMessage.GetCompilerDependencyInfo message)

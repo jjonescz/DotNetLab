@@ -10,12 +10,14 @@ public interface ICompiler : IDisposable
 {
     ValueTask<CompiledAssembly> CompileAsync(
         CompilationInput input,
-        ImmutableDictionary<string, ImmutableArray<byte>>? assemblies,
-        ImmutableDictionary<string, ImmutableArray<byte>>? builtInAssemblies,
+        ImmutableDictionary<string, PathOrData>? assemblies,
+        ImmutableDictionary<string, PathOrData>? builtInAssemblies,
         AssemblyLoadContext alc);
 
     string FormatCode(string code, bool isScript);
 }
+
+public readonly union PathOrData(string, ImmutableArray<byte>);
 
 public sealed record CompilationInput
 {
@@ -79,6 +81,7 @@ public sealed record CompilationPreferences
     public bool FullIl { get; init; }
     public bool ExcludeSingleFileNameInDiagnostics { get; init; }
     public bool IncludeHiddenDiagnostics { get; init; }
+    public bool RoslynTestDiagnosticFormat { get; init; }
 }
 
 [ProtoContract]
@@ -219,6 +222,7 @@ public sealed record CompiledAssembly(
     public const string DiagnosticsOutputType = "errors";
     public static readonly string DiagnosticsOutputLabel = "Error List";
     public static readonly string CSharpLanguageId = "csharp";
+    public static readonly string DiagnosticsLanguageId = "diagnostics";
     public static readonly string OutputLanguageId = "output";
 
     public static CompiledAssembly Fail(string output)

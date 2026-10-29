@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using Combinatorial.MSTest;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
@@ -128,12 +128,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual($"""
-            // (1,8): error CS1029: #error: 'version'
-            // #error version
-            Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-            // (1,8): error CS8304: Compiler version: '{roslynVersion} ({expectedRoslynCommit})'. Language version: 10.0.
-            // #error version
-            Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{roslynVersion} ({expectedRoslynCommit})", "10.0").WithLocation(1, 8)
+            (1,8): error CS1029: #error: 'version'
+                #error version
+
+            (1,8): error CS8304: Compiler version: '{roslynVersion} ({expectedRoslynCommit})'. Language version: 10.0.
+                #error version
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -166,12 +165,11 @@ public sealed class CompilerProxyTests
             Assert.IsNotNull(diagnosticsText);
             TestContext.WriteLine(diagnosticsText);
             Assert.AreEqual($"""
-                // (1,8): error CS1029: #error: 'version'
-                // #error version
-                Diagnostic(ErrorCode.ERR_ErrorDirective, "version").WithArguments("version").WithLocation(1, 8),
-                // (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
-                // #error version
-                Diagnostic(ErrorCode.ERR_CompilerAndLanguageVersion, "version").WithArguments("{version} ({commit})", "preview").WithLocation(1, 8)
+                (1,8): error CS1029: #error: 'version'
+                    #error version
+
+                (1,8): error CS8304: Compiler version: '{version} ({commit})'. Language version: preview.
+                    #error version
                 """.ReplaceLineEndings(), diagnosticsText);
 
             // TODO: This happens because we currently don't download satellite resource assemblies
@@ -459,11 +457,12 @@ public sealed class CompilerProxyTests
         Assert.AreEqual(string.Empty, diagnosticsText);
     }
 
-    [TestMethod]
-    public async Task ConfigurationFile()
+    [TestMethod, CombinatorialData]
+    public async Task ConfigurationFile(bool loadAssembliesFromDisk)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
-        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler, services =>
+            services.Configure<CompilerProxyOptions>(options => options.LoadAssembliesFromDisk = loadAssembliesFromDisk));
 
         var source = "unsafe { int* p = null; }";
 
@@ -480,9 +479,8 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
-            // unsafe { int* p = null; }
-            Diagnostic(ErrorCode.ERR_IllegalUnsafe, "unsafe").WithLocation(1, 1)
+            (1,1): error CS0227: Unsafe code may only appear if compiling with /unsafe
+                unsafe { int* p = null; }
             """.ReplaceLineEndings(), diagnosticsText);
 
         // Changing configuration should work.
@@ -499,6 +497,27 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual(string.Empty, diagnosticsText);
+    }
+
+    [TestMethod]
+    public async Task RoslynTestDiagnosticFormat()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        const string source = "#error test";
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Preferences = CompilationPreferences.Default with { RoslynTestDiagnosticFormat = true },
+            });
+
+        var diagnosticsOutput = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType);
+        Assert.AreEqual(CompiledAssembly.CSharpLanguageId, diagnosticsOutput.Language);
+        Assert.AreEqual("""
+            // (1,8): error CS1029: #error: 'test'
+            // #error test
+            Diagnostic(ErrorCode.ERR_ErrorDirective, "test").WithArguments("test").WithLocation(1, 8)
+            """.ReplaceLineEndings(), diagnosticsOutput.Text);
     }
 
     [TestMethod]
@@ -526,12 +545,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (1,7): error CS0518: Predefined type 'System.Object' is not defined or imported
-            // class C;
-            Diagnostic(ErrorCode.ERR_PredefinedTypeNotFound, "C").WithArguments("System.Object").WithLocation(1, 7),
-            // (1,7): error CS1729: 'object' does not contain a constructor that takes 0 arguments
-            // class C;
-            Diagnostic(ErrorCode.ERR_BadCtorArgCount, "C").WithArguments("object", "0").WithLocation(1, 7)
+            (1,7): error CS0518: Predefined type 'System.Object' is not defined or imported
+                class C;
+
+            (1,7): error CS1729: 'object' does not contain a constructor that takes 0 arguments
+                class C;
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -622,12 +640,11 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
-            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
-            Diagnostic(ErrorCode.WRN_NullabilityMismatchInParameterTypeOnInterceptor, "InterceptsLocation").WithArguments("param2", "C.Method1(string?)").WithLocation(5, 6),
-            // (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
-            //     [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
-            Diagnostic(ErrorCode.WRN_NullabilityMismatchInReturnTypeOnInterceptor, "InterceptsLocation").WithArguments("C.Method2()").WithLocation(8, 6)
+            (5,6): warning CS9159: Nullability of reference types in type of parameter 'param2' doesn't match interceptable method 'C.Method1(string?)'.
+                    [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxfoAAABQcm9ncmFtLmNz")] // 1
+
+            (8,6): warning CS9158: Nullability of reference types in return type doesn't match interceptable method 'C.Method2()'.
+                    [InterceptsLocation(1, "KgSOi1BstwfmjCKROmLsxR4BAABQcm9ncmFtLmNz")] // 2
             """.ReplaceLineEndings(), diagnosticsText);
     }
 
@@ -793,9 +810,8 @@ public class C
         if (old)
         {
             Assert.AreEqual("""
-                // (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
-                // class C<T> where T : allows ref struct;
-                Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion12, "ref struct").WithArguments("allows ref struct constraint", "13.0").WithLocation(2, 29)
+                (2,29): error CS9202: Feature 'allows ref struct constraint' is not available in C# 12.0. Please use language version 13.0 or greater.
+                    class C<T> where T : allows ref struct;
                 """.ReplaceLineEndings(), diagnosticsText);
         }
         else
@@ -803,6 +819,222 @@ public class C
             Assert.AreEqual(string.Empty, diagnosticsText);
         }
     }
+
+    [TestMethod]
+    [DataRow(null, false)]
+    [DataRow("1", false)]
+    [DataRow("2", true)]
+    [DataRow("+2", true)]
+    [DataRow("02", true)]
+    public async Task Directives_MemorySafetyRulesVersion(string? version, bool updatedRules)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            {{(version is null ? "" : $"#:property memorysafetyrulesversion={version}")}}
+            #:property LangVersion=preview
+            #:property AllowUnsafeBlocks=true
+            class C
+            {
+                public static unsafe void M() { }
+                public static void Main() { M(); }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        TestContext.WriteLine(diagnostics);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        Assert.AreEqual(updatedRules ? 1 : 0, compiled.NumErrors);
+        if (updatedRules)
+        {
+            var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+            Assert.AreEqual("CS9362", diagnostic.Id);
+            Assert.AreEqual("'C.M()' must be used in an unsafe context because it is marked as 'unsafe'", diagnostic.Message);
+        }
+        else
+        {
+            Assert.AreEqual(string.Empty, diagnostics);
+        }
+    }
+
+    [TestMethod]
+    [DataRow("1")]
+    [DataRow("2")]
+    public async Task Directives_MemorySafetyRulesVersion_UnsafeContext(string version)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            #:property MemorySafetyRulesVersion={{version}}
+            #:property LangVersion=preview
+            #:property AllowUnsafeBlocks=true
+            class C
+            {
+                public static unsafe void M() { }
+                public static void Main() { unsafe { M(); } }
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        Assert.AreEqual(string.Empty, compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        TestContext.WriteLine(ilText);
+        Assert.AreEqual(version == "2", ilText.Contains("System.Diagnostics.CodeAnalysis.RequiresUnsafeAttribute"));
+    }
+
+    [TestMethod]
+    [DataRow("0", "CS9400")]
+    [DataRow("3", "CS9400")]
+    [DataRow("-1", "CS9400")]
+    [DataRow("invalid", "LAB")]
+    [DataRow("2147483648", "LAB")]
+    public async Task Directives_MemorySafetyRulesVersion_Invalid(string value, string expectedDiagnosticId)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var source = $$"""
+            #:property MemorySafetyRulesVersion={{value}}
+            class C { public static void Main() { } }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+        Assert.AreEqual(expectedDiagnosticId, diagnostic.Id);
+        Assert.AreEqual(expectedDiagnosticId == "LAB" ? 0 : 1, compiled.NumErrors);
+        Assert.AreEqual(expectedDiagnosticId == "LAB" ? 1 : 0, compiled.NumWarnings);
+        Assert.AreEqual(expectedDiagnosticId == "LAB"
+            ? $"Invalid property value '{value}'. Expected one of '1', '2'."
+            : $"Invalid 'MemorySafetyRulesVersion' value: '{value}'. Accepted values are: 1, 2", diagnostic.Message);
+    }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("1")]
+    [DataRow("2")]
+    [DataRow("3")]
+    public async Task Directives_MemorySafetyRulesVersion_OlderCompiler(string? version)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var dependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
+        await dependencyProvider.UseAsync(CompilerKind.Razor, "10.0.0-preview.25429.2", BuildConfiguration.Release);
+        await dependencyProvider.UseAsync(CompilerKind.Roslyn, "5.0.0", BuildConfiguration.Release);
+
+        var source = $$"""
+            #:property OutputType=Library
+            {{(version is null ? "" : $"#:property MemorySafetyRulesVersion={version}")}}
+            #:property AllowUnsafeBlocks=true
+            public unsafe class C { public int* P; }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(version is null ? 0 : 1, compiled.NumWarnings);
+        if (version is null)
+        {
+            Assert.IsEmpty(compiled.Diagnostics);
+        }
+        else
+        {
+            var diagnostic = Assert.ContainsSingle(compiled.Diagnostics);
+            Assert.AreEqual("LAB", diagnostic.Id);
+            Assert.AreEqual("Property 'MemorySafetyRulesVersion' is not supported by the selected compiler.", diagnostic.Message);
+            Assert.AreEqual("/Input.cs", diagnostic.FilePath);
+            Assert.AreEqual(2, diagnostic.StartLineNumber);
+        }
+
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        Assert.Contains("int32* P", ilText);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion(RazorToolchain toolchain)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var old = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "5.0"));
+        var oldDiagnostics = old.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(oldDiagnostics);
+        TestContext.WriteLine(oldDiagnostics);
+        Assert.AreEqual(1, old.NumErrors);
+        Assert.Contains("error RZ1017: Unexpected literal following the 'typeparam' directive. Expected 'line break'.", oldDiagnostics);
+
+        foreach (var version in new[] { "6.0", "Preview", "Latest", "Experimental" })
+        {
+            var compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, version));
+            var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+            TestContext.WriteLine(diagnostics);
+            Assert.AreEqual(string.Empty, diagnostics, version);
+            var generated = (await compiled.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text;
+            Assert.Contains("where T : class", generated, version);
+        }
+
+        var reset = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "5.0"));
+        Assert.AreEqual(1, reset.NumErrors);
+        var defaultVersion = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, null));
+        Assert.AreEqual(string.Empty, defaultVersion.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        Assert.Contains("where T : class", (await defaultVersion.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion_Invalid(RazorToolchain toolchain)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(CreateRazorLangVersionInput(toolchain, "invalid"));
+
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(1, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(static d => d.Id == "LAB"));
+        Assert.AreEqual("LAB", diagnostic.Id);
+        Assert.AreEqual("Invalid property value 'invalid'.", diagnostic.Message);
+        Assert.AreEqual("/Options.cs", diagnostic.FilePath);
+        Assert.AreEqual(1, diagnostic.StartLineNumber);
+    }
+
+    [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Directives_RazorLangVersion_OlderCompiler(RazorToolchain toolchain)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        await services.GetRequiredService<CompilerDependencyProvider>()
+            .UseAsync(CompilerKind.Razor, "9.0.0-preview.25128.1", BuildConfiguration.Release);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+
+        var compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, null));
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        TestContext.WriteLine(diagnostics);
+        Assert.AreEqual(string.Empty, diagnostics);
+        Assert.Contains("where T : class", (await compiled.GetRequiredOutput("TestComponent.razor", "gcs").LoadAsync()).Text);
+
+        compiled = await compiler.CompileAsync(CreateRazorLangVersionInput(toolchain, "Preview"));
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(1, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(static d => d.Id == "LAB"));
+        Assert.AreEqual("LAB", diagnostic.Id);
+        Assert.AreEqual("Invalid property value 'Preview'.", diagnostic.Message);
+    }
+
+    private static CompilationInput CreateRazorLangVersionInput(RazorToolchain toolchain, string? version) => new(new([
+        new() { FileName = "Options.cs", Text = version is null ? "" : $"#:property RazorLangVersion={version}" },
+        new() { FileName = "TestComponent.razor", Text = "@typeparam T where T : class" },
+    ]))
+    {
+        RazorToolchain = toolchain,
+    };
 
     [TestMethod, CombinatorialData]
     public async Task Directives_TargetFramework(bool fx)
@@ -832,15 +1064,60 @@ public class C
         if (fx)
         {
             Assert.AreEqual("""
-                // (7,16): warning CS8603: Possible null reference return.
-                //         return x;
-                Diagnostic(ErrorCode.WRN_NullReferenceReturn, "x").WithLocation(7, 16)
+                (7,16): warning CS8603: Possible null reference return.
+                            return x;
                 """.ReplaceLineEndings(), diagnosticsText);
         }
         else
         {
             Assert.AreEqual(string.Empty, diagnosticsText);
         }
+    }
+
+    [TestMethod]
+    public async Task BclSourceGenerator_GeneratedRegex()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+
+        var source = """
+            using System.Text.RegularExpressions;
+            using System;
+
+            Console.Write(EmailValidator.IsValid("a@b.co"));
+
+            public static partial class EmailValidator
+            {
+                [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase)]
+                private static partial Regex EmailRegex();
+
+                public static bool IsValid(string input) => EmailRegex().IsMatch(input);
+            }
+            """;
+
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnosticsText);
+        TestContext.WriteLine(diagnosticsText);
+        Assert.AreEqual(string.Empty, diagnosticsText);
+
+        var cSharpText = (await compiled.GetRequiredGlobalOutput("cs").LoadAsync()).Text;
+        TestContext.WriteLine(cSharpText);
+        Assert.Contains("EmailRegex", cSharpText);
+
+        var ilText = (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text;
+        TestContext.WriteLine(ilText);
+        Assert.Contains("EmailRegex", ilText);
+
+        var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        TestContext.WriteLine(runText);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            True
+            Stderr:
+            """.ReplaceLineEndings("\n"), runText.Trim());
     }
 
     [TestMethod]
@@ -1005,9 +1282,8 @@ public class C
         Assert.IsNotNull(diagnosticsText);
         TestContext.WriteLine(diagnosticsText);
         Assert.AreEqual("""
-            // (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
-            // #:package Microsoft.CodeAnalysis@1000
-            Diagnostic("LAB", "#:package Microsoft.CodeAnalysis@1000").WithLocation(2, 1)
+            (2,1): warning LAB: Cannot find a version for package 'Microsoft.CodeAnalysis' in range '[1000.0.0, )'.
+                #:package Microsoft.CodeAnalysis@1000
             """.ReplaceLineEndings(), diagnosticsText);
 
         var runText = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
@@ -1053,7 +1329,7 @@ public class C
         Assert.AreEqual(string.Empty, diagnosticsText);
 
         var languageServices = await compiler.GetLanguageServicesAsync();
-        languageServices.OnCompilationFinished();
+        await languageServices.OnCompilationFinishedAsync();
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
@@ -1153,6 +1429,13 @@ internal sealed partial class MockHttpMessageHandler : HttpClientHandler
             {
                 var assemblyName = fileName[..^5];
                 var assemblyPath = Path.Join(directory, assemblyName) + ".dll";
+
+                if (!File.Exists(assemblyPath))
+                {
+                    // Shared-framework assemblies are not copied to the test output.
+                    assemblyPath = Assembly.Load(assemblyName.ToString()).Location;
+                }
+
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StreamContent(File.OpenRead(assemblyPath)),

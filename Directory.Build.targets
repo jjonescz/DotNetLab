@@ -1,3 +1,21 @@
 <Project>
 
+  <!--
+    Installers gather publish outputs from target PublishItemsOutputGroup
+    which for some reason doesn't include static assets (wwwroot) which is fixed here.
+    See https://github.com/dotnet/sdk/issues/42255.
+  -->
+  <PropertyGroup>
+    <PublishItemsOutputGroupDependsOn>$(PublishItemsOutputGroupDependsOn);IncludeStaticAssetsInPublishItemsOutputGroup</PublishItemsOutputGroupDependsOn>
+  </PropertyGroup>
+  <Target Name="IncludeStaticAssetsInPublishItemsOutputGroup" DependsOnTargets="CopyStaticWebAssetsToPublishDirectory">
+    <ItemGroup>
+      <PublishItemsOutputGroupOutputs
+        Include="@(_PublishStaticWebAssetsTargetPath)"
+        OutputPath="%(Identity)"
+        RelativePath="%(TargetPath)"
+        KeepMetadata="Identity" />
+    </ItemGroup>
+  </Target>
+
 </Project>

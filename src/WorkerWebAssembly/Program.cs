@@ -19,6 +19,7 @@ var services = WorkerServices.Create(
     logLevel: Enum.Parse<LogLevel>(args[1]),
     configureServices: (services) =>
     {
+        services.AddScoped<IFileSystem, WebFileSystem>();
         services.AddScoped<Func<DotNetBootConfig?>>(static _ => static () =>
         {
             string json = WorkerInterop.GetDotNetConfig();

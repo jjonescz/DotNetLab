@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="Maui.SplashTheme" parent="Maui.MainTheme.NoActionBar">
+    <item name="maui_splash">true</item>
+    <item name="android:windowBackground">@drawable/splash_screen</item>
+    <item name="android:windowSplashScreenBackground">@color/appicon_background</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+  </style>
+</resources>

@@ -71,7 +71,7 @@
     {
       "Type": "errors",
       "Label": "Error List",
-      "Language": "csharp",
+      "Language": "diagnostics",
       "Text": ""
     }
   ],

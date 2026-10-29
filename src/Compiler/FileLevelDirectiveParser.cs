@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Microsoft.AspNetCore.Razor.Language;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -155,6 +156,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public ILogger<FileLevelDirectiveParser> Logger => field ??= Services.GetRequiredService<ILogger<FileLevelDirectiveParser>>();
 
         public ReadOnlyMemory<char>? TargetFramework { get; set; }
+        public RazorLanguageVersion? RazorLanguageVersion { get; set; }
         public bool? Prefer32Bit { get; set; }
         public OptimizationLevel? OptimizationLevel { get; set; }
         public bool SawDefineConstants { get; set; }
@@ -303,7 +305,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 string targetFramework = context.TargetFramework?.ToString() ?? RefAssemblies.CurrentTargetFramework;
 
                 var downloader = context.Services.GetRequiredService<INuGetDownloader>();
-                var result = await downloader.DownloadAsync(dependencies.Keys.ToHashSet(), targetFramework, loadForExecution: true);
+                var result = await downloader.DownloadAsync(
+                    dependencies.Keys.ToHashSet(),
+                    targetFramework,
+                    loadForExecution: true,
+                    compilerRoslynVersion: typeof(Compilation).Assembly.GetName().Version);
 
                 // Collect errors.
                 int foundErrors = 0;
@@ -317,7 +323,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                 }
                 Debug.Assert(foundErrors == result.Errors.Count);
 
-                if (result.Assemblies.IsDefaultOrEmpty)
+                if (result.Assemblies.IsDefaultOrEmpty && result.Analyzers.IsDefaultOrEmpty)
                 {
                     Info.Errors.Add("No assemblies found across all dependencies.");
                     return;
@@ -328,6 +334,11 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     Assemblies = result.Assemblies,
                     Metadata = RefAssemblyMetadata.Create(result.Assemblies),
                 });
+                
+                if (!result.Analyzers.IsDefaultOrEmpty)
+                {
+                    context.Config.AdditionalAnalyzers(() => result.Analyzers);
+                }
             }
             catch (Exception ex)
             {
@@ -783,6 +794,28 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                     },
                     Constant(() => Enum.GetValues<LanguageVersion>().Reverse().SelectAsArray(v => v.ToDisplayString()))),
                 Create(
+                    "MemorySafetyRulesVersion",
+                    static (context, info, value) =>
+                    {
+                        if (!int.TryParse(value.Span, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version))
+                        {
+                            info.Errors.Add($"Invalid property value '{value}'. Expected one of '1', '2'.");
+                            return default;
+                        }
+
+                        var method = typeof(CSharpCompilationOptions).GetMethod("WithMemorySafetyRulesVersion", BindingFlags.Instance | BindingFlags.Public);
+                        if (method is null)
+                        {
+                            info.Errors.Add("Property 'MemorySafetyRulesVersion' is not supported by the selected compiler.");
+                            return default;
+                        }
+
+                        var result = Enum.ToObject(method.GetParameters()[0].ParameterType, version);
+                        context.Config.CSharpCompilationOptions(options => (CSharpCompilationOptions)method.Invoke(options, [result])!);
+                        return default;
+                    },
+                    Constant(["1", "2"])),
+                Create(
                     "ModuleAssemblyName",
                     static (context, info, value) =>
                     {
@@ -806,6 +839,17 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                             context.Config.CSharpCompilationOptions(options => options.WithOptimizationLevel(b ? OptimizationLevel.Release : OptimizationLevel.Debug));
                         }
                     }),
+                Create<RazorLanguageVersion?>(
+                    "RazorLangVersion",
+                    static (value, out result) => RazorLanguageVersion.TryParse(value.ToString(), out result),
+                    static (context, result) => context.RazorLanguageVersion = result,
+                    Constant(() => typeof(RazorLanguageVersion)
+                        .GetFields(BindingFlags.Public | BindingFlags.Static)
+                        .Where(static versionField => versionField.FieldType == typeof(RazorLanguageVersion))
+                        .Reverse()
+                        .SelectAsArray(static versionField => versionField.Name.StartsWith("Version_", StringComparison.Ordinal)
+                            ? ((RazorLanguageVersion)versionField.GetValue(null)!).ToString()
+                            : versionField.Name.ToLowerInvariant()))),
                 Create<OutputKind>(
                     "OutputType",
                     static (value, out result) =>

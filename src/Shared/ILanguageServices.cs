@@ -13,7 +13,7 @@ public interface ILanguageServices : IDisposable
     Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken);
     Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken);
     Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken);
-    void OnCompilationFinished();
+    Task OnCompilationFinishedAsync();
     Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh = false);
     Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);
     void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output);
@@ -32,5 +32,5 @@ public sealed record ModelInfo(string Uri, string FileName)
 
 public interface ICompilerAssemblyLoader
 {
-    public Task<ImmutableDictionary<string, ImmutableArray<byte>>> LoadBuiltInCompilerAssembliesAsync();
+    public Task<ImmutableDictionary<string, PathOrData>> LoadBuiltInCompilerAssembliesAsync();
 }

@@ -29,6 +29,7 @@ public partial class App
         services.AddScoped<LanguageServicesClient>();
         services.AddScoped<InputOutputCache>();
         services.AddScoped<TemplateCache>();
+        services.AddScoped<IFilePicker, DefaultFilePicker>();
 
         services.AddOptions<LoggerFilterOptions>().Configure<IScopedServiceProviderAccessor>((options, accessor) =>
         {

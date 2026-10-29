@@ -242,6 +242,11 @@ public sealed partial class BlazorMonacoInterop : IAsyncDisposable
         await (await Module).InvokeVoidAsync("registerLanguage", languageId);
     }
 
+    public async Task RegisterDiagnosticsLanguageAsync(string languageId)
+    {
+        await (await Module).InvokeVoidAsync("registerDiagnosticsLanguage", languageId);
+    }
+
     public async Task<bool> HasDarkThemeAsync(string editorId)
     {
         return await (await Module).InvokeAsync<bool>("hasDarkTheme", editorId);

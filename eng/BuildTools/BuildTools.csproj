@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Cannot target TFM newer than the compiler host. -->
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
     <!-- 
@@ -27,5 +27,12 @@
       <VersionOverride Condition="'$(DotNetLabUseCompilerToolset)' == 'false'">$(_NetFrameworkHostedCompilersVersion)</VersionOverride>
     </PackageReference>
   </ItemGroup>
+
+  <!-- Reuse the generator DLL during watch builds because the compiler host may have it locked. -->
+  <Target Name="BuildForWatch"
+          DependsOnTargets="GetTargetPath"
+          Returns="@(TargetPathWithTargetPlatformMoniker)">
+    <CallTarget Targets="Build" Condition="!Exists('$(TargetPath)')" />
+  </Target>
 
 </Project>

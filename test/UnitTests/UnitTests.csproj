@@ -2,13 +2,18 @@
 
   <ItemGroup>
     <PackageReference Include="AwesomeAssertions" />
-    <PackageReference Include="Combinatorial.MSTest" />
+    <PackageReference Include="Microsoft.Net.Compilers.Razor.Toolset" PrivateAssets="all" IncludeAssets="none" GeneratePathProperty="true" />
     <PackageReference Include="Verify.MSTest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(PkgMicrosoft_Net_Compilers_Razor_Toolset)\source-generators\Microsoft.CodeAnalysis.Razor.Compiler.dll" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\App\App.csproj" />
     <ProjectReference Include="..\..\eng\BuildTools\BuildTools.csproj" />
+    <ProjectReference Include="..\..\src\Desktop\Desktop.csproj" />
   </ItemGroup>
 
 </Project>

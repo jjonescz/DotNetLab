@@ -118,13 +118,17 @@ internal sealed class NuGetDownloaderPlugin(
     public Task<NuGetResults> DownloadAsync(
         Set<NuGetDependency> dependencies,
         string targetFramework,
-        bool loadForExecution)
+        bool loadForExecution,
+        Version? compilerRoslynVersion = null)
     {
         var parsed = "empty".Equals(targetFramework, StringComparison.OrdinalIgnoreCase)
             ? NuGetFramework.AnyFramework
             : NuGetFramework.Parse(targetFramework);
         var filter = ActivatorUtilities.CreateInstance<LibNuGetDllFilter>(services, parsed);
-        return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter, loadForExecution);
+        NuGetDllFilter? analyzerFilter = compilerRoslynVersion is { } roslynVersion
+            ? new AnalyzerNuGetDllFilter(roslynVersion)
+            : null;
+        return nuGetDownloader.Value.DownloadAsync(dependencies, parsed, filter, loadForExecution, analyzerFilter);
     }
 }
 
@@ -138,6 +142,7 @@ internal readonly record struct DependencyKey
     public required Set<NuGetDependency> Dependencies { get; init; }
     public required NuGetFramework TargetFramework { get; init; }
     public required NuGetDllFilter DllFilter { get; init; }
+    public NuGetDllFilter? AnalyzerFilter { get; init; }
     public required bool LoadForExecution { get; init; }
 }
 
@@ -280,13 +285,15 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         Set<NuGetDependency> dependencies,
         NuGetFramework targetFramework,
         NuGetDllFilter dllFilter,
-        bool loadForExecution)
+        bool loadForExecution,
+        NuGetDllFilter? analyzerFilter = null)
     {
         var key = new DependencyKey
         {
             Dependencies = dependencies,
             TargetFramework = targetFramework,
             DllFilter = dllFilter,
+            AnalyzerFilter = analyzerFilter,
             LoadForExecution = loadForExecution,
         };
 
@@ -295,7 +302,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             return result;
         }
 
-        result = await DownloadNoCacheAsync(dependencies, targetFramework, dllFilter, loadForExecution);
+        result = await DownloadNoCacheAsync(dependencies, targetFramework, dllFilter, loadForExecution, analyzerFilter);
         return dependencyCache.GetOrAdd(key, result);
     }
 
@@ -303,7 +310,8 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         Set<NuGetDependency> dependencies,
         NuGetFramework targetFramework,
         NuGetDllFilter dllFilter,
-        bool loadForExecution)
+        bool loadForExecution,
+        NuGetDllFilter? analyzerFilter)
     {
         var errors = new ConcurrentDictionary<NuGetDependency, ConcurrentBag<string>>();
         var dependencyInfos = new ConcurrentDictionary<(Comparable<string, Comparers.String.OrdinalIgnoreCase> Id, VersionRange? Range), Task<SourcePackageDependencyInfo?>>();
@@ -398,6 +406,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             return new NuGetResults
             {
                 Assemblies = [],
+                Analyzers = [],
                 Errors = getErrors(),
             };
         }
@@ -419,7 +428,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         var lookup = dependencies.Value.ToDictionary(static d => d.PackageId);
 
         // Download DLLs.
-        var results = await Task.WhenAll(resolved.Select(async package =>
+        var results = await Task.WhenAll(resolved.Select(async Task<(IEnumerable<RefAssembly> References, IEnumerable<RefAssembly> Analyzers)?> (package) =>
         {
             var depTask = (await dependencyInfos.FirstOrDefaultAsync(
                 async p => p.Value is { } depTask &&
@@ -434,15 +443,26 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             }
 
             ImmutableArray<LoadedAssembly> loadedAssemblies;
+            ImmutableArray<LoadedAssembly> loadedAnalyzers = [];
 
             try
             {
-                var packageDependency = GetOrCreatePackageDependency(new PackageIdentity(dep.Id, dep.Version), dllFilter, () =>
+                var identity = new PackageIdentity(dep.Id, dep.Version);
+                Task<NuGetDownloadablePackageResult>? sharedDownload = null;
+                Task<NuGetDownloadablePackageResult> resultFactory()
                 {
-                    return Task.FromResult(Download(dep)
+                    return sharedDownload ??= Task.FromResult(Download(dep)
                         ?? throw new InvalidOperationException($"Download info of '{dep.Id}@{dep.Version}' not found."));
-                });
+                }
+
+                var packageDependency = GetOrCreatePackageDependency(identity, dllFilter, resultFactory);
                 loadedAssemblies = await packageDependency.Assemblies.Value;
+
+                if (analyzerFilter is not null)
+                {
+                    var analyzerDependency = GetOrCreatePackageDependency(identity, analyzerFilter, resultFactory);
+                    loadedAnalyzers = await analyzerDependency.Assemblies.Value;
+                }
             }
             catch (Exception ex)
             {
@@ -453,25 +473,37 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
 
             string source = $"NuGet: {dep.DownloadUri}";
 
-            return loadedAssemblies.Select(loadedAssembly => new RefAssembly
+            return (
+                References: loadedAssemblies.Select(loadedAssembly => ToRefAssembly(loadedAssembly, source, loadForExecution)),
+                Analyzers: loadedAnalyzers.Select(loadedAssembly => ToRefAssembly(loadedAssembly, source, loadForExecution: false)));
+        }));
+
+        var loaded = results.Where(static r => r.HasValue).Select(static r => r.GetValueOrDefault());
+        var assemblies = loaded
+            .SelectMany(static r => r.References)
+            .ToImmutableArray();
+        var analyzers = loaded
+            .SelectMany(static r => r.Analyzers)
+            .ToImmutableArray();
+
+        return new()
+        {
+            Assemblies = assemblies,
+            Analyzers = analyzers,
+            Errors = getErrors(),
+        };
+
+        static RefAssembly ToRefAssembly(LoadedAssembly loadedAssembly, string source, bool loadForExecution)
+        {
+            return new()
             {
                 Name = loadedAssembly.Name,
                 FileName = loadedAssembly.Name + ".dll",
                 Bytes = loadedAssembly.DataAsDll,
                 Source = source,
                 LoadForExecution = loadForExecution,
-            });
-        }));
-
-        var assemblies = results.SelectNonNull(static r => r)
-            .SelectMany(static r => r)
-            .ToImmutableArray();
-
-        return new()
-        {
-            Assemblies = assemblies,
-            Errors = getErrors(),
-        };
+            };
+        }
         
         void addError(NuGetDependency dependency, string message)
         {
@@ -838,6 +870,135 @@ internal sealed class TargetFrameworkNuGetDllFilter(string folder, int level) : 
     public override bool Equals(NuGetDllFilter? other)
     {
         return other is TargetFrameworkNuGetDllFilter && base.Equals(other);
+    }
+}
+
+internal sealed class AnalyzerNuGetDllFilter(Version compilerRoslynVersion) : NuGetDllFilter
+{
+    public Version CompilerRoslynVersion { get; } = compilerRoslynVersion;
+
+    /// <summary>
+    /// Selects analyzer DLLs for the loaded compiler.
+    /// Keeps language-neutral <c>analyzers/dotnet</c> helpers, C# DLLs, and at most one compatible
+    /// <c>roslynN.N</c> tree. Skips Visual Basic and roslyn folders newer than
+    /// <see cref="CompilerRoslynVersion"/>.
+    /// See https://learn.microsoft.com/en-us/nuget/guides/analyzers-conventions.
+    /// </summary>
+    public override Func<string, bool> GetFilter(IEnumerable<string> allFiles, string forPackage)
+    {
+        var analyzerDlls = allFiles
+            .Where(file => IsDll(file) && file.StartsWith("analyzers/", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (!analyzerDlls.Any())
+        {
+            return static _ => false;
+        }
+
+        // Analyzer layout: https://learn.microsoft.com/en-us/nuget/guides/analyzers-conventions
+        // analyzers/dotnet/*.dll is language-neutral; analyzers/dotnet/cs/*.dll is C#-specific
+        // and commonly depends on the parent folder. Skip vb/ and roslyn folders newer than
+        // the loaded compiler. If roslynN.N folders exist, keep only the newest compatible
+        // tree (do not load roslyn3.11 together with roslyn4.4).
+        var usableFolders = analyzerDlls
+            .Select(GetAnalyzerFolder)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(folder => IsUsableAnalyzerFolder(folder, CompilerRoslynVersion))
+            .ToList();
+
+        if (usableFolders.Count == 0)
+        {
+            return static _ => false;
+        }
+
+        var selectedRoslynVersion = usableFolders.Max(GetRoslynFolderVersion);
+        var hasRoslynFolder = selectedRoslynVersion > new Version(0, 0);
+        
+        var allowedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in usableFolders)
+        {
+            if (TryGetRoslynFolderVersion(folder, out var version))
+            {
+                if (version == selectedRoslynVersion)
+                {
+                    allowedFolders.Add(folder);
+                }
+                continue;
+            }
+            
+            // Language-neutral helpers (analyzers/dotnet/*.dll). Needed even when a roslynN.N/cs DLL is selected.
+            if (folder.Equals("analyzers/dotnet/", StringComparison.OrdinalIgnoreCase))
+            {
+                allowedFolders.Add(folder);
+                continue;
+            }
+            // Unversioned C# generators. Skip when a roslynN.N tree exists so the same
+            // [Generator] is not loaded from both analyzers/dotnet/cs and roslyn4.4/cs.
+            if (!hasRoslynFolder &&
+                folder.Equals("analyzers/dotnet/cs/", StringComparison.OrdinalIgnoreCase))
+            {
+                allowedFolders.Add(folder);
+            }
+        }
+        return filePath =>
+            IsDll(filePath) &&
+            allowedFolders.Contains(GetAnalyzerFolder(filePath));
+    }
+
+    public override bool Equals(NuGetDllFilter? other) =>
+        other is AnalyzerNuGetDllFilter filter &&
+        CompilerRoslynVersion == filter.CompilerRoslynVersion;
+
+    public override int GetHashCode() => CompilerRoslynVersion.GetHashCode();
+
+    static string GetAnalyzerFolder(string filePath)
+    {
+        int slash = filePath.LastIndexOf('/');
+        return slash < 0 ? filePath : filePath[..(slash + 1)];
+    }
+
+    static bool IsUsableAnalyzerFolder(string folder, Version compilerRoslynVersion)
+    {
+        if (FolderIsVisualBasic(folder))
+        {
+            return false;
+        }
+
+        if (TryGetRoslynFolderVersion(folder, out var version))
+        {
+            return version <= compilerRoslynVersion;
+        }
+
+        // Looks like analyzers/dotnet/roslyn... but "4.4/cs" would no longer happen.
+        // If the prefix matched and parse failed, reject rather than accept.
+        return !folder.StartsWith("analyzers/dotnet/roslyn", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static bool FolderIsVisualBasic(string folder)
+    {
+        return folder.Contains("/vb/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static Version GetRoslynFolderVersion(string folder)
+    {
+        return TryGetRoslynFolderVersion(folder, out var version)
+            ? version
+            : new Version(0, 0);
+    }
+
+    static bool TryGetRoslynFolderVersion(ReadOnlySpan<char> folder, out Version version)
+    {
+        const string prefix = "analyzers/dotnet/roslyn";
+        version = null!;
+        if (!folder.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> rest = folder[prefix.Length..];
+        int slash = rest.IndexOf('/');
+        ReadOnlySpan<char> versionSpan = slash < 0 ? rest : rest[..slash];
+        return Version.TryParse(versionSpan, out version!);
     }
 }
 

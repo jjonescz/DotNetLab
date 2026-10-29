@@ -320,6 +320,9 @@ internal sealed record SavedState
     [ProtoMember(19)]
     public bool IncludeHiddenDiagnostics { get; init; }
 
+    [ProtoMember(23)]
+    public bool RoslynTestDiagnosticFormat { get; init; }
+
     [ProtoMember(4)]
     public string? SdkVersion { get; init; }
 
@@ -409,6 +412,7 @@ internal sealed record SavedState
             FullIl = FullIl,
             ExcludeSingleFileNameInDiagnostics = ExcludeSingleFileNameInDiagnostics,
             IncludeHiddenDiagnostics = IncludeHiddenDiagnostics,
+            RoslynTestDiagnosticFormat = RoslynTestDiagnosticFormat,
         };
     }
 
@@ -425,6 +429,7 @@ internal sealed record SavedState
             FullIl = preferences.FullIl,
             ExcludeSingleFileNameInDiagnostics = preferences.ExcludeSingleFileNameInDiagnostics,
             IncludeHiddenDiagnostics = preferences.IncludeHiddenDiagnostics,
+            RoslynTestDiagnosticFormat = preferences.RoslynTestDiagnosticFormat,
         };
     }
 

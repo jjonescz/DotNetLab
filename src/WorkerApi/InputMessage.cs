@@ -88,7 +88,7 @@ public closed record WorkerInputMessage
         }
     }
 
-    public sealed record UseCompilerVersion(CompilerKind CompilerKind, string? Version, BuildConfiguration Configuration) : WorkerInputMessage, IWorkerInputMessage<bool>
+    public sealed record UseCompilerVersion(CompilerKind CompilerKind, string? Version, BuildConfiguration Configuration, bool ForceReload = false) : WorkerInputMessage, IWorkerInputMessage<bool>
     {
         public Task<bool> HandleAsync(IExecutor executor)
         {

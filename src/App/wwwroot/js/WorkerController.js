@@ -1,4 +1,7 @@
-﻿/**
+﻿/** @type {Map<string, Set<WorkerSetup>>} */
+const directoryWorkers = new Map();
+
+/**
  * @returns {WorkerSetup}
  */
 export function createWorker(scriptUrl, messageHandler, errorHandler) {
@@ -49,10 +52,56 @@ export function postMessage(setup, message) {
 
 /**
  * @param {WorkerSetup} setup
- * @param {string} message
+ * @param {string} type
  */
-export function postSideMessage(setup, message) {
-    setup.sideChannel.port2.postMessage(message);
+export function postSideMessage(setup, type) {
+    setup.sideChannel.port2.postMessage({ type });
+}
+
+/**
+ * @param {WorkerSetup} setup
+ * @param {string} directoryId
+ */
+export async function transferDirectory(setup, directoryId) {
+    const FileSystem = await import('../../../js/FileSystem.js');
+    let workers = directoryWorkers.get(directoryId);
+    if (workers?.has(setup)) {
+        return;
+    }
+
+    const directory = FileSystem.tryGetDirectory(directoryId);
+    if (directory === undefined) {
+        // Let the compiler resolver report the missing selection and register a failing dependency.
+        return;
+    }
+
+    // Use the compiler-request channel so the selection is registered before requests that use it.
+    setup.worker.postMessage({ type: 'transfer-directory', directoryId, directory });
+    if (workers === undefined) {
+        workers = new Set();
+        directoryWorkers.set(directoryId, workers);
+    }
+    workers.add(setup);
+}
+
+export async function beginDirectoryUse(compilerKind, requestId, directoryId) {
+    const FileSystem = await import('../../../js/FileSystem.js');
+    releaseDirectoryFromWorkers(FileSystem.beginDirectoryUse(compilerKind, requestId, directoryId));
+}
+
+export async function endDirectoryUse(requestId) {
+    const FileSystem = await import('../../../js/FileSystem.js');
+    releaseDirectoryFromWorkers(FileSystem.endDirectoryUse(requestId));
+}
+
+function releaseDirectoryFromWorkers(directoryId) {
+    if (directoryId === null) {
+        return;
+    }
+    for (const setup of directoryWorkers.get(directoryId) ?? []) {
+        setup.worker.postMessage({ type: 'release-directory', directoryId });
+    }
+    directoryWorkers.delete(directoryId);
 }
 
 /**
@@ -61,6 +110,9 @@ export function postSideMessage(setup, message) {
 export function disposeWorker(setup) {
     setup.worker.terminate();
     setup.sideChannel.port2.close();
+    for (const workers of directoryWorkers.values()) {
+        workers.delete(setup);
+    }
 }
 
 export async function collectAndDownloadGcDump() {
