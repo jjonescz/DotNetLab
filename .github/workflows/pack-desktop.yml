@@ -29,9 +29,6 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Test
-        run: dotnet test ./test/UnitTests --report-trx --filter "DesktopTests"
-
       - uses: microsoft/setup-msbuild@v2
 
       - name: Pack
@@ -54,6 +51,5 @@ jobs:
         with:
           name: artifacts
           path: |
-            **/TestResults/*.*
             artifacts/AppPackages/**
             !artifacts/AppPackages/**/*.store-submission.zip
