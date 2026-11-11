@@ -1119,7 +1119,7 @@ internal sealed class NuGetDownloadablePackage(
             result.CacheContext,
             NullLogger.Instance,
             CancellationToken.None);
-        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata.Description);
+        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata?.Description);
 
         if (commitLink is null)
         {
