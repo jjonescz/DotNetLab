@@ -10,12 +10,6 @@
       Justification: We are fine with only supporting .NET Core compiler hosts.
     -->
     <NoWarn>$(NoWarn);RS1041</NoWarn>
-
-    <!-- 
-      RS2008: Enable analyzer release tracking
-      Justification: Our analyzer is not for external use.
-    -->
-    <NoWarn>$(NoWarn);RS2008</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

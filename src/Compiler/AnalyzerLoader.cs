@@ -1,16 +1,16 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.Extensions.Logging;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetLab;
 
-internal static class SourceGeneratorLoader
+internal static class AnalyzerLoader
 {
-#pragma warning disable RS2008 // Compiler is not a shipped analyzer package
     private static readonly DiagnosticDescriptor AnalyzerLoadFailed = new(
         id: "LAB",
         title: "Analyzer load",
@@ -27,16 +27,15 @@ internal static class SourceGeneratorLoader
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
-    private static readonly DiagnosticDescriptor GeneratorInstantiateFailed = new(
+    private static readonly DiagnosticDescriptor ExtensionInstantiateFailed = new(
         id: "LAB",
-        title: "Source generator load",
-        messageFormat: "Failed to instantiate source generator '{0}' from '{1}': {2}",
-        category: "SourceGenerator",
+        title: "Analyzer extension load",
+        messageFormat: "Failed to instantiate analyzer extension '{0}' from '{1}': {2}",
+        category: "Analyzer",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-#pragma warning restore RS2008
-    
-    public static ImmutableArray<ISourceGenerator> Load(
+
+    public static AnalyzerReference Load(
         AssemblyLoadContext alc,
         ImmutableArray<RefAssembly> analyzerAssemblies,
         ILogger logger,
@@ -45,10 +44,12 @@ internal static class SourceGeneratorLoader
         if (analyzerAssemblies.IsDefaultOrEmpty)
         {
             diagnostics = [];
-            return [];
+            return RoslynWorkspaceAccessors.CreateAnalyzerReference([], [], []);
         }
 
         var generators = ImmutableArray.CreateBuilder<ISourceGenerator>();
+        var analyzers = ImmutableArray.CreateBuilder<DiagnosticAnalyzer>();
+        var codeFixes = ImmutableArray.CreateBuilder<CodeFixProvider>();
         var diagnosticBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
 
         var loaded = new List<Assembly>();
@@ -78,42 +79,63 @@ internal static class SourceGeneratorLoader
 
         foreach (var assembly in loaded)
         {
-            foreach (var type in GetLoadableTypes(assembly))
+            foreach (var type in GetLoadableTypes(assembly, diagnosticBuilder, logger))
             {
                 if (type is not { IsClass: true, IsAbstract: false } ||
-                    type.ContainsGenericParameters ||
-                    !HasGeneratorAttribute(type))
+                    type.ContainsGenericParameters)
                 {
                     continue;
                 }
 
                 try
                 {
+                    bool isGenerator = type.GetCustomAttribute<GeneratorAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
+                    bool isAnalyzer = type.IsSubclassOf(typeof(DiagnosticAnalyzer)) &&
+                        type.GetCustomAttribute<DiagnosticAnalyzerAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
+                    bool isCodeFix = type.IsSubclassOf(typeof(CodeFixProvider)) &&
+                        type.GetCustomAttribute<ExportCodeFixProviderAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
+                    if (!isGenerator && !isAnalyzer && !isCodeFix)
+                    {
+                        continue;
+                    }
+
                     object instance = Activator.CreateInstance(type)!;
-                    if (instance is IIncrementalGenerator incremental)
+                    if (isGenerator)
                     {
-                        generators.Add(incremental.AsSourceGenerator());
+                        if (instance is IIncrementalGenerator incremental)
+                        {
+                            generators.Add(incremental.AsSourceGenerator());
+                        }
+                        else if (instance is ISourceGenerator source)
+                        {
+                            generators.Add(source);
+                        }
+                        else
+                        {
+                            diagnosticBuilder.Add(Diagnostic.Create(GeneratorTypeInvalid, Location.None, type.FullName, assembly.GetName().Name));
+                        }
                     }
-                    else if (instance is ISourceGenerator source)
+                    if (isAnalyzer)
                     {
-                        generators.Add(source);
+                        analyzers.Add((DiagnosticAnalyzer)instance);
                     }
-                    else
+                    if (isCodeFix)
                     {
-                        diagnosticBuilder.Add(Diagnostic.Create(GeneratorTypeInvalid, Location.None, type.FullName, assembly.GetName().Name));
+                        codeFixes.Add((CodeFixProvider)instance);
                     }
                 }
                 catch (Exception ex)
                 {
-                    diagnosticBuilder.Add(Diagnostic.Create(GeneratorInstantiateFailed, Location.None, type.FullName,
-                        assembly.GetName().Name, ex.Message));
-                    logger.LogWarning(ex, "Failed to instantiate source generator '{Type}' from '{Name}'.", type.FullName, assembly.GetName().Name);
+                    diagnosticBuilder.Add(Diagnostic.Create(ExtensionInstantiateFailed, Location.None, type.FullName,
+                        assembly.GetName().Name, ex.GetBaseException().Message));
+                    logger.LogWarning(ex, "Failed to instantiate analyzer extension '{Type}' from '{Name}'.", type.FullName, assembly.GetName().Name);
                 }
             }
         }
 
         diagnostics = diagnosticBuilder.DrainToImmutable();
-        return generators.DrainToImmutable();
+        return RoslynWorkspaceAccessors.CreateAnalyzerReference(
+            analyzers.DrainToImmutable(), generators.DrainToImmutable(), codeFixes.DrainToImmutable());
     }
 
     private static Assembly GetOrLoadAssembly(AssemblyLoadContext alc, RefAssembly analyzer)
@@ -176,7 +198,8 @@ internal static class SourceGeneratorLoader
         return true;
     }
 
-    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+    private static IEnumerable<Type> GetLoadableTypes(
+        Assembly assembly, ImmutableArray<Diagnostic>.Builder diagnostics, ILogger logger)
     {
         try
         {
@@ -184,24 +207,12 @@ internal static class SourceGeneratorLoader
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.Where(static t => t is not null)!;
+            foreach (var error in ex.LoaderExceptions.OfType<Exception>())
+            {
+                diagnostics.Add(Diagnostic.Create(AnalyzerLoadFailed, Location.None, assembly.GetName().Name, error.Message));
+                logger.LogWarning(error, "Failed to load types from analyzer '{Name}'.", assembly.GetName().Name);
+            }
+            return ex.Types.OfType<Type>();
         }
     }
-
-    private static bool HasGeneratorAttribute(Type type) =>
-        type.GetCustomAttributesData().Any(static a =>
-            a.AttributeType.FullName == "Microsoft.CodeAnalysis.GeneratorAttribute");
-}
-
-internal sealed class PackageGeneratorAnalyzerReference(ImmutableArray<ISourceGenerator> generators) : AnalyzerReference
-{
-    public override string Display => "NuGet source generators";
-    public override string? FullPath => null;
-    public override object Id { get; } = new object();
-
-    public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzers(string language) => [];
-    public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzersForAllLanguages() => [];
-    public override ImmutableArray<ISourceGenerator> GetGeneratorsForAllLanguages() => generators;
-    public override ImmutableArray<ISourceGenerator> GetGenerators(string language)
-        => language == LanguageNames.CSharp ? generators : [];
 }
