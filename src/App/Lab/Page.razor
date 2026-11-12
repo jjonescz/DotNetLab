@@ -778,7 +778,17 @@
 
     public async Task LoadUrlFromClipboardAsync()
     {
-        var text = await (await moduleTask.Value).InvokeAsync<string>("getClipboardText");
+        string text;
+        try
+        {
+            text = await (await moduleTask.Value).InvokeAsync<string>("getClipboardText");
+        }
+        catch (Microsoft.JSInterop.JSException ex)
+        {
+            Logger.LogWarning(ex, "Failed to read clipboard text.");
+            return;
+        }
+
         if (NavigateToSlug(GetSlugFromClipboardText(text)))
         {
             await LoadStateFromUrlAsync();
