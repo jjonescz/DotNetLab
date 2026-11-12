@@ -142,7 +142,7 @@ public sealed class Compiler(
             Metadata = RefAssemblyMetadata.All,
             Assemblies = RefAssemblies.All,
         };
-        var analyzerAssemblies = ImmutableArray<RefAssembly>.Empty;
+        AnalyzerReference? analyzerReference = null;
         var razorLanguageVersion = RazorUtil.DefaultLanguageVersion;
 
         Config.Instance.Reset();
@@ -211,9 +211,9 @@ public sealed class Compiler(
         packageAnalyzerAssemblies = packageAnalyzerAssemblies
             .RemoveAll(a => sdkNames.Contains(a.Name));
         
-        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
-
-        var packageGenerators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+        var analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
+        analyzerReference = AnalyzerLoader.Load(alc, analyzerAssemblies, logger, out var analyzerLoadDiagnostics);
+        var packageGenerators = analyzerReference.GetGenerators(LanguageNames.CSharp);
         
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
@@ -288,6 +288,14 @@ public sealed class Compiler(
 
         finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
 
+        var analyzers = analyzerReference.GetAnalyzers(LanguageNames.CSharp);
+        var analyzerDiagnostics = analyzers.IsEmpty
+            ? []
+            : await finalCompilation.WithAnalyzers(analyzers, new AnalyzerOptions(
+                nonCSharpSources.SelectAsArray(static input => (AdditionalText)new TestAdditionalText(
+                    text: input.Text, encoding: Encoding.UTF8, path: getFilePath(input))),
+                optionsProvider)).GetAnalyzerDiagnosticsAsync();
+
         // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
@@ -297,7 +305,8 @@ public sealed class Compiler(
         var nonConfigDiagnostics = processDirectiveDiagnostics()
             .Concat(emitDiagnostics)
             .Concat(additionalDiagnostics)
-            .Concat(generatorLoadDiagnostics);
+            .Concat(analyzerLoadDiagnostics)
+            .Concat(analyzerDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
@@ -526,7 +535,7 @@ public sealed class Compiler(
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
                 AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
-                AnalyzerAssemblies = analyzerAssemblies,
+                AnalyzerReference = analyzerReference,
             };
         }
 
@@ -1528,7 +1537,7 @@ internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsP
 {
     public override TestAnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
 
-    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
+    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestAnalyzerConfigOptions();
 
     public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
 
@@ -1675,10 +1684,9 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
 
     /// <summary>
-    /// Analyzer / source-generator assemblies from <c>#:package</c>.
-    /// This is never <see langword="default"/>.
+    /// Loaded package and SDK analyzer extensions, shared with the language-services workspace.
     /// </summary>
-    public required ImmutableArray<RefAssembly> AnalyzerAssemblies { get; init; }
+    public required AnalyzerReference? AnalyzerReference { get; init; }
 
     public void Dispose() => dispose();
 }

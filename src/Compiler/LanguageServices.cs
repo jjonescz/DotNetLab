@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
-using System.Runtime.Loader;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -604,19 +603,9 @@ internal sealed class LanguageServices : ILanguageServices
                 }
 
                 var analyzerReferences = builtInAnalyzerReferences;
-                if (compiler.LastResult?.Output.AnalyzerAssemblies is { IsDefaultOrEmpty: false } analyzerAssemblies)
+                if (compiler.LastResult?.Output.AnalyzerReference is { } analyzerReference)
                 {
-                    var alc = AssemblyLoadContext.GetLoadContext(typeof(LanguageServices).Assembly)
-                        ?? AssemblyLoadContext.Default;
-                    var generators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
-                    if (generatorLoadDiagnostics.Length > 0)
-                    {
-                        logger.LogWarning("Failed to load {Count} package source generator(s).", generatorLoadDiagnostics.Length);
-                    }
-                    if (generators.Length > 0)
-                    {
-                        analyzerReferences = analyzerReferences.Add(new PackageGeneratorAnalyzerReference(generators));
-                    }
+                    analyzerReferences = analyzerReferences.Add(analyzerReference);
                 }
 
                 project = project.WithAnalyzerReferences(analyzerReferences);

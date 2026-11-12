@@ -169,6 +169,32 @@ public static class RoslynWorkspaceAccessors
         return analyzer;
     }
 
+    public static AnalyzerReference CreateAnalyzerReference(
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        ImmutableArray<ISourceGenerator> generators,
+        ImmutableArray<CodeFixProvider> codeFixes)
+    {
+        return new PackageAnalyzerReference(analyzers, generators, codeFixes);
+    }
+
+    private sealed class PackageAnalyzerReference(
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        ImmutableArray<ISourceGenerator> generators,
+        ImmutableArray<CodeFixProvider> codeFixes) : AnalyzerReference, ICodeFixProviderFactory
+    {
+        public override string Display => "Package analyzers and source generators";
+        public override string? FullPath => null;
+        public override object Id { get; } = new object();
+
+        public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzers(string language)
+            => language == LanguageNames.CSharp ? analyzers : [];
+        public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzersForAllLanguages() => analyzers;
+        public override ImmutableArray<ISourceGenerator> GetGenerators(string language)
+            => language == LanguageNames.CSharp ? generators : [];
+        public override ImmutableArray<ISourceGenerator> GetGeneratorsForAllLanguages() => generators;
+        public ImmutableArray<CodeFixProvider> GetFixers() => codeFixes;
+    }
+
     public static IDisposable RegisterLogger(Action<string> logger)
     {
         return RoslynTelemetry.Current.AddEventSink(new RoslynLogger(logger));

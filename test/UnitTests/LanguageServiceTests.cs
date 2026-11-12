@@ -459,6 +459,62 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    [DataRow(RazorToolchain.SourceGenerator)]
+    [DataRow(RazorToolchain.InternalApi)]
+    public async Task Diagnostics_PackageAnalyzer(RazorToolchain toolchain)
+    {
+        const string code = """
+            #:package AsyncFixer@1.6.0
+            using System.Threading.Tasks;
+            public class C
+            {
+                public async Task<int> M()
+                {
+                    return await Task.FromResult(1);
+                }
+            }
+            """;
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]))
+        {
+            RazorToolchain = toolchain,
+        };
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        compiled.NumWarnings.Should().Be(1);
+        compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should().Contain("warning AsyncFixer01:");
+        await languageServices.OnCompilationFinishedAsync();
+
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "AsyncFixer01")
+            .Which.Severity.Should().Be(MarkerSeverity.Warning);
+
+        var fixedCode = code.Replace("async ", "").Replace("await ", "");
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs") { NewContent = fixedCode }]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+
+        input = new CompilationInput(new(
+            [new() { FileName = "test.cs", Text = code.Replace("#:package AsyncFixer@1.6.0", "") }]))
+        {
+            RazorToolchain = toolchain,
+        };
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        compiled.NumWarnings.Should().Be(0);
+        compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should().NotContain("AsyncFixer01");
+        await languageServices.OnCompilationFinishedAsync();
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+    }
+
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest(TestContext);
