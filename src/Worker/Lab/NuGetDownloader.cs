@@ -760,6 +760,8 @@ internal sealed class NuGetDownloadablePackageResult
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
     public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
     public required Lazy<Task<Stream>> NupkgStream { get; init; }
+    // Shared by all nuspec and assembly readers of the cached stream.
+    public AsyncLock NupkgStreamLock { get; } = new();
 
     public async Task<NuspecReader> GetNuspecReaderAsync()
     {
@@ -774,8 +776,10 @@ internal sealed class NuGetDownloadablePackageResult
         }
 
         var nupkgStream = await NupkgStream.Value;
+        using var streamLock = await NupkgStreamLock.LockAsync();
         nupkgStream.Position = 0;
         using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
+        // NuspecReader eagerly loads the XML, so it can outlive the archive reader and stream lock.
         return reader.NuspecReader;
     }
 }
@@ -1157,6 +1161,7 @@ internal sealed class NuGetDownloadablePackage(
         }
 
         var nupkgStream = await result.NupkgStream.Value;
+        using var streamLock = await result.NupkgStreamLock.LockAsync();
         nupkgStream.Position = 0;
         return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter, forPackage);
     }
