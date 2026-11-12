@@ -21,6 +21,7 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <BuildInParallel>false</BuildInParallel>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <AndroidLinkTool Condition="'$(Configuration)' == 'Release'">r8</AndroidLinkTool>
 
     <IndexHtmlScriptPath>_framework/blazor.webview.js</IndexHtmlScriptPath>
     <IndexHtmlHead><link rel="stylesheet" href="css/android.css" /><script src="blazor-webview-android-bridge.js"></script><script src="android-clipboard.js"></script></IndexHtmlHead>
