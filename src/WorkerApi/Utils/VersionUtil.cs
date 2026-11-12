@@ -46,10 +46,9 @@ public static partial class VersionUtil
             : null;
     }
 
-    public static CommitLink? TryExtractGitHubRepoCommitInfoFromText(string text)
+    public static CommitLink? TryExtractGitHubRepoCommitInfoFromText(string? text)
     {
-        var match = GitHubCommitUrlPattern.Match(text);
-        if (match.Success)
+        if (text != null && GitHubCommitUrlPattern.Match(text) is { Success: true } match)
         {
             return new CommitLink
             {

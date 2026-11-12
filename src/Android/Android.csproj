@@ -18,7 +18,7 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">android-x64</RuntimeIdentifier>
   
     <PublishAot>false</PublishAot>
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishReadyToRun>false</PublishReadyToRun>
     <BuildInParallel>false</BuildInParallel>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
 
