@@ -1,4 +1,5 @@
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -52,7 +53,7 @@ internal static class AnalyzerLoader
         var codeFixes = ImmutableArray.CreateBuilder<CodeFixProvider>();
         var diagnosticBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
 
-        var loaded = new List<Assembly>();
+        var loaded = new List<(Assembly Assembly, RefAssembly Analyzer)>();
 
         foreach (var analyzer in analyzerAssemblies)
         {
@@ -62,13 +63,13 @@ internal static class AnalyzerLoader
 
                 // The same assembly can appear twice in this list.
                 // Skip it so its generators run once.
-                if (loaded.Contains(assembly))
+                if (loaded.Any(a => a.Assembly == assembly))
                 {
                     logger.LogWarning("Analyzer '{Name}' was already loaded, skipping duplicate.", analyzer.Name);
                     continue;
                 }
                 
-                loaded.Add(assembly);
+                loaded.Add((assembly, analyzer));
             }
             catch (Exception ex)
             {
@@ -77,9 +78,9 @@ internal static class AnalyzerLoader
             }
         }
 
-        foreach (var assembly in loaded)
+        foreach (var (assembly, analyzer) in loaded)
         {
-            foreach (var type in GetLoadableTypes(assembly, diagnosticBuilder, logger))
+            foreach (var type in GetLoadableTypes(assembly, analyzer, diagnosticBuilder, logger))
             {
                 if (type is not { IsClass: true, IsAbstract: false } ||
                     type.ContainsGenericParameters)
@@ -199,20 +200,52 @@ internal static class AnalyzerLoader
     }
 
     private static IEnumerable<Type> GetLoadableTypes(
-        Assembly assembly, ImmutableArray<Diagnostic>.Builder diagnostics, ILogger logger)
+        Assembly assembly, RefAssembly analyzer, ImmutableArray<Diagnostic>.Builder diagnostics, ILogger logger)
     {
-        try
+        using var pe = new PEReader(analyzer.Bytes);
+        var reader = pe.GetMetadataReader();
+        foreach (var handle in reader.TypeDefinitions)
         {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-            foreach (var error in ex.LoaderExceptions.OfType<Exception>())
+            var definition = reader.GetTypeDefinition(handle);
+            // Unrelated types may depend on missing assemblies or incompatible Roslyn APIs.
+            if (!definition.GetCustomAttributes().Any(h => IsExtensionAttribute(reader, h)))
             {
-                diagnostics.Add(Diagnostic.Create(AnalyzerLoadFailed, Location.None, assembly.GetName().Name, error.Message));
-                logger.LogWarning(error, "Failed to load types from analyzer '{Name}'.", assembly.GetName().Name);
+                continue;
             }
-            return ex.Types.OfType<Type>();
+
+            Type type;
+            try
+            {
+                type = assembly.ManifestModule.ResolveType(MetadataTokens.GetToken(handle));
+            }
+            catch (Exception ex)
+            {
+                diagnostics.Add(Diagnostic.Create(AnalyzerLoadFailed, Location.None, analyzer.Name, ex.Message));
+                logger.LogWarning(ex, "Failed to load analyzer extension type from '{Name}'.", analyzer.Name);
+                continue;
+            }
+            yield return type;
         }
+    }
+
+    private static bool IsExtensionAttribute(MetadataReader reader, CustomAttributeHandle handle)
+    {
+        var attribute = reader.GetCustomAttribute(handle);
+        if (attribute.Constructor.Kind != HandleKind.MemberReference)
+        {
+            return false;
+        }
+
+        var constructor = reader.GetMemberReference((MemberReferenceHandle)attribute.Constructor);
+        if (constructor.Parent.Kind != HandleKind.TypeReference)
+        {
+            return false;
+        }
+
+        var type = reader.GetTypeReference((TypeReferenceHandle)constructor.Parent);
+        return (reader.GetString(type.Namespace), reader.GetString(type.Name)) is
+            ("Microsoft.CodeAnalysis", nameof(GeneratorAttribute)) or
+            ("Microsoft.CodeAnalysis.Diagnostics", nameof(DiagnosticAnalyzerAttribute)) or
+            ("Microsoft.CodeAnalysis.CodeFixes", nameof(ExportCodeFixProviderAttribute));
     }
 }

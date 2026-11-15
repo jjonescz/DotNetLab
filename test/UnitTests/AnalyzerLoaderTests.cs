@@ -71,6 +71,44 @@ public sealed class AnalyzerLoaderTests
     }
     
     [TestMethod]
+    public void Load_IgnoresUnloadableNonExtensionTypes()
+    {
+        var helperBytes = Emit("MissingDependency", "public class HelperType;");
+        var generatorBytes = Emit("GeneratorWithUnrelatedType", """
+            using Microsoft.CodeAnalysis;
+
+            public class UnrelatedType : HelperType;
+
+            internal class Container
+            {
+                [Generator]
+                public class WorkingGenerator : IIncrementalGenerator
+                {
+                    public void Initialize(IncrementalGeneratorInitializationContext context) { }
+                }
+            }
+            """, extraRefs:
+            [
+                MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
+                MetadataReference.CreateFromImage(helperBytes),
+            ]);
+
+        var alc = new AssemblyLoadContext(nameof(Load_IgnoresUnloadableNonExtensionTypes), isCollectible: true);
+        try
+        {
+            var reference = AnalyzerLoader.Load(alc, [ToRef("GeneratorWithUnrelatedType", generatorBytes)],
+                NullLogger.Instance, out var diagnostics);
+
+            diagnostics.Should().BeEmpty();
+            reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
+        }
+        finally
+        {
+            alc.Unload();
+        }
+    }
+
+    [TestMethod]
     public void Load_SameNameAndVersion_InstantiatesGeneratorOnce()
     {
         var generatorBytes = Emit("SampleGenerator", """
