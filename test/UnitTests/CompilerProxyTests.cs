@@ -1321,7 +1321,11 @@ public class C
 
         var compiler = services.GetRequiredService<CompilerProxy>();
 
-        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+        var compiled = await compiler.CompileAsync(new(new(
+        [
+            new() { FileName = "Input.cs", Text = source },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
+        ])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.IsNotNull(diagnosticsText);

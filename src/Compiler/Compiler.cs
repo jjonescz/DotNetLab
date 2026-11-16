@@ -143,6 +143,7 @@ public sealed class Compiler(
             Assemblies = RefAssemblies.All,
         };
         AnalyzerReference? analyzerReference = null;
+        bool runAnalyzers = false;
         var razorLanguageVersion = RazorUtil.DefaultLanguageVersion;
 
         Config.Instance.Reset();
@@ -289,7 +290,7 @@ public sealed class Compiler(
         finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
 
         var analyzers = analyzerReference.GetAnalyzers(LanguageNames.CSharp);
-        var analyzerDiagnostics = analyzers.IsEmpty
+        var analyzerDiagnostics = !runAnalyzers || analyzers.IsEmpty
             ? []
             : await finalCompilation.WithAnalyzers(analyzers, new AnalyzerOptions(
                 nonCSharpSources.SelectAsArray(static input => (AdditionalText)new TestAdditionalText(
@@ -536,6 +537,7 @@ public sealed class Compiler(
                 AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
                 AnalyzerReference = analyzerReference,
+                RunAnalyzers = runAnalyzers,
             };
         }
 
@@ -1123,6 +1125,7 @@ public sealed class Compiler(
 
                 await context.ConsumeAsync();
                 razorLanguageVersion = context.RazorLanguageVersion ?? razorLanguageVersion;
+                runAnalyzers = context.RunAnalyzers;
 
                 foreach (var directive in directives)
                 {
@@ -1687,6 +1690,8 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     /// Loaded package and SDK analyzer extensions, shared with the language-services workspace.
     /// </summary>
     public required AnalyzerReference? AnalyzerReference { get; init; }
+
+    public required bool RunAnalyzers { get; init; }
 
     public void Dispose() => dispose();
 }

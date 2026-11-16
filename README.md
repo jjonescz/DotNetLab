@@ -30,7 +30,8 @@ and [Android Play Store](https://play.google.com/store/apps/details?id=me.janjon
 - Configuring any C# options (e.g., LangVersion, Features, OptimizationLevel, AllowUnsafe)
   via Roslyn C# APIs or via `#:property` directives (both with editor completions).
 - Referencing NuGet packages via `#:package` directives.
-- Running diagnostic analyzers and source generators from referenced NuGet packages.
+- Running diagnostic analyzers (with `#:property RunAnalyzers=true`) and source generators,
+  both ones bundled with .NET and custom ones from referenced NuGet packages.
 
 ## Development
 

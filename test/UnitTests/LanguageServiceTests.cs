@@ -61,6 +61,7 @@ public sealed class LanguageServiceTests
                     }
                     """,
             },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -169,6 +170,7 @@ public sealed class LanguageServiceTests
                     """,
             },
             new() { FileName = "other.cs", Text = "using System.Linq;" },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]))
         {
             RazorToolchain = toolchain,
@@ -204,6 +206,7 @@ public sealed class LanguageServiceTests
         [
             new() { FileName = "A.cs", Text = "using System.Linq;" },
             new() { FileName = "Z.cs", Text = "string s = null;" },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]))
         {
             Configuration = "void F() { }",
@@ -285,6 +288,7 @@ public sealed class LanguageServiceTests
                     using System;
                     """,
             },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -332,6 +336,7 @@ public sealed class LanguageServiceTests
                     int i = o;
                     """,
             },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -459,11 +464,78 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
-    [DataRow(RazorToolchain.SourceGenerator)]
-    [DataRow(RazorToolchain.InternalApi)]
-    public async Task Diagnostics_PackageAnalyzer(RazorToolchain toolchain)
+    public async Task Diagnostics_RunAnalyzers()
     {
         const string code = """
+            using System;
+            using System.Runtime.InteropServices;
+            using System.Text.RegularExpressions;
+
+            Console.Write(C.Pattern().IsMatch("a"));
+
+            partial class C
+            {
+                [GeneratedRegex("a")]
+                public static partial Regex Pattern();
+
+                [DllImport("not-loaded")]
+                public static extern void PInvoke();
+
+                public void M() { int unused; }
+            }
+            """;
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        foreach (var value in new string?[] { null, "true", "false", null })
+        {
+            var runAnalyzers = value == "true";
+            var input = new CompilationInput(new(
+            [
+                new() { FileName = "test.cs", Text = code },
+                new() { FileName = "Options.cs", Text = value is null ? "" : $"#:property RunAnalyzers={value}" },
+            ]));
+
+            await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+            if (value is null)
+            {
+                var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+                initialMarkers.Should().NotContain(m => m.GetCode() == "IDE0040");
+            }
+
+            var compiled = await compiler.CompileAsync(input);
+            compiled.NumErrors.Should().Be(0);
+            compiled.Diagnostics.Should().Contain(d => d.Id == "CS0168");
+            compiled.Diagnostics.Any(d => d.Id == "SYSLIB1054").Should().Be(runAnalyzers);
+            if (runAnalyzers)
+            {
+                compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should()
+                    .Contain("info SYSLIB1054:");
+            }
+            await languageServices.OnCompilationFinishedAsync();
+
+            var markers = await languageServices.GetDiagnosticsAsync(uri);
+            markers.Should().Contain(m => m.GetCode() == "CS0168");
+            markers.Any(m => m.GetCode() == "SYSLIB1054").Should().Be(runAnalyzers);
+            markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+            markers.Should().NotContain(m => m.GetCode() == "CS8795");
+
+            await languageServices.OnDidChangeWorkspaceAsync(
+                [new(uri, "test.cs") { NewContent = code + "\nclass Broken { void M() { int x = ; } }" }]);
+            markers = await languageServices.GetDiagnosticsAsync(uri);
+            markers.Should().Contain(m => m.GetCode() == "CS1525");
+        }
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_PackageAnalyzer(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool runAnalyzers)
+    {
+        var code = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
             #:package AsyncFixer@1.6.0
             using System.Threading.Tasks;
             public class C
@@ -486,13 +558,20 @@ public sealed class LanguageServiceTests
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
         var compiled = await compiler.CompileAsync(input);
         compiled.NumErrors.Should().Be(0);
-        compiled.NumWarnings.Should().Be(1);
-        compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should().Contain("warning AsyncFixer01:");
+        compiled.NumWarnings.Should().Be(runAnalyzers ? 1 : 0);
+        compiled.Diagnostics.Any(d => d.Id == "AsyncFixer01").Should().Be(runAnalyzers);
         await languageServices.OnCompilationFinishedAsync();
 
         var markers = await languageServices.GetDiagnosticsAsync(uri);
-        markers.Should().ContainSingle(m => m.GetCode() == "AsyncFixer01")
-            .Which.Severity.Should().Be(MarkerSeverity.Warning);
+        if (runAnalyzers)
+        {
+            markers.Should().ContainSingle(m => m.GetCode() == "AsyncFixer01")
+                .Which.Severity.Should().Be(MarkerSeverity.Warning);
+        }
+        else
+        {
+            markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        }
 
         var fixedCode = code.Replace("async ", "").Replace("await ", "");
         await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs") { NewContent = fixedCode }]);

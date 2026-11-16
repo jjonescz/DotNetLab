@@ -52,15 +52,23 @@ public static class RoslynWorkspaceAccessors
         }
     }
 
-    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this Document document)
+    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this Document document, bool runAnalyzers)
     {
         var service = document.Project.Solution.Services.GetRequiredService<IDiagnosticAnalyzerService>();
         var text = await document.GetTextAsync();
         var diagnostics = await service.GetDiagnosticsForSpanAsync(
             document,
             TextSpan.FromBounds(0, text.Length),
-            DiagnosticKind.All,
+            runAnalyzers ? DiagnosticKind.All : DiagnosticKind.CompilerSemantic,
             CancellationToken.None);
+        if (!runAnalyzers)
+        {
+            diagnostics = diagnostics.AddRange(await service.GetDiagnosticsForSpanAsync(
+                document,
+                TextSpan.FromBounds(0, text.Length),
+                DiagnosticKind.CompilerSyntax,
+                CancellationToken.None));
+        }
         return diagnostics
             .Where(static d => !d.IsSuppressed)
             .SelectAsArray(static d =>

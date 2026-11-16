@@ -811,7 +811,7 @@ internal sealed class LanguageServices : ILanguageServices
     {
         Document? document = null;
         var ideDiagnostics = !notFullyInitialized && TryGetDocument(modelUri, out document)
-            ? await document.GetDiagnosticsAsync()
+            ? await document.GetDiagnosticsAsync(runAnalyzers: compiler.LastResult?.Output.RunAnalyzers == true)
             : [];
 
         IEnumerable<CompilerDiagnosticData> compilerDiagnostics;
