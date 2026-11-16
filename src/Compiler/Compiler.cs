@@ -556,7 +556,7 @@ public sealed class Compiler(
 
             var configCompilation = CSharpCompilation.Create(
                 // We need a unique assembly name because the ALC can already contain a previous configuration assembly and that would throw on CoreCLR.
-                assemblyName: $"Configuration_{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
+                assemblyName: $"Configuration_{Guid.NewGuid():N}",
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
