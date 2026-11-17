@@ -1551,13 +1551,10 @@ internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsP
 
     public override TestAnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        if (!AdditionalTextOptions.TryGetValue(textFile.Path, out var options))
-        {
-            options = new TestAnalyzerConfigOptions();
-            AdditionalTextOptions[textFile.Path] = options;
-        }
-
-        return options;
+        // Analyzer callbacks run concurrently, so cache misses must not mutate the dictionary.
+        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options)
+            ? options
+            : new TestAnalyzerConfigOptions();
     }
 }
 
