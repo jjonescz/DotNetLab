@@ -290,12 +290,16 @@ public sealed class Compiler(
         finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
 
         var analyzers = analyzerReference.GetAnalyzers(LanguageNames.CSharp);
-        var analyzerDiagnostics = !runAnalyzers || analyzers.IsEmpty
-            ? []
-            : await finalCompilation.WithAnalyzers(analyzers, new AnalyzerOptions(
+        ImmutableArray<Diagnostic> compilerDiagnostics = [];
+        ImmutableArray<Diagnostic> compilerAndAnalyzerDiagnostics = [];
+        if (runAnalyzers && !analyzers.IsEmpty)
+        {
+            compilerDiagnostics = finalCompilation.GetDiagnostics();
+            compilerAndAnalyzerDiagnostics = await finalCompilation.WithAnalyzers(analyzers, new AnalyzerOptions(
                 nonCSharpSources.SelectAsArray(static input => (AdditionalText)new TestAdditionalText(
                     text: input.Text, encoding: Encoding.UTF8, path: getFilePath(input))),
-                optionsProvider)).GetAnalyzerDiagnosticsAsync();
+                optionsProvider)).GetAllDiagnosticsAsync();
+        }
 
         // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
         // which would require monitor waiting which is unsupported in browser wasm.
@@ -304,10 +308,11 @@ public sealed class Compiler(
         peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
-            .Concat(emitDiagnostics)
+            // Do not reintroduce compiler diagnostics that were removed by suppressors.
+            .Concat(emitDiagnostics.Except(compilerDiagnostics))
             .Concat(additionalDiagnostics)
             .Concat(analyzerLoadDiagnostics)
-            .Concat(analyzerDiagnostics);
+            .Concat(compilerAndAnalyzerDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
