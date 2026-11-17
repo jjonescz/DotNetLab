@@ -429,6 +429,19 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(razorDiagnostics);
         Assert.Contains("RZ10012", razorDiagnostics);
         Assert.AreEqual(razorDiagnostics, declaration.GetRequiredOutput("TestComponent.razor", "razorErrors").Text);
+
+        foreach (var compiled in new[] { implementation, declaration })
+        {
+            var diagnostic = Assert.ContainsSingle(compiled
+                .GetDiagnosticsForFile("TestComponent.razor", configuration: false)
+                .Where(static d => d.Data.Id == "RZ10012"));
+            Assert.AreEqual("/TestComponent.razor", diagnostic.FilePath);
+            var marker = diagnostic.ToMarkerData();
+            Assert.AreEqual(1, marker.StartLineNumber);
+            Assert.AreEqual(1, marker.StartColumn);
+            Assert.AreEqual(1, marker.EndLineNumber);
+            Assert.AreEqual(21, marker.EndColumn);
+        }
     }
 
     [TestMethod]
