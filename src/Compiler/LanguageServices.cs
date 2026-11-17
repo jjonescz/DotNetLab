@@ -820,7 +820,9 @@ internal sealed class LanguageServices : ILanguageServices
             CompiledAssembly.TryParseInputModelUri(modelUri, out var fileName))
         {
             compilerDiagnostics = compiled.GetDiagnosticsForFile(fileName,
-                configuration: document?.Project.Id == configurationProjectId);
+                configuration: document?.Project.Id == configurationProjectId)
+                // Match CompilerDiagnosticAnalyzer, which excludes hidden diagnostics from live IDE results.
+                .Where(static d => d.Data.Severity != DiagnosticDataSeverity.Hint);
         }
         else
         {

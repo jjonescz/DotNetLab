@@ -147,6 +147,7 @@ public sealed class LanguageServiceTests
             var compilerDiagnosticData = compilerCache.GetDiagnosticsForFile(file,
                 configuration: file == CompiledAssembly.ConfigurationFileName);
             var compilerDiagnosticDataStrings = compilerDiagnosticData
+                .Where(static d => d.Data.Severity != DiagnosticDataSeverity.Hint)
                 .Select(static d => d.ToMarkerData().ToDisplayString())
                 .ToArray();
 
@@ -186,14 +187,12 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "Input.razor",
         [
-            "(1,2): hint CS8019: Unnecessary using directive.",
             "(2,11): warning CS0219: The variable 's' is assigned but its value is never used",
             "(2,15): warning CS8600: Converting null literal or possible null value to non-nullable type.",
         ]);
 
         await VerifyDiagnosticsAsync(languageServices, "other.cs",
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
             "(1,1): hint RemoveUnnecessaryImportsFixable: ",
         ]);
@@ -224,7 +223,6 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "A.cs",
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
             "(1,1): hint RemoveUnnecessaryImportsFixable: ",
         ]);
@@ -276,8 +274,8 @@ public sealed class LanguageServiceTests
         ]);
     }
 
-    [TestMethod]
-    public async Task Diagnostics_Hidden()
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_Hidden(bool runAnalyzers)
     {
         var input = new CompilationInput(new(
         [
@@ -288,7 +286,7 @@ public sealed class LanguageServiceTests
                     using System;
                     """,
             },
-            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
+            new() { FileName = "Options.cs", Text = $"#:property RunAnalyzers={runAnalyzers}" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -299,12 +297,15 @@ public sealed class LanguageServiceTests
         await compiler.CompileAsync(input);
         await languageServices.OnCompilationFinishedAsync();
 
-        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        string[] analyzerDiagnostics = runAnalyzers ?
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
             "(1,1): hint RemoveUnnecessaryImportsFixable: ",
-        ]);
+        ] : [];
+        await VerifyDiagnosticsAsync(languageServices, "test.cs", analyzerDiagnostics);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await VerifyDiagnosticsAsync(languageServices, "test.cs", analyzerDiagnostics);
 
         // When we explicitly include hidden diagnostics, they should be upgraded to info so they show up in the editor.
         input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = true } };
@@ -314,8 +315,7 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
-            "(1,1): hint IDE0005: Using directive is unnecessary.",
-            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
+            .. analyzerDiagnostics,
             "(1,1): info CS8019: Unnecessary using directive.",
         ]);
     }
