@@ -34,6 +34,7 @@ internal sealed class LanguageServices : ILanguageServices
     private readonly ImmutableArray<AnalyzerReference> builtInAnalyzerReferences;
     private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
     private CompiledAssembly? compilerDiagnostics;
+    private LiveCompilationResult? compilationResult;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
     private bool notFullyInitialized;
@@ -527,31 +528,39 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output)
+    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output)
     {
         compilerDiagnostics = output;
         // Configuration / custom compiler refs are only applied in OnCompilationFinished.
         // Skip IDE diagnostics until then so a cached load does not show false errors.
         notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
+        // Cached outputs contain no live state; discard the previous snippet's references.
+        return ApplyCompilationResultAsync(null);
     }
 
-    public async Task OnCompilationFinishedAsync()
+    public Task OnCompilationFinishedAsync()
     {
-        compilerDiagnostics = compiler.LastResult?.Output.CompiledAssembly;
+        var result = compiler.LastResult?.Output;
+        compilerDiagnostics = result?.CompiledAssembly;
         notFullyInitialized = false;
+        return ApplyCompilationResultAsync(result);
+    }
 
+    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result)
+    {
         try
         {
             using var _ = await workspaceLock.LockAsync();
+            compilationResult = result;
 
             // Modify the configuration project.
-            UseCompilerAssemblies(compiler.LastResult?.Output.CompilerAssemblies);
+            UseCompilerAssemblies(result?.CompilerAssemblies);
 
             // Modify the main project.
             {
                 var project = GetProject(configuration: false);
 
-                if (compiler.LastResult?.Output.CSharpParseOptions is { } parseOptions)
+                if (result?.CSharpParseOptions is { } parseOptions)
                 {
                     project = project.WithParseOptions(parseOptions);
                 }
@@ -560,7 +569,7 @@ internal sealed class LanguageServices : ILanguageServices
                     project = project.WithParseOptions(Compiler.CreateDefaultParseOptions());
                 }
 
-                if (compiler.LastResult?.Output.CSharpCompilationOptions is { } options)
+                if (result?.CSharpCompilationOptions is { } options)
                 {
                     project = project.WithCompilationOptions(options);
                 }
@@ -574,7 +583,7 @@ internal sealed class LanguageServices : ILanguageServices
                     project = project.RemoveDocuments(additionalSourceDocuments);
                 }
 
-                if (compiler.LastResult?.Output.AdditionalSources is { IsDefaultOrEmpty: false } additionalSources)
+                if (result?.AdditionalSources is { IsDefaultOrEmpty: false } additionalSources)
                 {
                     var additionalSourceDocumentBuilder = ImmutableArray.CreateBuilder<DocumentId>(additionalSources.Length);
                     foreach (var tree in additionalSources)
@@ -593,7 +602,7 @@ internal sealed class LanguageServices : ILanguageServices
                     additionalSourceDocuments = [];
                 }
 
-                if (compiler.LastResult?.Output.ReferenceAssemblies is { } references)
+                if (result?.ReferenceAssemblies is { } references)
                 {
                     project = project.WithMetadataReferences(references);
                 }
@@ -603,9 +612,9 @@ internal sealed class LanguageServices : ILanguageServices
                 }
 
                 var analyzerReferences = builtInAnalyzerReferences;
-                if (compiler.LastResult?.Output is { AnalyzerReference: { } analyzerReference } output)
+                if (result is { AnalyzerReference: { } analyzerReference })
                 {
-                    if (!output.RunAnalyzers)
+                    if (!result.RunAnalyzers)
                     {
                         analyzerReference = RoslynWorkspaceAccessors.CreateAnalyzerReference(
                             [], analyzerReference.GetGenerators(LanguageNames.CSharp), []);
@@ -620,7 +629,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to handle finished compilation.");
+            logger.LogError(ex, "Failed to apply compilation state to the workspace.");
         }
     }
 
@@ -740,7 +749,7 @@ internal sealed class LanguageServices : ILanguageServices
             // even before the compilation finishes and provides us the actually used compiler assemblies
             // (in common scenarios they are the same assemblies; and in all cases, the CompilerProxy preloads
             // the assemblies we load here anyway to pass them to the compiler as builtInAssemblies).
-            if (model.IsConfiguration && compiler.LastResult?.Output.CompilerAssemblies is null)
+            if (model.IsConfiguration && compilationResult?.CompilerAssemblies is null)
             {
                 var compilerAssemblies = await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync();
                 UseCompilerAssemblies(compilerAssemblies);
@@ -786,7 +795,7 @@ internal sealed class LanguageServices : ILanguageServices
         defaultOutputKind = Compiler.GetDefaultOutputKind(sources);
         if (project.CompilationOptions is { } options &&
             options.OutputKind != defaultOutputKind &&
-            compiler.LastResult?.Output.CSharpCompilationOptions is null)
+            compilationResult?.CSharpCompilationOptions is null)
         {
             ApplyChanges(project.WithCompilationOptions(options.WithOutputKind(defaultOutputKind)).Solution);
         }
@@ -828,7 +837,7 @@ internal sealed class LanguageServices : ILanguageServices
     {
         TextDocument? document = null;
         var ideDiagnostics = !notFullyInitialized && TryGetTextDocument(modelUri, out document)
-            ? await document.GetDiagnosticsAsync(runAnalyzers: compiler.LastResult?.Output.RunAnalyzers == true)
+            ? await document.GetDiagnosticsAsync(runAnalyzers: compilationResult?.RunAnalyzers == true)
             : [];
 
         IEnumerable<CompilerDiagnosticData> compilerDiagnostics;

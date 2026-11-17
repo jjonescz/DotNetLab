@@ -183,7 +183,7 @@ public sealed class WorkerExecutor(
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
-        languageServices.OnCachedCompilationLoaded(message.Config, message.Output);
+        await languageServices.OnCachedCompilationLoadedAsync(message.Config, message.Output);
         return NoOutput.Instance;
     }
 

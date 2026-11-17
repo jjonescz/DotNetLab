@@ -684,6 +684,75 @@ public sealed class LanguageServiceTests
         markers.Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task Diagnostics_CachedCompilationClearsPackageAnalyzers()
+    {
+        const string code = """
+            using System.Threading.Tasks;
+            class C
+            {
+                public async Task<int> M()
+                {
+                    return await Task.FromResult(1);
+                }
+            }
+            """;
+        var cachedInput = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]));
+        var packageInput = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = "#:property RunAnalyzers=true\n#:package AsyncFixer@1.6.0\n" + code,
+            },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(cachedInput));
+        var cachedOutput = await compiler.CompileAsync(cachedInput);
+        await languageServices.OnCompilationFinishedAsync();
+        var initialActions = await getActionTitlesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(packageInput));
+        await compiler.CompileAsync(packageInput);
+        await languageServices.OnCompilationFinishedAsync();
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "AsyncFixer01");
+        var packageActions = await getActionTitlesAsync();
+        packageActions.Should().Contain(title => !initialActions.Contains(title));
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(cachedInput));
+        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, cachedOutput);
+        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01" || m.GetCode() == "IDE0040");
+        (await getActionTitlesAsync()).Should().BeEquivalentTo(initialActions);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01" || m.GetCode() == "IDE0040");
+        (await getActionTitlesAsync()).Should().BeEquivalentTo(initialActions);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(packageInput));
+        await compiler.CompileAsync(packageInput);
+        await languageServices.OnCompilationFinishedAsync();
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "AsyncFixer01");
+
+        async Task<string[]> getActionTitlesAsync()
+        {
+            var json = await languageServices.ProvideCodeActionsAsync(uri, null, TestContext.CancellationToken);
+            return JsonSerializer.Deserialize(json!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction)
+                .Select(action => action.Title).ToArray();
+        }
+    }
+
     [TestMethod, CombinatorialData]
     public async Task Diagnostics_PackageAnalyzer(
         [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
