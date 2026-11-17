@@ -1701,7 +1701,7 @@
         StateHasChanged();
 
         if (!LanguageServices.Enabled ||
-            !await LanguageServices.OnCachedCompilationLoadedAsync(config, output, CurrentInput?.Model.Uri))
+            !await LanguageServices.OnCachedCompilationLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
         {
             await DisplaySquigglesAsync();
         }

@@ -528,12 +528,23 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output)
+    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output)
     {
         compilerDiagnostics = output;
-        // Configuration / custom compiler refs are only applied in OnCompilationFinished.
-        // Skip IDE diagnostics until then so a cached load does not show false errors.
-        notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
+        // Cached package/configuration inputs require explicit compilation before live analysis.
+        try
+        {
+            notFullyInitialized = !CompilerConfiguration.Empty.Equals(config) ||
+                FileLevelDirectiveParser.Instance.Parse(input.Inputs.Value
+                    .Where(static source => source.FileName.IsCSharpFileName()))
+                    .Any(static directive => directive is FileLevelDirective.Package);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Cannot inspect cached input directives. Deferring live diagnostics until explicit compilation.");
+            notFullyInitialized = true;
+        }
+
         // Cached outputs contain no live state; discard the previous snippet's references.
         return ApplyCompilationResultAsync(null);
     }
@@ -664,7 +675,6 @@ internal sealed class LanguageServices : ILanguageServices
     private void InvalidateCompilerCache()
     {
         compilerDiagnostics = null;
-        notFullyInitialized = false;
     }
 
     public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh)

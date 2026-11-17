@@ -192,7 +192,7 @@ public closed record WorkerInputMessage
         }
     }
 
-    public sealed record OnCachedCompilationLoaded(CompilerConfiguration Config, CompiledAssembly Output) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
+    public sealed record OnCachedCompilationLoaded(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly Output) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
     {
         public Task<NoOutput> HandleAsync(IExecutor executor)
         {
