@@ -15,8 +15,8 @@ public static class WorkerServices
     {
         return Create(
             logLevel: LogLevel.Debug,
-            httpClientFactory: sp => new HttpClient(handler: httpMessageHandler
-                ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp))
+            httpClientFactory: sp => new HttpClient(handler: new GitHubTokenHandler(httpMessageHandler
+                ?? ActivatorUtilities.CreateInstance<LoggingHttpClientHandler>(sp)))
             {
                 BaseAddress = new Uri("http://localhost"),
                 DefaultRequestHeaders = { { "User-Agent", "DotNetLab Tests" } },
@@ -92,6 +92,27 @@ public static class WorkerServices
         configureServices?.Invoke(services);
         services.TryAddScoped<IFileSystem, DefaultFileSystem>();
         return services.BuildServiceProvider();
+    }
+}
+
+/// <summary>
+/// Authenticates GitHub API requests (if the <c>GITHUB_TOKEN</c> environment variable is set)
+/// to avoid rate limits (e.g., in CI).
+/// </summary>
+internal sealed class GitHubTokenHandler(HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
+{
+    private static readonly string? token = Environment.GetEnvironmentVariable("GITHUB_TOKEN") is { Length: > 0 } t ? t : null;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (token != null &&
+            request.RequestUri is { Scheme: "https", Host: "api.github.com" } &&
+            request.Headers.Authorization is null)
+        {
+            request.Headers.Authorization = new("Bearer", token);
+        }
+
+        return base.SendAsync(request, cancellationToken);
     }
 }
 
