@@ -59,24 +59,21 @@ public static class RoslynWorkspaceAccessors
         var diagnostics = await service.GetDiagnosticsForSpanAsync(
             document,
             TextSpan.FromBounds(0, text.Length),
-            runAnalyzers ? DiagnosticKind.All : DiagnosticKind.CompilerSemantic,
+            DiagnosticKind.All,
             CancellationToken.None);
-        if (!runAnalyzers)
-        {
-            diagnostics = diagnostics.AddRange(await service.GetDiagnosticsForSpanAsync(
-                document,
-                TextSpan.FromBounds(0, text.Length),
-                DiagnosticKind.CompilerSyntax,
-                CancellationToken.None));
-        }
         return diagnostics
-            .Where(static d => !d.IsSuppressed)
-            .SelectAsArray(static d =>
+            .Where(d => !d.IsSuppressed &&
+                (runAnalyzers ||
+                 d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler) ||
+                 d.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary)))
+            .SelectAsArray(d =>
             {
                 var hasMappedLocation = d.DataLocation.MappedFileSpan != d.DataLocation.UnmappedFileSpan;
                 return new DiagnosticData(
                     FilePath: d.DataLocation.MappedFileSpan.Path,
-                    Severity: d.Severity switch
+                    Severity: !runAnalyzers && !d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler)
+                        ? DiagnosticDataSeverity.Hint
+                        : d.Severity switch
                     {
                         DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
                         DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,

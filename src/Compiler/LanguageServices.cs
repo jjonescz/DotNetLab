@@ -603,8 +603,13 @@ internal sealed class LanguageServices : ILanguageServices
                 }
 
                 var analyzerReferences = builtInAnalyzerReferences;
-                if (compiler.LastResult?.Output.AnalyzerReference is { } analyzerReference)
+                if (compiler.LastResult?.Output is { AnalyzerReference: { } analyzerReference } output)
                 {
+                    if (!output.RunAnalyzers)
+                    {
+                        analyzerReference = RoslynWorkspaceAccessors.CreateAnalyzerReference(
+                            [], analyzerReference.GetGenerators(LanguageNames.CSharp), []);
+                    }
                     analyzerReferences = analyzerReferences.Add(analyzerReference);
                 }
 

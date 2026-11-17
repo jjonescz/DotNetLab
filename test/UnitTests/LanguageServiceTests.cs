@@ -274,6 +274,66 @@ public sealed class LanguageServiceTests
         ]);
     }
 
+    /// <summary>
+    /// Even with <c>RunAnalyzers=false</c>, we want to run roslyn analyzers and fade unused code.
+    /// </summary>
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_BuiltInAnalyzerFading(bool runAnalyzers)
+    {
+        var code = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
+            using System.Linq;
+            class C
+            {
+                private void Unused() { }
+                public void M() { int unused; }
+            }
+            """;
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        if (!runAnalyzers)
+        {
+            var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+            initialMarkers.Should().Contain(m => m.GetCode() == "IDE0005");
+            initialMarkers.Should().Contain(m => m.GetCode() == "IDE0051");
+        }
+
+        await compiler.CompileAsync(input);
+        await languageServices.OnCompilationFinishedAsync();
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        foreach (var diagnosticId in new[] { "IDE0005", "IDE0051" })
+        {
+            var marker = markers.Should().ContainSingle(m => m.GetCode() == diagnosticId).Which;
+            marker.Severity.Should().Be(MarkerSeverity.Hint);
+            marker.Tags.Should().Contain(MarkerTag.Unnecessary);
+        }
+        markers.Should().Contain(m => m.GetCode() == "CS0168" && m.Severity == MarkerSeverity.Warning);
+        markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+        if (!runAnalyzers)
+        {
+            markers.Where(m => m.GetCode()?.StartsWith("IDE", StringComparison.Ordinal) == true)
+                .Should().OnlyContain(m => m.Severity == MarkerSeverity.Hint &&
+                    m.Tags != null && m.Tags.Contains(MarkerTag.Unnecessary));
+        }
+
+        var updatedInput = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = code.Replace("int unused;", "int unused; Unused(); _ = Enumerable.Empty<int>();"),
+            },
+        ]));
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(updatedInput));
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "IDE0005" || m.GetCode() == "IDE0051");
+    }
+
     [TestMethod, CombinatorialData]
     public async Task Diagnostics_Hidden(bool runAnalyzers)
     {
@@ -297,11 +357,11 @@ public sealed class LanguageServiceTests
         await compiler.CompileAsync(input);
         await languageServices.OnCompilationFinishedAsync();
 
-        string[] analyzerDiagnostics = runAnalyzers ?
+        string[] analyzerDiagnostics =
         [
             "(1,1): hint IDE0005: Using directive is unnecessary.",
-            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
-        ] : [];
+            .. runAnalyzers ? ["(1,1): hint RemoveUnnecessaryImportsFixable: "] : Array.Empty<string>(),
+        ];
         await VerifyDiagnosticsAsync(languageServices, "test.cs", analyzerDiagnostics);
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
