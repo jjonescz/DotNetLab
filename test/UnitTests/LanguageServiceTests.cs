@@ -590,6 +590,101 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_AdditionalFiles(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain)
+    {
+        const string bannedSymbols = "T:System.Console;Not allowed";
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:property RunAnalyzers=true
+                    #:package Microsoft.CodeAnalysis.BannedApiAnalyzers@5.6.0
+                    System.Console.WriteLine();
+                    """,
+            },
+            new() { FileName = "BannedSymbols.txt", Text = bannedSymbols },
+        ]))
+        {
+            RazorToolchain = toolchain,
+        };
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var models = ToModelInfos(input);
+        var sourceUri = models[0].Uri;
+        var additionalUri = models[1].Uri;
+
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        var compiled = await compiler.CompileAsync(input);
+        compiled.Diagnostics.Should().Contain(d => d.Id == "RS0030");
+        await languageServices.OnCompilationFinishedAsync();
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeModelContentAsync(sourceUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeModelContentAsync(additionalUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = bannedSymbols.Length, Text = "" }],
+        });
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeModelContentAsync(additionalUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = bannedSymbols }],
+        });
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "Ignored.txt")]);
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "BannedSymbols.txt")]);
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(sourceUri, "test.cs")]);
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "BannedSymbols.txt") { NewContent = bannedSymbols }]);
+        await verifyAsync(banned: true);
+
+        async Task verifyAsync(bool banned)
+        {
+            var markers = await languageServices.GetDiagnosticsAsync(sourceUri);
+            markers.Count(m => m.GetCode() == "RS0030").Should().Be(banned ? 1 : 0);
+        }
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_RenameAdditionalFile()
+    {
+        const string uri = "test";
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.txt") { NewContent = "#error test" }]);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs")]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS1029");
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.txt")]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_PackageAnalyzer(
         [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
         bool runAnalyzers)

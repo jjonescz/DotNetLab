@@ -173,7 +173,7 @@ internal sealed class LanguageServices : ILanguageServices
         // Try to find the corresponding Roslyn item.
         if (lastCompletions is not (var docId, var lastCompletionList) ||
             lastCompletionList.ItemsList.TryAt(item.Index) is not { } foundItem ||
-            GetDocument(docId) is not { } document)
+            GetTextDocument(docId) is not Document document)
         {
             return null;
         }
@@ -673,44 +673,41 @@ internal sealed class LanguageServices : ILanguageServices
             {
                 // We have URI of this document, it's in our workspace.
 
-                var doc = GetDocument(docId)!;
+                var doc = GetTextDocument(docId)!;
                 if (modelLookupByUri.TryGetValue(modelUri, out ModelInfo? model))
                 {
                     // The document is still present in `models`.
 
+                    if ((doc is Document) != model.FileName.IsCSharpFileName() ||
+                        (doc is not Document && doc.Name != model.FileName))
+                    {
+                        // Recreate documents when their kind or additional-file path changes.
+                        modelLookupByUri[modelUri] = model with
+                        {
+                            NewContent = model.NewContent ?? (await doc.GetTextAsync()).ToString(),
+                        };
+                        modelUris.Remove(docId);
+                        ApplyChanges(RemoveTextDocument(doc));
+                        continue;
+                    }
+
                     if (doc.Name != model.FileName)
                     {
-                        // Document has been renamed.
-                        modelUris.Remove(docId);
-
-                        if (model.FileName.IsCSharpFileName())
-                        {
-                            modelUris.Add(docId, model.Uri);
-                            ApplyChanges(UpdateDocumentFileInfo(workspace.CurrentSolution, docId, model.FileName));
-
-                            if (model.NewContent != null)
-                            {
-                                // The caller sets the content to reset the state.
-                                doc = GetDocument(docId)!;
-                                ApplyChanges(doc.WithText(SourceText.From(model.NewContent)).Project.Solution);
-                            }
-                        }
-                        else
-                        {
-                            ApplyChanges(doc.Project.RemoveDocument(docId).Solution);
-                        }
+                        ApplyChanges(UpdateDocumentFileInfo(workspace.CurrentSolution, docId, model.FileName));
+                        doc = GetTextDocument(docId)!;
                     }
-                    else if (model.NewContent != null)
+
+                    if (model.NewContent != null)
                     {
                         // The caller sets the content to reset the state.
-                        ApplyChanges(doc.WithText(SourceText.From(model.NewContent)).Project.Solution);
+                        ApplyChanges(WithTextDocumentText(doc, SourceText.From(model.NewContent, Encoding.UTF8)));
                     }
                 }
                 else
                 {
                     // Document has been removed from `models`.
                     modelUris.Remove(docId);
-                    ApplyChanges(doc.Project.RemoveDocument(docId).Solution);
+                    ApplyChanges(RemoveTextDocument(doc));
                 }
 
                 // Mark this model URI as processed.
@@ -725,25 +722,28 @@ internal sealed class LanguageServices : ILanguageServices
         // Add new documents.
         foreach (var model in modelLookupByUri.Values)
         {
-            if (model.FileName.IsCSharpFileName())
-            {
-                var doc = GetProject(configuration: model.IsConfiguration).AddDocument(
+            var project = GetProject(configuration: model.IsConfiguration);
+            TextDocument doc = model.FileName.IsCSharpFileName()
+                ? project.AddDocument(
                     name: model.FileName,
                     text: model.NewContent ?? string.Empty,
-                    filePath: model.FileName);
-                doc = doc.WithSourceCodeKind(GetSourceCodeKind(model.FileName));
-                modelUris.Add(doc.Id, model.Uri);
-                ApplyChanges(doc.Project.Solution);
+                    filePath: model.FileName)
+                    .WithSourceCodeKind(GetSourceCodeKind(model.FileName))
+                : project.AddAdditionalDocument(
+                    name: model.FileName,
+                    text: SourceText.From(model.NewContent ?? string.Empty, Encoding.UTF8),
+                    filePath: "/" + model.FileName);
+            modelUris.Add(doc.Id, model.Uri);
+            ApplyChanges(doc.Project.Solution);
 
-                // If configuration is added, preload compiler assemblies so language services light up for it
-                // even before the compilation finishes and provides us the actually used compiler assemblies
-                // (in common scenarios they are the same assemblies; and in all cases, the CompilerProxy preloads
-                // the assemblies we load here anyway to pass them to the compiler as builtInAssemblies).
-                if (model.IsConfiguration && compiler.LastResult?.Output.CompilerAssemblies is null)
-                {
-                    var compilerAssemblies = await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync();
-                    UseCompilerAssemblies(compilerAssemblies);
-                }
+            // If configuration is added, preload compiler assemblies so language services light up for it
+            // even before the compilation finishes and provides us the actually used compiler assemblies
+            // (in common scenarios they are the same assemblies; and in all cases, the CompilerProxy preloads
+            // the assemblies we load here anyway to pass them to the compiler as builtInAssemblies).
+            if (model.IsConfiguration && compiler.LastResult?.Output.CompilerAssemblies is null)
+            {
+                var compilerAssemblies = await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync();
+                UseCompilerAssemblies(compilerAssemblies);
             }
         }
 
@@ -756,6 +756,20 @@ internal sealed class LanguageServices : ILanguageServices
             .WithDocumentName(docId, fileName)
             .WithDocumentFilePath(docId, fileName)
             .WithDocumentSourceCodeKind(docId, GetSourceCodeKind(fileName));
+    }
+
+    private static Solution RemoveTextDocument(TextDocument document)
+    {
+        return document is Document
+            ? document.Project.Solution.RemoveDocument(document.Id)
+            : document.Project.Solution.RemoveAdditionalDocument(document.Id);
+    }
+
+    private static Solution WithTextDocumentText(TextDocument document, SourceText text)
+    {
+        return document is Document
+            ? document.Project.Solution.WithDocumentText(document.Id, text)
+            : document.Project.Solution.WithAdditionalDocumentText(document.Id, text);
     }
 
     private static SourceCodeKind GetSourceCodeKind(string fileName)
@@ -780,7 +794,7 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
-        if (!TryGetDocument(modelUri, out var document))
+        if (!TryGetTextDocument(modelUri, out var document))
         {
             logger.LogWarning("Document to change content of not found: {ModelUri}", modelUri);
             return;
@@ -800,9 +814,7 @@ internal sealed class LanguageServices : ILanguageServices
             text = text.WithChanges(change);
         }
 
-        document = document.WithText(text);
-
-        ApplyChanges(document.Project.Solution);
+        ApplyChanges(WithTextDocumentText(document, text));
         await UpdateOptionsIfNecessaryAsync();
     }
 
@@ -814,8 +826,8 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        Document? document = null;
-        var ideDiagnostics = !notFullyInitialized && TryGetDocument(modelUri, out document)
+        TextDocument? document = null;
+        var ideDiagnostics = !notFullyInitialized && TryGetTextDocument(modelUri, out document)
             ? await document.GetDiagnosticsAsync(runAnalyzers: compiler.LastResult?.Output.RunAnalyzers == true)
             : [];
 
@@ -865,12 +877,24 @@ internal sealed class LanguageServices : ILanguageServices
 
     private bool TryGetDocument(string modelUri, [NotNullWhen(returnValue: true)] out Document? document)
     {
+        if (TryGetTextDocument(modelUri, out var textDocument) && textDocument is Document sourceDocument)
+        {
+            document = sourceDocument;
+            return true;
+        }
+
+        document = null;
+        return false;
+    }
+
+    private bool TryGetTextDocument(string modelUri, [NotNullWhen(returnValue: true)] out TextDocument? document)
+    {
         var id = GetDocumentIds().FirstOrDefault(id =>
             modelUris.TryGetValue(id, out var uri) &&
             uri == modelUri);
         if (id != null)
         {
-            document = GetDocument(id);
+            document = GetTextDocument(id);
             return document != null;
         }
 
@@ -878,16 +902,15 @@ internal sealed class LanguageServices : ILanguageServices
         return false;
     }
 
-    private Document? GetDocument(DocumentId id)
+    private TextDocument? GetTextDocument(DocumentId id)
     {
-        return workspace.CurrentSolution.Projects
-            .SelectNonNull(p => p.GetDocument(id))
-            .FirstOrDefault();
+        var solution = workspace.CurrentSolution;
+        return solution.GetDocument(id) ?? solution.GetAdditionalDocument(id);
     }
 
     private IEnumerable<DocumentId> GetDocumentIds()
     {
-        return workspace.CurrentSolution.Projects.SelectMany(p => p.DocumentIds);
+        return workspace.CurrentSolution.Projects.SelectMany(p => p.DocumentIds.Concat(p.AdditionalDocumentIds));
     }
 
     private Project GetProject(bool configuration)

@@ -52,7 +52,7 @@ public static class RoslynWorkspaceAccessors
         }
     }
 
-    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this Document document, bool runAnalyzers)
+    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this TextDocument document, bool runAnalyzers)
     {
         var service = document.Project.Solution.Services.GetRequiredService<IDiagnosticAnalyzerService>();
         var text = await document.GetTextAsync();
