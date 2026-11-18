@@ -322,7 +322,7 @@ internal sealed class LanguageServices : ILanguageServices
             var time1 = sw.ElapsedMilliseconds;
             sw.Restart();
 
-            var converted = await ToCodeActionsAsync(result, document, cancellationToken);
+            var converted = await ToCodeActionsAsync(result, document, modelUris, cancellationToken);
 
             var json = JsonSerializer.Serialize(converted, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
 
@@ -340,7 +340,11 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    private async Task<ImmutableArray<MonacoCodeAction>> ToCodeActionsAsync(ImmutableArray<RoslynCodeAction> codeActions, Document sourceDocument, CancellationToken cancellationToken)
+    internal static async Task<ImmutableArray<MonacoCodeAction>> ToCodeActionsAsync(
+        ImmutableArray<RoslynCodeAction> codeActions,
+        Document sourceDocument,
+        ConditionalWeakTable<DocumentId, string> modelUris,
+        CancellationToken cancellationToken)
     {
         var solution = sourceDocument.Project.Solution;
         var textDiffService = solution.Services.GetDocumentTextDifferencingService();
@@ -354,6 +358,7 @@ internal sealed class LanguageServices : ILanguageServices
             var operations = await codeAction.GetOperationsAsync(solution, NullProgress<CodeAnalysisProgress>.Instance, cancellationToken);
 
             var edits = ImmutableArray.CreateBuilder<WorkspaceTextEdit>();
+            bool supported = true;
 
             foreach (var operation in operations)
             {
@@ -368,7 +373,20 @@ internal sealed class LanguageServices : ILanguageServices
                 var newSolution = await applyChangesOperation.ChangedSolution.WithMergedLinkedFileChangesAsync(solution, changes, cancellationToken);
                 changes = newSolution.GetChanges(solution);
 
-                var projectChanges = changes.GetProjectChanges();
+                var projectChanges = changes.GetProjectChanges().ToImmutableArray();
+
+                // Monaco can only edit existing models; never offer part of a multi-document action.
+                if (changes.GetAddedProjects().Any() || changes.GetRemovedProjects().Any() ||
+                    projectChanges.Any(static pc =>
+                        pc.GetAddedDocuments().Any() || pc.GetRemovedDocuments().Any() ||
+                        pc.GetAddedAdditionalDocuments().Any() || pc.GetRemovedAdditionalDocuments().Any() ||
+                        pc.GetChangedAdditionalDocuments().Any() ||
+                        pc.GetAddedAnalyzerConfigDocuments().Any() || pc.GetRemovedAnalyzerConfigDocuments().Any() ||
+                        pc.GetChangedAnalyzerConfigDocuments().Any()))
+                {
+                    supported = false;
+                    break;
+                }
 
                 foreach (var documentId in projectChanges.SelectMany(pc => pc.GetChangedDocuments()))
                 {
@@ -378,7 +396,8 @@ internal sealed class LanguageServices : ILanguageServices
                     if (oldDocument is null || newDocument is null ||
                         !modelUris.TryGetValue(newDocument.Id, out var newUri))
                     {
-                        continue;
+                        supported = false;
+                        break;
                     }
 
                     cancellationToken.ThrowIfCancellationRequested();
@@ -400,9 +419,14 @@ internal sealed class LanguageServices : ILanguageServices
                         });
                     }
                 }
+
+                if (!supported)
+                {
+                    break;
+                }
             }
 
-            if (edits.Count != 0)
+            if (supported && edits.Count != 0)
             {
                 result.Add(new()
                 {
