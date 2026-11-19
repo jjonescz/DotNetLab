@@ -1,6 +1,7 @@
 ﻿using AwesomeAssertions;
 using BlazorMonaco;
 using DotNetLab.Lab;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Text.Json;
@@ -879,10 +880,26 @@ public sealed class LanguageServiceTests
             markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
         }
 
+        var codeActions = await getCodeActionsAsync();
+        if (runAnalyzers)
+        {
+            var action = codeActions.Should().ContainSingle(a => a.Title.Contains("async/await", StringComparison.Ordinal)).Which;
+            Assert.IsNotNull(action.Edit);
+            action.Edit.Edits.Should().OnlyContain(edit => edit.ResourceUri == uri && edit.TextEdit.Text == "");
+            var text = SourceText.From(code);
+            action.Edit.Edits.Select(edit => text.ToString(edit.TextEdit.Range.ToSpan(text.Lines)).Trim())
+                .Should().BeEquivalentTo(["async", "await"]);
+        }
+        else
+        {
+            codeActions.Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
+        }
+
         var fixedCode = code.Replace("async ", "").Replace("await ", "");
         await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs") { NewContent = fixedCode }]);
         markers = await languageServices.GetDiagnosticsAsync(uri);
         markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        (await getCodeActionsAsync()).Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
 
         input = new CompilationInput(new(
             [new() { FileName = "test.cs", Text = code.Replace("#:package AsyncFixer@1.6.0", "") }]))
@@ -897,6 +914,13 @@ public sealed class LanguageServiceTests
         await languageServices.OnCompilationFinishedAsync();
         markers = await languageServices.GetDiagnosticsAsync(uri);
         markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        (await getCodeActionsAsync()).Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
+
+        async Task<ImmutableArray<MonacoCodeAction>> getCodeActionsAsync()
+        {
+            var json = await languageServices.ProvideCodeActionsAsync(uri, null, TestContext.CancellationToken);
+            return JsonSerializer.Deserialize(json!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
+        }
     }
 
     [TestMethod]
