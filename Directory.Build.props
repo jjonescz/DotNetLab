@@ -28,6 +28,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1573;1591;0419</NoWarn>
 
+    <!-- 
+      RS2008: Enable analyzer release tracking
+      Justification: Our analyzer is not for external use.
+    -->
+    <NoWarn>$(NoWarn);RS2008</NoWarn>
+
     <!--
       Cannot trim because we dynamically execute programs
       which might depend on methods unreferenced at compile time.

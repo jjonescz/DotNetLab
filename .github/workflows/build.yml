@@ -44,6 +44,8 @@ jobs:
       - name: Test
         if: ${{ always() && steps.build.outcome == 'success' }}
         run: dotnet test --project test/UnitTests --no-build --report-trx
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Check BOM changes
         if: always()
@@ -88,6 +90,8 @@ jobs:
 
       - name: Test Windows-built UnitTests on Linux
         run: dotnet windows-unit-tests/DotNetLab.UnitTests.dll --report-trx
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload logs
         if: always()

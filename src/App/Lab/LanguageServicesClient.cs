@@ -286,11 +286,11 @@ internal sealed class LanguageServicesClient(
         _ = UpdateDiagnosticsAsync(modelUri);
     }
 
-    public async Task<bool> OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output, string? activeModelUri)
+    public async Task<bool> OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, string? activeModelUri)
     {
         try
         {
-            await worker.OnCachedCompilationLoadedAsync(config, output);
+            await worker.OnCachedCompilationLoadedAsync(config, input, output);
         }
         catch (Exception ex)
         {

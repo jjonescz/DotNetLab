@@ -1,6 +1,7 @@
 ﻿using AwesomeAssertions;
 using BlazorMonaco;
 using DotNetLab.Lab;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
 using System.Text.Json;
@@ -61,6 +62,7 @@ public sealed class LanguageServiceTests
                     }
                     """,
             },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -146,6 +148,7 @@ public sealed class LanguageServiceTests
             var compilerDiagnosticData = compilerCache.GetDiagnosticsForFile(file,
                 configuration: file == CompiledAssembly.ConfigurationFileName);
             var compilerDiagnosticDataStrings = compilerDiagnosticData
+                .Where(static d => d.Data.Severity != DiagnosticDataSeverity.Hint)
                 .Select(static d => d.ToMarkerData().ToDisplayString())
                 .ToArray();
 
@@ -169,6 +172,7 @@ public sealed class LanguageServiceTests
                     """,
             },
             new() { FileName = "other.cs", Text = "using System.Linq;" },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]))
         {
             RazorToolchain = toolchain,
@@ -184,14 +188,12 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "Input.razor",
         [
-            "(1,2): hint CS8019: Unnecessary using directive.",
             "(2,11): warning CS0219: The variable 's' is assigned but its value is never used",
             "(2,15): warning CS8600: Converting null literal or possible null value to non-nullable type.",
         ]);
 
         await VerifyDiagnosticsAsync(languageServices, "other.cs",
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
             "(1,1): hint RemoveUnnecessaryImportsFixable: ",
         ]);
@@ -204,6 +206,7 @@ public sealed class LanguageServiceTests
         [
             new() { FileName = "A.cs", Text = "using System.Linq;" },
             new() { FileName = "Z.cs", Text = "string s = null;" },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]))
         {
             Configuration = "void F() { }",
@@ -221,7 +224,6 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "A.cs",
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
             "(1,1): hint RemoveUnnecessaryImportsFixable: ",
         ]);
@@ -273,8 +275,68 @@ public sealed class LanguageServiceTests
         ]);
     }
 
-    [TestMethod]
-    public async Task Diagnostics_Hidden()
+    /// <summary>
+    /// Even with <c>RunAnalyzers=false</c>, we want to run roslyn analyzers and fade unused code.
+    /// </summary>
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_BuiltInAnalyzerFading(bool runAnalyzers)
+    {
+        var code = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
+            using System.Linq;
+            class C
+            {
+                private void Unused() { }
+                public void M() { int unused; }
+            }
+            """;
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        if (!runAnalyzers)
+        {
+            var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+            initialMarkers.Should().Contain(m => m.GetCode() == "IDE0005");
+            initialMarkers.Should().Contain(m => m.GetCode() == "IDE0051");
+        }
+
+        await compiler.CompileAsync(input);
+        await languageServices.OnCompilationFinishedAsync();
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        foreach (var diagnosticId in new[] { "IDE0005", "IDE0051" })
+        {
+            var marker = markers.Should().ContainSingle(m => m.GetCode() == diagnosticId).Which;
+            marker.Severity.Should().Be(MarkerSeverity.Hint);
+            marker.Tags.Should().Contain(MarkerTag.Unnecessary);
+        }
+        markers.Should().Contain(m => m.GetCode() == "CS0168" && m.Severity == MarkerSeverity.Warning);
+        markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+        if (!runAnalyzers)
+        {
+            markers.Where(m => m.GetCode()?.StartsWith("IDE", StringComparison.Ordinal) == true)
+                .Should().OnlyContain(m => m.Severity == MarkerSeverity.Hint &&
+                    m.Tags != null && m.Tags.Contains(MarkerTag.Unnecessary));
+        }
+
+        var updatedInput = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = code.Replace("int unused;", "int unused; Unused(); _ = Enumerable.Empty<int>();"),
+            },
+        ]));
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(updatedInput));
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "IDE0005" || m.GetCode() == "IDE0051");
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_Hidden(bool runAnalyzers)
     {
         var input = new CompilationInput(new(
         [
@@ -285,6 +347,7 @@ public sealed class LanguageServiceTests
                     using System;
                     """,
             },
+            new() { FileName = "Options.cs", Text = $"#:property RunAnalyzers={runAnalyzers}" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -295,12 +358,15 @@ public sealed class LanguageServiceTests
         await compiler.CompileAsync(input);
         await languageServices.OnCompilationFinishedAsync();
 
-        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        string[] analyzerDiagnostics =
         [
-            "(1,1): hint CS8019: Unnecessary using directive.",
             "(1,1): hint IDE0005: Using directive is unnecessary.",
-            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
-        ]);
+            .. runAnalyzers ? ["(1,1): hint RemoveUnnecessaryImportsFixable: "] : Array.Empty<string>(),
+        ];
+        await VerifyDiagnosticsAsync(languageServices, "test.cs", analyzerDiagnostics);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await VerifyDiagnosticsAsync(languageServices, "test.cs", analyzerDiagnostics);
 
         // When we explicitly include hidden diagnostics, they should be upgraded to info so they show up in the editor.
         input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = true } };
@@ -310,8 +376,7 @@ public sealed class LanguageServiceTests
 
         await VerifyDiagnosticsAsync(languageServices, "test.cs",
         [
-            "(1,1): hint IDE0005: Using directive is unnecessary.",
-            "(1,1): hint RemoveUnnecessaryImportsFixable: ",
+            .. analyzerDiagnostics,
             "(1,1): info CS8019: Unnecessary using directive.",
         ]);
     }
@@ -332,6 +397,7 @@ public sealed class LanguageServiceTests
                     int i = o;
                     """,
             },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
         ]));
 
         var services = WorkerServices.CreateTest(TestContext);
@@ -459,6 +525,405 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Diagnostics_RunAnalyzers()
+    {
+        const string code = """
+            using System;
+            using System.Runtime.InteropServices;
+            using System.Text.RegularExpressions;
+
+            Console.Write(C.Pattern().IsMatch("a"));
+
+            partial class C
+            {
+                [GeneratedRegex("a")]
+                public static partial Regex Pattern();
+
+                [DllImport("not-loaded")]
+                public static extern void PInvoke();
+
+                public void M() { int unused; }
+            }
+            """;
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        foreach (var value in new string?[] { null, "true", "false", null })
+        {
+            var runAnalyzers = value == "true";
+            var input = new CompilationInput(new(
+            [
+                new() { FileName = "test.cs", Text = code },
+                new() { FileName = "Options.cs", Text = value is null ? "" : $"#:property RunAnalyzers={value}" },
+            ]));
+
+            await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+            if (value is null)
+            {
+                var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+                initialMarkers.Should().NotContain(m => m.GetCode() == "IDE0040");
+            }
+
+            var compiled = await compiler.CompileAsync(input);
+            compiled.NumErrors.Should().Be(0);
+            compiled.Diagnostics.Should().Contain(d => d.Id == "CS0168");
+            compiled.Diagnostics.Any(d => d.Id == "SYSLIB1054").Should().Be(runAnalyzers);
+            if (runAnalyzers)
+            {
+                compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should()
+                    .Contain("info SYSLIB1054:");
+            }
+            await languageServices.OnCompilationFinishedAsync();
+
+            var markers = await languageServices.GetDiagnosticsAsync(uri);
+            markers.Should().Contain(m => m.GetCode() == "CS0168");
+            markers.Any(m => m.GetCode() == "SYSLIB1054").Should().Be(runAnalyzers);
+            markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+            markers.Should().NotContain(m => m.GetCode() == "CS8795");
+
+            await languageServices.OnDidChangeWorkspaceAsync(
+                [new(uri, "test.cs") { NewContent = code + "\nclass Broken { void M() { int x = ; } }" }]);
+            markers = await languageServices.GetDiagnosticsAsync(uri);
+            markers.Should().Contain(m => m.GetCode() == "CS1525");
+        }
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_AdditionalFiles(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain)
+    {
+        const string bannedSymbols = "T:System.Console;Not allowed";
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:property RunAnalyzers=true
+                    #:package Microsoft.CodeAnalysis.BannedApiAnalyzers@5.6.0
+                    System.Console.WriteLine();
+                    """,
+            },
+            new() { FileName = "BannedSymbols.txt", Text = bannedSymbols },
+        ]))
+        {
+            RazorToolchain = toolchain,
+        };
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var models = ToModelInfos(input);
+        var sourceUri = models[0].Uri;
+        var additionalUri = models[1].Uri;
+
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        var compiled = await compiler.CompileAsync(input);
+        compiled.Diagnostics.Should().Contain(d => d.Id == "RS0030");
+        await languageServices.OnCompilationFinishedAsync();
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeModelContentAsync(sourceUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeModelContentAsync(additionalUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = bannedSymbols.Length, Text = "" }],
+        });
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeModelContentAsync(additionalUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = bannedSymbols }],
+        });
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "Ignored.txt")]);
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "BannedSymbols.txt")]);
+        await verifyAsync(banned: true);
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(sourceUri, "test.cs")]);
+        await verifyAsync(banned: false);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(sourceUri, "test.cs"), new(additionalUri, "BannedSymbols.txt") { NewContent = bannedSymbols }]);
+        await verifyAsync(banned: true);
+
+        async Task verifyAsync(bool banned)
+        {
+            var markers = await languageServices.GetDiagnosticsAsync(sourceUri);
+            markers.Count(m => m.GetCode() == "RS0030").Should().Be(banned ? 1 : 0);
+        }
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_RenameAdditionalFile()
+    {
+        const string uri = "test";
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.txt") { NewContent = "#error test" }]);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs")]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS1029");
+
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.txt")]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_CachedPackageInputWaitsForCompilation()
+    {
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = "using Humanizer;\nSystem.Console.Write(1.ToWords());" },
+            new() { FileName = "Packages.cs", Text = "#:package Humanizer.Core@2.14.1" },
+        ]));
+        var cacheServices = WorkerServices.CreateTest(TestContext);
+        var cachedOutput = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
+        Assert.AreEqual(0, cachedOutput.NumErrors);
+
+        var services = WorkerServices.CreateTest(TestContext, configureServices: collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var downloads = services.GetRequiredService<CountingNuGetDownloader>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error edited\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        var editedInput = new CompilationInput(new(
+        [
+            input.Inputs.Value[0] with { Text = "#error edited\n" + input.Inputs.Value[0].Text },
+            input.Inputs.Value[1],
+        ]));
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(editedInput));
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+        Assert.AreEqual(0, downloads.DownloadCount);
+
+        var compiled = await compiler.CompileAsync(editedInput);
+        await languageServices.OnCompilationFinishedAsync();
+        Assert.AreEqual(1, downloads.DownloadCount);
+        Assert.AreEqual(1, compiled.NumErrors);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "CS1029");
+        markers.Should().NotContain(m => m.GetCode() == "CS0246" || m.GetCode() == "CS1061");
+    }
+
+    [TestMethod]
+    [DataRow("// #:package Humanizer.Core@2.14.1\n#error expected")]
+    [DataRow("var text = \"#:package Humanizer.Core@2.14.1\";\n#error expected")]
+    public async Task Diagnostics_CachedPackageLikeTextDoesNotDefer(string code)
+    {
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var cachedOutput = await compiler.CompileAsync(input);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "CS1029");
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_CachedCompilationClearsPackageAnalyzers(bool invalidCachedInput)
+    {
+        const string code = """
+            using System.Threading.Tasks;
+            class C
+            {
+                public async Task<int> M()
+                {
+                    return await Task.FromResult(1);
+                }
+            }
+            """;
+        var cachedInput = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]));
+        var packageInput = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = "#:property RunAnalyzers=true\n#:package AsyncFixer@1.6.0\n" + code,
+            },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(cachedInput));
+        var cachedOutput = await compiler.CompileAsync(cachedInput);
+        await languageServices.OnCompilationFinishedAsync();
+        var initialActions = await getActionTitlesAsync();
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(packageInput));
+        await compiler.CompileAsync(packageInput);
+        await languageServices.OnCompilationFinishedAsync();
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "AsyncFixer01");
+        var packageActions = await getActionTitlesAsync();
+        packageActions.Should().Contain(title => !initialActions.Contains(title));
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(cachedInput));
+        // Malformed cached input forces directive parsing to throw.
+        var notificationInput = invalidCachedInput
+            ? new CompilationInput(new([new() { FileName = "test.cs", Text = null! }]))
+            : cachedInput;
+        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, notificationInput, cachedOutput);
+        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01" || m.GetCode() == "IDE0040");
+        (await getActionTitlesAsync()).Should().BeEquivalentTo(initialActions);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error edited\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01" || m.GetCode() == "IDE0040");
+        markers.Any(m => m.GetCode() == "CS1029").Should().Be(!invalidCachedInput);
+        (await getActionTitlesAsync()).Should().BeEquivalentTo(initialActions);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(packageInput));
+        await compiler.CompileAsync(packageInput);
+        await languageServices.OnCompilationFinishedAsync();
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().Contain(m => m.GetCode() == "AsyncFixer01");
+
+        async Task<string[]> getActionTitlesAsync()
+        {
+            var json = await languageServices.ProvideCodeActionsAsync(uri, null, TestContext.CancellationToken);
+            return JsonSerializer.Deserialize(json!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction)
+                .Select(action => action.Title).ToArray();
+        }
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_PackageAnalyzer(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool runAnalyzers)
+    {
+        var code = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
+            #:package AsyncFixer@1.6.0
+            using System.Threading.Tasks;
+            public class C
+            {
+                public async Task<int> M()
+                {
+                    return await Task.FromResult(1);
+                }
+            }
+            """;
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = code }]))
+        {
+            RazorToolchain = toolchain,
+        };
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        compiled.NumWarnings.Should().Be(runAnalyzers ? 1 : 0);
+        compiled.Diagnostics.Any(d => d.Id == "AsyncFixer01").Should().Be(runAnalyzers);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        if (runAnalyzers)
+        {
+            markers.Should().ContainSingle(m => m.GetCode() == "AsyncFixer01")
+                .Which.Severity.Should().Be(MarkerSeverity.Warning);
+        }
+        else
+        {
+            markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        }
+
+        var codeActions = await getCodeActionsAsync();
+        if (runAnalyzers)
+        {
+            var action = codeActions.Should().ContainSingle(a => a.Title.Contains("async/await", StringComparison.Ordinal)).Which;
+            Assert.IsNotNull(action.Edit);
+            action.Edit.Edits.Should().OnlyContain(edit => edit.ResourceUri == uri && edit.TextEdit.Text == "");
+            var text = SourceText.From(code);
+            action.Edit.Edits.Select(edit => text.ToString(edit.TextEdit.Range.ToSpan(text.Lines)).Trim())
+                .Should().BeEquivalentTo(["async", "await"]);
+        }
+        else
+        {
+            codeActions.Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
+        }
+
+        var fixedCode = code.Replace("async ", "").Replace("await ", "");
+        await languageServices.OnDidChangeWorkspaceAsync([new(uri, "test.cs") { NewContent = fixedCode }]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        (await getCodeActionsAsync()).Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
+
+        input = new CompilationInput(new(
+            [new() { FileName = "test.cs", Text = code.Replace("#:package AsyncFixer@1.6.0", "") }]))
+        {
+            RazorToolchain = toolchain,
+        };
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        compiled.NumWarnings.Should().Be(0);
+        compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text.Should().NotContain("AsyncFixer01");
+        await languageServices.OnCompilationFinishedAsync();
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01");
+        (await getCodeActionsAsync()).Should().NotContain(a => a.Title.Contains("async/await", StringComparison.Ordinal));
+
+        async Task<ImmutableArray<MonacoCodeAction>> getCodeActionsAsync()
+        {
+            var json = await languageServices.ProvideCodeActionsAsync(uri, null, TestContext.CancellationToken);
+            return JsonSerializer.Deserialize(json!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
+        }
+    }
+
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest(TestContext);
@@ -478,5 +943,20 @@ public sealed class LanguageServiceTests
 
         signatureHelp!.Signatures.Should().ContainSingle()
             .Which.Label.Should().Be("void C.M(int x)");
+    }
+
+    private sealed class CountingNuGetDownloader(INuGetDownloader inner) : INuGetDownloader
+    {
+        public int DownloadCount { get; private set; }
+
+        public Task<NuGetResults> DownloadAsync(
+            Set<NuGetDependency> dependencies,
+            string targetFramework,
+            bool loadForExecution,
+            Version? compilerRoslynVersion = null)
+        {
+            DownloadCount++;
+            return inner.DownloadAsync(dependencies, targetFramework, loadForExecution, compilerRoslynVersion);
+        }
     }
 }

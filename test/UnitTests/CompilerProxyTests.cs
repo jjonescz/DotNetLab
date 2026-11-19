@@ -429,6 +429,19 @@ public sealed class CompilerProxyTests
         Assert.IsNotNull(razorDiagnostics);
         Assert.Contains("RZ10012", razorDiagnostics);
         Assert.AreEqual(razorDiagnostics, declaration.GetRequiredOutput("TestComponent.razor", "razorErrors").Text);
+
+        foreach (var compiled in new[] { implementation, declaration })
+        {
+            var diagnostic = Assert.ContainsSingle(compiled
+                .GetDiagnosticsForFile("TestComponent.razor", configuration: false)
+                .Where(static d => d.Data.Id == "RZ10012"));
+            Assert.AreEqual("/TestComponent.razor", diagnostic.FilePath);
+            var marker = diagnostic.ToMarkerData();
+            Assert.AreEqual(1, marker.StartLineNumber);
+            Assert.AreEqual(1, marker.StartColumn);
+            Assert.AreEqual(1, marker.EndLineNumber);
+            Assert.AreEqual(21, marker.EndColumn);
+        }
     }
 
     [TestMethod]
@@ -1219,6 +1232,74 @@ public class C
         Assert.Contains("__builder.OpenComponent<FluentButton>", csText);
     }
 
+    [TestMethod, CombinatorialData]
+    public async Task Directives_Package_Suppressor(bool runAnalyzers)
+    {
+        var source = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
+            #:package Microsoft.Unity.Analyzers@1.28.0
+            public class C
+            {
+                [UnityEngine.SerializeField] private int serialized;
+                public int Read() => serialized;
+                public void M() { int unused; }
+            }
+            namespace UnityEngine
+            {
+                public sealed class SerializeField : System.Attribute { }
+            }
+            """;
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        TestContext.WriteLine(diagnostics);
+        Assert.AreEqual(0, compiled.NumErrors);
+        Assert.AreEqual(runAnalyzers ? 1 : 2, compiled.NumWarnings);
+        compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Warning)
+            .Select(d => d.Id).Should().BeEquivalentTo(runAnalyzers ? ["CS0168"] : new[] { "CS0168", "CS0649" });
+        Assert.IsNotNull(diagnostics);
+        Assert.AreEqual(!runAnalyzers, diagnostics.Contains("CS0649", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task Diagnostics_Analyzers_PreserveEmitErrors()
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = """
+                        #:property RunAnalyzers=true
+                        #:property DebugType=portable
+                        public class C;
+                        """,
+                },
+            ]))
+            {
+                Configuration = """
+                    using System.Linq;
+                    Config.CSharpCompilation(comp => comp.AddSyntaxTrees(
+                        CSharpSyntaxTree.ParseText("public class Added;",
+                            options: (CSharpParseOptions)comp.SyntaxTrees.First().Options,
+                            path: "/Added.cs")));
+                    """,
+            });
+
+        TestContext.WriteLine(compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        // error CS8055: Cannot emit debug information for a source text without encoding.
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Error));
+        Assert.AreEqual("CS8055", diagnostic.Id);
+        Assert.AreEqual("/Added.cs", diagnostic.FilePath);
+        Assert.AreEqual(1, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+    }
+
     [TestMethod]
     public async Task Directives_Package_Roslyn()
     {
@@ -1321,7 +1402,11 @@ public class C
 
         var compiler = services.GetRequiredService<CompilerProxy>();
 
-        var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+        var compiled = await compiler.CompileAsync(new(new(
+        [
+            new() { FileName = "Input.cs", Text = source },
+            new() { FileName = "Options.cs", Text = "#:property RunAnalyzers=true" },
+        ])));
 
         var diagnosticsText = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         Assert.IsNotNull(diagnosticsText);
