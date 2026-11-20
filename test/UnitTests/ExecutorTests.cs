@@ -11,6 +11,64 @@ public sealed class ExecutorTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod, CombinatorialData]
+    public async Task AnalyzerErrors_DoNotBlockRunAndRazorRendering(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool runAnalyzers,
+        bool analyzerError)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = $$"""
+                        #:property RunAnalyzers={{runAnalyzers}}
+                        #:package Microsoft.CodeAnalysis.BannedApiAnalyzers@5.6.0
+                        System.Console.Write("executed");
+                        """,
+                },
+                new() { FileName = "BannedSymbols.txt", Text = "T:System.Console;Not allowed" },
+                new() { FileName = "TestComponent.razor", Text = "<div>rendered</div>" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                Configuration = $$"""
+                    Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                        options.SpecificDiagnosticOptions.SetItem("RS0030", ReportDiagnostic.{{(analyzerError ? "Error" : "Warn")}})));
+                    """,
+            });
+
+        Assert.AreEqual(runAnalyzers && analyzerError ? 1 : 0, compiled.NumErrors);
+        Assert.AreEqual(runAnalyzers && !analyzerError ? 1 : 0, compiled.NumWarnings);
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnostics);
+        if (runAnalyzers)
+        {
+            Assert.Contains(analyzerError ? "error RS0030:" : "warning RS0030:", diagnostics);
+        }
+        else
+        {
+            Assert.AreEqual(string.Empty, diagnostics);
+        }
+
+        var run = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        var html = (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text;
+        TestContext.WriteLine(run);
+        TestContext.WriteLine(html);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            executed
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), run);
+        Assert.AreEqual("<div>rendered</div>", html);
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task AsyncMain(bool args)
     {
         var services = WorkerServices.CreateTest(TestContext);
