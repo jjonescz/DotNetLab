@@ -141,7 +141,7 @@ internal static class AnalyzerLoader
 
     private static Assembly GetOrLoadAssembly(AssemblyLoadContext alc, RefAssembly analyzer)
     {
-        if (!TryReadAssemblyVersion(analyzer.Bytes, out var incomingVersion))
+        if (!TryReadAssemblyIdentity(analyzer.Bytes, out var incomingVersion, out var incomingModuleVersionId))
         {
             throw new InvalidOperationException($"Analyzer '{analyzer.Name}' does not contain valid assembly metadata.");
         }
@@ -158,6 +158,13 @@ internal static class AnalyzerLoader
             sameName = loaded;
             if (loadedName.Version == incomingVersion)
             {
+                var loadedModuleVersionId = loaded.ManifestModule.ModuleVersionId;
+                if (loadedModuleVersionId != incomingModuleVersionId)
+                {
+                    throw new InvalidOperationException(
+                        $"Analyzer '{analyzer.Name}' has the same version ({incomingVersion}) but a different module identity ({incomingModuleVersionId}) than the already loaded assembly ({loadedModuleVersionId}).");
+                }
+
                 return loaded;
             }
         }
@@ -171,9 +178,10 @@ internal static class AnalyzerLoader
         return alc.LoadFromStream(new MemoryStream(ImmutableCollectionsMarshal.AsArray(analyzer.Bytes)!));
     }
 
-    private static bool TryReadAssemblyVersion(ImmutableArray<byte> bytes, out Version? version)
+    private static bool TryReadAssemblyIdentity(ImmutableArray<byte> bytes, out Version? version, out Guid moduleVersionId)
     {
         version = null;
+        moduleVersionId = default;
 
         if (bytes.IsDefaultOrEmpty)
         {
@@ -196,6 +204,7 @@ internal static class AnalyzerLoader
         }
 
         version = reader.GetAssemblyDefinition().Version;
+        moduleVersionId = reader.GetGuid(reader.GetModuleDefinition().Mvid);
         return true;
     }
 

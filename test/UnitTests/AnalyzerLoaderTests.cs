@@ -143,6 +143,50 @@ public sealed class AnalyzerLoaderTests
         }
     }
 
+    [TestMethod, CombinatorialData]
+    public void Load_SameNameAndVersionDifferentModule_ReportsFailure(bool alreadyLoaded)
+    {
+        const string source = """
+            using Microsoft.CodeAnalysis;
+
+            [Generator]
+            public class SampleGenerator : IIncrementalGenerator
+            {
+                public void Initialize(IncrementalGeneratorInitializationContext context) { }
+            }
+            """;
+        var references = ImmutableArray.Create(
+            MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location));
+        var originalBytes = Emit("SampleGenerator", source, references);
+        var changedBytes = Emit("SampleGenerator", source + "\npublic class AddedType;", references);
+        var original = ToRef("SampleGenerator", originalBytes);
+        var changed = ToRef("SampleGenerator", changedBytes);
+        var alc = new AssemblyLoadContext(nameof(Load_SameNameAndVersionDifferentModule_ReportsFailure), isCollectible: true);
+        try
+        {
+            if (alreadyLoaded)
+            {
+                using var stream = new MemoryStream(ImmutableCollectionsMarshal.AsArray(originalBytes)!);
+                alc.LoadFromStream(stream);
+            }
+
+            var reference = AnalyzerLoader.Load(alc, alreadyLoaded ? [changed] : [original, changed],
+                NullLogger.Instance, out var diagnostics);
+
+            diagnostics.Should().ContainSingle().Which.GetMessage().Should()
+                .Contain("SampleGenerator").And.Contain("same version").And.Contain("different module");
+            reference.GetGenerators(LanguageNames.CSharp).Should().HaveCount(alreadyLoaded ? 0 : 1);
+
+            reference = AnalyzerLoader.Load(alc, [original], NullLogger.Instance, out diagnostics);
+            diagnostics.Should().BeEmpty();
+            reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
+        }
+        finally
+        {
+            alc.Unload();
+        }
+    }
+
     [TestMethod]
     public void Load_DiscoversCSharpAnalyzersAndReportsConstructionFailures()
     {
