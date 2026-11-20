@@ -182,7 +182,9 @@ public static class CodeAnalysisUtil
             UnmappedStartColumn: unmappedLineSpan?.StartLinePosition.Character + 1,
             UnmappedEndLineNumber: unmappedLineSpan?.EndLinePosition.Line + 1,
             UnmappedEndColumn: unmappedLineSpan?.EndLinePosition.Character + 1,
-            Tags: DiagnosticTags.None
+            Tags: d.Descriptor.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary)
+                ? DiagnosticTags.Unnecessary
+                : DiagnosticTags.None
         );
     }
 }

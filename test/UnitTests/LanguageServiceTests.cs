@@ -837,6 +837,60 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_PackageAnalyzerFading(bool warning)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:property RunAnalyzers=true
+                    #:package Roslynator.Analyzers@4.14.1
+                    public class C
+                    {
+                        public bool M(bool value) { int unused; return value && true; }
+                    }
+                    """,
+            },
+        ]))
+        {
+            Configuration = $$"""
+                Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                    options.SpecificDiagnosticOptions.SetItem("RCS1033", ReportDiagnostic.{{(warning ? "Warn" : "Info")}})));
+                """,
+        };
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        var marker = markers.Should().ContainSingle(m => m.GetCode() == "RCS1033").Which;
+        marker.Severity.Should().Be(warning ? MarkerSeverity.Warning : MarkerSeverity.Info);
+        marker.Tags.Should().Contain(MarkerTag.Unnecessary);
+        compiled.Diagnostics.Should().ContainSingle(d => d.Id == "RCS1033")
+            .Which.Tags.Should().Be(DiagnosticTags.Unnecessary);
+        compiled.Diagnostics.Should().ContainSingle(d => d.Id == "CS0168")
+            .Which.Tags.Should().Be(DiagnosticTags.None);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        marker = markers.Should().ContainSingle(m => m.GetCode() == "RCS1033").Which;
+        marker.Severity.Should().Be(warning ? MarkerSeverity.Warning : MarkerSeverity.Hint);
+        marker.Tags.Should().Contain(MarkerTag.Unnecessary);
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_PackageAnalyzer(
         [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
         bool runAnalyzers)
