@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using AwesomeAssertions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
@@ -21,7 +22,7 @@ public sealed class AnalyzerLoaderTests
     }
 
     [TestMethod, CombinatorialData]
-    public void Load_HandlesGeneratorDependencies(bool includeDependency)
+    public void Load_HandlesGeneratorDependencies(bool includeDependency, bool runAnalyzers)
     {
         var helperBytes = Emit("Helper", """
             public class HelperType;
@@ -51,7 +52,7 @@ public sealed class AnalyzerLoaderTests
         var alc = new AssemblyLoadContext(nameof(Load_HandlesGeneratorDependencies), isCollectible: true);
         try
         {
-            var reference = AnalyzerLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+            var reference = AnalyzerLoader.Load(alc, analyzers, runAnalyzers, NullLogger.Instance, out var diagnostics);
 
             if (includeDependency)
             {
@@ -97,7 +98,7 @@ public sealed class AnalyzerLoaderTests
         try
         {
             var reference = AnalyzerLoader.Load(alc, [ToRef("GeneratorWithUnrelatedType", generatorBytes)],
-                NullLogger.Instance, out var diagnostics);
+                runAnalyzers: true, NullLogger.Instance, out var diagnostics);
 
             diagnostics.Should().BeEmpty();
             reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
@@ -132,7 +133,7 @@ public sealed class AnalyzerLoaderTests
         var alc = new AssemblyLoadContext(nameof(Load_SameNameAndVersion_InstantiatesGeneratorOnce), isCollectible: true);
         try
         {
-            var reference = AnalyzerLoader.Load(alc, analyzers, NullLogger.Instance, out var diagnostics);
+            var reference = AnalyzerLoader.Load(alc, analyzers, runAnalyzers: true, NullLogger.Instance, out var diagnostics);
 
             diagnostics.Should().BeEmpty();
             reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
@@ -171,13 +172,13 @@ public sealed class AnalyzerLoaderTests
             }
 
             var reference = AnalyzerLoader.Load(alc, alreadyLoaded ? [changed] : [original, changed],
-                NullLogger.Instance, out var diagnostics);
+                runAnalyzers: true, NullLogger.Instance, out var diagnostics);
 
             diagnostics.Should().ContainSingle().Which.GetMessage().Should()
                 .Contain("SampleGenerator").And.Contain("same version").And.Contain("different module");
             reference.GetGenerators(LanguageNames.CSharp).Should().HaveCount(alreadyLoaded ? 0 : 1);
 
-            reference = AnalyzerLoader.Load(alc, [original], NullLogger.Instance, out diagnostics);
+            reference = AnalyzerLoader.Load(alc, [original], runAnalyzers: true, NullLogger.Instance, out diagnostics);
             diagnostics.Should().BeEmpty();
             reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
         }
@@ -187,14 +188,22 @@ public sealed class AnalyzerLoaderTests
         }
     }
 
-    [TestMethod]
-    public void Load_DiscoversCSharpAnalyzersAndReportsConstructionFailures()
+    [TestMethod, CombinatorialData]
+    public void Load_DiscoversCSharpAnalyzersAndReportsConstructionFailures(bool runAnalyzers)
     {
         var bytes = Emit("SampleAnalyzers", """
             using System;
             using System.Collections.Immutable;
+            using System.Threading.Tasks;
             using Microsoft.CodeAnalysis;
+            using Microsoft.CodeAnalysis.CodeFixes;
             using Microsoft.CodeAnalysis.Diagnostics;
+
+            [Generator]
+            public sealed class SampleGenerator : IIncrementalGenerator
+            {
+                public void Initialize(IncrementalGeneratorInitializationContext context) { }
+            }
 
             [DiagnosticAnalyzer(LanguageNames.CSharp)]
             public class SampleAnalyzer : DiagnosticAnalyzer
@@ -214,22 +223,42 @@ public sealed class AnalyzerLoaderTests
             {
                 public BrokenAnalyzer() => throw new InvalidOperationException("Analyzer construction failed");
             }
+
+            [ExportCodeFixProvider(LanguageNames.CSharp)]
+            public sealed class BrokenFixer : CodeFixProvider
+            {
+                public BrokenFixer() => throw new InvalidOperationException("Fixer construction failed");
+                public override ImmutableArray<string> FixableDiagnosticIds => ["TEST001"];
+                public override Task RegisterCodeFixesAsync(CodeFixContext context) => Task.CompletedTask;
+            }
             """, extraRefs:
             [
                 MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(CodeFixProvider).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.Composition.ExportAttribute).Assembly.Location),
             ]);
 
         var alc = new AssemblyLoadContext(nameof(Load_DiscoversCSharpAnalyzersAndReportsConstructionFailures), isCollectible: true);
         try
         {
             var reference = AnalyzerLoader.Load(alc, [ToRef("SampleAnalyzers", bytes), ToRef("SampleAnalyzers", bytes)],
-                NullLogger.Instance, out var diagnostics);
+                runAnalyzers, NullLogger.Instance, out var diagnostics);
 
-            reference.GetAnalyzers(LanguageNames.CSharp).Should().ContainSingle()
-                .Which.GetType().Name.Should().Be("SampleAnalyzer");
+            reference.GetGenerators(LanguageNames.CSharp).Should().ContainSingle();
             reference.GetAnalyzers(LanguageNames.VisualBasic).Should().BeEmpty();
-            diagnostics.Should().ContainSingle().Which.GetMessage().Should()
-                .Contain("BrokenAnalyzer").And.Contain("Analyzer construction failed");
+            if (runAnalyzers)
+            {
+                reference.GetAnalyzers(LanguageNames.CSharp).Should().ContainSingle()
+                    .Which.GetType().Name.Should().Be("SampleAnalyzer");
+                diagnostics.Should().HaveCount(2);
+                diagnostics.Should().Contain(d => d.GetMessage().Contains("Analyzer construction failed", StringComparison.Ordinal));
+                diagnostics.Should().Contain(d => d.GetMessage().Contains("Fixer construction failed", StringComparison.Ordinal));
+            }
+            else
+            {
+                reference.GetAnalyzers(LanguageNames.CSharp).Should().BeEmpty();
+                diagnostics.Should().BeEmpty();
+            }
         }
         finally
         {

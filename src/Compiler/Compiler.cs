@@ -213,7 +213,7 @@ public sealed class Compiler(
             .RemoveAll(a => sdkNames.Contains(a.Name));
         
         var analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
-        analyzerReference = AnalyzerLoader.Load(alc, analyzerAssemblies, logger, out var analyzerLoadDiagnostics);
+        analyzerReference = AnalyzerLoader.Load(alc, analyzerAssemblies, runAnalyzers, logger, out var analyzerLoadDiagnostics);
         var packageGenerators = analyzerReference.GetGenerators(LanguageNames.CSharp);
         
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)

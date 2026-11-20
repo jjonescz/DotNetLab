@@ -39,6 +39,7 @@ internal static class AnalyzerLoader
     public static AnalyzerReference Load(
         AssemblyLoadContext alc,
         ImmutableArray<RefAssembly> analyzerAssemblies,
+        bool runAnalyzers,
         ILogger logger,
         out ImmutableArray<Diagnostic> diagnostics)
     {
@@ -80,7 +81,7 @@ internal static class AnalyzerLoader
 
         foreach (var (assembly, analyzer) in loaded)
         {
-            foreach (var type in GetLoadableTypes(assembly, analyzer, diagnosticBuilder, logger))
+            foreach (var type in GetLoadableTypes(assembly, analyzer, runAnalyzers, diagnosticBuilder, logger))
             {
                 if (type is not { IsClass: true, IsAbstract: false } ||
                     type.ContainsGenericParameters)
@@ -91,9 +92,9 @@ internal static class AnalyzerLoader
                 try
                 {
                     bool isGenerator = type.GetCustomAttribute<GeneratorAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
-                    bool isAnalyzer = type.IsSubclassOf(typeof(DiagnosticAnalyzer)) &&
+                    bool isAnalyzer = runAnalyzers && type.IsSubclassOf(typeof(DiagnosticAnalyzer)) &&
                         type.GetCustomAttribute<DiagnosticAnalyzerAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
-                    bool isCodeFix = type.IsSubclassOf(typeof(CodeFixProvider)) &&
+                    bool isCodeFix = runAnalyzers && type.IsSubclassOf(typeof(CodeFixProvider)) &&
                         type.GetCustomAttribute<ExportCodeFixProviderAttribute>()?.Languages.Contains(LanguageNames.CSharp) == true;
                     if (!isGenerator && !isAnalyzer && !isCodeFix)
                     {
@@ -209,7 +210,7 @@ internal static class AnalyzerLoader
     }
 
     private static IEnumerable<Type> GetLoadableTypes(
-        Assembly assembly, RefAssembly analyzer, ImmutableArray<Diagnostic>.Builder diagnostics, ILogger logger)
+        Assembly assembly, RefAssembly analyzer, bool runAnalyzers, ImmutableArray<Diagnostic>.Builder diagnostics, ILogger logger)
     {
         using var pe = new PEReader(analyzer.Bytes);
         var reader = pe.GetMetadataReader();
@@ -217,7 +218,7 @@ internal static class AnalyzerLoader
         {
             var definition = reader.GetTypeDefinition(handle);
             // Unrelated types may depend on missing assemblies or incompatible Roslyn APIs.
-            if (!definition.GetCustomAttributes().Any(h => IsExtensionAttribute(reader, h)))
+            if (!definition.GetCustomAttributes().Any(h => IsExtensionAttribute(reader, h, runAnalyzers)))
             {
                 continue;
             }
@@ -237,7 +238,7 @@ internal static class AnalyzerLoader
         }
     }
 
-    private static bool IsExtensionAttribute(MetadataReader reader, CustomAttributeHandle handle)
+    private static bool IsExtensionAttribute(MetadataReader reader, CustomAttributeHandle handle, bool runAnalyzers)
     {
         var attribute = reader.GetCustomAttribute(handle);
         if (attribute.Constructor.Kind != HandleKind.MemberReference)
@@ -252,9 +253,12 @@ internal static class AnalyzerLoader
         }
 
         var type = reader.GetTypeReference((TypeReferenceHandle)constructor.Parent);
-        return (reader.GetString(type.Namespace), reader.GetString(type.Name)) is
-            ("Microsoft.CodeAnalysis", nameof(GeneratorAttribute)) or
+        return (reader.GetString(type.Namespace), reader.GetString(type.Name)) switch
+        {
+            ("Microsoft.CodeAnalysis", nameof(GeneratorAttribute)) => true,
             ("Microsoft.CodeAnalysis.Diagnostics", nameof(DiagnosticAnalyzerAttribute)) or
-            ("Microsoft.CodeAnalysis.CodeFixes", nameof(ExportCodeFixProviderAttribute));
+            ("Microsoft.CodeAnalysis.CodeFixes", nameof(ExportCodeFixProviderAttribute)) => runAnalyzers,
+            _ => false,
+        };
     }
 }
