@@ -686,6 +686,70 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task CachedConfiguration_CompilerEditorFeatures(bool previousCompilation)
+    {
+        const string configuration = "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));";
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = "public class C;" }]))
+        {
+            Configuration = configuration,
+        };
+        using var cacheHandler = new MockHttpMessageHandler(TestContext);
+        var cacheServices = WorkerServices.CreateTest(TestContext, cacheHandler);
+        var cachedOutput = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
+        Assert.AreEqual(0, cachedOutput.NumErrors);
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler, collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        if (previousCompilation)
+        {
+            await compiler.CompileAsync(input);
+            await languageServices.OnCompilationFinishedAsync();
+        }
+
+        var uri = CompiledAssembly.GetInputModelUri(CompiledAssembly.ConfigurationFileName, guidOverride: uriGuidOverride);
+        await verifyEditorFeaturesAsync();
+
+        await languageServices.OnCachedCompilationLoadedAsync(
+            new() { Configuration = configuration }, input, cachedOutput);
+        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        await verifyEditorFeaturesAsync();
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = configuration.Length, RangeLength = 0, Text = " " }],
+        });
+        await verifyEditorFeaturesAsync();
+        Assert.AreEqual(0, services.GetRequiredService<CountingNuGetDownloader>().DownloadCount);
+
+        async Task verifyEditorFeaturesAsync()
+        {
+            var completionJson = await languageServices.ProvideCompletionItemsAsync(
+                uri, new() { LineNumber = 1, Column = "Config.".Length + 1 },
+                new() { TriggerKind = BlazorMonaco.Languages.CompletionTriggerKind.Invoke },
+                TestContext.CancellationToken);
+            var completions = JsonSerializer.Deserialize(completionJson, BlazorMonacoJsonContext.Default.MonacoCompletionList);
+            Assert.IsNotNull(completions);
+            completions.Suggestions.Should().Contain(item => item.Label == "CSharpCompilationOptions");
+
+            var positionJson = JsonSerializer.Serialize(new Position
+            {
+                LineNumber = 1,
+                Column = configuration.IndexOf("WithAllowUnsafe", StringComparison.Ordinal) + 1,
+            }, BlazorMonacoJsonContext.Default.Position);
+            var hover = await languageServices.ProvideHoverAsync(uri, positionJson, TestContext.CancellationToken);
+            Assert.IsNotNull(hover);
+            Assert.Contains("CSharpCompilationOptions", hover);
+            Assert.Contains("WithAllowUnsafe", hover);
+        }
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_CachedSdkAnalyzersAndGenerators(bool runAnalyzers, bool previousCompilation)
     {
         const string code = """

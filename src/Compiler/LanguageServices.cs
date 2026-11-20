@@ -615,6 +615,12 @@ internal sealed class LanguageServices : ILanguageServices
 
             // Modify the configuration project.
             UseCompilerAssemblies(result?.CompilerAssemblies);
+            if (result is null &&
+                GetProject(configuration: true).Documents.Any(document => modelUris.TryGetValue(document.Id, out var _)))
+            {
+                // Cached configuration still needs built-in compiler APIs for completion and hover.
+                UseCompilerAssemblies(await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync());
+            }
 
             // Modify the main project.
             {
