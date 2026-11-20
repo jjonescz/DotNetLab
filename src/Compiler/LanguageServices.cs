@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -38,6 +39,7 @@ internal sealed class LanguageServices : ILanguageServices
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
     private bool notFullyInitialized;
+    private bool runAnalyzers;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
@@ -555,13 +557,35 @@ internal sealed class LanguageServices : ILanguageServices
     public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output)
     {
         compilerDiagnostics = output;
+        bool cachedRunAnalyzers = false;
         // Cached package/configuration inputs require explicit compilation before live analysis.
         try
         {
-            notFullyInitialized = !CompilerConfiguration.Empty.Equals(config) ||
-                FileLevelDirectiveParser.Instance.Parse(input.Inputs.Value
-                    .Where(static source => source.FileName.IsCSharpFileName()))
-                    .Any(static directive => directive is FileLevelDirective.Package);
+            notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
+            if (!notFullyInitialized)
+            {
+                var directives = FileLevelDirectiveParser.Instance.Parse(input.Inputs.Value
+                    .Where(static source => source.FileName.IsCSharpFileName()));
+                notFullyInitialized = directives.Any(static directive => directive is FileLevelDirective.Package);
+                if (!notFullyInitialized)
+                {
+                    // Inspect only the local toggle; consuming other directives may trigger downloads.
+                    var analyzerDirective = directives.OfType<FileLevelDirective.Property>()
+                        .FirstOrDefault(static property => property.Info.Errors.Count == 0 &&
+                            property.Name.Span.Equals("RunAnalyzers", StringComparison.OrdinalIgnoreCase));
+                    if (analyzerDirective is not null)
+                    {
+                        if (MsbuildUtil.TryConvertStringToBool(analyzerDirective.Value.Span, out var value))
+                        {
+                            cachedRunAnalyzers = value ?? false;
+                        }
+                        else
+                        {
+                            logger.LogWarning("Cannot restore cached RunAnalyzers value '{Value}'.", analyzerDirective.Value);
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -570,7 +594,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         // Cached outputs contain no live state; discard the previous snippet's references.
-        return ApplyCompilationResultAsync(null);
+        return ApplyCompilationResultAsync(null, cachedRunAnalyzers);
     }
 
     public Task OnCompilationFinishedAsync()
@@ -581,12 +605,13 @@ internal sealed class LanguageServices : ILanguageServices
         return ApplyCompilationResultAsync(result);
     }
 
-    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result)
+    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result, bool cachedRunAnalyzers = false)
     {
         try
         {
             using var _ = await workspaceLock.LockAsync();
             compilationResult = result;
+            runAnalyzers = result?.RunAnalyzers ?? cachedRunAnalyzers;
 
             // Modify the configuration project.
             UseCompilerAssemblies(result?.CompilerAssemblies);
@@ -647,9 +672,24 @@ internal sealed class LanguageServices : ILanguageServices
                 }
 
                 var analyzerReferences = builtInAnalyzerReferences;
-                if (result is { AnalyzerReference: { } analyzerReference })
+                var analyzerReference = result?.AnalyzerReference;
+                if (result is null && !notFullyInitialized)
                 {
-                    if (!result.RunAnalyzers)
+                    // SDK extensions are embedded and do not require package restoration.
+                    var alc = AssemblyLoadContext.GetLoadContext(typeof(LanguageServices).Assembly)
+                        ?? AssemblyLoadContext.Default;
+                    analyzerReference = AnalyzerLoader.Load(alc, SdkAnalyzerAssemblies.All, runAnalyzers, logger,
+                        out var loadDiagnostics);
+                    if (!loadDiagnostics.IsEmpty)
+                    {
+                        notFullyInitialized = true;
+                        logger.LogWarning("Cannot restore SDK extensions for cached input. Deferring live diagnostics until explicit compilation.");
+                    }
+                }
+
+                if (analyzerReference is not null)
+                {
+                    if (!runAnalyzers)
                     {
                         analyzerReference = RoslynWorkspaceAccessors.CreateAnalyzerReference(
                             [], analyzerReference.GetGenerators(LanguageNames.CSharp), []);
@@ -871,7 +911,7 @@ internal sealed class LanguageServices : ILanguageServices
     {
         TextDocument? document = null;
         var ideDiagnostics = !notFullyInitialized && TryGetTextDocument(modelUri, out document)
-            ? await document.GetDiagnosticsAsync(runAnalyzers: compilationResult?.RunAnalyzers == true)
+            ? await document.GetDiagnosticsAsync(runAnalyzers)
             : [];
 
         IEnumerable<CompilerDiagnosticData> compilerDiagnostics;

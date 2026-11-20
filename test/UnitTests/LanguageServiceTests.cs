@@ -685,6 +685,67 @@ public sealed class LanguageServiceTests
         markers.Should().BeEmpty();
     }
 
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_CachedSdkAnalyzersAndGenerators(bool runAnalyzers, bool previousCompilation)
+    {
+        const string code = """
+            using System;
+            using System.Runtime.InteropServices;
+            using System.Text.RegularExpressions;
+
+            Console.Write(C.Pattern().IsMatch("a"));
+            partial class C
+            {
+                [GeneratedRegex("a")]
+                public static partial Regex Pattern();
+
+                [DllImport("not-loaded")]
+                public static extern void PInvoke();
+            }
+            """;
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = code },
+            new() { FileName = "Options.cs", Text = $"#:property RunAnalyzers={runAnalyzers}" },
+        ]));
+        var cacheServices = WorkerServices.CreateTest(TestContext);
+        var cachedOutput = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
+        Assert.AreEqual(0, cachedOutput.NumErrors);
+        var services = WorkerServices.CreateTest(TestContext, configureServices: collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var downloads = services.GetRequiredService<CountingNuGetDownloader>();
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        if (previousCompilation)
+        {
+            await compiler.CompileAsync(new(new(
+            [
+                new() { FileName = "Before.cs", Text = $"#:property RunAnalyzers={!runAnalyzers}\npublic class Before;" },
+            ])));
+            await languageServices.OnCompilationFinishedAsync();
+        }
+
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "CS8795");
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.Severity == MarkerSeverity.Error);
+        markers.Any(m => m.GetCode() == "SYSLIB1054").Should().Be(runAnalyzers);
+        markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+        Assert.AreEqual(0, downloads.DownloadCount);
+    }
+
     [TestMethod]
     public async Task Diagnostics_CachedPackageInputWaitsForCompilation()
     {
