@@ -47,6 +47,5 @@
   </ItemDefinitionGroup>
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />
-  <Import Project="..\..\eng\IndexHtmlGeneration.targets" />
 
 </Project>
