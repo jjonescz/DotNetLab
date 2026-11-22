@@ -70,17 +70,27 @@ public static class RoslynWorkspaceAccessors
                 DiagnosticKind.All,
                 CancellationToken.None);
 
+        // Generator diagnostics have no distinguishing tag, unlike compiler diagnostics.
+        var generatorDiagnostics = runAnalyzers
+            ? ImmutableHashSet<Microsoft.CodeAnalysis.Diagnostics.DiagnosticData>.Empty
+            : (await GeneratorDiagnosticsPlaceholderAnalyzer.Instance.AnalyzeSemanticsAsync(
+                document, tree: null, CancellationToken.None))
+                .Select(d => Microsoft.CodeAnalysis.Diagnostics.DiagnosticData.Create(d, document))
+                .ToImmutableHashSet();
+
         return diagnostics
             .Where(d => !d.IsSuppressed &&
                 (runAnalyzers ||
                  d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler) ||
+                 generatorDiagnostics.Contains(d) ||
                  d.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary)))
             .SelectAsArray(d =>
             {
                 var hasMappedLocation = d.DataLocation.MappedFileSpan != d.DataLocation.UnmappedFileSpan;
                 return new DiagnosticData(
                     FilePath: d.DataLocation.MappedFileSpan.Path,
-                    Severity: !runAnalyzers && !d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler)
+                    Severity: !runAnalyzers && !d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler) &&
+                        !generatorDiagnostics.Contains(d)
                         ? DiagnosticDataSeverity.Hint
                         : d.Severity switch
                     {

@@ -485,6 +485,71 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    [DataRow(false, "regex", "SYSLIB1042", MarkerSeverity.Error)]
+    [DataRow(true, "regex", "SYSLIB1042", MarkerSeverity.Error)]
+    [DataRow(false, "logging", "SYSLIB1015", MarkerSeverity.Warning)]
+    [DataRow(true, "logging", "SYSLIB1015", MarkerSeverity.Warning)]
+    public async Task Diagnostics_GeneratorResults(
+        bool runAnalyzers, string generator, string diagnosticId, MarkerSeverity expectedSeverity)
+    {
+        var code = generator == "regex"
+            ? """
+                using System.Text.RegularExpressions;
+                public partial class C
+                {
+                    [GeneratedRegex("[")]
+                    public static partial Regex Pattern();
+                }
+                """
+            : """
+                using Microsoft.Extensions.Logging;
+                public static partial class C
+                {
+                    [LoggerMessage(1, LogLevel.Information, "Hello")]
+                    public static partial void Log(ILogger logger, int extra);
+                }
+                """;
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = code },
+            new() { FileName = "Options.cs", Text = $"#:property RunAnalyzers={runAnalyzers}" },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        compiled.Diagnostics.Should().Contain(d => d.Id == diagnosticId);
+        await languageServices.OnCompilationFinishedAsync();
+        await verifyAsync();
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        await verifyAsync();
+
+        var fixedCode = generator == "regex"
+            ? code.Replace("[GeneratedRegex(\"[\")]", "[GeneratedRegex(\"a\")]")
+            : code.Replace("\"Hello\"", "\"Hello {extra}\"");
+        await languageServices.OnDidChangeWorkspaceAsync(
+        [
+            new(uri, "test.cs") { NewContent = fixedCode },
+            new(CompiledAssembly.GetInputModelUri("Options.cs", guidOverride: uriGuidOverride), "Options.cs"),
+        ]);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == diagnosticId);
+
+        async Task verifyAsync()
+        {
+            var markers = await languageServices.GetDiagnosticsAsync(uri);
+            var marker = markers.Should().ContainSingle(m => m.GetCode() == diagnosticId).Which;
+            Assert.AreEqual(expectedSeverity, marker.Severity);
+        }
+    }
+
+    [TestMethod]
     public async Task Diagnostics_BclSourceGenerator()
     {
         var input = new CompilationInput(new(
