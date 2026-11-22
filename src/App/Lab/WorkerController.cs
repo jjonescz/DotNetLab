@@ -572,9 +572,9 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool refresh)
+    public Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh)
     {
-        PostMessage(
+        return PostMessageAsync(
             new WorkerInputMessage.OnDidChangeWorkspace(models, refresh) { Id = messageId++ });
     }
 

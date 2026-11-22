@@ -252,7 +252,7 @@ internal sealed class LanguageServicesClient(
         }
 
         InvalidateCaches();
-        worker.OnDidChangeWorkspace(models, refresh);
+        await worker.OnDidChangeWorkspaceAsync(models, refresh);
 
         _ = UpdateDiagnosticsAsync(activeModelUri);
 
