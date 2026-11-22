@@ -591,6 +591,75 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_NonLocalAnalyzerResults(bool runAnalyzers)
+    {
+        var code = $$"""
+            #:property RunAnalyzers={{runAnalyzers}}
+            #:package Microsoft.CodeAnalysis.PublicApiAnalyzers@5.6.0
+            public class C { }
+            """;
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = code },
+            new() { FileName = "PublicAPI.Shipped.txt", Text = "C\nC.C() -> void\nC.M() -> void" },
+            new() { FileName = "PublicAPI.Unshipped.txt", Text = "" },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var models = ToModelInfos(input);
+        var sourceUri = models[0].Uri;
+        var apiUri = models[1].Uri;
+
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        var compiled = await compiler.CompileAsync(input);
+        Assert.AreEqual(0, compiled.NumErrors);
+        compiled.Diagnostics.Any(d => d.Id == "RS0017").Should().Be(runAnalyzers);
+        await languageServices.OnCompilationFinishedAsync();
+        await verifyAsync(missingApi: true);
+
+        await languageServices.OnDidChangeModelContentAsync(sourceUri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        await verifyAsync(missingApi: true);
+
+        await languageServices.OnDidChangeWorkspaceAsync(
+        [
+            new(sourceUri, "test.cs") { NewContent = code.Replace("class C { }", "class C { public void M() { } }") },
+            new(apiUri, "PublicAPI.Shipped.txt"),
+            new(models[2].Uri, "PublicAPI.Unshipped.txt"),
+        ]);
+        await verifyAsync(missingApi: false);
+
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        await verifyAsync(missingApi: true);
+        await languageServices.OnDidChangeModelContentAsync(apiUri, new()
+        {
+            Changes = [new() { RangeOffset = "C\nC.C() -> void".Length, RangeLength = "\nC.M() -> void".Length, Text = "" }],
+        });
+        await verifyAsync(missingApi: false);
+
+        async Task verifyAsync(bool missingApi)
+        {
+            var markers = await languageServices.GetDiagnosticsAsync(apiUri);
+            if (runAnalyzers && missingApi)
+            {
+                var marker = markers.Should().ContainSingle(m => m.GetCode() == "RS0017").Which;
+                Assert.AreEqual(MarkerSeverity.Warning, marker.Severity);
+                Assert.AreEqual(3, marker.StartLineNumber);
+                Assert.Contains("C.M()", marker.Message);
+            }
+            else
+            {
+                markers.Should().NotContain(m => m.GetCode() == "RS0017");
+            }
+            (await languageServices.GetDiagnosticsAsync(sourceUri)).Should()
+                .NotContain(m => m.GetCode() == "RS0017");
+        }
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_AdditionalFiles(
         [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain)
     {

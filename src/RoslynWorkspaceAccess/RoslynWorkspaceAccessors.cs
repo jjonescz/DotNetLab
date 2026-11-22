@@ -55,12 +55,21 @@ public static class RoslynWorkspaceAccessors
     public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this TextDocument document, bool runAnalyzers)
     {
         var service = document.Project.Solution.Services.GetRequiredService<IDiagnosticAnalyzerService>();
-        var text = await document.GetTextAsync();
-        var diagnostics = await service.GetDiagnosticsForSpanAsync(
-            document,
-            TextSpan.FromBounds(0, text.Length),
-            DiagnosticKind.All,
-            CancellationToken.None);
+
+        var diagnostics = runAnalyzers
+            ? await service.GetDiagnosticsForIdsAsync(
+                document.Project,
+                [document.Id],
+                diagnosticIds: null,
+                AnalyzerFilter.All,
+                includeLocalDocumentDiagnostics: true,
+                CancellationToken.None)
+            : await service.GetDiagnosticsForSpanAsync(
+                document,
+                range: null,
+                DiagnosticKind.All,
+                CancellationToken.None);
+
         return diagnostics
             .Where(d => !d.IsSuppressed &&
                 (runAnalyzers ||
