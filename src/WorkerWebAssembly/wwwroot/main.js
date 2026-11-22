@@ -27,6 +27,13 @@ const instance = await dotnet
             },
         },
     })
+    // The shared dotnet.js contains the UI application's library initializers,
+    // which require a document and are not valid inside a worker.
+    .withConfigLoaded((config) => {
+        config.resources.libraryInitializers = [];
+        config.resources.modulesAfterConfigLoaded = [];
+        config.resources.modulesAfterRuntimeReady = [];
+    })
     .withApplicationArguments(...args)
     .create();
 
@@ -56,7 +63,7 @@ instance.setModuleImports('worker-imports.js', {
 
 instance.setModuleImports('worker-interop.js', interop);
 
-await instance.runMainAndExit('DotNetLab.WorkerWebAssembly.wasm');
+await instance.runMainAndExit('DotNetLab.WorkerWebAssembly');
 
 /**
  * @param {MessagePort} port

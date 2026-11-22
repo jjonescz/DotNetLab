@@ -16,6 +16,7 @@
     <ArtifactsPath Condition="'$(FileBasedProgram)' != 'true'">$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <CustomAfterBlazorWebAssemblySdkTargets>$(MSBuildThisFileDirectory)eng\BlazorWasmIncrementalWorkaround.targets</CustomAfterBlazorWebAssemblySdkTargets>
+    <UseMonoRuntime>false</UseMonoRuntime>
 
     <CreateHardLinksForCopyFilesToOutputDirectoryIfPossible>true</CreateHardLinksForCopyFilesToOutputDirectoryIfPossible>
     <CreateHardLinksForCopyAdditionalFilesIfPossible>true</CreateHardLinksForCopyAdditionalFilesIfPossible>
