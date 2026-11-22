@@ -11,7 +11,6 @@
     <File Path="eng/build.sh" />
     <File Path="eng/index.template.html" />
     <File Path="eng/IndexHtmlGeneration.targets" />
-    <File Path="eng/PatchCoreLib.targets" />
     <Project Path="eng/BuildTools/BuildTools.csproj" />
     <Project Path="eng/Wap/Wap.wapproj" Type="c7167f0d-bc9f-4e6e-afe1-012c56b48db5" Id="128fb654-3ca2-4016-9544-353d2637ce88">
       <Deploy />
