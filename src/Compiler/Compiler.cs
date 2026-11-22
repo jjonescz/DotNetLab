@@ -865,6 +865,37 @@ public sealed class Compiler(
             ExtendedEmitOptions emitOptions,
             out ImmutableArray<Diagnostic> diagnostics)
         {
+            var options = compilation.Options;
+            var specificDiagnosticOptions = options.SpecificDiagnosticOptions;
+            foreach (var (id, severity) in specificDiagnosticOptions)
+            {
+                if (severity == ReportDiagnostic.Error)
+                {
+                    specificDiagnosticOptions = specificDiagnosticOptions.SetItem(id, ReportDiagnostic.Warn);
+                }
+            }
+
+            // Some compiler warnings are promoted even without explicit warning-as-error options.
+            var originalDiagnostics = compilation.GetDiagnostics();
+            foreach (var diagnostic in originalDiagnostics)
+            {
+                if (diagnostic.IsWarningAsError)
+                {
+                    specificDiagnosticOptions = specificDiagnosticOptions.SetItem(diagnostic.Id, ReportDiagnostic.Warn);
+                }
+            }
+
+            var emissionOptions = options
+                .WithGeneralDiagnosticOption(options.GeneralDiagnosticOption == ReportDiagnostic.Error
+                    ? ReportDiagnostic.Default : options.GeneralDiagnosticOption)
+                .WithSpecificDiagnosticOptions(specificDiagnosticOptions);
+            if (options.SyntaxTreeOptionsProvider is { } syntaxTreeOptions)
+            {
+                emissionOptions = emissionOptions.WithSyntaxTreeOptionsProvider(new EmissionSyntaxTreeOptionsProvider(syntaxTreeOptions));
+            }
+            var emissionCompilation = emissionOptions.Equals(options)
+                ? compilation : compilation.WithOptions(emissionOptions);
+
             var peStream = new MemoryStream();
             var pdbStream = emitOptions.CreatePdbStream ? new MemoryStream() : null;
 
@@ -872,13 +903,20 @@ public sealed class Compiler(
                 ? compilation.SyntaxTrees.Select(static t => EmbeddedText.FromSource(t.FilePath, t.GetText()))
                 : null;
 
-            var emitResult = compilation.Emit(
+            var emitResult = emissionCompilation.Emit(
                 peStream,
                 pdbStream,
                 options: emitOptions.EmitOptions,
                 embeddedTexts: embeddedTexts);
 
-            diagnostics = emitResult.Diagnostics;
+            // Diagnostic arguments can contain symbols belonging to their compilation.
+            diagnostics = ReferenceEquals(emissionCompilation, compilation)
+                ? emitResult.Diagnostics
+                : [
+                    .. originalDiagnostics,
+                    .. emitResult.Diagnostics.Except(emissionCompilation.GetDiagnostics())
+                        .Select(d => options.FilterDiagnosticInternal(d)).OfType<Diagnostic>(),
+                ];
 
             if (!emitResult.Success)
             {
@@ -1230,6 +1268,34 @@ public sealed class Compiler(
                 // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
                 KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
             ]);
+    }
+
+    private sealed class EmissionSyntaxTreeOptionsProvider(SyntaxTreeOptionsProvider inner) : SyntaxTreeOptionsProvider
+    {
+        public override GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken)
+            => inner.IsGenerated(tree, cancellationToken);
+
+        public override bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId,
+            CancellationToken cancellationToken, out ReportDiagnostic severity)
+        {
+            var found = inner.TryGetDiagnosticValue(tree, diagnosticId, cancellationToken, out severity);
+            if (severity == ReportDiagnostic.Error)
+            {
+                severity = ReportDiagnostic.Warn;
+            }
+            return found;
+        }
+
+        public override bool TryGetGlobalDiagnosticValue(string diagnosticId,
+            CancellationToken cancellationToken, out ReportDiagnostic severity)
+        {
+            var found = inner.TryGetGlobalDiagnosticValue(diagnosticId, cancellationToken, out severity);
+            if (severity == ReportDiagnostic.Error)
+            {
+                severity = ReportDiagnostic.Warn;
+            }
+            return found;
+        }
     }
 
     private static string FormatScriptReturnValue(object? value)

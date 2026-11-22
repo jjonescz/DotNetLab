@@ -1233,7 +1233,7 @@ public class C
     }
 
     [TestMethod, CombinatorialData]
-    public async Task Directives_Package_Suppressor(bool runAnalyzers)
+    public async Task Directives_Package_Suppressor(bool runAnalyzers, bool warningsAsErrors)
     {
         var source = $$"""
             #:property RunAnalyzers={{runAnalyzers}}
@@ -1249,22 +1249,103 @@ public class C
                 public sealed class SerializeField : System.Attribute { }
             }
             """;
-        var services = WorkerServices.CreateTest(TestContext);
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
         var compiled = await services.GetRequiredService<CompilerProxy>()
-            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }])));
+            .CompileAsync(new(new([new() { FileName = "Input.cs", Text = source }]))
+            {
+                Configuration = warningsAsErrors ? """
+                    Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                        options.SpecificDiagnosticOptions.SetItem("CS0649", ReportDiagnostic.Error)));
+                    """ : null,
+            });
 
         var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
         TestContext.WriteLine(diagnostics);
-        Assert.AreEqual(0, compiled.NumErrors);
-        Assert.AreEqual(runAnalyzers ? 1 : 2, compiled.NumWarnings);
+        Assert.AreEqual(!runAnalyzers && warningsAsErrors ? 1 : 0, compiled.NumErrors);
+        Assert.AreEqual(runAnalyzers || warningsAsErrors ? 1 : 2, compiled.NumWarnings);
         compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Warning)
-            .Select(d => d.Id).Should().BeEquivalentTo(runAnalyzers ? ["CS0168"] : new[] { "CS0168", "CS0649" });
+            .Select(d => d.Id).Should().BeEquivalentTo(runAnalyzers || warningsAsErrors ? ["CS0168"] : new[] { "CS0168", "CS0649" });
         Assert.IsNotNull(diagnostics);
         Assert.AreEqual(!runAnalyzers, diagnostics.Contains("CS0649", StringComparison.Ordinal));
+        Assert.Contains("Read", (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
     }
 
-    [TestMethod]
-    public async Task Diagnostics_Analyzers_PreserveEmitErrors()
+    [TestMethod, CombinatorialData]
+    public async Task SyntaxTreeWarningsAsErrors_DoNotBlockEmit(bool global)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = "public class C { public void M() { int unused; } }",
+                },
+            ]))
+            {
+                Configuration = $$"""
+                    using System.Threading;
+                    Config.CSharpCompilationOptions(options => options.WithSyntaxTreeOptionsProvider(new WarningOptions()));
+
+                    public sealed class WarningOptions : SyntaxTreeOptionsProvider
+                    {
+                        public override GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken)
+                            => GeneratedKind.Unknown;
+                        public override bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId,
+                            CancellationToken cancellationToken, out ReportDiagnostic severity)
+                        {
+                            severity = ReportDiagnostic.Error;
+                            return {{(!global).ToString().ToLowerInvariant()}} && diagnosticId == "CS0168";
+                        }
+                        public override bool TryGetGlobalDiagnosticValue(string diagnosticId,
+                            CancellationToken cancellationToken, out ReportDiagnostic severity)
+                        {
+                            severity = ReportDiagnostic.Error;
+                            return {{global.ToString().ToLowerInvariant()}} && diagnosticId == "CS0168";
+                        }
+                    }
+                    """,
+            });
+
+        Assert.AreEqual(1, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Error));
+        Assert.AreEqual("CS0168", diagnostic.Id);
+        Assert.Contains("void M (", (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task ImplicitWarningsAsErrors_DoNotBlockEmit(bool runAnalyzers)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = $$"""
+                        #:property RunAnalyzers={{runAnalyzers}}
+                        [System.Diagnostics.CodeAnalysis.Experimental("TEST001")]
+                        public class C;
+                        public class D { public C Read() => null!; }
+                        """,
+                },
+            ])));
+
+        TestContext.WriteLine(compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text);
+        Assert.AreEqual(1, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Error));
+        Assert.AreEqual("TEST001", diagnostic.Id);
+        Assert.Contains("Read", (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_Analyzers_PreserveEmitErrors(bool warningsAsErrors)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
@@ -1282,8 +1363,10 @@ public class C
                 },
             ]))
             {
-                Configuration = """
+                Configuration = $$"""
                     using System.Linq;
+                    Config.CSharpCompilationOptions(options => options.WithGeneralDiagnosticOption(
+                        ReportDiagnostic.{{(warningsAsErrors ? "Error" : "Default")}}));
                     Config.CSharpCompilation(comp => comp.AddSyntaxTrees(
                         CSharpSyntaxTree.ParseText("public class Added;",
                             options: (CSharpParseOptions)comp.SyntaxTrees.First().Options,
