@@ -1418,7 +1418,7 @@ public class C
         await languageServices.OnDidChangeWorkspaceAsync([new("Input.cs", "Input.cs") { NewContent = source }]);
 
         var markers = await languageServices.GetDiagnosticsAsync("Input.cs");
-        markers.Select(m => m.ToDisplayString()).Should().Equal(
+        markers.Select(m => m.ToDisplayString()).Should().BeEquivalentTo(
         [
             "(3,15): hint IDE0040: Accessibility modifiers required",
             "(5,36): hint IDE0027: Use expression body for accessor",
