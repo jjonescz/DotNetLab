@@ -395,6 +395,7 @@
     private bool canPasteUrlFromClipboard = true;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
+    private long inputRevision;
     private bool outputLoading;
     private OutputDisclaimer outputDisclaimer;
     private CompiledState? compiled;
@@ -987,12 +988,14 @@
         if (i == (int)SpecialInput.Configuration)
         {
             configuration = null;
+            MarkInputChanged();
         }
         else if (inputs.Count > 1)
         {
             using var _ = await inputsLock.LockAsync();
             var removedInput = inputs[i];
             inputs.RemoveAt(i);
+            MarkInputChanged();
             await removedInput.DisposeAsync();
         }
         else
@@ -1000,7 +1003,7 @@
             return;
         }
 
-        await OnWorkspaceChangedAsync();
+        await NotifyWorkspaceChangedAsync();
 
         await SaveStateToUrlAsync();
     }
@@ -1015,13 +1018,14 @@
             var newLanguage = GetLanguageForFileExtension(Path.GetExtension(newName));
 
             input.FileName = newName;
+            MarkInputChanged();
 
             if (oldLanguage != newLanguage)
             {
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, input.Model, newLanguage);
             }
 
-            await OnWorkspaceChangedAsync();
+            await NotifyWorkspaceChangedAsync();
         }
 
         await SaveStateToUrlAsync();
@@ -1628,20 +1632,25 @@
         return timestamp.ToString("MMM\u00A0d,\u00A0yyyy");
     }
 
-    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return false;
+        }
+
         // Load template with default preferences even if user's preferences differ.
         var preferencesDiffer = state.GetPreferences() != CompilationPreferences.Default;
         var stateWithoutPreferences = state.WithPreferences(CompilationPreferences.Default);
 
         if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput, revision: revision);
 
             // Mark as outdated if we loaded with different preferences.
             if (preferencesDiffer)
             {
-                inputChanged = DateTimeOffset.Now;
+                MarkInputChanged();
             }
 
             return true;
@@ -1650,12 +1659,22 @@
         return false;
     }
 
-    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput)
+    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         var result = await Cache.LoadAsync(state);
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput, revision: revision);
             StateHasChanged();
         }
         else if (updateOutput)
@@ -1666,8 +1685,13 @@
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
+    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
         {
@@ -1681,7 +1705,7 @@
         }
 
         var timestamp = DateTimeOffset.Now;
-        compiled = new()
+        var cachedState = new CompiledState()
         {
             Input = input,
             Output = output,
@@ -1690,6 +1714,7 @@
             End = timestamp,
             AutoLoadLazyOutputs = false,
         };
+        compiled = cachedState;
 
         if (updateOutput)
         {
@@ -1699,6 +1724,11 @@
         }
 
         StateHasChanged();
+
+        if (revision != inputRevision || !ReferenceEquals(compiled, cachedState))
+        {
+            return;
+        }
 
         if (!LanguageServices.Enabled ||
             !await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
@@ -1736,8 +1766,12 @@
     /// </summary>
     public Task OnWorkspaceChangedAsync(bool updateDiagnostics = true)
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
+        return NotifyWorkspaceChangedAsync(updateDiagnostics);
+    }
 
+    private Task NotifyWorkspaceChangedAsync(bool updateDiagnostics = true)
+    {
         if (!LanguageServices.Enabled)
         {
             return Task.CompletedTask;
@@ -1775,7 +1809,7 @@
 
     private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
         if (CurrentInput is { Model.Uri: var modelUri })
         {
             await LanguageServices.OnDidChangeModelContentAsync(modelUri, args);
@@ -1799,14 +1833,20 @@
 
     private Task ChangePreferencesAsync(Func<SavedState, SavedState> updater)
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
         return SaveStateToUrlAsync(updater, savePreferences: true);
     }
 
     public void OnSettingsInputChanged()
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
         StateHasChanged();
+    }
+
+    private long MarkInputChanged()
+    {
+        inputChanged = DateTimeOffset.Now;
+        return ++inputRevision;
     }
 
     private void OnWorkerFailed(string error)

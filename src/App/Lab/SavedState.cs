@@ -112,6 +112,7 @@ partial class Page
 
         // Now change page fields without awaits.
         Input[] oldInputs;
+        long revision;
         using (Util.EnsureSync())
         {
             oldInputs = inputs.ToArray();
@@ -123,6 +124,7 @@ partial class Page
             activeInputTabId = IndexToInputTabId(activeIndex);
             currentInput = selectInput;
             DisplayOutputType = savedState.SelectedOutputType;
+            revision = MarkInputChanged();
         }
 
         // Dispose old inputs.
@@ -131,8 +133,8 @@ partial class Page
             await input.DisposeAsync();
         }
 
-        await OnWorkspaceChangedAsync(updateDiagnostics: false);
-        if (LanguageServices.Enabled)
+        await NotifyWorkspaceChangedAsync(updateDiagnostics: false);
+        if (revision == inputRevision && LanguageServices.Enabled)
         {
             await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
                 cachedOutput: null, activeModelUri: selectInput?.Model.Uri);
@@ -144,10 +146,10 @@ partial class Page
         }
 
         // Try loading from cache.
-        if (!await TryLoadFromTemplateCacheAsync(state, updateOutput: false) &&
+        if (!await TryLoadFromTemplateCacheAsync(state, updateOutput: false, revision: revision) &&
             SettingsService.EnableCaching)
         {
-            _ = TryLoadFromCacheAsync(state, updateOutput: true);
+            _ = TryLoadFromCacheAsync(state, updateOutput: true, revision: revision);
         }
         else
         {
@@ -180,6 +182,7 @@ partial class Page
 
         using (Util.EnsureSync())
         {
+            var previousState = savedState;
             savedState = savedState with
             {
                 Inputs = inputsToSave,
@@ -189,6 +192,12 @@ partial class Page
             if (updater != null)
             {
                 savedState = updater(savedState);
+            }
+
+            if (!Equals(previousState.ToCompilationInput(), savedState.ToCompilationInput()) ||
+                previousState.GetCompilerConfiguration() != savedState.GetCompilerConfiguration())
+            {
+                MarkInputChanged();
             }
         }
 
