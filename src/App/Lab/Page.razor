@@ -1701,7 +1701,7 @@
         StateHasChanged();
 
         if (!LanguageServices.Enabled ||
-            !await LanguageServices.OnCachedCompilationLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
+            !await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
         {
             await DisplaySquigglesAsync();
         }
@@ -1734,7 +1734,7 @@
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="InputsAndConfiguration"/> change.
     /// </summary>
-    public Task OnWorkspaceChangedAsync()
+    public Task OnWorkspaceChangedAsync(bool updateDiagnostics = true)
     {
         inputChanged = DateTimeOffset.Now;
 
@@ -1751,7 +1751,7 @@
             })
             .ToImmutableArray();
         InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
-        return LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri);
+        return LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics ? CurrentInput?.Model.Uri : null);
     }
 
     /// <summary>

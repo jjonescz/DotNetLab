@@ -179,11 +179,11 @@ public sealed class WorkerExecutor(
         return NoOutput.Instance;
     }
 
-    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnCachedCompilationLoaded message)
+    public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnInputLoaded message)
     {
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
-        await languageServices.OnCachedCompilationLoadedAsync(message.Config, message.Input, message.Output);
+        await languageServices.OnInputLoadedAsync(message.Config, message.Input, message.CachedOutput);
         return NoOutput.Instance;
     }
 

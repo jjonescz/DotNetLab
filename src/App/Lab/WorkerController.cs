@@ -584,10 +584,10 @@ internal sealed class WorkerController : IAsyncDisposable
             new WorkerInputMessage.OnDidChangeModelContent(modelUri, args) { Id = messageId++ });
     }
 
-    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output)
+    public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput)
     {
         return PostMessageAsync(
-            new WorkerInputMessage.OnCachedCompilationLoaded(config, input, output) { Id = messageId++ });
+            new WorkerInputMessage.OnInputLoaded(config, input, cachedOutput) { Id = messageId++ });
     }
 
     public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)

@@ -38,7 +38,16 @@ internal sealed class LanguageServices : ILanguageServices
     private LiveCompilationResult? compilationResult;
     private ImmutableArray<MetadataReference> additionalConfigurationReferences;
     private ImmutableArray<DocumentId> additionalSourceDocuments;
+
+    /// <summary>
+    /// When true, skips live IDE diagnostic computation because the current input's compilation state is not available;
+    /// cached compilation diagnostics can still be displayed.
+    /// </summary>
+    /// <remarks>
+    /// Preserved through edits, and recomputed on input load or explicit compilation.
+    /// </remarks>
     private bool notFullyInitialized;
+
     private bool runAnalyzers;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
@@ -554,11 +563,14 @@ internal sealed class LanguageServices : ILanguageServices
         }
     }
 
-    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output)
+    /// <summary>
+    /// Initializes a newly loaded input independently of cached output availability, without restoring packages.
+    /// </summary>
+    public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput)
     {
-        compilerDiagnostics = output;
-        bool cachedRunAnalyzers = false;
-        // Cached package/configuration inputs require explicit compilation before live analysis.
+        compilerDiagnostics = cachedOutput;
+        bool inputRunAnalyzers = false;
+        // Package/configuration inputs require explicit compilation before live analysis.
         try
         {
             notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
@@ -577,11 +589,11 @@ internal sealed class LanguageServices : ILanguageServices
                     {
                         if (MsbuildUtil.TryConvertStringToBool(analyzerDirective.Value.Span, out var value))
                         {
-                            cachedRunAnalyzers = value ?? false;
+                            inputRunAnalyzers = value ?? false;
                         }
                         else
                         {
-                            logger.LogWarning("Cannot restore cached RunAnalyzers value '{Value}'.", analyzerDirective.Value);
+                            logger.LogWarning("Cannot read loaded input's RunAnalyzers value '{Value}'.", analyzerDirective.Value);
                         }
                     }
                 }
@@ -589,12 +601,12 @@ internal sealed class LanguageServices : ILanguageServices
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Cannot inspect cached input directives. Deferring live diagnostics until explicit compilation.");
+            logger.LogError(ex, "Cannot inspect loaded input directives. Deferring live diagnostics until explicit compilation.");
             notFullyInitialized = true;
         }
 
-        // Cached outputs contain no live state; discard the previous snippet's references.
-        return ApplyCompilationResultAsync(null, cachedRunAnalyzers);
+        // Loaded inputs contain no live state; discard the previous snippet's references.
+        return ApplyCompilationResultAsync(null, inputRunAnalyzers);
     }
 
     public Task OnCompilationFinishedAsync()
@@ -605,20 +617,20 @@ internal sealed class LanguageServices : ILanguageServices
         return ApplyCompilationResultAsync(result);
     }
 
-    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result, bool cachedRunAnalyzers = false)
+    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result, bool inputRunAnalyzers = false)
     {
         try
         {
             using var _ = await workspaceLock.LockAsync();
             compilationResult = result;
-            runAnalyzers = result?.RunAnalyzers ?? cachedRunAnalyzers;
+            runAnalyzers = result?.RunAnalyzers ?? inputRunAnalyzers;
 
             // Modify the configuration project.
             UseCompilerAssemblies(result?.CompilerAssemblies);
             if (result is null &&
                 GetProject(configuration: true).Documents.Any(document => modelUris.TryGetValue(document.Id, out var _)))
             {
-                // Cached configuration still needs built-in compiler APIs for completion and hover.
+                // Loaded configuration still needs built-in compiler APIs for completion and hover.
                 UseCompilerAssemblies(await compilerAssemblyLoader.LoadBuiltInCompilerAssembliesAsync());
             }
 
@@ -689,7 +701,7 @@ internal sealed class LanguageServices : ILanguageServices
                     if (!loadDiagnostics.IsEmpty)
                     {
                         notFullyInitialized = true;
-                        logger.LogWarning("Cannot restore SDK extensions for cached input. Deferring live diagnostics until explicit compilation.");
+                        logger.LogWarning("Cannot load SDK extensions for input. Deferring live diagnostics until explicit compilation.");
                     }
                 }
 

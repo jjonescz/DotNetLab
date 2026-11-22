@@ -131,7 +131,12 @@ partial class Page
             await input.DisposeAsync();
         }
 
-        await OnWorkspaceChangedAsync();
+        await OnWorkspaceChangedAsync(updateDiagnostics: false);
+        if (LanguageServices.Enabled)
+        {
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
+                cachedOutput: null, activeModelUri: selectInput?.Model.Uri);
+        }
 
         if (selectInput != null)
         {

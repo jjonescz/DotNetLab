@@ -686,6 +686,111 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_InputLoadWithoutCacheDefersDependencies(bool configuration)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = configuration ? "public class C;" : "using Humanizer;\nSystem.Console.Write(1.ToWords());",
+            },
+            new()
+            {
+                FileName = "Packages.cs",
+                Text = configuration ? "" : "#:package Humanizer.Core@2.14.1",
+            },
+        ]))
+        {
+            Configuration = configuration ? "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));" : null,
+        };
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler, collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnInputLoadedAsync(new() { Configuration = input.Configuration }, input, cachedOutput: null);
+        Assert.IsNull(languageServices.CompilerCache);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error deferred\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+        Assert.AreEqual(0, services.GetRequiredService<CountingNuGetDownloader>().DownloadCount);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_InputLoadRecomputesDeferral(bool configuration, bool replaceModels)
+    {
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = "public class C;" },
+            new()
+            {
+                FileName = "Packages.cs",
+                Text = configuration ? "" : "#:package Humanizer.Core@2.14.1",
+            },
+        ]))
+        {
+            Configuration = configuration ? "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));" : null,
+        };
+        using var cacheHandler = new MockHttpMessageHandler(TestContext);
+        var cacheServices = WorkerServices.CreateTest(TestContext, cacheHandler);
+        var cachedOutput = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
+        Assert.AreEqual(0, cachedOutput.NumErrors);
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler, collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var models = ToModelInfos(input);
+        var uri = models[0].Uri;
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        await languageServices.OnInputLoadedAsync(
+            new() { Configuration = input.Configuration }, input, cachedOutput);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error deferred\n" }],
+        });
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        var editedModels = models.SetItem(0, models[0] with { NewContent = "#error deferred\npublic class C;" });
+        var extraModel = new ModelInfo("extra", "Extra.cs") { NewContent = "public class Extra;" };
+        await languageServices.OnDidChangeWorkspaceAsync([.. editedModels, extraModel]);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+        await languageServices.OnDidChangeWorkspaceAsync(editedModels);
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().BeEmpty();
+
+        var nextUri = replaceModels ? CompiledAssembly.GetInputModelUri("test.cs", guidOverride: "next-snippet") : uri;
+        var nextInput = new CompilationInput(new([new() { FileName = "test.cs", Text = "#error next snippet" }]));
+        await languageServices.OnDidChangeWorkspaceAsync(
+            [new(nextUri, "test.cs") { NewContent = "#error next snippet" }]);
+        markers = await languageServices.GetDiagnosticsAsync(nextUri);
+        markers.Should().BeEmpty();
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, nextInput, cachedOutput: null);
+        Assert.IsNull(languageServices.CompilerCache);
+        markers = await languageServices.GetDiagnosticsAsync(nextUri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS1029");
+        Assert.AreEqual(0, services.GetRequiredService<CountingNuGetDownloader>().DownloadCount);
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task CachedConfiguration_CompilerEditorFeatures(bool previousCompilation)
     {
         const string configuration = "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));";
@@ -715,7 +820,7 @@ public sealed class LanguageServiceTests
         var uri = CompiledAssembly.GetInputModelUri(CompiledAssembly.ConfigurationFileName, guidOverride: uriGuidOverride);
         await verifyEditorFeaturesAsync();
 
-        await languageServices.OnCachedCompilationLoadedAsync(
+        await languageServices.OnInputLoadedAsync(
             new() { Configuration = configuration }, input, cachedOutput);
         Assert.AreSame(cachedOutput, languageServices.CompilerCache);
         await verifyEditorFeaturesAsync();
@@ -794,7 +899,7 @@ public sealed class LanguageServiceTests
 
         var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
-        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
         Assert.AreSame(cachedOutput, languageServices.CompilerCache);
         var markers = await languageServices.GetDiagnosticsAsync(uri);
         markers.Should().NotContain(m => m.GetCode() == "CS8795");
@@ -833,7 +938,7 @@ public sealed class LanguageServiceTests
         var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
-        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
         Assert.AreSame(cachedOutput, languageServices.CompilerCache);
         var markers = await languageServices.GetDiagnosticsAsync(uri);
         markers.Should().BeEmpty();
@@ -877,7 +982,7 @@ public sealed class LanguageServiceTests
         var cachedOutput = await compiler.CompileAsync(input);
 
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
-        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
         await languageServices.OnDidChangeModelContentAsync(uri, new()
         {
             Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
@@ -932,7 +1037,7 @@ public sealed class LanguageServiceTests
         var notificationInput = invalidCachedInput
             ? new CompilationInput(new([new() { FileName = "test.cs", Text = null! }]))
             : cachedInput;
-        await languageServices.OnCachedCompilationLoadedAsync(CompilerConfiguration.Empty, notificationInput, cachedOutput);
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, notificationInput, cachedOutput);
         Assert.AreSame(cachedOutput, languageServices.CompilerCache);
         markers = await languageServices.GetDiagnosticsAsync(uri);
         markers.Should().NotContain(m => m.GetCode() == "AsyncFixer01" || m.GetCode() == "IDE0040");

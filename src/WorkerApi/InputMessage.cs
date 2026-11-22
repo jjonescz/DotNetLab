@@ -192,7 +192,7 @@ public closed record WorkerInputMessage
         }
     }
 
-    public sealed record OnCachedCompilationLoaded(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly Output) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
+    public sealed record OnInputLoaded(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
     {
         public Task<NoOutput> HandleAsync(IExecutor executor)
         {
@@ -228,7 +228,7 @@ public closed record WorkerInputMessage
         Task<string?> HandleAsync(ProvideSignatureHelp message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);
-        Task<NoOutput> HandleAsync(OnCachedCompilationLoaded message);
+        Task<NoOutput> HandleAsync(OnInputLoaded message);
         Task<ImmutableArray<MarkerData>> HandleAsync(GetDiagnostics message);
     }
 }
