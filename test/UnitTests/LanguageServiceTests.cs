@@ -1,9 +1,12 @@
 ﻿using AwesomeAssertions;
 using BlazorMonaco;
 using DotNetLab.Lab;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace DotNetLab;
@@ -36,6 +39,97 @@ public sealed class LanguageServiceTests
 
         markers.Select(m => m.Code.ToString()).Should().ContainMatch($"*{expectedErrorCode}*");
         codeActions.Select(c => c.Title).Should().Contain(expectedCodeActionTitle);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task CodeActions_AdditionalFile(bool runAnalyzers)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = $$"""
+                    #:property RunAnalyzers={{runAnalyzers}}
+                    #:package Microsoft.CodeAnalysis.PublicApiAnalyzers@5.6.0
+                    public class C { public void M() { } }
+                    """,
+            },
+            new() { FileName = "PublicAPI.Shipped.txt", Text = "C\nC.C() -> void" },
+            new() { FileName = "PublicAPI.Unshipped.txt", Text = "" },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var models = ToModelInfos(input);
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        var compiled = await compiler.CompileAsync(input);
+        Assert.AreEqual(0, compiled.NumErrors);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var json = await languageServices.ProvideCodeActionsAsync(models[0].Uri, null, TestContext.CancellationToken);
+        var actions = JsonSerializer.Deserialize(json!, BlazorMonacoJsonContext.Default.ImmutableArrayMonacoCodeAction);
+        if (runAnalyzers)
+        {
+            var action = actions.Should().ContainSingle(a => a.Edit != null && a.Edit.Edits.Any(e =>
+                e.ResourceUri == models[2].Uri && e.TextEdit.Text.Contains("C.M() -> void", StringComparison.Ordinal))).Which;
+            var edit = Assert.ContainsSingle(action.Edit!.Edits);
+            Assert.AreEqual("C.M() -> void", edit.TextEdit.Text.Trim());
+            Assert.AreEqual(1, edit.TextEdit.Range.StartLineNumber);
+            Assert.AreEqual(1, edit.TextEdit.Range.StartColumn);
+            Assert.AreEqual(1, edit.TextEdit.Range.EndLineNumber);
+            Assert.AreEqual(1, edit.TextEdit.Range.EndColumn);
+        }
+        else
+        {
+            actions.Should().NotContain(a => a.Edit != null && a.Edit.Edits.Any(e => e.ResourceUri == models[2].Uri));
+        }
+    }
+
+    [TestMethod]
+    [DataRow("change", true)]
+    [DataRow("change", false)]
+    [DataRow("add", true)]
+    [DataRow("remove", true)]
+    public async Task CodeActions_AdditionalFileChangesAreAtomic(string change, bool mapped)
+    {
+        using var workspace = new AdhocWorkspace();
+        var source = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("test.cs", "public class C;");
+        var additional = source.Project.AddAdditionalDocument("PublicAPI.Unshipped.txt", SourceText.From("old"));
+        source = additional.Project.GetDocument(source.Id)!;
+        var changed = source.Project.Solution.WithDocumentText(source.Id, SourceText.From("public class D;"));
+        changed = change switch
+        {
+            "change" => changed.WithAdditionalDocumentText(additional.Id, SourceText.From("new")),
+            "add" => changed.AddAdditionalDocument(DocumentId.CreateNewId(source.Project.Id), "new.txt", SourceText.From("new")),
+            "remove" => changed.RemoveAdditionalDocument(additional.Id),
+            _ => throw new InvalidOperationException($"Unexpected change '{change}'."),
+        };
+        var models = new ConditionalWeakTable<DocumentId, string> { { source.Id, "source" } };
+        if (mapped)
+        {
+            models.Add(additional.Id, "additional");
+        }
+        var action = CodeAction.Create("Update files", _ => Task.FromResult(changed));
+
+        var actions = await LanguageServices.ToCodeActionsAsync([action], source, models, TestContext.CancellationToken);
+
+        if (change == "change" && mapped)
+        {
+            var edits = Assert.ContainsSingle(actions).Edit!.Edits;
+            Assert.HasCount(2, edits);
+            Assert.Contains("source", edits.Select(e => e.ResourceUri));
+            var edit = Assert.ContainsSingle(edits.Where(e => e.ResourceUri == "additional"));
+            Assert.AreEqual("new", edit.TextEdit.Text);
+            Assert.AreEqual(1, edit.TextEdit.Range.StartLineNumber);
+            Assert.AreEqual(1, edit.TextEdit.Range.StartColumn);
+            Assert.AreEqual(1, edit.TextEdit.Range.EndLineNumber);
+            Assert.AreEqual(4, edit.TextEdit.Range.EndColumn);
+        }
+        else
+        {
+            Assert.IsEmpty(actions);
+        }
     }
 
     /// <summary>

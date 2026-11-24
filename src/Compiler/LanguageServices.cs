@@ -391,7 +391,6 @@ internal sealed class LanguageServices : ILanguageServices
                     projectChanges.Any(static pc =>
                         pc.GetAddedDocuments().Any() || pc.GetRemovedDocuments().Any() ||
                         pc.GetAddedAdditionalDocuments().Any() || pc.GetRemovedAdditionalDocuments().Any() ||
-                        pc.GetChangedAdditionalDocuments().Any() ||
                         pc.GetAddedAnalyzerConfigDocuments().Any() || pc.GetRemovedAnalyzerConfigDocuments().Any() ||
                         pc.GetChangedAnalyzerConfigDocuments().Any()))
                 {
@@ -399,10 +398,11 @@ internal sealed class LanguageServices : ILanguageServices
                     break;
                 }
 
-                foreach (var documentId in projectChanges.SelectMany(pc => pc.GetChangedDocuments()))
+                foreach (var documentId in projectChanges.SelectMany(pc =>
+                    pc.GetChangedDocuments().Concat(pc.GetChangedAdditionalDocuments())))
                 {
-                    var newDocument = newSolution.GetDocument(documentId);
-                    var oldDocument = solution.GetDocument(documentId);
+                    TextDocument? newDocument = newSolution.GetDocument(documentId) ?? newSolution.GetAdditionalDocument(documentId);
+                    TextDocument? oldDocument = solution.GetDocument(documentId) ?? solution.GetAdditionalDocument(documentId);
 
                     if (oldDocument is null || newDocument is null ||
                         !modelUris.TryGetValue(newDocument.Id, out var newUri))
@@ -413,9 +413,10 @@ internal sealed class LanguageServices : ILanguageServices
 
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var textChanges = await textDiffService.GetTextChangesAsync(oldDocument, newDocument, cancellationToken);
-
                     var oldText = await oldDocument.GetTextAsync(cancellationToken);
+                    IEnumerable<TextChange> textChanges = oldDocument is Document oldSource && newDocument is Document newSource
+                        ? await textDiffService.GetTextChangesAsync(oldSource, newSource, cancellationToken)
+                        : (await newDocument.GetTextAsync(cancellationToken)).GetTextChanges(oldText);
 
                     foreach (var textChange in textChanges)
                     {
