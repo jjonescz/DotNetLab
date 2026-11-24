@@ -8,9 +8,28 @@ namespace DotNetLab;
 public sealed class WorkerExecutor(
     IServiceProvider services,
     ILogger<WorkerExecutor> logger)
-    : WorkerInputMessage.IExecutor
+    : WorkerInputMessage.IExecutor, IDisposable
 {
     private readonly Dictionary<int, CancellationTokenSource> cancellationTokenSources = [];
+    private readonly AsyncLock languageServiceStateLock = new();
+    private long inputLoadId;
+
+    public void Dispose()
+    {
+        languageServiceStateLock.Dispose();
+    }
+
+    private bool TryAcceptInputLoad(long loadId)
+    {
+        if (loadId < inputLoadId)
+        {
+            logger.LogDebug("Ignoring request for input load {LoadId}; current load is {CurrentLoadId}.", loadId, inputLoadId);
+            return false;
+        }
+
+        inputLoadId = loadId;
+        return true;
+    }
 
     private CancellationTokenSourceScope GetCancellationToken(WorkerInputMessage message, out CancellationToken cancellationToken)
     {
@@ -61,6 +80,12 @@ public sealed class WorkerExecutor(
         {
             try
             {
+                using var _ = await languageServiceStateLock.LockAsync();
+                if (!TryAcceptInputLoad(message.InputLoadId))
+                {
+                    return;
+                }
+
                 var languageServices = await compiler.GetLanguageServicesAsync();
                 await languageServices.OnCompilationFinishedAsync();
             }
@@ -165,6 +190,12 @@ public sealed class WorkerExecutor(
 
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnDidChangeWorkspace message)
     {
+        using var _ = await languageServiceStateLock.LockAsync();
+        if (!TryAcceptInputLoad(message.InputLoadId))
+        {
+            return NoOutput.Instance;
+        }
+
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync(message.Models, message.Refresh);
@@ -181,6 +212,12 @@ public sealed class WorkerExecutor(
 
     public async Task<NoOutput> HandleAsync(WorkerInputMessage.OnInputLoaded message)
     {
+        using var _ = await languageServiceStateLock.LockAsync();
+        if (!TryAcceptInputLoad(message.InputLoadId))
+        {
+            return NoOutput.Instance;
+        }
+
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnInputLoadedAsync(message.Config, message.Input, message.CachedOutput);

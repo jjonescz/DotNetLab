@@ -396,6 +396,8 @@
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
     private long inputRevision;
+    // Unlike inputRevision, this changes only when replacing the loaded snippet.
+    private long inputLoadId;
     private bool outputLoading;
     private OutputDisclaimer outputDisclaimer;
     private CompiledState? compiled;
@@ -1197,15 +1199,21 @@
         var startTime = DateTimeOffset.Now;
         var input = state.ToCompilationInput();
         var revision = inputRevision;
+        var loadId = inputLoadId;
         var languageServicesEnabled = LanguageServices.Enabled;
         if (!languageServicesEnabled)
         {
-            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, cachedOutput: null, activeModelUri: null);
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, cachedOutput: null, activeModelUri: null, inputLoadId: loadId);
         }
-        var output = await Worker.CompileAsync(input, languageServicesEnabled: languageServicesEnabled);
+        var output = await Worker.CompileAsync(input, languageServicesEnabled: languageServicesEnabled, inputLoadId: loadId);
+        if (loadId != inputLoadId)
+        {
+            compilationInProgress = false;
+            return;
+        }
         if (!languageServicesEnabled && LanguageServices.Enabled && revision == inputRevision)
         {
-            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, output, CurrentInput?.Model.Uri);
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, output, CurrentInput?.Model.Uri, loadId);
         }
 
         // Preserve cached output info for the same input.
@@ -1741,7 +1749,7 @@
             return;
         }
 
-        if (!await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
+        if (!await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri, inputLoadId))
         {
             await DisplaySquigglesAsync();
         }
@@ -1795,7 +1803,7 @@
             })
             .ToImmutableArray();
         InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
-        return LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics ? CurrentInput?.Model.Uri : null);
+        return LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics ? CurrentInput?.Model.Uri : null, inputLoadId: inputLoadId);
     }
 
     /// <summary>
@@ -1808,13 +1816,14 @@
             return;
         }
 
+        var loadId = inputLoadId;
         var models = await InputsAndConfiguration
             .SelectAsArrayAsync(static async t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName)
             {
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        await LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri, refresh: true);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri, refresh: true, inputLoadId: loadId);
     }
 
     private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)

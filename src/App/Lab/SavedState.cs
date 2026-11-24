@@ -113,6 +113,7 @@ partial class Page
         // Now change page fields without awaits.
         Input[] oldInputs;
         long revision;
+        long loadId;
         using (Util.EnsureSync())
         {
             oldInputs = inputs.ToArray();
@@ -125,6 +126,7 @@ partial class Page
             currentInput = selectInput;
             DisplayOutputType = savedState.SelectedOutputType;
             revision = MarkInputChanged();
+            loadId = ++inputLoadId;
         }
 
         // Dispose old inputs.
@@ -137,7 +139,7 @@ partial class Page
         if (revision == inputRevision)
         {
             await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
-                cachedOutput: null, activeModelUri: selectInput?.Model.Uri);
+                cachedOutput: null, activeModelUri: selectInput?.Model.Uri, inputLoadId: loadId);
         }
 
         if (selectInput != null)

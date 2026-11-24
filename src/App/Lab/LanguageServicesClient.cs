@@ -25,7 +25,7 @@ internal sealed class LanguageServicesClient(
     // Opening input can precede provider registration; replay it after workspace installation.
     private LoadedInput? pendingLoadedInput;
 
-    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput);
+    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput, long InputLoadId);
 
     public bool Enabled => completionProvider != null;
 
@@ -248,7 +248,7 @@ internal sealed class LanguageServicesClient(
         lastCodeActions = null;
     }
 
-    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, string? activeModelUri, bool refresh = false)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, string? activeModelUri, long inputLoadId, bool refresh = false)
     {
         if (!Enabled)
         {
@@ -257,11 +257,11 @@ internal sealed class LanguageServicesClient(
 
         var loadedInput = pendingLoadedInput;
         InvalidateCaches();
-        await worker.OnDidChangeWorkspaceAsync(models, refresh);
+        await worker.OnDidChangeWorkspaceAsync(models, refresh, inputLoadId);
 
         if (loadedInput is not null && ReferenceEquals(loadedInput, pendingLoadedInput))
         {
-            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, loadedInput.CachedOutput, activeModelUri);
+            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, loadedInput.CachedOutput, activeModelUri, loadedInput.InputLoadId);
         }
         else
         {
@@ -298,18 +298,18 @@ internal sealed class LanguageServicesClient(
         _ = UpdateDiagnosticsAsync(modelUri);
     }
 
-    public async Task<bool> OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, string? activeModelUri)
+    public async Task<bool> OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, string? activeModelUri, long inputLoadId)
     {
         if (!Enabled)
         {
-            pendingLoadedInput = new(config, input, cachedOutput);
+            pendingLoadedInput = new(config, input, cachedOutput, inputLoadId);
             return false;
         }
 
         pendingLoadedInput = null;
         try
         {
-            await worker.OnInputLoadedAsync(config, input, cachedOutput);
+            await worker.OnInputLoadedAsync(config, input, cachedOutput, inputLoadId);
         }
         catch (Exception ex)
         {
