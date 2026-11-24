@@ -473,6 +473,137 @@ public sealed class LanguageServiceTests
             .. analyzerDiagnostics,
             "(1,1): info CS8019: Unnecessary using directive.",
         ]);
+
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        var editedAnalyzerDiagnostics = analyzerDiagnostics.Select(d => d.Replace("(1,1)", "(2,1)")).ToArray();
+        await VerifyDiagnosticsAsync(languageServices, "test.cs",
+        [
+            .. editedAnalyzerDiagnostics,
+            "(2,1): info CS8019: Unnecessary using directive.",
+        ]);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = input.Inputs.Value[0].Text.Length + 1, RangeLength = 0, Text = "\nConsole.Write(1);" }],
+        });
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().NotContain(m => m.GetCode() == "CS8019" || m.GetCode() == "IDE0005");
+
+        input = input with { Preferences = input.Preferences with { IncludeHiddenDiagnostics = false } };
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await compiler.CompileAsync(input);
+        await languageServices.OnCompilationFinishedAsync();
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        await VerifyDiagnosticsAsync(languageServices, "test.cs", editedAnalyzerDiagnostics);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_HiddenRespectSuppressors(bool runAnalyzers)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = $$"""
+                    #:property RunAnalyzers={{runAnalyzers}}
+                    #:package Microsoft.Unity.Analyzers@1.28.0
+                    public class C
+                    {
+                        [UnityEngine.SerializeField] private int serialized;
+                        private int other;
+                        public int Read() => serialized + other;
+                    }
+                    namespace UnityEngine
+                    {
+                        public sealed class SerializeField : System.Attribute { }
+                    }
+                    """,
+            },
+        ]))
+        {
+            Configuration = """
+                Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                    options.SpecificDiagnosticOptions.SetItem("CS0649", ReportDiagnostic.Hidden)));
+                """,
+            Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = true },
+        };
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        Assert.AreEqual(0, compiled.NumErrors);
+        await languageServices.OnCompilationFinishedAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        var fieldMarkers = markers.Where(m => m.GetCode() == "CS0649").ToArray();
+        Assert.HasCount(runAnalyzers ? 1 : 2, fieldMarkers);
+        fieldMarkers.Should().OnlyContain(m => m.Severity == MarkerSeverity.Info);
+        fieldMarkers.Should().ContainSingle(m => m.Message.Contains("'C.other'", StringComparison.Ordinal));
+        fieldMarkers.Any(m => m.Message.Contains("'C.serialized'", StringComparison.Ordinal)).Should().Be(!runAnalyzers);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_HiddenAfterInputLoad(bool includeHidden, bool cached)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #line 100 "mapped.cs"
+                    using System;
+                    """,
+            },
+        ]))
+        {
+            Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
+        };
+        var cacheServices = WorkerServices.CreateTest(TestContext);
+        var cachedOutput = cached ? await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input) : null;
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+        Assert.AreEqual(includeHidden ? 1 : 0, initialMarkers.Count(m => m.GetCode() == "CS8019"));
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        var hiddenMarkers = markers.Where(m => m.GetCode() == "CS8019").ToArray();
+        if (includeHidden)
+        {
+            var marker = Assert.ContainsSingle(hiddenMarkers);
+            Assert.AreEqual(MarkerSeverity.Info, marker.Severity);
+            Assert.AreEqual(3, marker.StartLineNumber);
+            Assert.AreEqual(1, marker.StartColumn);
+            Assert.AreEqual(3, marker.EndLineNumber);
+            Assert.AreEqual(14, marker.EndColumn);
+        }
+        else
+        {
+            Assert.IsEmpty(hiddenMarkers);
+        }
     }
 
     [TestMethod]
@@ -914,7 +1045,7 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
-    public async Task Diagnostics_InputLoadWithoutCacheDefersDependencies(bool configuration)
+    public async Task Diagnostics_InputLoadWithoutCacheDefersDependencies(bool configuration, bool includeHidden)
     {
         var input = new CompilationInput(new(
         [
@@ -931,6 +1062,7 @@ public sealed class LanguageServiceTests
         ]))
         {
             Configuration = configuration ? "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));" : null,
+            Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
         };
         using var handler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, handler, collection =>

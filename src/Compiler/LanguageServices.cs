@@ -55,6 +55,7 @@ internal sealed class LanguageServices : ILanguageServices
     private bool notFullyInitialized;
 
     private bool runAnalyzers;
+    private bool includeHiddenDiagnostics;
     private OutputKind defaultOutputKind = Compiler.GetDefaultOutputKind([]);
 
     public LanguageServices(
@@ -582,6 +583,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         compilerDiagnostics = cachedOutput;
+        includeHiddenDiagnostics = input.Preferences.IncludeHiddenDiagnostics;
         try
         {
             notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
@@ -605,8 +607,10 @@ internal sealed class LanguageServices : ILanguageServices
 
     public Task OnCompilationFinishedAsync()
     {
-        var result = compiler.LastResult?.Output;
+        var lastCompilation = compiler.LastResult;
+        var result = lastCompilation?.Output;
         compilerDiagnostics = result?.CompiledAssembly;
+        includeHiddenDiagnostics = lastCompilation?.Input.Preferences.IncludeHiddenDiagnostics ?? false;
         notFullyInitialized = false;
         return ApplyCompilationResultAsync(result);
     }
@@ -934,6 +938,25 @@ internal sealed class LanguageServices : ILanguageServices
             compilerDiagnostics = compiled.GetDiagnosticsForFile(fileName,
                 configuration: document?.Project.Id == configurationProjectId)
                 .ExcludeHiddenDiagnostics();
+        }
+        else if (includeHiddenDiagnostics && document is Document sourceDocument)
+        {
+            // The IDE compiler analyzer excludes hidden diagnostics, so query the compiler directly.
+            var model = await sourceDocument.GetSemanticModelAsync()
+                ?? throw new InvalidOperationException($"Cannot obtain semantic model for '{sourceDocument.Name}'.");
+            var suppressors = sourceDocument.Project.AnalyzerReferences
+                .SelectMany(static reference => reference.GetAnalyzers(LanguageNames.CSharp))
+                .OfType<DiagnosticSuppressor>()
+                .ToImmutableArray<DiagnosticAnalyzer>();
+            var diagnostics = suppressors.IsEmpty
+                ? model.Compilation.GetDiagnostics()
+                : await model.Compilation.WithAnalyzers(suppressors, sourceDocument.Project.AnalyzerOptions)
+                    .GetAllDiagnosticsAsync();
+            compilerDiagnostics = diagnostics
+                .Where(d => d.Severity == DiagnosticSeverity.Hidden && !d.IsSuppressed &&
+                    d.Location.SourceTree == model.SyntaxTree)
+                .Select(static d => d.ToDiagnosticData(static _ => DiagnosticDataSeverity.Info))
+                .Select(static d => new CompilerDiagnosticData(d, Unmapped: d.UnmappedStartLineNumber.HasValue));
         }
         else
         {
