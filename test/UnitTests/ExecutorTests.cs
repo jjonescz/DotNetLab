@@ -123,7 +123,8 @@ public sealed class ExecutorTests
 
     [TestMethod, CombinatorialData]
     public async Task CompilerErrors_BlockRunAndRazorRendering(
-        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain)
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool includeHidden)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
         var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
@@ -134,6 +135,7 @@ public sealed class ExecutorTests
                 {
                     FileName = "Input.cs",
                     Text = """
+                        using System.Linq;
                         System.Console.MissingMethod();
                         public class C { public void M() { int unused; } }
                         """,
@@ -142,6 +144,7 @@ public sealed class ExecutorTests
             ]))
             {
                 RazorToolchain = toolchain,
+                Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
                 Configuration = """
                     Config.CSharpCompilationOptions(options => options.WithGeneralDiagnosticOption(ReportDiagnostic.Error));
                     """,
@@ -149,9 +152,14 @@ public sealed class ExecutorTests
 
         Assert.AreEqual(2, compiled.NumErrors);
         Assert.AreEqual(0, compiled.NumWarnings);
+        Assert.Contains("CS8019", compiled.Diagnostics.Select(d => d.Id));
         Assert.IsEmpty((await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
-        Assert.Contains("error CS0117:", (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text);
-        Assert.Contains("error CS0117:", (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text);
+        var run = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        var html = (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text;
+        Assert.Contains("error CS0117:", run);
+        Assert.Contains("error CS0117:", html);
+        Assert.DoesNotContain("CS8019", run);
+        Assert.DoesNotContain("CS8019", html);
     }
 
     [TestMethod, CombinatorialData]

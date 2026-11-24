@@ -940,7 +940,7 @@ public sealed class Compiler(
             if (emitStreams is null)
             {
                 error = "Cannot execute due to compilation errors:" + Environment.NewLine +
-                    diagnostics.JoinToString(Environment.NewLine);
+                    diagnostics.Where(static d => d.Severity != DiagnosticSeverity.Hidden).JoinToString(Environment.NewLine);
                 return false;
             }
 
