@@ -1222,9 +1222,10 @@ public sealed class LanguageServiceTests
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
         await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var expectedOutput = cachedOutput;
         if (previousCompilation)
         {
-            await compiler.CompileAsync(input);
+            expectedOutput = await compiler.CompileAsync(input);
             await languageServices.OnCompilationFinishedAsync();
         }
 
@@ -1233,7 +1234,7 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnInputLoadedAsync(
             new() { Configuration = configuration }, input, cachedOutput);
-        Assert.AreSame(cachedOutput, languageServices.CompilerCache);
+        Assert.AreSame(expectedOutput, languageServices.CompilerCache);
         await verifyEditorFeaturesAsync();
 
         await languageServices.OnDidChangeModelContentAsync(uri, new()
