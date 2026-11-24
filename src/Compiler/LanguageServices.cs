@@ -933,8 +933,7 @@ internal sealed class LanguageServices : ILanguageServices
         {
             compilerDiagnostics = compiled.GetDiagnosticsForFile(fileName,
                 configuration: document?.Project.Id == configurationProjectId)
-                // Match CompilerDiagnosticAnalyzer, which excludes hidden diagnostics from live IDE results.
-                .Where(static d => d.Data.Severity != DiagnosticDataSeverity.Hint);
+                .ExcludeHiddenDiagnostics();
         }
         else
         {
