@@ -709,6 +709,7 @@ public sealed class LanguageServiceTests
         var languageServices = await compiler.GetLanguageServicesAsync();
         var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
 
+        var previousRunAnalyzers = false;
         foreach (var value in new string?[] { null, "true", "false", null })
         {
             var runAnalyzers = value == "true";
@@ -719,11 +720,9 @@ public sealed class LanguageServiceTests
             ]));
 
             await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
-            if (value is null)
-            {
-                var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
-                initialMarkers.Should().NotContain(m => m.GetCode() == "IDE0040");
-            }
+            var initialMarkers = await languageServices.GetDiagnosticsAsync(uri);
+            initialMarkers.Any(m => m.GetCode() == "SYSLIB1054").Should().Be(previousRunAnalyzers);
+            initialMarkers.Any(m => m.GetCode() == "IDE0040").Should().Be(previousRunAnalyzers);
 
             var compiled = await compiler.CompileAsync(input);
             compiled.NumErrors.Should().Be(0);
@@ -735,6 +734,7 @@ public sealed class LanguageServiceTests
                     .Contain("info SYSLIB1054:");
             }
             await languageServices.OnCompilationFinishedAsync();
+            previousRunAnalyzers = runAnalyzers;
 
             var markers = await languageServices.GetDiagnosticsAsync(uri);
             markers.Should().Contain(m => m.GetCode() == "CS0168");
@@ -957,6 +957,57 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_LoadedPropertiesWaitForCompilation(
+        [CombinatorialValues("DefineConstants=FEATURE", "ImplicitUsings=enable", "TargetFramework=empty")] string property,
+        bool cached)
+    {
+        var code = property switch
+        {
+            "DefineConstants=FEATURE" => "#if !FEATURE\n#error FEATURE is not defined\n#endif\npublic class C;",
+            "ImplicitUsings=enable" => "Console.Write(1);",
+            "TargetFramework=empty" => "public class C;",
+            _ => throw new InvalidOperationException($"Unexpected property '{property}'."),
+        };
+        var source = new InputCode { FileName = "test.cs", Text = $"#:property {property}\n{code}" };
+        var input = new CompilationInput(new([source]));
+        var cacheServices = WorkerServices.CreateTest(TestContext);
+        var cachedOutput = cached ? await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input) : null;
+        if (cachedOutput is not null && property != "TargetFramework=empty")
+        {
+            Assert.AreEqual(0, cachedOutput.NumErrors);
+        }
+        var services = WorkerServices.CreateTest(TestContext, configureServices: collection =>
+        {
+            collection.AddScoped<CountingNuGetDownloader>(sp => new(sp.GetRequiredService<NuGetDownloaderPlugin>()));
+            collection.AddScoped<INuGetDownloader>(sp => sp.GetRequiredService<CountingNuGetDownloader>());
+        });
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        if (!cached || property != "TargetFramework=empty")
+        {
+            markers.Should().NotContain(m => m.Severity == MarkerSeverity.Error);
+        }
+
+        const string edit = "#error edited\n";
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = edit }],
+        });
+        Assert.IsEmpty(await languageServices.GetDiagnosticsAsync(uri));
+        Assert.AreEqual(0, services.GetRequiredService<CountingNuGetDownloader>().DownloadCount);
+
+        await compiler.CompileAsync(new(new([source with { Text = edit + source.Text }])));
+        await languageServices.OnCompilationFinishedAsync();
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS1029");
+        markers.Should().NotContain(m => m.GetCode() == "CS0103");
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_InputLoadRecomputesDeferral(bool configuration, bool replaceModels)
     {
         var input = new CompilationInput(new(
@@ -1083,7 +1134,8 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
-    public async Task Diagnostics_CachedSdkAnalyzersAndGenerators(bool runAnalyzers, bool previousCompilation)
+    public async Task Diagnostics_CachedSdkAnalyzersAndGenerators(
+        [CombinatorialValues("", "true", "false")] string analyzerSetting, bool previousCompilation)
     {
         const string code = """
             using System;
@@ -1103,7 +1155,7 @@ public sealed class LanguageServiceTests
         var input = new CompilationInput(new(
         [
             new() { FileName = "test.cs", Text = code },
-            new() { FileName = "Options.cs", Text = $"#:property RunAnalyzers={runAnalyzers}" },
+            new() { FileName = "Options.cs", Text = analyzerSetting.Length == 0 ? "" : $"#:property RunAnalyzers={analyzerSetting}" },
         ]));
         var cacheServices = WorkerServices.CreateTest(TestContext);
         var cachedOutput = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
@@ -1120,7 +1172,7 @@ public sealed class LanguageServiceTests
         {
             await compiler.CompileAsync(new(new(
             [
-                new() { FileName = "Before.cs", Text = $"#:property RunAnalyzers={!runAnalyzers}\npublic class Before;" },
+                new() { FileName = "Before.cs", Text = "#:property RunAnalyzers=true\npublic class Before;" },
             ])));
             await languageServices.OnCompilationFinishedAsync();
         }
@@ -1134,12 +1186,18 @@ public sealed class LanguageServiceTests
 
         await languageServices.OnDidChangeModelContentAsync(uri, new()
         {
-            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error edited\n" }],
         });
         markers = await languageServices.GetDiagnosticsAsync(uri);
-        markers.Should().NotContain(m => m.Severity == MarkerSeverity.Error);
-        markers.Any(m => m.GetCode() == "SYSLIB1054").Should().Be(runAnalyzers);
-        markers.Any(m => m.GetCode() == "IDE0040").Should().Be(runAnalyzers);
+        if (analyzerSetting.Length != 0)
+        {
+            Assert.IsEmpty(markers);
+        }
+        else
+        {
+            markers.Should().ContainSingle(m => m.GetCode() == "CS1029");
+            markers.Should().NotContain(m => m.GetCode() == "CS8795" || m.GetCode() == "SYSLIB1054" || m.GetCode() == "IDE0040");
+        }
         Assert.AreEqual(0, downloads.DownloadCount);
     }
 

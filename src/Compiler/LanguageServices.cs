@@ -44,7 +44,13 @@ internal sealed class LanguageServices : ILanguageServices
     /// cached compilation diagnostics can still be displayed.
     /// </summary>
     /// <remarks>
-    /// Preserved through edits, and recomputed on input load or explicit compilation.
+    /// Compilation options (the special <c>Configuration.cs</c> file, and file-level directives) are applied only on explicit compilation.
+    /// While editing, it is acceptable that language services use the last applied options until recompilation.
+    /// However, after input load/navigation, that would be confusing, so we use this flag to defer diagnostics if the loaded input needs unavailable state,
+    /// rather than report diagnostics using defaults or a previous input's state.
+    /// This is not a general "options changed" flag: it is preserved through edits and recomputed on load/compilation.
+    /// Only recompilation can restore packages or execute configuration code,
+    /// but in the future language services could react to simple directive changes.
     /// </remarks>
     private bool notFullyInitialized;
 
@@ -576,8 +582,6 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         compilerDiagnostics = cachedOutput;
-        bool inputRunAnalyzers = false;
-        // Package/configuration inputs require explicit compilation before live analysis.
         try
         {
             notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
@@ -585,25 +589,8 @@ internal sealed class LanguageServices : ILanguageServices
             {
                 var directives = FileLevelDirectiveParser.Instance.Parse(input.Inputs.Value
                     .Where(static source => source.FileName.IsCSharpFileName()));
-                notFullyInitialized = directives.Any(static directive => directive is FileLevelDirective.Package);
-                if (!notFullyInitialized)
-                {
-                    // Inspect only the local toggle; consuming other directives may trigger downloads.
-                    var analyzerDirective = directives.OfType<FileLevelDirective.Property>()
-                        .FirstOrDefault(static property => property.Info.Errors.Count == 0 &&
-                            property.Name.Span.Equals("RunAnalyzers", StringComparison.OrdinalIgnoreCase));
-                    if (analyzerDirective is not null)
-                    {
-                        if (MsbuildUtil.TryConvertStringToBool(analyzerDirective.Value.Span, out var value))
-                        {
-                            inputRunAnalyzers = value ?? false;
-                        }
-                        else
-                        {
-                            logger.LogWarning("Cannot read loaded input's RunAnalyzers value '{Value}'.", analyzerDirective.Value);
-                        }
-                    }
-                }
+                notFullyInitialized = directives.Any(static directive =>
+                    directive is FileLevelDirective.Package or FileLevelDirective.Property);
             }
         }
         catch (Exception ex)
@@ -613,7 +600,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         // Loaded inputs contain no live state; discard the previous snippet's references.
-        return ApplyCompilationResultAsync(null, inputRunAnalyzers);
+        return ApplyCompilationResultAsync(null);
     }
 
     public Task OnCompilationFinishedAsync()
@@ -624,13 +611,13 @@ internal sealed class LanguageServices : ILanguageServices
         return ApplyCompilationResultAsync(result);
     }
 
-    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result, bool inputRunAnalyzers = false)
+    private async Task ApplyCompilationResultAsync(LiveCompilationResult? result)
     {
         try
         {
             using var _ = await workspaceLock.LockAsync();
             compilationResult = result;
-            runAnalyzers = result?.RunAnalyzers ?? inputRunAnalyzers;
+            runAnalyzers = result?.RunAnalyzers ?? false;
 
             // Modify the configuration project.
             UseCompilerAssemblies(result?.CompilerAssemblies);
