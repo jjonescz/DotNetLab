@@ -134,7 +134,7 @@ partial class Page
         }
 
         await NotifyWorkspaceChangedAsync(updateDiagnostics: false);
-        if (revision == inputRevision && LanguageServices.Enabled)
+        if (revision == inputRevision)
         {
             await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
                 cachedOutput: null, activeModelUri: selectInput?.Model.Uri);

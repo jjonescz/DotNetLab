@@ -22,6 +22,10 @@ internal sealed class LanguageServicesClient(
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
     private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
+    // Opening input can precede provider registration; replay it after workspace installation.
+    private LoadedInput? pendingLoadedInput;
+
+    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput);
 
     public bool Enabled => completionProvider != null;
 
@@ -251,10 +255,18 @@ internal sealed class LanguageServicesClient(
             return;
         }
 
+        var loadedInput = pendingLoadedInput;
         InvalidateCaches();
         await worker.OnDidChangeWorkspaceAsync(models, refresh);
 
-        _ = UpdateDiagnosticsAsync(activeModelUri);
+        if (loadedInput is not null && ReferenceEquals(loadedInput, pendingLoadedInput))
+        {
+            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, loadedInput.CachedOutput, activeModelUri);
+        }
+        else
+        {
+            _ = UpdateDiagnosticsAsync(activeModelUri);
+        }
 
         if (refresh)
         {
@@ -288,6 +300,13 @@ internal sealed class LanguageServicesClient(
 
     public async Task<bool> OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, string? activeModelUri)
     {
+        if (!Enabled)
+        {
+            pendingLoadedInput = new(config, input, cachedOutput);
+            return false;
+        }
+
+        pendingLoadedInput = null;
         try
         {
             await worker.OnInputLoadedAsync(config, input, cachedOutput);

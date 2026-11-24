@@ -565,9 +565,15 @@ internal sealed class LanguageServices : ILanguageServices
 
     /// <summary>
     /// Initializes a newly loaded input independently of cached output availability, without restoring packages.
+    /// Reuses live state when this input has already been compiled.
     /// </summary>
     public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput)
     {
+        if (compiler.LastResult is { Input: var compiledInput } && Equals(compiledInput, input))
+        {
+            return OnCompilationFinishedAsync();
+        }
+
         compilerDiagnostics = cachedOutput;
         bool inputRunAnalyzers = false;
         // Package/configuration inputs require explicit compilation before live analysis.

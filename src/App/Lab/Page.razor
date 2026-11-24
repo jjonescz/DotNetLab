@@ -1196,7 +1196,17 @@
         // Compile.
         var startTime = DateTimeOffset.Now;
         var input = state.ToCompilationInput();
-        var output = await Worker.CompileAsync(input, languageServicesEnabled: LanguageServices.Enabled);
+        var revision = inputRevision;
+        var languageServicesEnabled = LanguageServices.Enabled;
+        if (!languageServicesEnabled)
+        {
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, cachedOutput: null, activeModelUri: null);
+        }
+        var output = await Worker.CompileAsync(input, languageServicesEnabled: languageServicesEnabled);
+        if (!languageServicesEnabled && LanguageServices.Enabled && revision == inputRevision)
+        {
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, output, CurrentInput?.Model.Uri);
+        }
 
         // Preserve cached output info for the same input.
         CompiledAssembly? cachedOutput;
@@ -1730,8 +1740,7 @@
             return;
         }
 
-        if (!LanguageServices.Enabled ||
-            !await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
+        if (!await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri))
         {
             await DisplaySquigglesAsync();
         }
