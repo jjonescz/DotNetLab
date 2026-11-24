@@ -909,14 +909,16 @@ public sealed class Compiler(
                 options: emitOptions.EmitOptions,
                 embeddedTexts: embeddedTexts);
 
-            // Diagnostic arguments can contain symbols belonging to their compilation.
-            diagnostics = ReferenceEquals(emissionCompilation, compilation)
-                ? emitResult.Diagnostics
-                : [
-                    .. originalDiagnostics,
-                    .. emitResult.Diagnostics.Except(emissionCompilation.GetDiagnostics())
-                        .Select(d => options.FilterDiagnosticInternal(d)).OfType<Diagnostic>(),
-                ];
+            // Emit can omit compiler diagnostics on failure, so append original diagnostics too.
+            // When deduplicating, compare within each compilation because diagnostic arguments can contain symbols belonging to that compilation.
+            diagnostics = [
+                .. originalDiagnostics,
+                .. emitResult.Diagnostics.
+                    Except(ReferenceEquals(emissionCompilation, compilation)
+                        ? originalDiagnostics
+                        : emissionCompilation.GetDiagnostics())
+                    .Select(options.FilterDiagnosticInternal).OfType<Diagnostic>(),
+            ];
 
             if (!emitResult.Success)
             {

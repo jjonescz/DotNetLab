@@ -1345,6 +1345,36 @@ public class C
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_HiddenWithCompilerErrors(bool runAnalyzers, bool includeHidden)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiled = await services.GetRequiredService<CompilerProxy>().CompileAsync(new(new(
+        [
+            new()
+            {
+                FileName = "Input.cs",
+                Text = $$"""
+                    #:property RunAnalyzers={{runAnalyzers}}
+                    using System.Linq;
+                    public class C { public void M() => Missing(); }
+                    """,
+            },
+        ]))
+        {
+            Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
+        });
+
+        Assert.AreEqual(1, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        var hidden = compiled.Diagnostics.Should().ContainSingle(d => d.Id == "CS8019").Which;
+        Assert.AreEqual(includeHidden ? DiagnosticDataSeverity.Info : DiagnosticDataSeverity.Hint, hidden.Severity);
+        var text = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(text);
+        Assert.AreEqual(includeHidden, text.Contains("CS8019", StringComparison.Ordinal));
+        Assert.IsEmpty((await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task Diagnostics_Analyzers_PreserveEmitErrors(bool warningsAsErrors)
     {
         using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
