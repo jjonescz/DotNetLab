@@ -25,7 +25,7 @@ internal sealed class LanguageServicesClient(
     // Opening input can precede provider registration; replay it after workspace installation.
     private LoadedInput? pendingLoadedInput;
 
-    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput, long InputLoadId);
+    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, long InputLoadId);
 
     public bool Enabled => completionProvider != null;
 
@@ -259,11 +259,13 @@ internal sealed class LanguageServicesClient(
         InvalidateCaches();
         await worker.OnDidChangeWorkspaceAsync(models, refresh, inputLoadId);
 
-        if (loadedInput is not null && ReferenceEquals(loadedInput, pendingLoadedInput))
+        if (loadedInput is not null && ReferenceEquals(loadedInput, pendingLoadedInput) &&
+            loadedInput.InputLoadId == inputLoadId)
         {
-            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, loadedInput.CachedOutput, activeModelUri, loadedInput.InputLoadId);
+            // Keep the loaded settings, but don't restore diagnostics that may predate disabled-time edits.
+            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, cachedOutput: null, activeModelUri, loadedInput.InputLoadId);
         }
-        else
+        else if (pendingLoadedInput is null)
         {
             _ = UpdateDiagnosticsAsync(activeModelUri);
         }
@@ -302,7 +304,7 @@ internal sealed class LanguageServicesClient(
     {
         if (!Enabled)
         {
-            pendingLoadedInput = new(config, input, cachedOutput, inputLoadId);
+            pendingLoadedInput = new(config, input, inputLoadId);
             return false;
         }
 
