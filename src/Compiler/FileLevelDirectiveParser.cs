@@ -159,6 +159,7 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
         public RazorLanguageVersion? RazorLanguageVersion { get; set; }
         public bool? Prefer32Bit { get; set; }
         public OptimizationLevel? OptimizationLevel { get; set; }
+        public bool RunAnalyzers { get; set; }
         public bool SawDefineConstants { get; set; }
         public bool ConsumedPackages { get; set; }
 
@@ -938,6 +939,9 @@ internal abstract class FileLevelDirective(FileLevelDirective.ParseInfo info)
                                 .WithIncludePrivateMembers(!b));
                         }
                     }),
+                CreateBool(
+                    "RunAnalyzers",
+                    static (context, result) => context.RunAnalyzers = result ?? false),
                 Create(
                     "RuntimeMetadataVersion",
                     static (context, info, value) =>

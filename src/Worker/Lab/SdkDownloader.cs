@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
@@ -81,8 +80,7 @@ internal sealed class SdkDownloader(
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorMessage = (await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.GitHubErrorResponse))?.Message
-                     ?? $"{(int)response.StatusCode}: {response.ReasonPhrase}";
+                var errorMessage = await GetGitHubErrorMessageAsync(response);
                 throw new InvalidOperationException($"Failed to get version details for .NET SDK version '{version}' ({commit.ShortHash}): {errorMessage}");
             }
 
@@ -102,7 +100,23 @@ internal sealed class SdkDownloader(
 
         async Task<SdkInfo?> tryGetInfoFromMonoRepoAsync(string version, CommitLink commit)
         {
-            var manifest = await TryGetMonoRepoSourceManifest(commit.Hash);
+            using var response = await GetMonoRepoSourceManifestResponseAsync(commit.Hash);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // The commit is not in dotnet/dotnet, fall back to dotnet/sdk.
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Do not fall back to dotnet/sdk for other errors (e.g., rate limiting)
+                // since that would just result in a misleading "not found" error.
+                var errorMessage = await GetGitHubErrorMessageAsync(response);
+                throw new InvalidOperationException($"Failed to get source manifest for .NET SDK version '{version}' ({commit.ShortHash}): {errorMessage}");
+            }
+
+            var manifest = await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.SourceManifest);
             if (manifest is null)
             {
                 return null;
@@ -181,15 +195,25 @@ internal sealed class SdkDownloader(
 
     private async Task<SourceManifest?> TryGetMonoRepoSourceManifest(string monoRepoCommitHash)
     {
-        using var response = await SendRawGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
+        using var response = await GetMonoRepoSourceManifestResponseAsync(monoRepoCommitHash);
 
         if (!response.IsSuccessStatusCode)
         {
             return null;
         }
 
-        using var stream = await response.Content.ReadAsStreamAsync();
         return await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.SourceManifest);
+    }
+
+    private Task<HttpResponseMessage> GetMonoRepoSourceManifestResponseAsync(string monoRepoCommitHash)
+    {
+        return SendRawGitHubRequestAsync($"https://api.github.com/repos/{monoRepoOwner}/{monoRepoName}/contents/{sourceManifestRelativePath}?ref={monoRepoCommitHash}");
+    }
+
+    private static async Task<string> GetGitHubErrorMessageAsync(HttpResponseMessage response)
+    {
+        return (await response.Content.TryReadFromJsonAsync(LabWorkerJsonContext.Default.GitHubErrorResponse))?.Message
+            ?? $"{(int)response.StatusCode}: {response.ReasonPhrase}";
     }
 
     private async Task<HttpResponseMessage> SendRawGitHubRequestAsync(string url)

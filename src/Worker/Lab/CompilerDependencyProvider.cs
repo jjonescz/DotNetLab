@@ -17,6 +17,19 @@ internal sealed class CompilerDependencyProvider(
 {
     private readonly Dictionary<CompilerKind, (CompilerDependencyUserInput UserInput, PackageDependency? Loaded)> loaded = new();
 
+    public CompilerConfiguration GetCompilerConfiguration()
+    {
+        var roslyn = loaded.GetValueOrDefault(CompilerKind.Roslyn).UserInput;
+        var razor = loaded.GetValueOrDefault(CompilerKind.Razor).UserInput;
+        return new()
+        {
+            RoslynVersion = roslyn?.Version,
+            RoslynConfiguration = roslyn?.Configuration ?? default,
+            RazorVersion = razor?.Version,
+            RazorConfiguration = razor?.Configuration ?? default,
+        };
+    }
+
     /// <returns>
     /// <see langword="null"/> if last load failed.
     /// </returns>

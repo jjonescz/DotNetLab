@@ -34,6 +34,11 @@ public static class RoslynAccessors
 
     extension(CSharpCompilationOptions options)
     {
+        public Diagnostic? FilterDiagnosticInternal(Diagnostic diagnostic)
+        {
+            return options.FilterDiagnostic(diagnostic, CancellationToken.None);
+        }
+
         public CSharpCompilationOptions WithIgnoreAccessibility()
         {
             return options.WithTopLevelBinderFlags(options.TopLevelBinderFlags | BinderFlags.IgnoreAccessibility);

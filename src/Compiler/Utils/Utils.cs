@@ -142,8 +142,10 @@ public static class CodeAnalysisUtil
         FileLinePositionSpan lineSpan;
         FileLinePositionSpan? unmappedLineSpan;
 
-        filePath = d.Location.SourceTree?.FilePath;
         lineSpan = d.Location.GetLineSpan();
+        filePath = d.Location.Kind == LocationKind.ExternalFile
+            ? lineSpan.Path
+            : d.Location.SourceTree?.FilePath;
 
         if (d.Location.GetMappedLineSpan() is { IsValid: true } mappedLineSpan &&
             mappedLineSpan != lineSpan)
@@ -180,7 +182,9 @@ public static class CodeAnalysisUtil
             UnmappedStartColumn: unmappedLineSpan?.StartLinePosition.Character + 1,
             UnmappedEndLineNumber: unmappedLineSpan?.EndLinePosition.Line + 1,
             UnmappedEndColumn: unmappedLineSpan?.EndLinePosition.Character + 1,
-            Tags: DiagnosticTags.None
+            Tags: d.Descriptor.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary)
+                ? DiagnosticTags.Unnecessary
+                : DiagnosticTags.None
         );
     }
 }

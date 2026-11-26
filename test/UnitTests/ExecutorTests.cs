@@ -11,6 +11,158 @@ public sealed class ExecutorTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod, CombinatorialData]
+    public async Task AnalyzerErrors_DoNotBlockRunAndRazorRendering(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool runAnalyzers,
+        bool analyzerError)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = $$"""
+                        #:property RunAnalyzers={{runAnalyzers}}
+                        #:package Microsoft.CodeAnalysis.BannedApiAnalyzers@5.6.0
+                        System.Console.Write("executed");
+                        """,
+                },
+                new() { FileName = "BannedSymbols.txt", Text = "T:System.Console;Not allowed" },
+                new() { FileName = "TestComponent.razor", Text = "<div>rendered</div>" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                Configuration = $$"""
+                    Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                        options.SpecificDiagnosticOptions.SetItem("RS0030", ReportDiagnostic.{{(analyzerError ? "Error" : "Warn")}})));
+                    """,
+            });
+
+        Assert.AreEqual(runAnalyzers && analyzerError ? 1 : 0, compiled.NumErrors);
+        Assert.AreEqual(runAnalyzers && !analyzerError ? 1 : 0, compiled.NumWarnings);
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnostics);
+        if (runAnalyzers)
+        {
+            Assert.Contains(analyzerError ? "error RS0030:" : "warning RS0030:", diagnostics);
+        }
+        else
+        {
+            Assert.AreEqual(string.Empty, diagnostics);
+        }
+
+        var run = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        var html = (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text;
+        TestContext.WriteLine(run);
+        TestContext.WriteLine(html);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            executed
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), run);
+        Assert.AreEqual("<div>rendered</div>", html);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task WarningsAsErrors_DoNotBlockRunAndRazorRendering(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool specific)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = """
+                        System.Console.Write("executed");
+                        public class C
+                        {
+                            #pragma warning disable CS0169
+                            private int unusedField;
+                            public void M() { int unused; }
+                        }
+                        """,
+                },
+                new() { FileName = "TestComponent.razor", Text = "<div>rendered</div>" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                Configuration = specific ? """
+                    Config.CSharpCompilationOptions(options => options.WithSpecificDiagnosticOptions(
+                        options.SpecificDiagnosticOptions.SetItem("CS0168", ReportDiagnostic.Error)));
+                    """ : """
+                    Config.CSharpCompilationOptions(options => options.WithGeneralDiagnosticOption(ReportDiagnostic.Error));
+                    """,
+            });
+
+        Assert.AreEqual(1, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        var diagnostic = Assert.ContainsSingle(compiled.Diagnostics.Where(d => d.Severity == DiagnosticDataSeverity.Error));
+        Assert.AreEqual("CS0168", diagnostic.Id);
+        var diagnostics = compiled.GetRequiredGlobalOutput(CompiledAssembly.DiagnosticsOutputType).Text;
+        Assert.IsNotNull(diagnostics);
+        Assert.Contains("error CS0168:", diagnostics);
+        Assert.Contains("void M (", (await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
+        Assert.AreEqual("""
+            Exit code: 0
+            Stdout:
+            executed
+            Stderr:
+
+            """.ReplaceLineEndings("\n"), (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text);
+        Assert.AreEqual("<div>rendered</div>", (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text);
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task CompilerErrors_BlockRunAndRazorRendering(
+        [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,
+        bool includeHidden)
+    {
+        using var httpMessageHandler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, httpMessageHandler);
+        var compiled = await services.GetRequiredService<CompilerProxy>()
+            .CompileAsync(new(new(
+            [
+                new()
+                {
+                    FileName = "Input.cs",
+                    Text = """
+                        using System.Linq;
+                        System.Console.MissingMethod();
+                        public class C { public void M() { int unused; } }
+                        """,
+                },
+                new() { FileName = "TestComponent.razor", Text = "<div>rendered</div>" },
+            ]))
+            {
+                RazorToolchain = toolchain,
+                Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
+                Configuration = """
+                    Config.CSharpCompilationOptions(options => options.WithGeneralDiagnosticOption(ReportDiagnostic.Error));
+                    """,
+            });
+
+        Assert.AreEqual(2, compiled.NumErrors);
+        Assert.AreEqual(0, compiled.NumWarnings);
+        Assert.Contains("CS8019", compiled.Diagnostics.Select(d => d.Id));
+        Assert.IsEmpty((await compiled.GetRequiredGlobalOutput("il").LoadAsync()).Text);
+        var run = (await compiled.GetRequiredGlobalOutput("run").LoadAsync()).Text;
+        var html = (await compiled.GetRequiredOutput("TestComponent.razor", "html").LoadAsync()).Text;
+        Assert.Contains("error CS0117:", run);
+        Assert.Contains("error CS0117:", html);
+        Assert.DoesNotContain("CS8019", run);
+        Assert.DoesNotContain("CS8019", html);
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task AsyncMain(bool args)
     {
         var services = WorkerServices.CreateTest(TestContext);
