@@ -23,6 +23,7 @@ internal sealed partial class SettingsService : INotifyPropertyChanged
         EnableWorker = true;
         EnableCaching = true;
         AutoCompileOnStart = true;
+        DisplayHintSquiggles = true;
         CompilationPreferences = CompilationPreferences.Default;
 
         // After default values are set, subscribe to property changes.

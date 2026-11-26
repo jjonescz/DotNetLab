@@ -1,4 +1,22 @@
 ﻿export function registerEventListeners(dotNetObj) {
+    const modelContentListeners = new Map();
+    const registerInputModel = (model) => {
+        if (model.uri.scheme !== 'file' || !model.uri.path.startsWith('/in/')) {
+            return;
+        }
+
+        const uri = decodeURI(model.uri.toString());
+        modelContentListeners.set(model, model.onDidChangeContent((e) => {
+            dotNetObj.invokeMethodAsync('OnDidChangeInputModelContentAsync', uri, e).catch(console.error);
+        }));
+    };
+    const modelCreatedListener = monaco.editor.onDidCreateModel(registerInputModel);
+    const modelDisposedListener = monaco.editor.onWillDisposeModel((model) => {
+        modelContentListeners.get(model)?.dispose();
+        modelContentListeners.delete(model);
+    });
+    monaco.editor.getModels().forEach(registerInputModel);
+
     const keyDownHandler = (/** @type {KeyboardEvent} */ e) => {
         const ctrl = (e.ctrlKey || e.metaKey);
         if (ctrl && e.key === 's') {
@@ -77,6 +95,12 @@
     }
 
     return () => {
+        modelCreatedListener.dispose();
+        modelDisposedListener.dispose();
+        for (const listener of modelContentListeners.values()) {
+            listener.dispose();
+        }
+        modelContentListeners.clear();
         document.removeEventListener('keydown', keyDownHandler);
         if (clipboardMonitoringStarted) {
             window.removeEventListener('focus', focusHandler);

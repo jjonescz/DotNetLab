@@ -66,6 +66,8 @@ public closed record WorkerInputMessage
 
     public sealed record Compile(CompilationInput Input, bool LanguageServicesEnabled) : WorkerInputMessage, IWorkerInputMessage<CompiledAssembly>
     {
+        public required long InputLoadId { get; init; }
+
         public Task<CompiledAssembly> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
@@ -178,6 +180,8 @@ public closed record WorkerInputMessage
 
     public sealed record OnDidChangeWorkspace(ImmutableArray<ModelInfo> Models, bool Refresh) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
     {
+        public required long InputLoadId { get; init; }
+
         public Task<NoOutput> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
@@ -192,8 +196,10 @@ public closed record WorkerInputMessage
         }
     }
 
-    public sealed record OnCachedCompilationLoaded(CompilerConfiguration Config, CompiledAssembly Output) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
+    public sealed record OnInputLoaded(CompilerConfiguration Config, CompilationInput Input, CompiledAssembly? CachedOutput) : WorkerInputMessage, IWorkerInputMessage<NoOutput>
     {
+        public required long InputLoadId { get; init; }
+
         public Task<NoOutput> HandleAsync(IExecutor executor)
         {
             return executor.HandleAsync(this);
@@ -228,7 +234,7 @@ public closed record WorkerInputMessage
         Task<string?> HandleAsync(ProvideSignatureHelp message);
         Task<NoOutput> HandleAsync(OnDidChangeWorkspace message);
         Task<NoOutput> HandleAsync(OnDidChangeModelContent message);
-        Task<NoOutput> HandleAsync(OnCachedCompilationLoaded message);
+        Task<NoOutput> HandleAsync(OnInputLoaded message);
         Task<ImmutableArray<MarkerData>> HandleAsync(GetDiagnostics message);
     }
 }

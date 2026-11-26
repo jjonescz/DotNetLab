@@ -52,23 +52,47 @@ public static class RoslynWorkspaceAccessors
         }
     }
 
-    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this Document document)
+    public static async Task<ImmutableArray<DiagnosticData>> GetDiagnosticsAsync(this TextDocument document, bool runAnalyzers)
     {
         var service = document.Project.Solution.Services.GetRequiredService<IDiagnosticAnalyzerService>();
-        var text = await document.GetTextAsync();
-        var diagnostics = await service.GetDiagnosticsForSpanAsync(
-            document,
-            TextSpan.FromBounds(0, text.Length),
-            DiagnosticKind.All,
-            CancellationToken.None);
+
+        var diagnostics = runAnalyzers
+            ? await service.GetDiagnosticsForIdsAsync(
+                document.Project,
+                [document.Id],
+                diagnosticIds: null,
+                AnalyzerFilter.All,
+                includeLocalDocumentDiagnostics: true,
+                CancellationToken.None)
+            : await service.GetDiagnosticsForSpanAsync(
+                document,
+                range: null,
+                DiagnosticKind.All,
+                CancellationToken.None);
+
+        // Generator diagnostics have no distinguishing tag, unlike compiler diagnostics.
+        var generatorDiagnostics = runAnalyzers
+            ? ImmutableHashSet<Microsoft.CodeAnalysis.Diagnostics.DiagnosticData>.Empty
+            : (await GeneratorDiagnosticsPlaceholderAnalyzer.Instance.AnalyzeSemanticsAsync(
+                document, tree: null, CancellationToken.None))
+                .Select(d => Microsoft.CodeAnalysis.Diagnostics.DiagnosticData.Create(d, document))
+                .ToImmutableHashSet();
+
         return diagnostics
-            .Where(static d => !d.IsSuppressed)
-            .SelectAsArray(static d =>
+            .Where(d => !d.IsSuppressed &&
+                (runAnalyzers ||
+                 d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler) ||
+                 generatorDiagnostics.Contains(d) ||
+                 d.CustomTags.Contains(WellKnownDiagnosticTags.Unnecessary)))
+            .SelectAsArray(d =>
             {
                 var hasMappedLocation = d.DataLocation.MappedFileSpan != d.DataLocation.UnmappedFileSpan;
                 return new DiagnosticData(
                     FilePath: d.DataLocation.MappedFileSpan.Path,
-                    Severity: d.Severity switch
+                    Severity: !runAnalyzers && !d.CustomTags.Contains(WellKnownDiagnosticTags.Compiler) &&
+                        !generatorDiagnostics.Contains(d)
+                        ? DiagnosticDataSeverity.Hint
+                        : d.Severity switch
                     {
                         DiagnosticSeverity.Error => DiagnosticDataSeverity.Error,
                         DiagnosticSeverity.Warning => DiagnosticDataSeverity.Warning,
@@ -167,6 +191,32 @@ public static class RoslynWorkspaceAccessors
     {
         SerializerService.TestAccessor.AddAnalyzerImageReference(analyzer);
         return analyzer;
+    }
+
+    public static AnalyzerReference CreateAnalyzerReference(
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        ImmutableArray<ISourceGenerator> generators,
+        ImmutableArray<CodeFixProvider> codeFixes)
+    {
+        return new PackageAnalyzerReference(analyzers, generators, codeFixes);
+    }
+
+    private sealed class PackageAnalyzerReference(
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        ImmutableArray<ISourceGenerator> generators,
+        ImmutableArray<CodeFixProvider> codeFixes) : AnalyzerReference, ICodeFixProviderFactory
+    {
+        public override string Display => "Package analyzers and source generators";
+        public override string? FullPath => null;
+        public override object Id { get; } = new object();
+
+        public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzers(string language)
+            => language == LanguageNames.CSharp ? analyzers : [];
+        public override ImmutableArray<DiagnosticAnalyzer> GetAnalyzersForAllLanguages() => analyzers;
+        public override ImmutableArray<ISourceGenerator> GetGenerators(string language)
+            => language == LanguageNames.CSharp ? generators : [];
+        public override ImmutableArray<ISourceGenerator> GetGeneratorsForAllLanguages() => generators;
+        public ImmutableArray<CodeFixProvider> GetFixers() => codeFixes;
     }
 
     public static IDisposable RegisterLogger(Action<string> logger)
