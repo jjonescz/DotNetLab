@@ -491,6 +491,38 @@ public static partial class Util
         return results.DrainToImmutable();
     }
 
+    public static Func<Task<T>> MemoizeSuccessful<T>(this Func<Task<T>> loader)
+    {
+        var gate = new Lock();
+        Task<T>? task = null;
+
+        return async () =>
+        {
+            Task<T> currentTask;
+            lock (gate)
+            {
+                currentTask = task ??= loader();
+            }
+
+            try
+            {
+                return await currentTask;
+            }
+            catch
+            {
+                lock (gate)
+                {
+                    if (ReferenceEquals(task, currentTask))
+                    {
+                        task = null;
+                    }
+                }
+
+                throw;
+            }
+        };
+    }
+
     public static async IAsyncEnumerable<TResult> SelectMany<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
     {
         await foreach (var item in source)

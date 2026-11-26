@@ -123,8 +123,10 @@ internal static class NuGetUtil
                 {
                     documentationLoader = readDocumentationAsync == null
                         ? null
-                        : async () => ImmutableCollectionsMarshal.AsImmutableArray(
-                            await readDocumentationAsync(documentationPath));
+                        : new Func<Task<ImmutableArray<byte>>>(async () =>
+                            ImmutableCollectionsMarshal.AsImmutableArray(
+                                await readDocumentationAsync(documentationPath)))
+                            .MemoizeSuccessful();
                 }
 
                 return new LoadedAssembly()

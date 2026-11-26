@@ -67,8 +67,7 @@ internal static class RefAssemblyMetadata
 
     private sealed class AsyncDocumentationProvider(Func<Task<ImmutableArray<byte>>> loader) : XmlDocumentationProvider
     {
-        private readonly Lock gate = new();
-        private Task<ImmutableArray<byte>>? loadTask;
+        private readonly Func<Task<ImmutableArray<byte>>> load = loader.MemoizeSuccessful();
         private ImmutableArray<byte> bytes;
 
         public async Task<Exception?> PrepareAsync(CancellationToken cancellationToken)
@@ -78,15 +77,9 @@ internal static class RefAssemblyMetadata
                 return null;
             }
 
-            Task<ImmutableArray<byte>> task;
-            lock (gate)
-            {
-                task = loadTask ??= loader();
-            }
-
             try
             {
-                bytes = await task.WaitAsync(cancellationToken);
+                bytes = await load().WaitAsync(cancellationToken);
                 return null;
             }
             catch (OperationCanceledException)
@@ -95,14 +88,6 @@ internal static class RefAssemblyMetadata
             }
             catch (Exception ex)
             {
-                lock (gate)
-                {
-                    if (ReferenceEquals(loadTask, task))
-                    {
-                        loadTask = null;
-                    }
-                }
-
                 return ex;
             }
         }

@@ -125,6 +125,73 @@ public sealed class NuGetDownloaderTests
         Encoding.UTF8.GetString(documentation.AsSpan()).Should().Be("documentation");
     }
 
+    [TestMethod]
+    public async Task MemoizesSuccessfulDocumentationLoad()
+    {
+        var package = new MemoryStream();
+        using (var archive = new ZipArchive(package, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            AddEntry(archive, "lib/net11.0/Test.dll", "assembly");
+            AddEntry(archive, "lib/net11.0/Test.xml", "documentation");
+        }
+
+        package.Position = 0;
+        using var reader = new ZipDirectoryReader(package, leaveOpen: true);
+        var directory = await reader.ReadAsync();
+        var attempts = 0;
+        var assemblies = await NuGetUtil.GetAssembliesFromNupkgAsync(
+            reader,
+            directory,
+            new SingleLevelNuGetDllFilter("lib", 2),
+            "Test@1.0.0",
+            _ =>
+            {
+                Interlocked.Increment(ref attempts);
+                return Task.FromResult(Encoding.UTF8.GetBytes("documentation"));
+            });
+        var loader = assemblies.Should().ContainSingle().Which.DocumentationLoader!;
+
+        var results = await Task.WhenAll(loader(), loader());
+        Encoding.UTF8.GetString(results[0].AsSpan()).Should().Be("documentation");
+        await loader();
+
+        attempts.Should().Be(1);
+    }
+
+    [TestMethod]
+    public async Task DoesNotMemoizeFailedDocumentationLoad()
+    {
+        var package = new MemoryStream();
+        using (var archive = new ZipArchive(package, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            AddEntry(archive, "lib/net11.0/Test.dll", "assembly");
+            AddEntry(archive, "lib/net11.0/Test.xml", "documentation");
+        }
+
+        package.Position = 0;
+        using var reader = new ZipDirectoryReader(package, leaveOpen: true);
+        var directory = await reader.ReadAsync();
+        var attempts = 0;
+        var assemblies = await NuGetUtil.GetAssembliesFromNupkgAsync(
+            reader,
+            directory,
+            new SingleLevelNuGetDllFilter("lib", 2),
+            "Test@1.0.0",
+            _ =>
+            {
+                return Interlocked.Increment(ref attempts) == 1
+                    ? Task.FromException<byte[]>(new IOException("Failed to load docs."))
+                    : Task.FromResult(Encoding.UTF8.GetBytes("documentation"));
+            });
+        var loader = assemblies.Should().ContainSingle().Which.DocumentationLoader!;
+
+        await FluentActions.Invoking(loader).Should().ThrowAsync<IOException>();
+        var documentation = await loader();
+
+        Encoding.UTF8.GetString(documentation.AsSpan()).Should().Be("documentation");
+        attempts.Should().Be(2);
+    }
+
     private static void AddEntry(ZipArchive archive, string path, string content)
     {
         using var stream = archive.CreateEntry(path).Open();
