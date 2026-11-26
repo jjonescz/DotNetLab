@@ -136,10 +136,19 @@ partial class Page
         }
 
         await NotifyWorkspaceChangedAsync(updateDiagnostics: false);
-        if (revision == inputRevision)
+
+        // Edits invalidate cached output, but don't cancel initialization of the loaded snippet.
+        if (loadId != inputLoadId)
         {
-            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
-                cachedOutput: null, activeModelUri: selectInput?.Model.Uri, inputLoadId: loadId);
+            return;
+        }
+
+        await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(),
+            cachedOutput: null, activeModelUri: selectInput?.Model.Uri, inputLoadId: loadId);
+
+        if (loadId != inputLoadId)
+        {
+            return;
         }
 
         if (selectInput != null)
