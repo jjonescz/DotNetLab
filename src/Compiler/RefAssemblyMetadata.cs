@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
@@ -14,9 +15,12 @@ internal static class RefAssemblyMetadata
 
         foreach (var assembly in assemblies)
         {
+            var documentation = assembly.Documentation.IsDefaultOrEmpty
+                ? null
+                : XmlDocumentationProvider.CreateFromBytes(ImmutableCollectionsMarshal.AsArray(assembly.Documentation)!);
 #pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to the reference
             builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
-                .GetReference(filePath: assembly.FileName, display: assembly.FileName));
+                .GetReference(documentation, filePath: assembly.FileName, display: assembly.FileName));
 #pragma warning restore CA2000
         }
 

@@ -459,6 +459,63 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task Hover_Documentation()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var file = "test.cs";
+        await languageServices.OnDidChangeWorkspaceAsync([new(file, file) { NewContent = "System.Console.WriteLine();" }]);
+
+        var positionJson = JsonSerializer.Serialize(
+            new Position { LineNumber = 1, Column = 18 },
+            BlazorMonacoJsonContext.Default.Position);
+        var hover = await languageServices.ProvideHoverAsync(
+            file,
+            positionJson,
+            TestContext.CancellationToken);
+
+        hover.Should().Contain("Writes the current line terminator to the standard output stream");
+    }
+
+    [TestMethod]
+    public async Task Hover_Documentation_Package()
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:package System.CommandLine@3.0.0-rtm.26480.113
+                    using System.CommandLine;
+                    _ = typeof(Command);
+                    """,
+            },
+        ]));
+
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+
+        var compiled = await compiler.CompileAsync(input);
+        compiled.NumErrors.Should().Be(0);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var positionJson = JsonSerializer.Serialize(
+            new Position { LineNumber = 3, Column = 15 },
+            BlazorMonacoJsonContext.Default.Position);
+        var hover = await languageServices.ProvideHoverAsync(
+            uri,
+            positionJson,
+            TestContext.CancellationToken);
+
+        hover.Should().Contain("Represents a specific action that the application performs");
+    }
+
+    [TestMethod]
     public async Task SignatureHelp()
     {
         var services = WorkerServices.CreateTest(TestContext);

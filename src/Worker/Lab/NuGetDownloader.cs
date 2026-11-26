@@ -58,7 +58,8 @@ internal static class NuGetUtil
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
-        var files = reader.GetFiles();
+        var files = reader.GetFiles().ToArray();
+        var fileLookup = files.ToDictionary(static file => file, StringComparer.OrdinalIgnoreCase);
         return files
             .Where(dllFilter.GetFilter(files, forPackage))
             .Select(file =>
@@ -68,10 +69,22 @@ internal static class NuGetUtil
                 var buffer = new byte[entry.Length];
                 var memoryStream = new MemoryStream(buffer);
                 entryStream.CopyTo(memoryStream);
+
+                ImmutableArray<byte> documentation = default;
+                if (fileLookup.TryGetValue(Path.ChangeExtension(file, ".xml"), out var documentationFile))
+                {
+                    entry = reader.GetEntry(documentationFile);
+                    using var documentationStream = entry.Open();
+                    var documentationBytes = new byte[entry.Length];
+                    documentationStream.ReadExactly(documentationBytes);
+                    documentation = ImmutableCollectionsMarshal.AsImmutableArray(documentationBytes);
+                }
+
                 return new LoadedAssembly()
                 {
-                    Name = Path.GetFileNameWithoutExtension(entry.Name),
+                    Name = Path.GetFileNameWithoutExtension(file),
                     Data = ImmutableCollectionsMarshal.AsImmutableArray(buffer),
+                    Documentation = documentation,
                     Format = AssemblyDataFormat.Dll,
                 };
             })
@@ -82,15 +95,25 @@ internal static class NuGetUtil
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
         var filter = dllFilter.GetFilter(files, forPackage);
+        var entries = zipDirectory.Entries.ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase);
         return await zipDirectory.Entries
             .Where(entry => filter(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
             {
                 var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
+
+                ImmutableArray<byte> documentation = default;
+                if (entries.TryGetValue(Path.ChangeExtension(entry.GetName(), ".xml"), out var documentationEntry))
+                {
+                    documentation = ImmutableCollectionsMarshal.AsImmutableArray(
+                        await reader.ReadFileDataAsync(zipDirectory, documentationEntry));
+                }
+
                 return new LoadedAssembly()
                 {
                     Name = Path.GetFileNameWithoutExtension(entry.GetName()),
                     Data = ImmutableCollectionsMarshal.AsImmutableArray(bytes),
+                    Documentation = documentation,
                     Format = AssemblyDataFormat.Dll,
                 };
             });
@@ -500,6 +523,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 Name = loadedAssembly.Name,
                 FileName = loadedAssembly.Name + ".dll",
                 Bytes = loadedAssembly.DataAsDll,
+                Documentation = loadedAssembly.Documentation,
                 Source = source,
                 LoadForExecution = loadForExecution,
             };
