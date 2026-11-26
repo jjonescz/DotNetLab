@@ -574,6 +574,7 @@ internal sealed class LanguageServices : ILanguageServices
     /// <summary>
     /// Initializes a newly loaded input independently of cached output availability, without restoring packages.
     /// Reuses live state when this input has already been compiled with the same compiler selection.
+    /// Without cached output, stored diagnostics are omitted even when the compiled state is reused.
     /// </summary>
     public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput)
     {
@@ -581,7 +582,7 @@ internal sealed class LanguageServices : ILanguageServices
         if (compilerSelectionMatches &&
             compiler.LastResult is { Input: var compiledInput, Output: var compiledResult } && Equals(compiledInput, input))
         {
-            return OnCompilationFinishedAsync(compiledResult.CompiledAssembly);
+            return ApplyLastCompilationAsync(compiledResult.CompiledAssembly, restoreCompilerDiagnostics: cachedOutput is not null);
         }
 
         compilerDiagnostics = cachedOutput;
@@ -609,6 +610,11 @@ internal sealed class LanguageServices : ILanguageServices
 
     public Task OnCompilationFinishedAsync(CompiledAssembly? expectedOutput = null)
     {
+        return ApplyLastCompilationAsync(expectedOutput, restoreCompilerDiagnostics: true);
+    }
+
+    private Task ApplyLastCompilationAsync(CompiledAssembly? expectedOutput, bool restoreCompilerDiagnostics)
+    {
         var lastCompilation = compiler.LastResult;
 
         if (expectedOutput is not null && !ReferenceEquals(expectedOutput, lastCompilation?.Output.CompiledAssembly))
@@ -618,7 +624,7 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         var result = lastCompilation?.Output;
-        compilerDiagnostics = result?.CompiledAssembly;
+        compilerDiagnostics = restoreCompilerDiagnostics ? result?.CompiledAssembly : null;
         includeHiddenDiagnostics = lastCompilation?.Input.Preferences.IncludeHiddenDiagnostics ?? false;
         notFullyInitialized = false;
         return ApplyCompilationResultAsync(result);

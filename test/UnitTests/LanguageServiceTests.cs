@@ -1389,6 +1389,47 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_ReplayedCompilationOmitsStoredErrors(bool edited)
+    {
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #:property RunAnalyzers=true
+                    #:property DefineConstants=FEATURE
+                    #error old
+                    #if !FEATURE
+                    #error FEATURE is missing
+                    #endif
+                    class C;
+                    """,
+            },
+        ]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(input);
+        Assert.AreEqual(1, compiled.NumErrors);
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var currentInput = edited ? new CompilationInput(new(
+        [
+            input.Inputs.Value[0] with { Text = input.Inputs.Value[0].Text.Replace("#error old", "") },
+        ])) : input;
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(currentInput));
+
+        // Re-enabling services replays the pre-edit input, but deliberately omits cached diagnostics.
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput: null);
+
+        Assert.IsNull(languageServices.CompilerCache);
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        Assert.AreEqual(edited ? 0 : 1, markers.Count(m => m.GetCode() == "CS1029"));
+        markers.Should().NotContain(m => m.Message.Contains("FEATURE is missing", StringComparison.Ordinal));
+        Assert.Contains("IDE0040", markers.Select(m => m.GetCode()));
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task CachedConfiguration_CompilerEditorFeatures(bool previousCompilation)
     {
         const string configuration = "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));";
