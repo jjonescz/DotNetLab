@@ -191,6 +191,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         [
             // NuGet.org should be tried first because it supports more efficient range requests.
             NuGetOrgSourceUrl,
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-libraries/nuget/v3/index.json",
         ];
@@ -760,6 +761,8 @@ internal sealed class NuGetDownloadablePackageResult
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
     public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
     public required Lazy<Task<Stream>> NupkgStream { get; init; }
+    // Shared by all nuspec and assembly readers of the cached stream.
+    public AsyncLock NupkgStreamLock { get; } = new();
 
     public async Task<NuspecReader> GetNuspecReaderAsync()
     {
@@ -774,8 +777,10 @@ internal sealed class NuGetDownloadablePackageResult
         }
 
         var nupkgStream = await NupkgStream.Value;
+        using var streamLock = await NupkgStreamLock.LockAsync();
         nupkgStream.Position = 0;
         using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
+        // NuspecReader eagerly loads the XML, so it can outlive the archive reader and stream lock.
         return reader.NuspecReader;
     }
 }
@@ -1119,7 +1124,7 @@ internal sealed class NuGetDownloadablePackage(
             result.CacheContext,
             NullLogger.Instance,
             CancellationToken.None);
-        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata.Description);
+        var commitLink = VersionUtil.TryExtractGitHubRepoCommitInfoFromText(metadata?.Description);
 
         if (commitLink is null)
         {
@@ -1157,6 +1162,7 @@ internal sealed class NuGetDownloadablePackage(
         }
 
         var nupkgStream = await result.NupkgStream.Value;
+        using var streamLock = await result.NupkgStreamLock.LockAsync();
         nupkgStream.Position = 0;
         return await NuGetUtil.GetAssembliesFromNupkgAsync(nupkgStream, dllFilter, forPackage);
     }

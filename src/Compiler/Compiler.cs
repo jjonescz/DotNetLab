@@ -24,7 +24,8 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILoggerFactory loggerFactory)
+    ILoggerFactory loggerFactory,
+    CompilerConfiguration compilerSelection)
     : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -54,6 +55,8 @@ public sealed class Compiler(
     private int lastPackageAnalyzerAssembliesCount;
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
+
+    internal CompilerConfiguration CompilerSelection { get; } = compilerSelection;
 
     internal static ICSharpCode.Decompiler.DecompilerSettings DefaultCSharpDecompilerSettings => field ??= new(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1)
     {
@@ -142,7 +145,8 @@ public sealed class Compiler(
             Metadata = RefAssemblyMetadata.All,
             Assemblies = RefAssemblies.All,
         };
-        var analyzerAssemblies = ImmutableArray<RefAssembly>.Empty;
+        AnalyzerReference? analyzerReference = null;
+        bool runAnalyzers = false;
         var razorLanguageVersion = RazorUtil.DefaultLanguageVersion;
 
         Config.Instance.Reset();
@@ -211,9 +215,9 @@ public sealed class Compiler(
         packageAnalyzerAssemblies = packageAnalyzerAssemblies
             .RemoveAll(a => sdkNames.Contains(a.Name));
         
-        analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
-
-        var packageGenerators = SourceGeneratorLoader.Load(alc, analyzerAssemblies, logger, out var generatorLoadDiagnostics);
+        var analyzerAssemblies = packageAnalyzerAssemblies.AddRange(sdkAnalyzers);
+        analyzerReference = AnalyzerLoader.Load(alc, analyzerAssemblies, runAnalyzers, logger, out var analyzerLoadDiagnostics);
+        var packageGenerators = analyzerReference.GetGenerators(LanguageNames.CSharp);
         
         if (logger.IsEnabled(LogLevel.Debug) && references.Assemblies != RefAssemblies.All)
         {
@@ -288,6 +292,18 @@ public sealed class Compiler(
 
         finalCompilation = Config.Instance.ConfigureCSharpCompilation(finalCompilation);
 
+        var analyzers = analyzerReference.GetAnalyzers(LanguageNames.CSharp);
+        ImmutableArray<Diagnostic> compilerDiagnostics = [];
+        ImmutableArray<Diagnostic> compilerAndAnalyzerDiagnostics = [];
+        if (runAnalyzers && !analyzers.IsEmpty)
+        {
+            compilerDiagnostics = finalCompilation.GetDiagnostics();
+            compilerAndAnalyzerDiagnostics = await finalCompilation.WithAnalyzers(analyzers, new AnalyzerOptions(
+                nonCSharpSources.SelectAsArray(static input => (AdditionalText)new TestAdditionalText(
+                    text: input.Text, encoding: Encoding.UTF8, path: getFilePath(input))),
+                optionsProvider)).GetAllDiagnosticsAsync();
+        }
+
         // This is needed to avoid some blocking `Task.Run(...).Result` calls in Roslyn code paths when emitting PDBs
         // which would require monitor waiting which is unsupported in browser wasm.
         await Task.Yield();
@@ -295,9 +311,11 @@ public sealed class Compiler(
         peFile = getPeFile(finalCompilation, emitOptions, out var emitDiagnostics);
 
         var nonConfigDiagnostics = processDirectiveDiagnostics()
-            .Concat(emitDiagnostics)
+            // Do not reintroduce compiler diagnostics that were removed by suppressors.
+            .Concat(emitDiagnostics.Except(compilerDiagnostics))
             .Concat(additionalDiagnostics)
-            .Concat(generatorLoadDiagnostics);
+            .Concat(analyzerLoadDiagnostics)
+            .Concat(compilerAndAnalyzerDiagnostics);
         IEnumerable<Diagnostic> allDiagnostics = configDiagnostics
             .Concat(nonConfigDiagnostics);
         IEnumerable<Diagnostic> filteredDiagnostics = allDiagnostics.Where(filterDiagnostic);
@@ -526,7 +544,8 @@ public sealed class Compiler(
                 CSharpCompilationOptions = Config.Instance.HasCompilationOptions ? options : null,
                 AdditionalSources = additionalSyntaxTrees,
                 ReferenceAssemblies = Config.Instance.HasReferences ? references.Metadata : null,
-                AnalyzerAssemblies = analyzerAssemblies,
+                AnalyzerReference = analyzerReference,
+                RunAnalyzers = runAnalyzers,
             };
         }
 
@@ -547,7 +566,7 @@ public sealed class Compiler(
 
             var configCompilation = CSharpCompilation.Create(
                 // We need a unique assembly name because the ALC can already contain a previous configuration assembly and that would throw on CoreCLR.
-                assemblyName: $"Configuration_{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
+                assemblyName: $"Configuration_{Guid.NewGuid():N}",
                 syntaxTrees:
                 [
                     CSharpSyntaxTree.ParseText(code, configurationParseOptions, directory + "Configuration.cs", Encoding.UTF8),
@@ -849,6 +868,37 @@ public sealed class Compiler(
             ExtendedEmitOptions emitOptions,
             out ImmutableArray<Diagnostic> diagnostics)
         {
+            var options = compilation.Options;
+            var specificDiagnosticOptions = options.SpecificDiagnosticOptions;
+            foreach (var (id, severity) in specificDiagnosticOptions)
+            {
+                if (severity == ReportDiagnostic.Error)
+                {
+                    specificDiagnosticOptions = specificDiagnosticOptions.SetItem(id, ReportDiagnostic.Warn);
+                }
+            }
+
+            // Some compiler warnings are promoted even without explicit warning-as-error options.
+            var originalDiagnostics = compilation.GetDiagnostics();
+            foreach (var diagnostic in originalDiagnostics)
+            {
+                if (diagnostic.IsWarningAsError)
+                {
+                    specificDiagnosticOptions = specificDiagnosticOptions.SetItem(diagnostic.Id, ReportDiagnostic.Warn);
+                }
+            }
+
+            var emissionOptions = options
+                .WithGeneralDiagnosticOption(options.GeneralDiagnosticOption == ReportDiagnostic.Error
+                    ? ReportDiagnostic.Default : options.GeneralDiagnosticOption)
+                .WithSpecificDiagnosticOptions(specificDiagnosticOptions);
+            if (options.SyntaxTreeOptionsProvider is { } syntaxTreeOptions)
+            {
+                emissionOptions = emissionOptions.WithSyntaxTreeOptionsProvider(new EmissionSyntaxTreeOptionsProvider(syntaxTreeOptions));
+            }
+            var emissionCompilation = emissionOptions.Equals(options)
+                ? compilation : compilation.WithOptions(emissionOptions);
+
             var peStream = new MemoryStream();
             var pdbStream = emitOptions.CreatePdbStream ? new MemoryStream() : null;
 
@@ -856,13 +906,22 @@ public sealed class Compiler(
                 ? compilation.SyntaxTrees.Select(static t => EmbeddedText.FromSource(t.FilePath, t.GetText()))
                 : null;
 
-            var emitResult = compilation.Emit(
+            var emitResult = emissionCompilation.Emit(
                 peStream,
                 pdbStream,
                 options: emitOptions.EmitOptions,
                 embeddedTexts: embeddedTexts);
 
-            diagnostics = emitResult.Diagnostics;
+            // Emit can omit compiler diagnostics on failure, so append original diagnostics too.
+            // When deduplicating, compare within each compilation because diagnostic arguments can contain symbols belonging to that compilation.
+            diagnostics = [
+                .. originalDiagnostics,
+                .. emitResult.Diagnostics.
+                    Except(ReferenceEquals(emissionCompilation, compilation)
+                        ? originalDiagnostics
+                        : emissionCompilation.GetDiagnostics())
+                    .Select(options.FilterDiagnosticInternal).OfType<Diagnostic>(),
+            ];
 
             if (!emitResult.Success)
             {
@@ -884,7 +943,7 @@ public sealed class Compiler(
             if (emitStreams is null)
             {
                 error = "Cannot execute due to compilation errors:" + Environment.NewLine +
-                    diagnostics.JoinToString(Environment.NewLine);
+                    diagnostics.Where(static d => d.Severity != DiagnosticSeverity.Hidden).JoinToString(Environment.NewLine);
                 return false;
             }
 
@@ -1114,6 +1173,7 @@ public sealed class Compiler(
 
                 await context.ConsumeAsync();
                 razorLanguageVersion = context.RazorLanguageVersion ?? razorLanguageVersion;
+                runAnalyzers = context.RunAnalyzers;
 
                 foreach (var directive in directives)
                 {
@@ -1213,6 +1273,34 @@ public sealed class Compiler(
                 // warning CS1701: Assuming assembly reference 'System.Runtime, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Microsoft.CodeAnalysis.CSharp' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
                 KeyValuePair.Create("CS1701", ReportDiagnostic.Suppress),
             ]);
+    }
+
+    private sealed class EmissionSyntaxTreeOptionsProvider(SyntaxTreeOptionsProvider inner) : SyntaxTreeOptionsProvider
+    {
+        public override GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken)
+            => inner.IsGenerated(tree, cancellationToken);
+
+        public override bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId,
+            CancellationToken cancellationToken, out ReportDiagnostic severity)
+        {
+            var found = inner.TryGetDiagnosticValue(tree, diagnosticId, cancellationToken, out severity);
+            if (severity == ReportDiagnostic.Error)
+            {
+                severity = ReportDiagnostic.Warn;
+            }
+            return found;
+        }
+
+        public override bool TryGetGlobalDiagnosticValue(string diagnosticId,
+            CancellationToken cancellationToken, out ReportDiagnostic severity)
+        {
+            var found = inner.TryGetGlobalDiagnosticValue(diagnosticId, cancellationToken, out severity);
+            if (severity == ReportDiagnostic.Error)
+            {
+                severity = ReportDiagnostic.Warn;
+            }
+            return found;
+        }
     }
 
     private static string FormatScriptReturnValue(object? value)
@@ -1528,19 +1616,16 @@ internal sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsP
 {
     public override TestAnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
 
-    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => throw new NotImplementedException();
+    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestAnalyzerConfigOptions();
 
     public Dictionary<string, TestAnalyzerConfigOptions> AdditionalTextOptions { get; } = new();
 
     public override TestAnalyzerConfigOptions GetOptions(AdditionalText textFile)
     {
-        if (!AdditionalTextOptions.TryGetValue(textFile.Path, out var options))
-        {
-            options = new TestAnalyzerConfigOptions();
-            AdditionalTextOptions[textFile.Path] = options;
-        }
-
-        return options;
+        // Analyzer callbacks run concurrently, so cache misses must not mutate the dictionary.
+        return AdditionalTextOptions.TryGetValue(textFile.Path, out var options)
+            ? options
+            : new TestAnalyzerConfigOptions();
     }
 }
 
@@ -1675,10 +1760,11 @@ internal sealed class LiveCompilationResult(Action dispose) : IDisposable
     public required ImmutableArray<PortableExecutableReference>? ReferenceAssemblies { get; init; }
 
     /// <summary>
-    /// Analyzer / source-generator assemblies from <c>#:package</c>.
-    /// This is never <see langword="default"/>.
+    /// Loaded package and SDK analyzer extensions, shared with the language-services workspace.
     /// </summary>
-    public required ImmutableArray<RefAssembly> AnalyzerAssemblies { get; init; }
+    public required AnalyzerReference? AnalyzerReference { get; init; }
+
+    public required bool RunAnalyzers { get; init; }
 
     public void Dispose() => dispose();
 }

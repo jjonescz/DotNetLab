@@ -168,6 +168,15 @@ public sealed class BlazorMonacoJsonContext
 
 public static class SimpleMonacoConversions
 {
+    extension(IEnumerable<CompilerDiagnosticData> diagnostics)
+    {
+        public IEnumerable<CompilerDiagnosticData> ExcludeHiddenDiagnostics()
+        {
+            // Match CompilerDiagnosticAnalyzer, which excludes hidden diagnostics from live IDE results.
+            return diagnostics.Where(static d => d.Data.Severity != DiagnosticDataSeverity.Hint);
+        }
+    }
+
     extension(Marker marker)
     {
         public MarkerData ToMarkerData()

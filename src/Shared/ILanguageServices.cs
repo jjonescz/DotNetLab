@@ -13,10 +13,15 @@ public interface ILanguageServices : IDisposable
     Task<string?> ProvideCodeActionsAsync(string modelUri, string? rangeJson, CancellationToken cancellationToken);
     Task<string?> ProvideHoverAsync(string modelUri, string positionJson, CancellationToken cancellationToken);
     Task<string?> ProvideSignatureHelpAsync(string modelUri, string positionJson, string contextJson, CancellationToken cancellationToken);
-    Task OnCompilationFinishedAsync();
+
+    /// <summary>
+    /// Applies the latest compilation state, unless <paramref name="expectedOutput"/> has been superseded.
+    /// </summary>
+    Task OnCompilationFinishedAsync(CompiledAssembly? expectedOutput = null);
+
     Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh = false);
     Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args);
-    void OnCachedCompilationLoaded(CompilerConfiguration config, CompiledAssembly output);
+    Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput);
     Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri);
 }
 

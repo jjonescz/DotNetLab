@@ -199,7 +199,6 @@
                 <StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
                                       ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                                       OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                                      OnDidChangeModelContent="OnDidChangeModelContentAsync"
                                       OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
@@ -395,6 +394,9 @@
     private bool canPasteUrlFromClipboard = true;
     private bool compilationInProgress;
     private DateTimeOffset inputChanged;
+    private long inputRevision;
+    // Unlike inputRevision, this changes only when replacing the loaded snippet.
+    private long inputLoadId;
     private bool outputLoading;
     private OutputDisclaimer outputDisclaimer;
     private CompiledState? compiled;
@@ -778,7 +780,17 @@
 
     public async Task LoadUrlFromClipboardAsync()
     {
-        var text = await (await moduleTask.Value).InvokeAsync<string>("getClipboardText");
+        string text;
+        try
+        {
+            text = await (await moduleTask.Value).InvokeAsync<string>("getClipboardText");
+        }
+        catch (Microsoft.JSInterop.JSException ex)
+        {
+            Logger.LogWarning(ex, "Failed to read clipboard text.");
+            return;
+        }
+
         if (NavigateToSlug(GetSlugFromClipboardText(text)))
         {
             await LoadStateFromUrlAsync();
@@ -977,12 +989,14 @@
         if (i == (int)SpecialInput.Configuration)
         {
             configuration = null;
+            MarkInputChanged();
         }
         else if (inputs.Count > 1)
         {
             using var _ = await inputsLock.LockAsync();
             var removedInput = inputs[i];
             inputs.RemoveAt(i);
+            MarkInputChanged();
             await removedInput.DisposeAsync();
         }
         else
@@ -990,7 +1004,7 @@
             return;
         }
 
-        await OnWorkspaceChangedAsync();
+        await NotifyWorkspaceChangedAsync();
 
         await SaveStateToUrlAsync();
     }
@@ -1005,13 +1019,14 @@
             var newLanguage = GetLanguageForFileExtension(Path.GetExtension(newName));
 
             input.FileName = newName;
+            MarkInputChanged();
 
             if (oldLanguage != newLanguage)
             {
                 await BlazorMonaco.Editor.Global.SetModelLanguage(JSRuntime, input.Model, newLanguage);
             }
 
-            await OnWorkspaceChangedAsync();
+            await NotifyWorkspaceChangedAsync();
         }
 
         await SaveStateToUrlAsync();
@@ -1182,7 +1197,23 @@
         // Compile.
         var startTime = DateTimeOffset.Now;
         var input = state.ToCompilationInput();
-        var output = await Worker.CompileAsync(input, languageServicesEnabled: LanguageServices.Enabled);
+        var revision = inputRevision;
+        var loadId = inputLoadId;
+        var languageServicesEnabled = LanguageServices.Enabled;
+        if (!languageServicesEnabled)
+        {
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, cachedOutput: null, activeModelUri: null, inputLoadId: loadId);
+        }
+        var output = await Worker.CompileAsync(input, languageServicesEnabled: languageServicesEnabled, inputLoadId: loadId);
+        if (loadId != inputLoadId)
+        {
+            compilationInProgress = false;
+            return;
+        }
+        if (!languageServicesEnabled && LanguageServices.Enabled && revision == inputRevision)
+        {
+            await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), input, output, CurrentInput?.Model.Uri, loadId);
+        }
 
         // Preserve cached output info for the same input.
         CompiledAssembly? cachedOutput;
@@ -1269,6 +1300,7 @@
         static List<MarkerData> toMarkerData(IEnumerable<CompilerDiagnosticData> diagnostics)
         {
             return diagnostics
+                .ExcludeHiddenDiagnostics()
                 .Select(static d => d.ToMarkerData())
                 .Select(static m => m.WithSeverityIcon())
                 .ToList();
@@ -1618,20 +1650,25 @@
         return timestamp.ToString("MMM\u00A0d,\u00A0yyyy");
     }
 
-    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput)
+    private async Task<bool> TryLoadFromTemplateCacheAsync(SavedState state, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return false;
+        }
+
         // Load template with default preferences even if user's preferences differ.
         var preferencesDiffer = state.GetPreferences() != CompilationPreferences.Default;
         var stateWithoutPreferences = state.WithPreferences(CompilationPreferences.Default);
 
         if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state, input, output, new(null), updateOutput: updateOutput, revision: revision);
 
             // Mark as outdated if we loaded with different preferences.
             if (preferencesDiffer)
             {
-                inputChanged = DateTimeOffset.Now;
+                MarkInputChanged();
             }
 
             return true;
@@ -1640,12 +1677,22 @@
         return false;
     }
 
-    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput)
+    private async Task TryLoadFromCacheAsync(SavedState state, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         var result = await Cache.LoadAsync(state);
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput);
+            await TrySetCompiledFromCacheAsync(state, state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput, revision: revision);
             StateHasChanged();
         }
         else if (updateOutput)
@@ -1656,8 +1703,13 @@
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput)
+    private async Task TrySetCompiledFromCacheAsync(SavedState state, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput, long revision)
     {
+        if (revision != inputRevision)
+        {
+            return;
+        }
+
         // If the local compilation finishes before the cache is loaded, don't overwrite it.
         if (compiled is { Input: var existingInput, CacheInfo: null } && Equals(input, existingInput))
         {
@@ -1671,7 +1723,7 @@
         }
 
         var timestamp = DateTimeOffset.Now;
-        compiled = new()
+        var cachedState = new CompiledState()
         {
             Input = input,
             Output = output,
@@ -1680,6 +1732,7 @@
             End = timestamp,
             AutoLoadLazyOutputs = false,
         };
+        compiled = cachedState;
 
         if (updateOutput)
         {
@@ -1690,8 +1743,14 @@
 
         StateHasChanged();
 
-        if (!LanguageServices.Enabled ||
-            !await LanguageServices.OnCachedCompilationLoadedAsync(config, output, CurrentInput?.Model.Uri))
+        if (revision != inputRevision || !ReferenceEquals(compiled, cachedState))
+        {
+            return;
+        }
+
+        var loadedInput = state.ToCompilationInput();
+        var cachedDiagnostics = input.Preferences == loadedInput.Preferences ? output : null;
+        if (!await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), loadedInput, cachedDiagnostics, CurrentInput?.Model.Uri, inputLoadId))
         {
             await DisplaySquigglesAsync();
         }
@@ -1724,10 +1783,14 @@
     /// <summary>
     /// Should be called before SetModel of Monaco editor whenever (after) <see cref="InputsAndConfiguration"/> change.
     /// </summary>
-    public Task OnWorkspaceChangedAsync()
+    public Task OnWorkspaceChangedAsync(bool updateDiagnostics = true)
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
+        return NotifyWorkspaceChangedAsync(updateDiagnostics);
+    }
 
+    private Task NotifyWorkspaceChangedAsync(bool updateDiagnostics = true)
+    {
         if (!LanguageServices.Enabled)
         {
             return Task.CompletedTask;
@@ -1741,7 +1804,7 @@
             })
             .ToImmutableArray();
         InputsAndConfiguration.ForEach(t => { t.Input.NewContent = null; });
-        return LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri);
+        return LanguageServices.OnDidChangeWorkspaceAsync(models, updateDiagnostics ? CurrentInput?.Model.Uri : null, inputLoadId: inputLoadId);
     }
 
     /// <summary>
@@ -1754,26 +1817,25 @@
             return;
         }
 
+        var loadId = inputLoadId;
         var models = await InputsAndConfiguration
             .SelectAsArrayAsync(static async t => new ModelInfo(Uri: t.Input.Model.Uri, FileName: t.Input.FileName)
             {
                 NewContent = await t.Input.Model.GetTextAsync(),
                 IsConfiguration = t.IsConfiguration,
             });
-        await LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri, refresh: true);
+        await LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri, refresh: true, inputLoadId: loadId);
     }
 
-    private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
+    [JSInvokable]
+    public Task OnDidChangeInputModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
-        inputChanged = DateTimeOffset.Now;
-        if (CurrentInput is { Model.Uri: var modelUri })
+        return InvokeAsync(async () =>
         {
-            await LanguageServices.OnDidChangeModelContentAsync(modelUri, args);
-        }
-        else
-        {
-            Logger.LogWarning("No current input to change content of.");
-        }
+            MarkInputChanged();
+            await LanguageServices.OnDidChangeModelContentAsync(modelUri, args, CurrentInput?.Model.Uri);
+            StateHasChanged();
+        });
     }
 
     private void OnScreenInfoUpdated()
@@ -1789,14 +1851,20 @@
 
     private Task ChangePreferencesAsync(Func<SavedState, SavedState> updater)
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
         return SaveStateToUrlAsync(updater, savePreferences: true);
     }
 
     public void OnSettingsInputChanged()
     {
-        inputChanged = DateTimeOffset.Now;
+        MarkInputChanged();
         StateHasChanged();
+    }
+
+    private long MarkInputChanged()
+    {
+        inputChanged = DateTimeOffset.Now;
+        return ++inputRevision;
     }
 
     private void OnWorkerFailed(string error)

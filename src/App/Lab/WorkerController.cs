@@ -454,10 +454,10 @@ internal sealed class WorkerController : IAsyncDisposable
         };
     }
 
-    public Task<CompiledAssembly> CompileAsync(CompilationInput input, bool languageServicesEnabled)
+    public Task<CompiledAssembly> CompileAsync(CompilationInput input, bool languageServicesEnabled, long inputLoadId)
     {
         return PostAndReceiveMessageAsync(
-            new WorkerInputMessage.Compile(input, languageServicesEnabled) { Id = messageId++ },
+            new WorkerInputMessage.Compile(input, languageServicesEnabled) { Id = messageId++, InputLoadId = inputLoadId },
             fallback: CompiledAssembly.Fail);
     }
 
@@ -572,10 +572,10 @@ internal sealed class WorkerController : IAsyncDisposable
             cancellationToken: cancellationToken);
     }
 
-    public void OnDidChangeWorkspace(ImmutableArray<ModelInfo> models, bool refresh)
+    public Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, bool refresh, long inputLoadId)
     {
-        PostMessage(
-            new WorkerInputMessage.OnDidChangeWorkspace(models, refresh) { Id = messageId++ });
+        return PostMessageAsync(
+            new WorkerInputMessage.OnDidChangeWorkspace(models, refresh) { Id = messageId++, InputLoadId = inputLoadId });
     }
 
     public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
@@ -584,10 +584,10 @@ internal sealed class WorkerController : IAsyncDisposable
             new WorkerInputMessage.OnDidChangeModelContent(modelUri, args) { Id = messageId++ });
     }
 
-    public Task OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output)
+    public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, long inputLoadId)
     {
         return PostMessageAsync(
-            new WorkerInputMessage.OnCachedCompilationLoaded(config, output) { Id = messageId++ });
+            new WorkerInputMessage.OnInputLoaded(config, input, cachedOutput) { Id = messageId++, InputLoadId = inputLoadId });
     }
 
     public Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)

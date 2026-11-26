@@ -22,6 +22,10 @@ internal sealed class LanguageServicesClient(
     private DebounceInfo diagnosticsDebounce = new(new CancellationTokenSource());
     private (string ModelUri, string? RangeJson, Task<string?> Result)? lastCodeActions;
     private (CompiledFileOutputMetadata Metadata, DocumentMapping OutputToOutput)? outputCache;
+    // Opening input can precede provider registration; replay it after workspace installation.
+    private LoadedInput? pendingLoadedInput;
+
+    private sealed record LoadedInput(CompilerConfiguration Config, CompilationInput Input, long InputLoadId);
 
     public bool Enabled => completionProvider != null;
 
@@ -244,17 +248,27 @@ internal sealed class LanguageServicesClient(
         lastCodeActions = null;
     }
 
-    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, string? activeModelUri, bool refresh = false)
+    public async Task OnDidChangeWorkspaceAsync(ImmutableArray<ModelInfo> models, string? activeModelUri, long inputLoadId, bool refresh = false)
     {
         if (!Enabled)
         {
             return;
         }
 
+        var loadedInput = pendingLoadedInput;
         InvalidateCaches();
-        worker.OnDidChangeWorkspace(models, refresh);
+        await worker.OnDidChangeWorkspaceAsync(models, refresh, inputLoadId);
 
-        _ = UpdateDiagnosticsAsync(activeModelUri);
+        if (loadedInput is not null && ReferenceEquals(loadedInput, pendingLoadedInput) &&
+            loadedInput.InputLoadId == inputLoadId)
+        {
+            // Keep the loaded settings, but don't restore diagnostics that may predate disabled-time edits.
+            await OnInputLoadedAsync(loadedInput.Config, loadedInput.Input, cachedOutput: null, activeModelUri, loadedInput.InputLoadId);
+        }
+        else if (pendingLoadedInput is null)
+        {
+            _ = UpdateDiagnosticsAsync(activeModelUri);
+        }
 
         if (refresh)
         {
@@ -274,7 +288,7 @@ internal sealed class LanguageServicesClient(
         _ = UpdateDiagnosticsAsync(args.NewModelUrl);
     }
 
-    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
+    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args, string? activeModelUri)
     {
         if (!Enabled)
         {
@@ -283,20 +297,27 @@ internal sealed class LanguageServicesClient(
 
         InvalidateCaches();
         await worker.OnDidChangeModelContentAsync(modelUri, args);
-        _ = UpdateDiagnosticsAsync(modelUri);
+        _ = UpdateDiagnosticsAsync(activeModelUri);
     }
 
-    public async Task<bool> OnCachedCompilationLoadedAsync(CompilerConfiguration config, CompiledAssembly output, string? activeModelUri)
+    public async Task<bool> OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, string? activeModelUri, long inputLoadId)
     {
+        if (!Enabled)
+        {
+            pendingLoadedInput = new(config, input, inputLoadId);
+            return false;
+        }
+
+        pendingLoadedInput = null;
         try
         {
-            await worker.OnCachedCompilationLoadedAsync(config, output);
+            await worker.OnInputLoadedAsync(config, input, cachedOutput, inputLoadId);
         }
         catch (Exception ex)
         {
             // Avoid crashing the whole front-end when language services are crashing (can happen if mismatched compiler version is loaded
             // in which case we still want to allow users to use the compiler even though language services are busted).
-            logger.LogError(ex, "Informing language services about cached compilation failed");
+            logger.LogError(ex, "Informing language services about loaded input failed");
 
             return false;
         }
