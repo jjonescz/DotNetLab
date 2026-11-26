@@ -59,7 +59,10 @@ internal static class NuGetUtil
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
         var files = reader.GetFiles().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        var fileLookup = files.ToDictionary(static file => file, StringComparer.OrdinalIgnoreCase);
+        var loadDocumentation = dllFilter is not CompilerNuGetDllFilter and not AnalyzerNuGetDllFilter;
+        var fileLookup = loadDocumentation
+            ? files.ToDictionary(static file => file, StringComparer.OrdinalIgnoreCase)
+            : null;
         return files
             .Where(dllFilter.GetFilter(files, forPackage))
             .Select(file =>
@@ -71,7 +74,7 @@ internal static class NuGetUtil
                 entryStream.CopyTo(memoryStream);
 
                 ImmutableArray<byte> documentation = default;
-                if (fileLookup.TryGetValue(Path.ChangeExtension(file, ".xml"), out var documentationFile))
+                if (fileLookup?.TryGetValue(Path.ChangeExtension(file, ".xml"), out var documentationFile) == true)
                 {
                     entry = reader.GetEntry(documentationFile);
                     using var documentationStream = entry.Open();
@@ -95,9 +98,12 @@ internal static class NuGetUtil
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
         var filter = dllFilter.GetFilter(files, forPackage);
-        var entries = zipDirectory.Entries
-            .DistinctBy(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase);
+        var loadDocumentation = dllFilter is not CompilerNuGetDllFilter and not AnalyzerNuGetDllFilter;
+        var entries = loadDocumentation
+            ? zipDirectory.Entries
+                .DistinctBy(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
+            : null;
         return await zipDirectory.Entries
             .Where(entry => filter(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
@@ -105,7 +111,7 @@ internal static class NuGetUtil
                 var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
 
                 ImmutableArray<byte> documentation = default;
-                if (entries.TryGetValue(Path.ChangeExtension(entry.GetName(), ".xml"), out var documentationEntry))
+                if (entries?.TryGetValue(Path.ChangeExtension(entry.GetName(), ".xml"), out var documentationEntry) == true)
                 {
                     documentation = ImmutableCollectionsMarshal.AsImmutableArray(
                         await reader.ReadFileDataAsync(zipDirectory, documentationEntry));
