@@ -58,7 +58,7 @@ internal static class NuGetUtil
     {
         using var zipArchive = await ZipArchive.CreateAsync(nupkgStream, ZipArchiveMode.Read, leaveOpen: true, entryNameEncoding: null);
         using var reader = new PackageArchiveReader(zipArchive);
-        var files = reader.GetFiles().ToArray();
+        var files = reader.GetFiles().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var fileLookup = files.ToDictionary(static file => file, StringComparer.OrdinalIgnoreCase);
         return files
             .Where(dllFilter.GetFilter(files, forPackage))
@@ -95,7 +95,9 @@ internal static class NuGetUtil
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
         var filter = dllFilter.GetFilter(files, forPackage);
-        var entries = zipDirectory.Entries.ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase);
+        var entries = zipDirectory.Entries
+            .DistinctBy(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase);
         return await zipDirectory.Entries
             .Where(entry => filter(entry.GetName()))
             .SelectAsArrayAsync(async entry =>
