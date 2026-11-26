@@ -717,26 +717,24 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
     {
         if (dep?.DownloadUri is { } url)
         {
+            // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
+            // Outside browser, use full nupkg because it's persistently cached.
+            var useRangeRequests = OperatingSystem.IsBrowser() && dep.Source!.PackageSource.IsNuGetOrg;
+
             return new()
             {
                 CacheContext = cacheContext,
                 DependencyInfo = dep,
-                // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
-                // Outside browser, use full nupkg because it's persistently cached.
-                Zip = !OperatingSystem.IsBrowser() || !dep.Source!.PackageSource.IsNuGetOrg
-                    ? null
-                    : async () =>
+                Zip = useRangeRequests
+                    ? new Func<Task<ZipDirectory?>>(async () =>
                     {
-                        ZipDirectoryReader? reader = null;
                         try
                         {
-                            reader = await httpZipProvider.GetReaderAsync(url);
-                            return (reader, await reader.ReadAsync());
+                            using var reader = await httpZipProvider.GetReaderAsync(url);
+                            return await reader.ReadAsync();
                         }
                         catch (MiniZipHttpException e)
                         {
-                            reader?.Dispose();
-
                             // The exception message is long because it contains all headers
                             // but those can be inspected in dev tools anyway, so we include only the first line.
                             logger.LogWarning("Cannot download package '{PackageId}@{Version}' using range requests from '{Url}': {Message}",
@@ -745,12 +743,11 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                             // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
                             return null;
                         }
-                        catch
-                        {
-                            reader?.Dispose();
-                            throw;
-                        }
-                    },
+                    }).MemoizeSuccessful()
+                    : null,
+                ZipReaderFactory = useRangeRequests
+                    ? () => httpZipProvider.GetReaderAsync(url)
+                    : null,
                 NupkgStream = new(async () =>
                 {
                     var stream = new MemoryStream();
@@ -812,7 +809,8 @@ internal sealed class NuGetDownloadablePackageResult
 {
     public required SourceCacheContext CacheContext { get; init; }
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
-    public required Func<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
+    public required Func<Task<ZipDirectory?>>? Zip { get; init; }
+    public required Func<Task<ZipDirectoryReader>>? ZipReaderFactory { get; init; }
     public required Lazy<Task<Stream>> NupkgStream { get; init; }
     // Shared by all nuspec and assembly readers of the cached stream.
     public AsyncLock NupkgStreamLock { get; } = new();
@@ -845,14 +843,15 @@ internal sealed class NuGetDownloadablePackageResult
     private async Task<byte[]?> TryReadZipFileAsync(Func<string, bool> predicate, string fileDescription)
     {
         if (Zip is { } zipFactory &&
-            await zipFactory() is { } zip)
+            ZipReaderFactory is { } readerFactory &&
+            await zipFactory() is { } zipDirectory)
         {
-            using var zipReader = zip.Reader;
-            var entry = zip.Directory.Entries
+            using var zipReader = await readerFactory();
+            var entry = zipDirectory.Entries
                 .FirstOrDefault(e => predicate(e.GetName()))
                 ?? throw new InvalidOperationException(
                     $"{fileDescription} not found in the package: {DependencyInfo.DownloadUri}");
-            return await zipReader.ReadFileDataAsync(zip.Directory, entry);
+            return await zipReader.ReadFileDataAsync(zipDirectory, entry);
         }
 
         return null;
@@ -1230,12 +1229,13 @@ internal sealed class NuGetDownloadablePackage(
         var result = await this.result;
         string forPackage = $"{result.DependencyInfo.Id}@{result.DependencyInfo.Version}";
         if (result.Zip is { } zipFactory &&
-            await zipFactory() is { } zip)
+            result.ZipReaderFactory is { } readerFactory &&
+            await zipFactory() is { } zipDirectory)
         {
-            using var zipReader = zip.Reader;
+            using var zipReader = await readerFactory();
             return await NuGetUtil.GetAssembliesFromNupkgAsync(
                 zipReader,
-                zip.Directory,
+                zipDirectory,
                 dllFilter,
                 forPackage,
                 result.ReadZipFileAsync);
