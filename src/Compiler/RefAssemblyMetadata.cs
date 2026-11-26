@@ -52,39 +52,73 @@ internal static class RefAssemblyMetadata
         return builder.DrainToImmutable();
     }
 
-    public static async Task PrepareDocumentationAsync(
+    public static async Task<ImmutableArray<Exception>> PrepareDocumentationAsync(
         IEnumerable<MetadataReference> references,
         CancellationToken cancellationToken)
     {
         var tasks = references
             .Select(reference => asyncDocumentationProviders.TryGetValue(reference, out var provider)
                 ? provider.PrepareAsync(cancellationToken)
-                : Task.CompletedTask);
-        await Task.WhenAll(tasks);
+                : Task.FromResult<Exception?>(null));
+        return (await Task.WhenAll(tasks))
+            .SelectNonNull(static error => error)
+            .ToImmutableArray();
     }
 
     private sealed class AsyncDocumentationProvider(Func<Task<ImmutableArray<byte>>> loader) : XmlDocumentationProvider
     {
-        private readonly Lazy<Task<ImmutableArray<byte>>> loadTask = new(loader);
+        private readonly Lock gate = new();
+        private Task<ImmutableArray<byte>>? loadTask;
         private ImmutableArray<byte> bytes;
 
-        public async Task PrepareAsync(CancellationToken cancellationToken)
+        public async Task<Exception?> PrepareAsync(CancellationToken cancellationToken)
         {
             if (!bytes.IsDefault)
             {
-                return;
+                return null;
             }
 
-            bytes = await loadTask.Value.WaitAsync(cancellationToken);
+            Task<ImmutableArray<byte>> task;
+            lock (gate)
+            {
+                task = loadTask ??= loader();
+            }
+
+            try
+            {
+                bytes = await task.WaitAsync(cancellationToken);
+                return null;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                lock (gate)
+                {
+                    if (ReferenceEquals(loadTask, task))
+                    {
+                        loadTask = null;
+                    }
+                }
+
+                return ex;
+            }
+        }
+
+        protected override string? GetDocumentationForSymbol(
+            string documentationMemberID,
+            CultureInfo preferredCulture,
+            CancellationToken cancellationToken = default)
+        {
+            return bytes.IsDefault
+                ? string.Empty
+                : base.GetDocumentationForSymbol(documentationMemberID, preferredCulture, cancellationToken);
         }
 
         protected override Stream GetSourceStream(CancellationToken cancellationToken)
         {
-            if (bytes.IsDefault)
-            {
-                throw new InvalidOperationException("The documentation was not prepared.");
-            }
-
             return new MemoryStream(ImmutableCollectionsMarshal.AsArray(bytes)!, writable: false);
         }
 

@@ -62,6 +62,43 @@ public sealed class NuGetDownloaderTests
     }
 
     [TestMethod]
+    public async Task RetriesDocumentationLoadingAfterFailure()
+    {
+        var attempts = 0;
+        var assembly = RefAssemblies.All[0];
+        var references = RefAssemblyMetadata.Create(
+        [
+            new()
+            {
+                Name = assembly.Name,
+                FileName = assembly.FileName,
+                Bytes = assembly.Bytes,
+                Source = "Test",
+                DocumentationLoader = () =>
+                {
+                    attempts++;
+                    return attempts == 1
+                        ? Task.FromException<ImmutableArray<byte>>(new IOException("Failed to load docs."))
+                        : Task.FromResult(ImmutableCollectionsMarshal.AsImmutableArray(
+                            "<doc><members /></doc>"u8.ToArray()));
+                },
+            },
+        ]);
+
+        var first = await RefAssemblyMetadata.PrepareDocumentationAsync(
+            references,
+            TestContext.CancellationToken);
+        first.Should().ContainSingle()
+            .Which.Should().BeOfType<IOException>();
+
+        var second = await RefAssemblyMetadata.PrepareDocumentationAsync(
+            references,
+            TestContext.CancellationToken);
+        second.Should().BeEmpty();
+        attempts.Should().Be(2);
+    }
+
+    [TestMethod]
     public async Task DeferredDocumentationDoesNotCaptureZipReader()
     {
         var package = new MemoryStream();
