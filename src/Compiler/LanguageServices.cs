@@ -936,8 +936,10 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
     {
-        TextDocument? document = null;
-        var ideDiagnostics = !notFullyInitialized && TryGetTextDocument(modelUri, out document)
+        // Cached diagnostics need model identity even when live analysis is deferred.
+        TryGetTextDocument(modelUri, out var document);
+
+        var ideDiagnostics = !notFullyInitialized && document is not null
             ? await document.GetDiagnosticsAsync(runAnalyzers)
             : [];
 
@@ -950,7 +952,7 @@ internal sealed class LanguageServices : ILanguageServices
                 configuration: document?.Project.Id == configurationProjectId)
                 .ExcludeHiddenDiagnostics();
         }
-        else if (includeHiddenDiagnostics && document is Document sourceDocument)
+        else if (!notFullyInitialized && includeHiddenDiagnostics && document is Document sourceDocument)
         {
             // The IDE compiler analyzer excludes hidden diagnostics, so query the compiler directly.
             var model = await sourceDocument.GetSemanticModelAsync()

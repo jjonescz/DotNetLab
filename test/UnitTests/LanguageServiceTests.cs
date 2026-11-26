@@ -1363,6 +1363,32 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_CachedConfigurationWhileDeferred(bool includeHidden)
+    {
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = "public class C;" }]))
+        {
+            Configuration = "Config.DoesNotExist();",
+            Preferences = CompilationPreferences.Default with { IncludeHiddenDiagnostics = includeHidden },
+        };
+        using var cacheHandler = new MockHttpMessageHandler(TestContext);
+        var cacheServices = WorkerServices.CreateTest(TestContext, cacheHandler);
+        var cached = await cacheServices.GetRequiredService<CompilerProxy>().CompileAsync(input);
+        cached.Diagnostics.Should().Contain(d => d.Id == "CS0117");
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler);
+        var languageServices = await services.GetRequiredService<CompilerProxy>().GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnInputLoadedAsync(new() { Configuration = input.Configuration }, input, cached);
+
+        var uri = CompiledAssembly.GetInputModelUri(CompiledAssembly.ConfigurationFileName, guidOverride: uriGuidOverride);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        var error = markers.Should().ContainSingle(m => m.GetCode() == "CS0117").Which;
+        Assert.AreEqual(MarkerSeverity.Error, error.Severity);
+        var sourceUri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        Assert.IsEmpty(await languageServices.GetDiagnosticsAsync(sourceUri));
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task CachedConfiguration_CompilerEditorFeatures(bool previousCompilation)
     {
         const string configuration = "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));";
