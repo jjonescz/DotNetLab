@@ -579,9 +579,9 @@ internal sealed class LanguageServices : ILanguageServices
     {
         var compilerSelectionMatches = compiler.CompilerSelection == config with { Configuration = null };
         if (compilerSelectionMatches &&
-            compiler.LastResult is { Input: var compiledInput } && Equals(compiledInput, input))
+            compiler.LastResult is { Input: var compiledInput, Output: var compiledResult } && Equals(compiledInput, input))
         {
-            return OnCompilationFinishedAsync();
+            return OnCompilationFinishedAsync(compiledResult.CompiledAssembly);
         }
 
         compilerDiagnostics = cachedOutput;
@@ -607,9 +607,16 @@ internal sealed class LanguageServices : ILanguageServices
         return ApplyCompilationResultAsync(null);
     }
 
-    public Task OnCompilationFinishedAsync()
+    public Task OnCompilationFinishedAsync(CompiledAssembly? expectedOutput = null)
     {
         var lastCompilation = compiler.LastResult;
+
+        if (expectedOutput is not null && !ReferenceEquals(expectedOutput, lastCompilation?.Output.CompiledAssembly))
+        {
+            logger.LogDebug("Ignoring notification for a superseded compilation.");
+            return Task.CompletedTask;
+        }
+
         var result = lastCompilation?.Output;
         compilerDiagnostics = result?.CompiledAssembly;
         includeHiddenDiagnostics = lastCompilation?.Input.Preferences.IncludeHiddenDiagnostics ?? false;

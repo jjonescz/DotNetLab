@@ -71,6 +71,7 @@ public sealed class WorkerExecutor(
 
         if (message.LanguageServicesEnabled)
         {
+            // NOTE: This is intentionally not awaited to avoid blocking the compilation request on the notification.
             notifyLanguageServices(compiler);
         }
 
@@ -87,7 +88,7 @@ public sealed class WorkerExecutor(
                 }
 
                 var languageServices = await compiler.GetLanguageServicesAsync();
-                await languageServices.OnCompilationFinishedAsync();
+                await languageServices.OnCompilationFinishedAsync(result);
             }
             catch (Exception ex)
             {
