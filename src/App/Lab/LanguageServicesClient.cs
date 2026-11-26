@@ -288,7 +288,7 @@ internal sealed class LanguageServicesClient(
         _ = UpdateDiagnosticsAsync(args.NewModelUrl);
     }
 
-    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
+    public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args, string? activeModelUri)
     {
         if (!Enabled)
         {
@@ -297,7 +297,7 @@ internal sealed class LanguageServicesClient(
 
         InvalidateCaches();
         await worker.OnDidChangeModelContentAsync(modelUri, args);
-        _ = UpdateDiagnosticsAsync(modelUri);
+        _ = UpdateDiagnosticsAsync(activeModelUri);
     }
 
     public async Task<bool> OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput, string? activeModelUri, long inputLoadId)

@@ -199,7 +199,6 @@
                 <StandaloneCodeEditor @ref="inputEditor" Id="input-editor"
                                       ConstructionOptions="InputConstructionOptions" OnDidInit="EditorInitAsync"
                                       OnDidChangeModel="LanguageServices.OnDidChangeModel"
-                                      OnDidChangeModelContent="OnDidChangeModelContentAsync"
                                       OnDidBlurEditorText="() => SaveStateToUrlAsync()" />
             </div>
         </div>
@@ -1828,17 +1827,15 @@
         await LanguageServices.OnDidChangeWorkspaceAsync(models, CurrentInput?.Model.Uri, refresh: true, inputLoadId: loadId);
     }
 
-    private async Task OnDidChangeModelContentAsync(ModelContentChangedEvent args)
+    [JSInvokable]
+    public Task OnDidChangeInputModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
-        MarkInputChanged();
-        if (CurrentInput is { Model.Uri: var modelUri })
+        return InvokeAsync(async () =>
         {
-            await LanguageServices.OnDidChangeModelContentAsync(modelUri, args);
-        }
-        else
-        {
-            Logger.LogWarning("No current input to change content of.");
-        }
+            MarkInputChanged();
+            await LanguageServices.OnDidChangeModelContentAsync(modelUri, args, CurrentInput?.Model.Uri);
+            StateHasChanged();
+        });
     }
 
     private void OnScreenInfoUpdated()
