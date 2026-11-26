@@ -191,6 +191,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
         [
             // NuGet.org should be tried first because it supports more efficient range requests.
             NuGetOrgSourceUrl,
+            "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json",
             "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-libraries/nuget/v3/index.json",
         ];
