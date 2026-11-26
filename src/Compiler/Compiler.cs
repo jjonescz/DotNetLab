@@ -24,7 +24,8 @@ namespace DotNetLab;
 public sealed class Compiler(
     IServiceProvider services,
     ILogger<Compiler> logger,
-    ILoggerFactory loggerFactory)
+    ILoggerFactory loggerFactory,
+    CompilerConfiguration compilerSelection)
     : ICompiler
 {
     private const string ToolchainHelpText = """
@@ -54,6 +55,8 @@ public sealed class Compiler(
     private int lastPackageAnalyzerAssembliesCount;
 
     internal (CompilationInput Input, LiveCompilationResult Output)? LastResult { get; private set; }
+
+    internal CompilerConfiguration CompilerSelection { get; } = compilerSelection;
 
     internal static ICSharpCode.Decompiler.DecompilerSettings DefaultCSharpDecompilerSettings => field ??= new(ICSharpCode.Decompiler.CSharp.LanguageVersion.CSharp1)
     {

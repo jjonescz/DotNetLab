@@ -573,11 +573,13 @@ internal sealed class LanguageServices : ILanguageServices
 
     /// <summary>
     /// Initializes a newly loaded input independently of cached output availability, without restoring packages.
-    /// Reuses live state when this input has already been compiled.
+    /// Reuses live state when this input has already been compiled with the same compiler selection.
     /// </summary>
     public Task OnInputLoadedAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly? cachedOutput)
     {
-        if (compiler.LastResult is { Input: var compiledInput } && Equals(compiledInput, input))
+        var compilerSelectionMatches = compiler.CompilerSelection == config with { Configuration = null };
+        if (compilerSelectionMatches &&
+            compiler.LastResult is { Input: var compiledInput } && Equals(compiledInput, input))
         {
             return OnCompilationFinishedAsync();
         }
@@ -586,7 +588,7 @@ internal sealed class LanguageServices : ILanguageServices
         includeHiddenDiagnostics = input.Preferences.IncludeHiddenDiagnostics;
         try
         {
-            notFullyInitialized = !CompilerConfiguration.Empty.Equals(config);
+            notFullyInitialized = !compilerSelectionMatches || !CompilerConfiguration.Empty.Equals(config);
             if (!notFullyInitialized)
             {
                 var directives = FileLevelDirectiveParser.Instance.Parse(input.Inputs.Value

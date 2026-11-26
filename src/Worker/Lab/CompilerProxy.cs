@@ -14,6 +14,7 @@ internal sealed class CompilerProxy(
     IOptions<CompilerProxyOptions> options,
     ILogger<CompilerProxy> logger,
     DependencyRegistry dependencyRegistry,
+    CompilerDependencyProvider compilerDependencies,
     AssemblyDownloader assemblyDownloader,
     CompilerLoaderServices loaderServices,
     IServiceProvider serviceProvider)
@@ -210,7 +211,9 @@ internal sealed class CompilerProxy(
         using var _ = alc.EnterContextualReflection();
         Assembly compilerAssembly = alc.LoadFromAssemblyName(new(CompilerAssemblyName));
         Type compilerType = compilerAssembly.GetType("DotNetLab.Compiler")!;
-        var compiler = (ICompiler)ActivatorUtilities.CreateInstance(serviceProvider, compilerType)!;
+        var compilerSelection = onlyLoadBuiltInCompiler
+            ? CompilerConfiguration.Empty : compilerDependencies.GetCompilerConfiguration();
+        var compiler = (ICompiler)ActivatorUtilities.CreateInstance(serviceProvider, compilerType, compilerSelection)!;
         var languageServices = new Lazy<ILanguageServices>(() =>
         {
             var languageServicesType = compilerAssembly.GetType("DotNetLab.LanguageServices")!;

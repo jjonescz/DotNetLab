@@ -1202,6 +1202,67 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod, CombinatorialData]
+    public async Task Diagnostics_InputLoadCompilerSelection(bool razor, bool buildConfiguration)
+    {
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = "public class C;" }]));
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        var compiled = await compiler.CompileAsync(input);
+        await languageServices.OnCompilationFinishedAsync();
+        var cached = compiled with { };
+        var config = (razor, buildConfiguration) switch
+        {
+            (false, false) => new CompilerConfiguration { RoslynVersion = "4.14.0" },
+            (true, false) => new CompilerConfiguration { RazorVersion = "latest" },
+            (false, true) => new CompilerConfiguration { RoslynConfiguration = BuildConfiguration.Debug },
+            (true, true) => new CompilerConfiguration { RazorConfiguration = BuildConfiguration.Debug },
+        };
+
+        await languageServices.OnInputLoadedAsync(config, input, cached);
+        Assert.AreSame(cached, languageServices.CompilerCache);
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error deferred\n" }],
+        });
+        Assert.IsEmpty(await languageServices.GetDiagnosticsAsync(uri));
+    }
+
+    [TestMethod, CombinatorialData]
+    public async Task Diagnostics_InputLoadReusesMatchingCompilerSelection(bool razor)
+    {
+        using var handler = new MockHttpMessageHandler(TestContext);
+        var services = WorkerServices.CreateTest(TestContext, handler);
+        await services.GetRequiredService<CompilerDependencyProvider>().UseAsync(
+            razor ? CompilerKind.Razor : CompilerKind.Roslyn, version: null, BuildConfiguration.Debug);
+        var input = new CompilationInput(new([new() { FileName = "test.cs", Text = "public class C;" }]));
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var compiled = await compiler.CompileAsync(input);
+        Assert.AreEqual(0, compiled.NumErrors);
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnCompilationFinishedAsync();
+        var cached = compiled with { };
+        var config = razor
+            ? new CompilerConfiguration { RazorConfiguration = BuildConfiguration.Debug }
+            : new CompilerConfiguration { RoslynConfiguration = BuildConfiguration.Debug };
+
+        await languageServices.OnInputLoadedAsync(config, input, cached);
+        Assert.AreSame(compiled, languageServices.CompilerCache);
+
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cached);
+        Assert.AreSame(cached, languageServices.CompilerCache);
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "#error deferred\n" }],
+        });
+        Assert.IsEmpty(await languageServices.GetDiagnosticsAsync(uri));
+    }
+
+    [TestMethod, CombinatorialData]
     public async Task CachedConfiguration_CompilerEditorFeatures(bool previousCompilation)
     {
         const string configuration = "Config.CSharpCompilationOptions(options => options.WithAllowUnsafe(true));";
