@@ -75,6 +75,7 @@ public readonly struct RefAssembly
 
     public ImmutableArray<byte> Documentation { get; init; }
     public string? DocumentationResourceName { get; init; }
+    public Func<Task<ImmutableArray<byte>>>? DocumentationLoader { get; init; }
 
     /// <summary>
     /// Where does this assembly come from.

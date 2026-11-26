@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace DotNetLab;
@@ -6,6 +7,7 @@ namespace DotNetLab;
 internal static class RefAssemblyMetadata
 {
     private static readonly Lazy<ImmutableArray<PortableExecutableReference>> all = new(() => Create(RefAssemblies.All));
+    private static readonly ConditionalWeakTable<MetadataReference, AsyncDocumentationProvider> asyncDocumentationProviders = new();
 
     public static ImmutableArray<PortableExecutableReference> All => all.Value;
 
@@ -25,18 +27,70 @@ internal static class RefAssemblyMetadata
             {
                 documentation = new ManifestResourceDocumentationProvider(resourceName);
             }
+            else if (assembly.DocumentationLoader is { } loader)
+            {
+                documentation = new AsyncDocumentationProvider(loader);
+            }
             else
             {
                 documentation = null;
             }
 
 #pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to the reference
-            builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
-                .GetReference(documentation, filePath: assembly.FileName, display: assembly.FileName));
+            var reference = AssemblyMetadata.CreateFromImage(assembly.Bytes)
+                .GetReference(documentation, filePath: assembly.FileName, display: assembly.FileName);
 #pragma warning restore CA2000
+
+            if (documentation is AsyncDocumentationProvider asyncDocumentation)
+            {
+                asyncDocumentationProviders.Add(reference, asyncDocumentation);
+            }
+
+            builder.Add(reference);
         }
 
         return builder.DrainToImmutable();
+    }
+
+    public static async Task PrepareDocumentationAsync(
+        IEnumerable<MetadataReference> references,
+        CancellationToken cancellationToken)
+    {
+        var tasks = references
+            .Select(reference => asyncDocumentationProviders.TryGetValue(reference, out var provider)
+                ? provider.PrepareAsync(cancellationToken)
+                : Task.CompletedTask);
+        await Task.WhenAll(tasks);
+    }
+
+    private sealed class AsyncDocumentationProvider(Func<Task<ImmutableArray<byte>>> loader) : XmlDocumentationProvider
+    {
+        private readonly Lazy<Task<ImmutableArray<byte>>> loadTask = new(loader);
+        private ImmutableArray<byte> bytes;
+
+        public async Task PrepareAsync(CancellationToken cancellationToken)
+        {
+            if (!bytes.IsDefault)
+            {
+                return;
+            }
+
+            bytes = await loadTask.Value.WaitAsync(cancellationToken);
+        }
+
+        protected override Stream GetSourceStream(CancellationToken cancellationToken)
+        {
+            if (bytes.IsDefault)
+            {
+                throw new InvalidOperationException("The documentation was not prepared.");
+            }
+
+            return new MemoryStream(ImmutableCollectionsMarshal.AsArray(bytes)!, writable: false);
+        }
+
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj);
+
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 
     private sealed class ManifestResourceDocumentationProvider(string resourceName) : XmlDocumentationProvider

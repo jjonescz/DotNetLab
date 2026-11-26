@@ -94,7 +94,12 @@ internal static class NuGetUtil
             .ToImmutableArray();
     }
 
-    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(ZipDirectoryReader reader, ZipDirectory zipDirectory, NuGetDllFilter dllFilter, string forPackage)
+    internal static async Task<ImmutableArray<LoadedAssembly>> GetAssembliesFromNupkgAsync(
+        ZipDirectoryReader reader,
+        ZipDirectory zipDirectory,
+        NuGetDllFilter dllFilter,
+        string forPackage,
+        Func<string, Task<byte[]>>? readDocumentationAsync = null)
     {
         var files = zipDirectory.Entries.Select(static e => e.GetName());
         var filter = dllFilter.GetFilter(files, forPackage);
@@ -104,24 +109,29 @@ internal static class NuGetUtil
                 .DistinctBy(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(static e => e.GetName(), StringComparer.OrdinalIgnoreCase)
             : null;
-        return await zipDirectory.Entries
+        var assemblyEntries = zipDirectory.Entries
             .Where(entry => filter(entry.GetName()))
+            .ToArray();
+        return await assemblyEntries
             .SelectAsArrayAsync(async entry =>
             {
                 var bytes = await reader.ReadFileDataAsync(zipDirectory, entry);
 
-                ImmutableArray<byte> documentation = default;
-                if (entries?.TryGetValue(Path.ChangeExtension(entry.GetName(), ".xml"), out var documentationEntry) == true)
+                Func<Task<ImmutableArray<byte>>>? documentationLoader = null;
+                string? documentationPath;
+                if (entries?.ContainsKey(documentationPath = Path.ChangeExtension(entry.GetName(), ".xml")) == true)
                 {
-                    documentation = ImmutableCollectionsMarshal.AsImmutableArray(
-                        await reader.ReadFileDataAsync(zipDirectory, documentationEntry));
+                    documentationLoader = readDocumentationAsync == null
+                        ? null
+                        : async () => ImmutableCollectionsMarshal.AsImmutableArray(
+                            await readDocumentationAsync(documentationPath));
                 }
 
                 return new LoadedAssembly()
                 {
                     Name = Path.GetFileNameWithoutExtension(entry.GetName()),
                     Data = ImmutableCollectionsMarshal.AsImmutableArray(bytes),
-                    Documentation = documentation,
+                    DocumentationLoader = documentationLoader,
                     Format = AssemblyDataFormat.Dll,
                 };
             });
@@ -532,6 +542,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 FileName = loadedAssembly.Name + ".dll",
                 Bytes = loadedAssembly.DataAsDll,
                 Documentation = loadedAssembly.Documentation,
+                DocumentationLoader = loadedAssembly.DocumentationLoader,
                 Source = source,
                 LoadForExecution = loadForExecution,
             };
@@ -711,15 +722,18 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                 // Outside browser, use full nupkg because it's persistently cached.
                 Zip = !OperatingSystem.IsBrowser() || !dep.Source!.PackageSource.IsNuGetOrg
                     ? null
-                    : new(async () =>
+                    : async () =>
                     {
+                        ZipDirectoryReader? reader = null;
                         try
                         {
-                            var reader = await httpZipProvider.GetReaderAsync(url);
+                            reader = await httpZipProvider.GetReaderAsync(url);
                             return (reader, await reader.ReadAsync());
                         }
                         catch (MiniZipHttpException e)
                         {
+                            reader?.Dispose();
+
                             // The exception message is long because it contains all headers
                             // but those can be inspected in dev tools anyway, so we include only the first line.
                             logger.LogWarning("Cannot download package '{PackageId}@{Version}' using range requests from '{Url}': {Message}",
@@ -728,7 +742,12 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                             // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
                             return null;
                         }
-                    }),
+                        catch
+                        {
+                            reader?.Dispose();
+                            throw;
+                        }
+                    },
                 NupkgStream = new(async () =>
                 {
                     var stream = new MemoryStream();
@@ -790,20 +809,17 @@ internal sealed class NuGetDownloadablePackageResult
 {
     public required SourceCacheContext CacheContext { get; init; }
     public required SourcePackageDependencyInfo DependencyInfo { get; init; }
-    public required Lazy<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
+    public required Func<Task<(ZipDirectoryReader Reader, ZipDirectory Directory)?>>? Zip { get; init; }
     public required Lazy<Task<Stream>> NupkgStream { get; init; }
     // Shared by all nuspec and assembly readers of the cached stream.
     public AsyncLock NupkgStreamLock { get; } = new();
 
     public async Task<NuspecReader> GetNuspecReaderAsync()
     {
-        if (Zip is { } zipFactory &&
-            await zipFactory.Value is { } zip)
+        if (await TryReadZipFileAsync(
+            static path => PackageHelper.IsManifest(path),
+            "Nuspec file") is { } nuspecBytes)
         {
-            var nuspecEntry = zip.Directory.Entries
-                .FirstOrDefault(e => PackageHelper.IsManifest(e.GetName()))
-                ?? throw new InvalidOperationException($"Nuspec file not found in the package: {DependencyInfo.DownloadUri}");
-            var nuspecBytes = await zip.Reader.ReadFileDataAsync(zip.Directory, nuspecEntry);
             return new NuspecReader(new MemoryStream(nuspecBytes));
         }
 
@@ -813,6 +829,30 @@ internal sealed class NuGetDownloadablePackageResult
         using var reader = new PackageArchiveReader(nupkgStream, leaveStreamOpen: true);
         // NuspecReader eagerly loads the XML, so it can outlive the archive reader and stream lock.
         return reader.NuspecReader;
+    }
+
+    public async Task<byte[]> ReadZipFileAsync(string path)
+    {
+        return await TryReadZipFileAsync(
+            candidate => candidate.Equals(path, StringComparison.OrdinalIgnoreCase),
+            $"File '{path}'") ??
+            throw new InvalidOperationException($"Range requests are unavailable for package: {DependencyInfo.DownloadUri}");
+    }
+
+    private async Task<byte[]?> TryReadZipFileAsync(Func<string, bool> predicate, string fileDescription)
+    {
+        if (Zip is { } zipFactory &&
+            await zipFactory() is { } zip)
+        {
+            using var zipReader = zip.Reader;
+            var entry = zip.Directory.Entries
+                .FirstOrDefault(e => predicate(e.GetName()))
+                ?? throw new InvalidOperationException(
+                    $"{fileDescription} not found in the package: {DependencyInfo.DownloadUri}");
+            return await zipReader.ReadFileDataAsync(zip.Directory, entry);
+        }
+
+        return null;
     }
 }
 
@@ -1187,9 +1227,15 @@ internal sealed class NuGetDownloadablePackage(
         var result = await this.result;
         string forPackage = $"{result.DependencyInfo.Id}@{result.DependencyInfo.Version}";
         if (result.Zip is { } zipFactory &&
-            await zipFactory.Value is { } zip)
+            await zipFactory() is { } zip)
         {
-            return await NuGetUtil.GetAssembliesFromNupkgAsync(zip.Reader, zip.Directory, dllFilter, forPackage);
+            using var zipReader = zip.Reader;
+            return await NuGetUtil.GetAssembliesFromNupkgAsync(
+                zipReader,
+                zip.Directory,
+                dllFilter,
+                forPackage,
+                result.ReadZipFileAsync);
         }
 
         var nupkgStream = await result.NupkgStream.Value;

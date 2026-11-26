@@ -183,6 +183,7 @@ internal sealed class LanguageServices : ILanguageServices
         {
             // Fill documentation.
             var service = CompletionService.GetService(document)!;
+            await RefAssemblyMetadata.PrepareDocumentationAsync(document.Project.MetadataReferences, cancellationToken);
             var description = await service.GetDescriptionAsync(document, foundItem, cancellationToken);
             item.Documentation = description?.Text;
 
@@ -466,6 +467,7 @@ internal sealed class LanguageServices : ILanguageServices
         {
             var text = await document.GetTextAsync(cancellationToken);
             int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
+            await RefAssemblyMetadata.PrepareDocumentationAsync(document.Project.MetadataReferences, cancellationToken);
             var quickInfoService = document.Project.Services.GetRequiredService<QuickInfoService>();
             var quickInfo = await quickInfoService.GetQuickInfoAsync(document, caretPosition, cancellationToken);
             if (quickInfo == null)

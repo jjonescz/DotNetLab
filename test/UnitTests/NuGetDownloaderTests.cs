@@ -1,12 +1,16 @@
 using AwesomeAssertions;
 using DotNetLab.Lab;
+using Knapcode.MiniZip;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 
 namespace DotNetLab;
 
 [TestClass]
 public sealed class NuGetDownloaderTests
 {
+    public required TestContext TestContext { get; set; }
+
     [TestMethod]
     public async Task IgnoresDuplicatePathsWhenLoadingDocumentation()
     {
@@ -28,6 +32,60 @@ public sealed class NuGetDownloaderTests
         var assembly = assemblies.Should().ContainSingle().Which;
         assembly.Name.Should().Be("Test");
         Encoding.UTF8.GetString(assembly.Documentation.AsSpan()).Should().Be("documentation");
+    }
+
+    [TestMethod]
+    public async Task DefersDocumentationLoadingUntilPrepared()
+    {
+        var loaded = false;
+        var assembly = RefAssemblies.All[0];
+        var references = RefAssemblyMetadata.Create(
+        [
+            new()
+            {
+                Name = assembly.Name,
+                FileName = assembly.FileName,
+                Bytes = assembly.Bytes,
+                Source = "Test",
+                DocumentationLoader = () =>
+                {
+                    loaded = true;
+                    return Task.FromResult(ImmutableCollectionsMarshal.AsImmutableArray(
+                        "<doc><members /></doc>"u8.ToArray()));
+                },
+            },
+        ]);
+
+        loaded.Should().BeFalse();
+        await RefAssemblyMetadata.PrepareDocumentationAsync(references, TestContext.CancellationToken);
+        loaded.Should().BeTrue();
+    }
+
+    [TestMethod]
+    public async Task DeferredDocumentationDoesNotCaptureZipReader()
+    {
+        var package = new MemoryStream();
+        using (var archive = new ZipArchive(package, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            AddEntry(archive, "lib/net11.0/Test.dll", "assembly");
+            AddEntry(archive, "lib/net11.0/Test.xml", "documentation");
+        }
+
+        package.Position = 0;
+        using var reader = new ZipDirectoryReader(package, leaveOpen: true);
+        var directory = await reader.ReadAsync();
+        var assemblies = await NuGetUtil.GetAssembliesFromNupkgAsync(
+            reader,
+            directory,
+            new SingleLevelNuGetDllFilter("lib", 2),
+            "Test@1.0.0",
+            _ => Task.FromResult(Encoding.UTF8.GetBytes("documentation")));
+
+        reader.IsDisposed.Should().BeFalse();
+        reader.Dispose();
+        var assembly = assemblies.Should().ContainSingle().Which;
+        var documentation = await assembly.DocumentationLoader!();
+        Encoding.UTF8.GetString(documentation.AsSpan()).Should().Be("documentation");
     }
 
     private static void AddEntry(ZipArchive archive, string path, string content)
