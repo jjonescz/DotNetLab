@@ -1863,6 +1863,24 @@ public sealed class LanguageServiceTests
         await languageServices.OnCompilationFinishedAsync();
 
         var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var completionJson = await languageServices.ProvideCompletionItemsAsync(
+            uri,
+            new() { LineNumber = 3, Column = 19 },
+            new() { TriggerKind = BlazorMonaco.Languages.CompletionTriggerKind.Invoke },
+            TestContext.CancellationToken);
+        var completionList = JsonSerializer.Deserialize(
+            completionJson,
+            BlazorMonacoJsonContext.Default.MonacoCompletionList);
+        var commandCompletion = completionList!.Suggestions.Single(static item => item.Label == "Command");
+        var resolvedCompletionJson = await languageServices.ResolveCompletionItemAsync(
+            commandCompletion,
+            TestContext.CancellationToken);
+        var resolvedCompletion = JsonSerializer.Deserialize(
+            resolvedCompletionJson!,
+            BlazorMonacoJsonContext.Default.MonacoCompletionItem);
+        resolvedCompletion!.Documentation.Should().Contain(
+            "Represents a specific action that the application performs");
+
         var positionJson = JsonSerializer.Serialize(
             new Position { LineNumber = 3, Column = 15 },
             BlazorMonacoJsonContext.Default.Position);
