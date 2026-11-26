@@ -4,13 +4,9 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async function (input, init) {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    const hostname = globalThis.location?.hostname;
 
     if (request.method !== 'GET' ||
-        !url.pathname.endsWith('.wasm') ||
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname === '[::1]') {
+        !url.pathname.endsWith('.wasm')) {
         return originalFetch(input, init);
     }
 
@@ -29,7 +25,7 @@ globalThis.fetch = async function (input, init) {
     }));
 
     if (!response.ok) {
-        return response;
+        return originalFetch(input, init);
     }
 
     if (response.body === null) {
