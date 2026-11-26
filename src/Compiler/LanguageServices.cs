@@ -904,6 +904,8 @@ internal sealed class LanguageServices : ILanguageServices
 
     public async Task OnDidChangeModelContentAsync(string modelUri, ModelContentChangedEvent args)
     {
+        using var _ = await workspaceLock.LockAsync();
+
         if (!TryGetTextDocument(modelUri, out var document))
         {
             logger.LogWarning("Document to change content of not found: {ModelUri}", modelUri);
@@ -911,8 +913,6 @@ internal sealed class LanguageServices : ILanguageServices
         }
 
         InvalidateCompilerCache();
-
-        using var _ = await workspaceLock.LockAsync();
 
         var text = await document.GetTextAsync();
 

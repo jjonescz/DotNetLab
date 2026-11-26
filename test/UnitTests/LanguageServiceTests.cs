@@ -1024,6 +1024,44 @@ public sealed class LanguageServiceTests
     }
 
     [TestMethod]
+    public async Task ConcurrentModelChanges_PreserveAllEdits()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var input = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = "#error old" },
+            new() { FileName = "Additional.txt", Text = "old" },
+        ]));
+        var models = ToModelInfos(input);
+        await languageServices.OnDidChangeWorkspaceAsync(models);
+        var guard = Assert.IsInstanceOfType<AsyncLock>(languageServices.GetType()
+            .GetField("workspaceLock", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(languageServices));
+        Task sourceChange, additionalChange;
+        using (await guard.LockAsync())
+        {
+            sourceChange = languageServices.OnDidChangeModelContentAsync(models[0].Uri, new()
+            {
+                Changes = [new() { RangeOffset = 0, RangeLength = input.Inputs.Value[0].Text.Length, Text = "#error updated" }],
+            });
+            additionalChange = languageServices.OnDidChangeModelContentAsync(models[1].Uri, new()
+            {
+                Changes = [new() { RangeOffset = 0, RangeLength = input.Inputs.Value[1].Text.Length, Text = "updated" }],
+            });
+        }
+        await Task.WhenAll(sourceChange, additionalChange);
+
+        var markers = await languageServices.GetDiagnosticsAsync(models[0].Uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS1029" &&
+            m.Message.Contains("updated", StringComparison.Ordinal));
+        var project = Assert.IsInstanceOfType<Microsoft.CodeAnalysis.Project>(languageServices.GetType()
+            .GetMethod("GetProject", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(languageServices, [false]));
+        var additionalDocument = Assert.ContainsSingle(project.AdditionalDocuments);
+        Assert.AreEqual("updated", (await additionalDocument.GetTextAsync()).ToString());
+    }
+
+    [TestMethod]
     public async Task Diagnostics_RenameAdditionalFile()
     {
         const string uri = "test";
