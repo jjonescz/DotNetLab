@@ -1201,6 +1201,68 @@ public sealed class LanguageServiceTests
         Assert.AreEqual(0, services.GetRequiredService<CountingNuGetDownloader>().DownloadCount);
     }
 
+    [TestMethod]
+    public async Task Diagnostics_InputLoadRecomputesOutputKind()
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        var previousInput = new CompilationInput(new(
+        [
+            new() { FileName = "test.cs", Text = "public class Before;" },
+            new() { FileName = "Options.cs", Text = "#:property DefineConstants=FEATURE" },
+        ]));
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(previousInput));
+        var compiled = await compiler.CompileAsync(previousInput);
+        Assert.AreEqual(0, compiled.NumErrors);
+        await languageServices.OnCompilationFinishedAsync();
+
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "test.cs",
+                Text = """
+                    #if !FEATURE
+                    System.Console.WriteLine();
+                    #endif
+                    public class C { public void M() { int unused; } }
+                    """,
+            },
+        ]));
+        await languageServices.OnDidChangeWorkspaceAsync(ToModelInfos(input));
+        await languageServices.OnInputLoadedAsync(CompilerConfiguration.Empty, input, cachedOutput: null);
+        var project = Assert.IsInstanceOfType<Microsoft.CodeAnalysis.Project>(languageServices.GetType()
+            .GetMethod("GetProject", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(languageServices, [false]));
+        var compilation = await project.GetCompilationAsync(TestContext.CancellationToken);
+        Assert.IsNotNull(compilation);
+        compilation.GetDiagnostics().Should().NotContain(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+        var uri = CompiledAssembly.GetInputModelUri("test.cs", guidOverride: uriGuidOverride);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS0168");
+        markers.Should().NotContain(m => m.Severity == MarkerSeverity.Error);
+
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = 0, Text = "\n" }],
+        });
+        markers = await languageServices.GetDiagnosticsAsync(uri);
+        markers.Should().ContainSingle(m => m.GetCode() == "CS0168");
+        markers.Should().NotContain(m => m.Severity == MarkerSeverity.Error);
+
+        var workspace = project.Solution.Workspace;
+        var currentProject = workspace.CurrentSolution.GetProject(project.Id)!;
+        var additional = currentProject.AddDocument("Generated.cs", "System.Console.WriteLine();");
+        Assert.IsTrue(workspace.TryApplyChanges(additional.Project.Solution));
+        await languageServices.OnDidChangeModelContentAsync(uri, new()
+        {
+            Changes = [new() { RangeOffset = 0, RangeLength = input.Inputs.Value[0].Text.Length + 1, Text = "public class C;" }],
+        });
+        var updatedCompilation = await workspace.CurrentSolution.GetProject(project.Id)!.GetCompilationAsync(TestContext.CancellationToken);
+        Assert.IsNotNull(updatedCompilation);
+        Assert.AreEqual(Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary, updatedCompilation.Options.OutputKind);
+    }
+
     [TestMethod, CombinatorialData]
     public async Task Diagnostics_InputLoadCompilerSelection(bool razor, bool buildConfiguration)
     {

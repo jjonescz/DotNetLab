@@ -653,6 +653,7 @@ internal sealed class LanguageServices : ILanguageServices
                 }
                 else
                 {
+                    defaultOutputKind = await GetDefaultOutputKindAsync(project);
                     project = project.WithCompilationOptions(Compiler.CreateDefaultCompilationOptions(defaultOutputKind));
                 }
 
@@ -880,11 +881,19 @@ internal sealed class LanguageServices : ILanguageServices
             : SourceCodeKind.Regular;
     }
 
+    private async Task<OutputKind> GetDefaultOutputKindAsync(Project project)
+    {
+        // Match compiler inference: consider input documents, not additional generated sources.
+        var sources = await project.Documents
+            .Where(document => modelUris.TryGetValue(document.Id, out _))
+            .SelectNonNullAsync(document => document.GetSyntaxTreeAsync());
+        return Compiler.GetDefaultOutputKind(sources);
+    }
+
     private async Task UpdateOptionsIfNecessaryAsync()
     {
         var project = GetProject(configuration: false);
-        var sources = await project.Documents.SelectNonNullAsync(d => d.GetSyntaxTreeAsync());
-        defaultOutputKind = Compiler.GetDefaultOutputKind(sources);
+        defaultOutputKind = await GetDefaultOutputKindAsync(project);
         if (project.CompilationOptions is { } options &&
             options.OutputKind != defaultOutputKind &&
             compilationResult?.CSharpCompilationOptions is null)
