@@ -10,7 +10,9 @@ public static class RefAssemblies
 
     private static ImmutableArray<RefAssembly> GetAll()
     {
-        var names = typeof(RefAssemblies).Assembly.GetManifestResourceNames();
+        var assembly = typeof(RefAssemblies).Assembly;
+        var names = assembly.GetManifestResourceNames();
+        var resourceNames = names.ToHashSet(StringComparer.Ordinal);
         var builder = ImmutableArray.CreateBuilder<RefAssembly>(names.Length);
 
         foreach (var name in names)
@@ -22,26 +24,21 @@ public static class RefAssemblies
                 continue;
             }
             
-            using var stream = typeof(RefAssemblies).Assembly.GetManifestResourceStream(name)
+            using var stream = assembly.GetManifestResourceStream(name)
                 ?? throw new InvalidOperationException($"Did not find resource '{name}'.");
             var bytes = new byte[stream.Length];
             stream.ReadExactly(bytes, 0, bytes.Length);
 
-            using var documentationStream = typeof(RefAssemblies).Assembly.GetManifestResourceStream(documentationResourcePrefix + name);
-            ImmutableArray<byte> documentation = default;
-            if (documentationStream != null)
-            {
-                var documentationBytes = new byte[documentationStream.Length];
-                documentationStream.ReadExactly(documentationBytes);
-                documentation = ImmutableCollectionsMarshal.AsImmutableArray(documentationBytes);
-            }
+            string documentationResourceName = documentationResourcePrefix + name;
 
             builder.Add(new()
             {
                 Name = name,
                 FileName = name + ".dll",
                 Bytes = ImmutableCollectionsMarshal.AsImmutableArray(bytes),
-                Documentation = documentation,
+                DocumentationResourceName = resourceNames.Contains(documentationResourceName)
+                    ? documentationResourceName
+                    : null,
                 Source = "Built-in",
             });
         }
@@ -77,6 +74,7 @@ public readonly struct RefAssembly
     public required ImmutableArray<byte> Bytes { get; init; }
 
     public ImmutableArray<byte> Documentation { get; init; }
+    public string? DocumentationResourceName { get; init; }
 
     /// <summary>
     /// Where does this assembly come from.

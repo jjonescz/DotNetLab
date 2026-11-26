@@ -15,9 +15,21 @@ internal static class RefAssemblyMetadata
 
         foreach (var assembly in assemblies)
         {
-            var documentation = assembly.Documentation.IsDefaultOrEmpty
-                ? null
-                : XmlDocumentationProvider.CreateFromBytes(ImmutableCollectionsMarshal.AsArray(assembly.Documentation)!);
+            DocumentationProvider? documentation;
+            if (!assembly.Documentation.IsDefaultOrEmpty)
+            {
+                documentation = XmlDocumentationProvider.CreateFromBytes(
+                    ImmutableCollectionsMarshal.AsArray(assembly.Documentation)!);
+            }
+            else if (assembly.DocumentationResourceName is { } resourceName)
+            {
+                documentation = new ManifestResourceDocumentationProvider(resourceName);
+            }
+            else
+            {
+                documentation = null;
+            }
+
 #pragma warning disable CA2000 // Dispose objects before losing scope - ownership transferred to the reference
             builder.Add(AssemblyMetadata.CreateFromImage(assembly.Bytes)
                 .GetReference(documentation, filePath: assembly.FileName, display: assembly.FileName));
@@ -25,6 +37,28 @@ internal static class RefAssemblyMetadata
         }
 
         return builder.DrainToImmutable();
+    }
+
+    private sealed class ManifestResourceDocumentationProvider(string resourceName) : XmlDocumentationProvider
+    {
+        private string ResourceName { get; } = resourceName;
+
+        protected override Stream GetSourceStream(CancellationToken cancellationToken)
+        {
+            return typeof(RefAssemblies).Assembly.GetManifestResourceStream(ResourceName)
+                ?? throw new InvalidOperationException($"Did not find resource '{ResourceName}'.");
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ManifestResourceDocumentationProvider other &&
+                ResourceName == other.ResourceName;
+        }
+
+        public override int GetHashCode()
+        {
+            return ResourceName.GetHashCode();
+        }
     }
 }
 

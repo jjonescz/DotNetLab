@@ -461,6 +461,10 @@ public sealed class LanguageServiceTests
     [TestMethod]
     public async Task Hover_Documentation()
     {
+        var consoleReference = RefAssemblies.All.Single(static a => a.Name == "System.Console");
+        consoleReference.Documentation.IsDefault.Should().BeTrue();
+        consoleReference.DocumentationResourceName.Should().Be("doc:System.Console");
+
         var services = WorkerServices.CreateTest(TestContext);
         var compiler = services.GetRequiredService<CompilerProxy>();
         var languageServices = await compiler.GetLanguageServicesAsync();
