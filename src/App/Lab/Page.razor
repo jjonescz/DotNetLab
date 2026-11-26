@@ -1664,7 +1664,7 @@
 
         if (TemplateCache.TryGetOutput(stateWithoutPreferences, out var input, out var output))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), input, output, new(null), updateOutput: updateOutput, revision: revision);
+            await TrySetCompiledFromCacheAsync(state, input, output, new(null), updateOutput: updateOutput, revision: revision);
 
             // Mark as outdated if we loaded with different preferences.
             if (preferencesDiffer)
@@ -1693,7 +1693,7 @@
 
         if (result is var (output, timestamp))
         {
-            await TrySetCompiledFromCacheAsync(state.GetCompilerConfiguration(), state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput, revision: revision);
+            await TrySetCompiledFromCacheAsync(state, state.ToCompilationInput(), output, new(timestamp), updateOutput: updateOutput, revision: revision);
             StateHasChanged();
         }
         else if (updateOutput)
@@ -1704,7 +1704,7 @@
         }
     }
 
-    private async Task TrySetCompiledFromCacheAsync(CompilerConfiguration config, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput, long revision)
+    private async Task TrySetCompiledFromCacheAsync(SavedState state, CompilationInput input, CompiledAssembly output, CacheInfo info, bool updateOutput, long revision)
     {
         if (revision != inputRevision)
         {
@@ -1749,7 +1749,9 @@
             return;
         }
 
-        if (!await LanguageServices.OnInputLoadedAsync(config, input, output, CurrentInput?.Model.Uri, inputLoadId))
+        var loadedInput = state.ToCompilationInput();
+        var cachedDiagnostics = input.Preferences == loadedInput.Preferences ? output : null;
+        if (!await LanguageServices.OnInputLoadedAsync(state.GetCompilerConfiguration(), loadedInput, cachedDiagnostics, CurrentInput?.Model.Uri, inputLoadId))
         {
             await DisplaySquigglesAsync();
         }
