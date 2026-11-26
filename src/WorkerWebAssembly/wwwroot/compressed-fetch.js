@@ -7,7 +7,7 @@ globalThis.fetch = async function (input, init) {
 
     if (request.method !== 'GET' ||
         !url.pathname.endsWith('.wasm')) {
-        return originalFetch(input, init);
+        return originalFetch(request);
     }
 
     url.pathname += '.gz';
@@ -25,7 +25,7 @@ globalThis.fetch = async function (input, init) {
     }));
 
     if (!response.ok) {
-        return originalFetch(input, init);
+        return originalFetch(request);
     }
 
     if (response.body === null) {
