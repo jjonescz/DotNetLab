@@ -5,6 +5,8 @@ globalThis.document = {
 };
 globalThis.window = globalThis;
 
+import './compressed-fetch.js';
+
 /** @type {import('./dotnet').ModuleAPI} */
 import { dotnet as dn } from '../../_framework/dotnet.js';
 import * as interop from './interop.js';

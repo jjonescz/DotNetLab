@@ -30,7 +30,13 @@ async function onInstall() {
     const assetsRequests = self.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
-        .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
+        .map(asset => {
+            if (asset.url.endsWith('.wasm')) {
+                return new Request(asset.url + '.gz', { cache: 'no-cache' });
+            }
+
+            return new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' });
+        });
     const cache = await caches.open(cacheName);
     await cache.addAll(assetsRequests);
     
