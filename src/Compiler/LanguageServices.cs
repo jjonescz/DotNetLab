@@ -163,7 +163,6 @@ internal sealed class LanguageServices : ILanguageServices
                 return """{"suggestions":[]}""";
             }
 
-            await PrepareDocumentationAsync(document, cancellationToken);
             var completions = await service.GetCompletionsAsync(document, caretPosition, trigger: completionTrigger, cancellationToken: cancellationToken);
             lastCompletions = (document.Id, completions);
             var time1 = sw.ElapsedMilliseconds;
