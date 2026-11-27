@@ -1,6 +1,7 @@
 #!/usr/bin/env dotnet
 
 using System.Text.Json.Nodes;
+using System.Security.Cryptography;
 
 if (args is not [{ Length: > 0 } arg])
 {
@@ -58,7 +59,11 @@ foreach (var asset in assets)
         Console.Error.WriteLine($"Error: Gzip-compressed WASM asset '{relativePath}.gz' was not found.");
         return 1;
     }
+
+    asset!["compressedHash"] = $"sha256-{Convert.ToBase64String(
+        SHA256.HashData(File.ReadAllBytes(path + ".gz")))}";
 }
 
+File.WriteAllText(serviceWorkerAssetsFile, $"{prefix}{assets.Root}\n;");
 Console.Error.WriteLine("OK: publish output is ready for Cloudflare Pages.");
 return 0;

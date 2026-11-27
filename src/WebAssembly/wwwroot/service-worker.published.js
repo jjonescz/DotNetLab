@@ -32,7 +32,10 @@ async function onInstall() {
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => {
             if (asset.url.endsWith('.wasm')) {
-                return new Request(asset.url + '.gz', { cache: 'no-cache' });
+                return new Request(asset.url + '.gz', {
+                    integrity: asset.compressedHash,
+                    cache: 'no-cache',
+                });
             }
 
             return new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' });
