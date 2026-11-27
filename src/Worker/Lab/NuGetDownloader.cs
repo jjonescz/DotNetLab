@@ -720,6 +720,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
             // Only nuget.org is known to support range requests needed by the ZipDirectoryReader.
             // Outside browser, use full nupkg because it's persistently cached.
             var useRangeRequests = OperatingSystem.IsBrowser() && dep.Source!.PackageSource.IsNuGetOrg;
+            var rangeRequestUrl = useRangeRequests ? url.WithCorsProxy() : url;
 
             return new()
             {
@@ -731,7 +732,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     {
                         try
                         {
-                            using var reader = await httpZipProvider.GetReaderAsync(url);
+                            using var reader = await httpZipProvider.GetReaderAsync(rangeRequestUrl);
                             return await reader.ReadAsync();
                         }
                         catch (Exception e) when (e is not OperationCanceledException)
@@ -739,7 +740,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                             // The exception message can be long (e.g., it contains all headers)
                             // but those can be inspected in dev tools anyway, so we include only the first line.
                             logger.LogWarning("Cannot download package '{PackageId}@{Version}' using range requests from '{Url}': {Message}",
-                                dep.Id, dep.Version, url, e.Message.GetFirstLine());
+                                dep.Id, dep.Version, rangeRequestUrl, e.Message.GetFirstLine());
 
                             // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
                             return null;
@@ -747,7 +748,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     }).MemoizeSuccessful()
                     : null,
                 ZipReaderFactory = useRangeRequests
-                    ? () => httpZipProvider.GetReaderAsync(url)
+                    ? () => httpZipProvider.GetReaderAsync(rangeRequestUrl)
                     : null,
                 NupkgStream = new(() => DownloadNupkgAsync(dep)),
             };
