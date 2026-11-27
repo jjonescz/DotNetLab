@@ -684,7 +684,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     {
                         try
                         {
-                            var reader = await httpZipProvider.GetReaderAsync(url);
+                            var reader = await httpZipProvider.GetReaderAsync(url.WithCorsProxy());
                             return (reader, await reader.ReadAsync());
                         }
                         catch (MiniZipHttpException e)
