@@ -99,6 +99,31 @@ public sealed class NuGetDownloaderTests
     }
 
     [TestMethod]
+    public async Task TreatsPackageTimeoutAsDocumentationFailure()
+    {
+        var assembly = RefAssemblies.All[0];
+        var references = RefAssemblyMetadata.Create(
+        [
+            new()
+            {
+                Name = assembly.Name,
+                FileName = assembly.FileName,
+                Bytes = assembly.Bytes,
+                Source = "Test",
+                DocumentationLoader = () =>
+                    Task.FromException<ImmutableArray<byte>>(new TaskCanceledException("Package request timed out.")),
+            },
+        ]);
+
+        var errors = await RefAssemblyMetadata.PrepareDocumentationAsync(
+            references,
+            TestContext.CancellationToken);
+
+        errors.Should().ContainSingle()
+            .Which.Should().BeOfType<TaskCanceledException>();
+    }
+
+    [TestMethod]
     public async Task DeferredDocumentationDoesNotCaptureZipReader()
     {
         var package = new MemoryStream();

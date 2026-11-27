@@ -82,9 +82,9 @@ internal static class RefAssemblyMetadata
                 bytes = await load().WaitAsync(cancellationToken);
                 return null;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
-                throw;
+                return ex;
             }
             catch (Exception ex)
             {
