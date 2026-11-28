@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.QuickInfo;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text.Json;
@@ -33,6 +34,7 @@ internal sealed class LanguageServices : ILanguageServices
 
     private readonly ConditionalWeakTable<DocumentId, string> modelUris = new();
     private readonly ImmutableArray<AnalyzerReference> builtInAnalyzerReferences;
+    private readonly FrozenSet<string> ideOnlyDiagnosticIds;
     private (DocumentId DocId, RoslynCompletionList List)? lastCompletions;
     private CompiledAssembly? compilerDiagnostics;
     private LiveCompilationResult? compilationResult;
@@ -79,11 +81,17 @@ internal sealed class LanguageServices : ILanguageServices
                 typeof(RoslynWorkspaceAccessors).Assembly,
             ]));
 
+        var roslynCodeStyleAnalyzers = findRoslynCodeStyleAnalyzers();
+        ideOnlyDiagnosticIds = roslynCodeStyleAnalyzers
+            .SelectMany(static a => a.SupportedDiagnostics)
+            .Select(static d => d.Id)
+            .ToFrozenSet();
+
         builtInAnalyzerReferences =
         [
             // CompilerDiagnosticAnalyzer for CodeFixService (which only works on analyzer diagnostics).
             new AnalyzerImageReference([RoslynAccessors.GetCSharpCompilerDiagnosticAnalyzer()]).RegisterAnalyzer(),
-            findRoslynAnalyzers(),
+            new AnalyzerImageReference(roslynCodeStyleAnalyzers).RegisterAnalyzer(),
         ];
 
         projectId = createProject(configuration: false);
@@ -111,15 +119,14 @@ internal sealed class LanguageServices : ILanguageServices
             return project.Id;
         }
 
-        static AnalyzerReference findRoslynAnalyzers()
+        static ImmutableArray<DiagnosticAnalyzer> findRoslynCodeStyleAnalyzers()
         {
-            var analyzers = RoslynCodeStyleAccessors.GetRoslynCodeStyleAssembly().GetTypes()
+            return RoslynCodeStyleAccessors.GetRoslynCodeStyleAssembly().GetTypes()
                 .Where(static t =>
                     t.GetCustomAttributesData().Any(static a => a.AttributeType.FullName == "Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzerAttribute") &&
                     t.IsSubclassOf(typeof(DiagnosticAnalyzer)))
                 .Select(static t => (DiagnosticAnalyzer)Activator.CreateInstance(t)!)
                 .ToImmutableArray();
-            return new AnalyzerImageReference(analyzers).RegisterAnalyzer();
         }
     }
 
@@ -944,7 +951,7 @@ internal sealed class LanguageServices : ILanguageServices
     private static readonly DiagnosticDataComparer s_diagnosticDataComparer = new(
         // The file path is not preserved (since we only gather diagnostics for a single file) and can differ slightly (e.g., leading slash).
         excludeFilePath: true,
-        // IDE markers have downgraded info severity, so we exclude severity when comparing them with compiler markers.
+        // Some IDE markers have downgraded info severity, so we exclude severity when comparing them with compiler markers.
         excludeSeverity: true);
 
     public async Task<ImmutableArray<MarkerData>> GetDiagnosticsAsync(string modelUri)
@@ -993,7 +1000,11 @@ internal sealed class LanguageServices : ILanguageServices
             .Except(compilerDiagnostics.Select(static d => d.Data), s_diagnosticDataComparer);
 
         return compilerDiagnostics.Select(static d => d.ToMarkerData())
-            .Concat(filteredIdeDiagnostics.Select(static d => d.ToMarkerData(unmapped: d.UnmappedStartLineNumber.HasValue, downgradeInfo)))
+            .Concat(filteredIdeDiagnostics.Select(d => d.ToMarkerData(
+                unmapped: d.UnmappedStartLineNumber.HasValue,
+                // Info diagnostics from built-in IDE analyzers are suggestions not reported by compilation;
+                // others (e.g., compiler or package analyzers) keep info severity to match compilation output.
+                ideOnlyDiagnosticIds.Contains(d.Id) ? downgradeInfo : null)))
             .ToImmutableArray();
 
         static MarkerSeverity downgradeInfo(MarkerSeverity s)

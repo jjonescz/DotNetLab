@@ -191,8 +191,7 @@ public sealed class LanguageServiceTests
             "(3,7): hint IDE0040: Accessibility modifiers required",
             "(5,17): hint IDE0040: Accessibility modifiers required",
             "(7,9): error CS0103: The name 'Console' does not exist in the current context",
-            // TODO: We should consider improving the info->hint downgrading logic so this is reported as info.
-            "(8,57): hint CS9236: Compiling requires binding the lambda expression at least 100 times. Consider declaring the lambda expression with explicit parameter types, or if the containing method call is generic, consider using explicit type arguments.",
+            "(8,57): info CS9236: Compiling requires binding the lambda expression at least 100 times. Consider declaring the lambda expression with explicit parameter types, or if the containing method call is generic, consider using explicit type arguments.",
         ]);
     }
 
@@ -1763,7 +1762,7 @@ public sealed class LanguageServiceTests
         });
         markers = await languageServices.GetDiagnosticsAsync(uri);
         marker = markers.Should().ContainSingle(m => m.GetCode() == "RCS1033").Which;
-        marker.Severity.Should().Be(warning ? MarkerSeverity.Warning : MarkerSeverity.Hint);
+        marker.Severity.Should().Be(warning ? MarkerSeverity.Warning : MarkerSeverity.Info);
         marker.Tags.Should().Contain(MarkerTag.Unnecessary);
     }
 
