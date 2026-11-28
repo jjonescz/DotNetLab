@@ -139,7 +139,7 @@ static class Program
         }
 
         [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "Initialize")]
-        static extern void initializeBlazorApp(PhotinoBlazorApp @this, IServiceProvider services, RootComponentList rootComponents);
+        static safe extern void initializeBlazorApp(PhotinoBlazorApp @this, IServiceProvider services, RootComponentList rootComponents);
     }
 }
 

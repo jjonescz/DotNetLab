@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net11.0</TargetFramework>
+    <TargetFramework>net12.0</TargetFramework>
     <OriginalTargetFramework>$(TargetFramework)</OriginalTargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,6 +8,7 @@
     <AssemblyName>DotNetLab.$([System.IO.Path]::GetFileName(`$(MSBuildProjectDirectory)`))</AssemblyName>
     <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
     <Features>$(Features);use-roslyn-tokenizer=true</Features>
+    <MemorySafetyRulesVersion>2</MemorySafetyRulesVersion>
     <CompressionEnabled>false</CompressionEnabled>
     <LangVersion>preview</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
