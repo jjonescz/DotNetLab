@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using DotNetLab.Lab;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Combinatorial;
+using NuGet.Versioning;
 using System.Runtime.CompilerServices;
 
 namespace DotNetLab;
@@ -25,6 +26,13 @@ public sealed class CompilerProxyTests
         var compilerDependencyProvider = services.GetRequiredService<CompilerDependencyProvider>();
         await compilerDependencyProvider.UseAsync(CompilerKind.Razor, razorVersion, BuildConfiguration.Release);
         await compilerDependencyProvider.UseAsync(CompilerKind.Roslyn, version, BuildConfiguration.Release);
+
+        if (version == "latest")
+        {
+            var info = await compilerDependencyProvider.GetLoadedInfoAsync(CompilerKind.Roslyn);
+            NuGetVersion.TryParse(info!.Version, out var resolvedVersion).Should().BeTrue();
+            resolvedVersion!.IsPrerelease.Should().BeTrue();
+        }
 
         var compiler = services.GetRequiredService<CompilerProxy>();
         var compiled = await compiler.CompileAsync(new(new([new() { FileName = "Input.cs", Text = "#error version" }])));

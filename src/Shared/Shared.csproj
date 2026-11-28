@@ -16,6 +16,18 @@
     <_RefAssemblyToEmbed Include="$(NuGetPackageRoot)\microsoft.aspnetcore.app.ref\$(AspNetCoreVersion)\ref\*\*.dll" />
     <EmbeddedResource Include="@(_RefAssemblyToEmbed)" WithCulture="false" LogicalName="%(FileName)" Link="Ref/%(FileName)%(Extension)" />
   </ItemGroup>
+
+  <Target Name="AddRefDocumentationResources" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <_RefDocumentationToEmbed Include="@(_RefAssemblyToEmbed->'%(RootDir)%(Directory)%(FileName).xml')" />
+      <_RefDocumentationToEmbed Remove="@(_RefDocumentationToEmbed)" Condition="!Exists('%(FullPath)')" />
+      <EmbeddedResource
+        Include="@(_RefDocumentationToEmbed)"
+        WithCulture="false"
+        LogicalName="doc:%(FileName)"
+        Link="RefDocs/%(FileName)%(Extension)" />
+    </ItemGroup>
+  </Target>
   
   <!-- BCL source generators. The analyzer: prefix keeps them out of RefAssemblies. -->
 

@@ -491,6 +491,12 @@ public static partial class Util
         return results.DrainToImmutable();
     }
 
+    public static Func<Task<T>> Memoize<T>(this Func<Task<T>> loader)
+    {
+        var task = new Lazy<Task<T>>(loader);
+        return () => task.Value;
+    }
+
     public static async IAsyncEnumerable<TResult> SelectMany<T, TCollection, TResult>(this IAsyncEnumerable<T> source, Func<T, Task<IEnumerable<TCollection>>> selector, Func<T, TCollection, TResult> resultSelector)
     {
         await foreach (var item in source)

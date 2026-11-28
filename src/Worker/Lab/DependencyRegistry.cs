@@ -79,6 +79,9 @@ public sealed class LoadedAssembly
     /// </summary>
     public required ImmutableArray<byte> Data { get; init; }
 
+    public ImmutableArray<byte> Documentation { get; init; }
+    public Func<Task<ImmutableArray<byte>>>? DocumentationLoader { get; init; }
+
     public required AssemblyDataFormat Format { get; init; }
 
     public string DiskPath

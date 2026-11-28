@@ -208,6 +208,7 @@ internal sealed class LanguageServices : ILanguageServices
         {
             // Fill documentation.
             var service = CompletionService.GetService(document)!;
+            await PrepareDocumentationAsync(document, cancellationToken);
             var description = await service.GetDescriptionAsync(document, foundItem, cancellationToken);
             item.Documentation = description?.Text;
 
@@ -516,6 +517,7 @@ internal sealed class LanguageServices : ILanguageServices
         {
             var text = await document.GetTextAsync(cancellationToken);
             int caretPosition = text.Lines.GetPosition(position.ToLinePosition());
+            await PrepareDocumentationAsync(document, cancellationToken);
             var quickInfoService = document.Project.Services.GetRequiredService<QuickInfoService>();
             var quickInfo = await quickInfoService.GetQuickInfoAsync(document, caretPosition, cancellationToken);
             if (quickInfo == null)
@@ -538,6 +540,16 @@ internal sealed class LanguageServices : ILanguageServices
             logger.LogDebug("Canceled hover for {Position} in {Time} ms", position.Stringify(), sw.ElapsedMilliseconds.SeparateThousands());
 
             return null;
+        }
+    }
+
+    private async Task PrepareDocumentationAsync(Document document, CancellationToken cancellationToken)
+    {
+        foreach (var error in await RefAssemblyMetadata.PrepareDocumentationAsync(
+            document.Project.MetadataReferences,
+            cancellationToken))
+        {
+            logger.LogWarning(error, "Failed to load package XML documentation.");
         }
     }
 
