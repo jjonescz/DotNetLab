@@ -67,7 +67,6 @@ internal static class RefAssemblyMetadata
 
     private sealed class AsyncDocumentationProvider(Func<Task<ImmutableArray<byte>>> loader) : XmlDocumentationProvider
     {
-        private readonly Func<Task<ImmutableArray<byte>>> load = loader.MemoizeSuccessful();
         private ImmutableArray<byte> bytes;
 
         public async Task<Exception?> PrepareAsync(CancellationToken cancellationToken)
@@ -79,7 +78,7 @@ internal static class RefAssemblyMetadata
 
             try
             {
-                bytes = await load().WaitAsync(cancellationToken);
+                bytes = await loader().WaitAsync(cancellationToken);
                 return null;
             }
             catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)

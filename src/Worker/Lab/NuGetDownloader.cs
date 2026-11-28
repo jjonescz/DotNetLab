@@ -126,7 +126,9 @@ internal static class NuGetUtil
                         : new Func<Task<ImmutableArray<byte>>>(async () =>
                             ImmutableCollectionsMarshal.AsImmutableArray(
                                 await readDocumentationAsync(documentationPath)))
-                            .MemoizeSuccessful();
+                            // On failure, we return an empty doc which roslyn caches,
+                            // hence we can memoize even failures (retries would not be useful).
+                            .Memoize();
                 }
 
                 return new LoadedAssembly()
@@ -735,7 +737,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                             using var reader = await httpZipProvider.GetReaderAsync(rangeRequestUrl);
                             return await reader.ReadAsync();
                         }
-                        catch (Exception e) when (e is not OperationCanceledException)
+                        catch (Exception e)
                         {
                             // The exception message can be long (e.g., it contains all headers)
                             // but those can be inspected in dev tools anyway, so we include only the first line.
@@ -745,7 +747,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                             // If range requests don't work for some reason, we will fall back to FindPackageByIdResource.
                             return null;
                         }
-                    }).MemoizeSuccessful()
+                    }).Memoize()
                     : null,
                 ZipReaderFactory = useRangeRequests
                     ? () => httpZipProvider.GetReaderAsync(rangeRequestUrl)
@@ -783,7 +785,7 @@ internal sealed class NuGetDownloader : ICompilerDependencyResolver
                     return stream;
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 LogSourceFailure(repository, ex, $"download package '{dep.Id}@{dep.Version}'");
                 (exceptions ??= []).Add(ex);

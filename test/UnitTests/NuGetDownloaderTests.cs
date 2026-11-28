@@ -62,7 +62,7 @@ public sealed class NuGetDownloaderTests
     }
 
     [TestMethod]
-    public async Task RetriesDocumentationLoadingAfterFailure()
+    public async Task MemoizesDocumentationLoadingFailure()
     {
         var attempts = 0;
         var assembly = RefAssemblies.All[0];
@@ -74,14 +74,14 @@ public sealed class NuGetDownloaderTests
                 FileName = assembly.FileName,
                 Bytes = assembly.Bytes,
                 Source = "Test",
-                DocumentationLoader = () =>
+                DocumentationLoader = new Func<Task<ImmutableArray<byte>>>(() =>
                 {
                     attempts++;
                     return attempts == 1
                         ? Task.FromException<ImmutableArray<byte>>(new IOException("Failed to load docs."))
                         : Task.FromResult(ImmutableCollectionsMarshal.AsImmutableArray(
                             "<doc><members /></doc>"u8.ToArray()));
-                },
+                }).Memoize(),
             },
         ]);
 
@@ -94,8 +94,9 @@ public sealed class NuGetDownloaderTests
         var second = await RefAssemblyMetadata.PrepareDocumentationAsync(
             references,
             TestContext.CancellationToken);
-        second.Should().BeEmpty();
-        attempts.Should().Be(2);
+        second.Should().ContainSingle()
+            .Which.Should().BeOfType<IOException>();
+        attempts.Should().Be(1);
     }
 
     [TestMethod]
@@ -184,7 +185,7 @@ public sealed class NuGetDownloaderTests
     }
 
     [TestMethod]
-    public async Task DoesNotMemoizeFailedDocumentationLoad()
+    public async Task MemoizesFailedDocumentationLoad()
     {
         var package = new MemoryStream();
         using (var archive = new ZipArchive(package, ZipArchiveMode.Create, leaveOpen: true))
@@ -211,10 +212,8 @@ public sealed class NuGetDownloaderTests
         var loader = assemblies.Should().ContainSingle().Which.DocumentationLoader!;
 
         await FluentActions.Invoking(loader).Should().ThrowAsync<IOException>();
-        var documentation = await loader();
-
-        Encoding.UTF8.GetString(documentation.AsSpan()).Should().Be("documentation");
-        attempts.Should().Be(2);
+        await FluentActions.Invoking(loader).Should().ThrowAsync<IOException>();
+        attempts.Should().Be(1);
     }
 
     private static void AddEntry(ZipArchive archive, string path, string content)
