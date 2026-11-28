@@ -11,18 +11,28 @@ globalThis.fetch = async function (input, init) {
     }
 
     url.pathname += '.gz';
-    const response = await originalFetch(new Request(url, {
-        cache: request.cache,
-        credentials: request.credentials,
-        headers: request.headers,
-        integrity: '',
-        method: request.method,
-        mode: request.mode,
-        redirect: request.redirect,
-        referrer: request.referrer,
-        referrerPolicy: request.referrerPolicy,
-        signal: request.signal,
-    }));
+    let response;
+    try {
+        response = await originalFetch(new Request(url, {
+            cache: request.cache,
+            credentials: request.credentials,
+            headers: request.headers,
+            integrity: '',
+            method: request.method,
+            mode: request.mode,
+            redirect: request.redirect,
+            referrer: request.referrer,
+            referrerPolicy: request.referrerPolicy,
+            signal: request.signal,
+        }));
+    }
+    catch (error) {
+        if (request.signal.aborted || error?.name === 'AbortError') {
+            throw error;
+        }
+
+        return originalFetch(request);
+    }
 
     if (!response.ok) {
         return originalFetch(request);
