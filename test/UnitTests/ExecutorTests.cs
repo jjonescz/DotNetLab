@@ -10,6 +10,57 @@ public sealed class ExecutorTests
 {
     public required TestContext TestContext { get; set; }
 
+    [TestMethod]
+    [DataRow("compile")]
+    [DataRow("output")]
+    [DataRow("none")]
+    public async Task CompilationNotification_DoesNotApplyAnotherResult(string replacement)
+    {
+        var services = WorkerServices.CreateTest(TestContext);
+        var compiler = services.GetRequiredService<CompilerProxy>();
+        var executor = services.GetRequiredService<WorkerInputMessage.IExecutor>();
+        var input = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "Input.cs",
+                Text = "#:property RunAnalyzers=true\n#error original\npublic class C;",
+            },
+        ]));
+        var original = await compiler.CompileAsync(input);
+        var languageServices = await compiler.GetLanguageServicesAsync();
+        const string uri = "file:///in/test/Input.cs";
+        await executor.HandleAsync(new WorkerInputMessage.OnDidChangeWorkspace(
+            [new(uri, "Input.cs") { NewContent = input.Inputs.Value[0].Text }], Refresh: false)
+            { Id = 1, InputLoadId = 1 });
+        await languageServices.OnCompilationFinishedAsync();
+        var nextInput = new CompilationInput(new(
+        [
+            new()
+            {
+                FileName = "Input.cs",
+                Text = "#:property RunAnalyzers=false\n#error replacement\npublic class C;",
+            },
+        ]));
+        if (replacement == "compile")
+        {
+            await executor.HandleAsync(new WorkerInputMessage.Compile(nextInput, LanguageServicesEnabled: false)
+                { Id = 2, InputLoadId = 1 });
+        }
+        else if (replacement == "output")
+        {
+            var output = await executor.HandleAsync(new WorkerInputMessage.GetOutput(
+                nextInput, File: null, OutputType: CompiledAssembly.DiagnosticsOutputType) { Id = 2 });
+            Assert.Contains("replacement", output.Text);
+        }
+
+        // Deliver the original notification after a later request has had a chance to replace LastResult.
+        await languageServices.OnCompilationFinishedAsync(original);
+        Assert.AreSame(original, languageServices.CompilerCache);
+        var markers = await languageServices.GetDiagnosticsAsync(uri);
+        Assert.Contains("original", Assert.ContainsSingle(markers.Where(m => m.GetCode() == "CS1029")).Message);
+    }
+
     [TestMethod, CombinatorialData]
     public async Task AnalyzerErrors_DoNotBlockRunAndRazorRendering(
         [CombinatorialValues(RazorToolchain.SourceGenerator, RazorToolchain.InternalApi)] RazorToolchain toolchain,

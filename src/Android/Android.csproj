@@ -48,4 +48,19 @@
 
   <Import Project="..\..\eng\AppEntryPoint.targets" />
 
+  <!-- The Android SDK currently generates JNI keep rules only for trimmed builds. -->
+  <Target Name="GenerateUntrimmedProguardConfiguration"
+          BeforeTargets="_CalculateProguardConfigurationFiles"
+          DependsOnTargets="_ResolveAssemblies"
+          Condition="'$(AndroidLinkTool)' == 'r8' and '$(PublishTrimmed)' != 'true'"
+          Inputs="@(ResolvedAssemblies);$(MSBuildProjectFullPath)"
+          Outputs="$(_ProguardProjectConfiguration)">
+    <GenerateProguardConfiguration
+        LinkedAssemblies="@(ResolvedAssemblies)"
+        OutputFile="$(_ProguardProjectConfiguration)" />
+    <ItemGroup>
+      <FileWrites Include="$(_ProguardProjectConfiguration)" />
+    </ItemGroup>
+  </Target>
+
 </Project>
